@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react';
 
+const safeDecode = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 export function useRoute() {
-  const [path, setPath] = useState(() => window.location.pathname || '/');
+  const [path, setPath] = useState(() => safeDecode(window.location.pathname) || '/');
 
   useEffect(() => {
     const onChange = () => {
-      setPath(window.location.pathname || '/');
+      setPath(safeDecode(window.location.pathname) || '/');
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     };
 
