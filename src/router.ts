@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 
 export function useRoute() {
-  const [path, setPath] = useState(() => decodeURIComponent(window.location.hash.slice(1) || '/'));
+  const [path, setPath] = useState(() => window.location.pathname || '/');
 
   useEffect(() => {
     const onChange = () => {
-      const newHash = decodeURIComponent(window.location.hash.slice(1) || '/');
-      setPath(newHash);
+      setPath(window.location.pathname || '/');
       window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     };
-    window.addEventListener('hashchange', onChange);
+
+    window.addEventListener('popstate', onChange);
 
     const onClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -17,14 +17,15 @@ export function useRoute() {
       if (!anchor) return;
       const href = anchor.getAttribute('href');
       if (!href || !href.startsWith('/') || href.startsWith('//')) return;
+      if (anchor.hasAttribute('download')) return;
       e.preventDefault();
-      window.location.hash = '#' + href;
+      window.history.pushState({}, '', href);
+      onChange();
     };
     document.addEventListener('click', onClick);
 
-    if (!window.location.hash) window.location.hash = '#/';
     return () => {
-      window.removeEventListener('hashchange', onChange);
+      window.removeEventListener('popstate', onChange);
       document.removeEventListener('click', onClick);
     };
   }, []);
@@ -33,5 +34,6 @@ export function useRoute() {
 }
 
 export function navigate(to: string) {
-  window.location.hash = `#${to}`;
+  window.history.pushState({}, '', to);
+  window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 }
