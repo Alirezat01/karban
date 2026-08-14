@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { legalConfig, contractCatalog, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
+import { formatFa, formatPriceFa } from '@/lib/format';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
@@ -111,7 +112,7 @@ function ServicesTab() {
     <div className="admin-toolbar"><h2>مدیریت خدمات</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن خدمت</button></div>
     {showAdd && <div className="admin-form">
       <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
-      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت" />
+      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت (ریال)" />
       <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد (مثلاً هر درخواست)" />
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
       <select value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value as 'financial' | 'labor' })}><option value="financial">مالی</option><option value="labor">روابط کار</option></select>
@@ -124,7 +125,7 @@ function ServicesTab() {
       <tbody>
         {services.map((s) => <tr key={s.id}>
           <td>{editing === s.id ? <input value={s.title} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} /> : s.title}</td>
-          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : s.price}</td>
+          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : formatPriceFa(s.price)}</td>
           <td>{editing === s.id ? <select value={s.domain} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, domain: e.target.value as 'financial' | 'labor' } : x))}><option value="financial">مالی</option><option value="labor">روابط کار</option></select> : (s.domain === 'financial' ? 'مالی' : 'روابط کار')}</td>
           <td>{editing === s.id ? <input value={s.unit} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, unit: e.target.value } : x))} /> : s.unit}</td>
           <td>{editing === s.id ? <input type="checkbox" checked={s.featured} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, featured: e.target.checked } : x))} /> : (s.featured ? 'بله' : '—')}</td>
@@ -175,7 +176,7 @@ function SettingsTab() {
       {numField('سقف معافیت مالیاتی سالانه (تومان)', 'annualTaxFree')}
     </div>
     <button className="button" onClick={save}><Save size={16} /> ذخیره تنظیمات</button>
-    {saved && <small className="admin-success">تنظیمات ذخیره شد.</small>}
+    {saved && <div className="feedback-success"><Check size={16} /> تنظیمات ذخیره شد.</div>}
   </div>;
 }
 
@@ -367,7 +368,7 @@ function OrdersTab() {
       <thead><tr><th>موبایل</th><th>خدمت</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
       <tbody>
         {orders.map((o) => <tr key={o.id}>
-          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount || '—'}</td>
+          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount ? formatPriceFa(o.amount) : '—'}</td>
           <td><select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>{Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
           <td>{fmtDate(o.created_at)}</td>
         </tr>)}

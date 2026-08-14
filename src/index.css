@@ -428,3 +428,24 @@
   .admin-table { font-size: 0.82rem; }
   .admin-table th, .admin-table td { padding: 0.5rem 0.5rem; }
 }
+
+/* Success and Error messages */
+.feedback-success {
+  background-color: #e6f4ea;
+  color: #1e8e3e;
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  margin-top: 8px;
+  border: 1px solid #ceead6;
+}
+
+.feedback-error {
+  color: #d93025;
+  font-size: 0.875rem;
+  margin-top: 8px;
+  display: block;
+}
