@@ -1,14 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, BookOpen, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
+import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
 
-type Props = { title: string; category: string };
-export default function ArticlePage({ title, category }: Props) {
-  const [mobile, setMobile] = useState(''); const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle'); const isContract = category.includes('قرارداد');
-  const submitDownload = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile)) { setStatus('error'); return; } const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'free_download' }); if (error) { console.error('free download lead failed', error); setStatus('error'); return; } setStatus('success'); setMobile(''); };
+type Props = { title: string; category: string; contractId?: string };
+
+export default function ArticlePage({ title, category, contractId }: Props) {
+  const [mobile, setMobile] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [contractData, setContractData] = useState<{body?: string, pdf_url?: string} | null>(null);
+  const isContract = category.includes('قرارداد');
+
+  useEffect(() => {
+    if (contractId) {
+      supabase.from('contracts').select('body, pdf_url').eq('id', contractId).maybeSingle().then(({ data }) => {
+        if (data) setContractData(data);
+      });
+    }
+  }, [contractId]);
+
+  const submitDownload = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isIranianMobile(mobile)) { setStatus('error'); return; }
+    setStatus('loading');
+
+    // Insert Lead
+    const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'contract_download' });
+    if (error) { console.error('contract download lead failed', error); setStatus('error'); return; }
+
+    // Fetch and watermark PDF if pdf_url exists
+    if (contractData?.pdf_url) {
+      try {
+        const response = await fetch(contractData.pdf_url);
+        const arrayBuffer = await response.arrayBuffer();
+
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const pages = pdfDoc.getPages();
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        const watermarkText = `karbanapp.ir - ${normalizeMobile(mobile)}`;
+
+        for (const page of pages) {
+          const { width, height } = page.getSize();
+          page.drawText(watermarkText, {
+            x: width / 4,
+            y: height / 2,
+            size: 30,
+            font: font,
+            color: rgb(0.75, 0.75, 0.75),
+            rotate: degrees(45),
+            opacity: 0.5,
+          });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contract.pdf';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('PDF modification failed', err);
+        setStatus('error');
+        return;
+      }
+    }
+
+    setStatus('success');
+    setMobile('');
+  };
+
   const isContractDetail = isContract && title.includes('قرارداد کار');
   const contractFaqs: [string, string][] = [['بیمه برای کارگر الزامی است؟', 'بله، طبق ماده ۱۴۸ قانون کار، بیمه تأمین اجتماعی برای تمامی کارکنان الزامی است و کارفرما مکلف به پرداخت سهم خود است.'], ['دوره آزمایشی چقدر است؟', 'حداکثر ۱ ماه برای کارگران ساده و ۳ ماه برای کارگران متخصص و فنی (ماده ۱۱ قانون کار).'], ['سنوات چگونه محاسبه می‌شود؟', 'هر سال سابقه کار معادل یک ماه آخرین مزد پایه است (ماده ۲۴ قانون کار).']];
-  return <section className="inner-page"><div className="container article-shell"><span className="eyebrow"><BookOpen size={15} /> {category}</span><h1>{title}</h1><p className="article-intro">{isContractDetail ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.' : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارکنان و متخصصان ایرانی.'}</p><div className="article-body">{isContractDetail ? <><p>قرارداد کار مهم‌ترین سند حقوقی کارگر و کارفرماست. این قرارداد نوع رابطه کاری، مدت، مزد، ساعات کار، مرخصی و تعهدات هر دو طرف را مشخص می‌کند و در صورت بروز اختلاف، مرجع اصلی استناد است.</p><div className="related-box"><FileText /><div><strong>مستندات قانونی</strong><ul><li>ماده ۳ — لزوم کتبی بودن قرارداد کار</li><li>ماده ۱۱ — دوره آزمایشی و مدت آن</li><li>ماده ۴ — منع تبعیض در استخدام</li><li>ماده ۵ — شرایط کار و ساعات کار</li><li>ماده ۶ — تعهدات کارفرما</li></ul></div></div><div className="faq"><h2>پرسش‌های متداول</h2>{contractFaqs.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></> : <><p>در مدیریت کسب‌وکار، تصمیم‌های کوچک حقوقی و مالی می‌توانند اثر بزرگی بر آینده داشته باشند. این راهنما با زبان ساده، نکته‌های کلیدی و مسیر اقدام را توضیح می‌دهد.</p><h2>از کجا شروع کنیم؟</h2><p>ابتدا اطلاعات و قراردادهای خود را منظم کنید، سپس با استفاده از ابزارهای کاربان وضعیت فعلی را بررسی و برای گام بعدی تصمیم بگیرید.</p></>}{isContract && <div className="related-box"><FileText /><div><strong>دانلود رایگان قرارداد</strong><p>شماره موبایل خود را وارد کنید تا نسخه رایگان قرارداد برای شما فعال شود.</p><form onSubmit={submitDownload}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button button-small" type="submit">فعال‌سازی دانلود <ArrowLeft size={15} /></button></form>{status === 'success' && <a className="text-link" href="/assets/free-contract.txt" download>دریافت فایل قرارداد <ArrowLeft size={15} /></a>}{status === 'error' && <small>شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}</div></div>}<div className="related-box"><FileText /><div><strong>برای تصمیم عملی آماده‌اید؟</strong><p>قراردادها و خدمات مرتبط را بررسی کنید.</p><a className="text-link" href="/قراردادها">مشاهده قراردادها <ArrowLeft size={15} /></a></div></div></div></div></section>;
+
+  return <section className="inner-page"><div className="container article-shell"><span className="eyebrow"><BookOpen size={15} /> {category}</span><h1>{title}</h1><p className="article-intro">{isContractDetail ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.' : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارکنان و متخصصان ایرانی.'}</p><div className="article-body">
+
+  {contractData?.body && (
+    <div className="contract-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '2' }}>
+      {contractData.body}
+    </div>
+  )}
+
+  {isContractDetail && !contractData?.body ? <><p>قرارداد کار مهم‌ترین سند حقوقی کارگر و کارفرماست. این قرارداد نوع رابطه کاری، مدت، مزد، ساعات کار، مرخصی و تعهدات هر دو طرف را مشخص می‌کند و در صورت بروز اختلاف، مرجع اصلی استناد است.</p><div className="related-box"><FileText /><div><strong>مستندات قانونی</strong><ul><li>ماده ۳ — لزوم کتبی بودن قرارداد کار</li><li>ماده ۱۱ — دوره آزمایشی و مدت آن</li><li>ماده ۴ — منع تبعیض در استخدام</li><li>ماده ۵ — شرایط کار و ساعات کار</li><li>ماده ۶ — تعهدات کارفرما</li></ul></div></div><div className="faq"><h2>پرسش‌های متداول</h2>{contractFaqs.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></> : (!isContractDetail && !contractData?.body ? <><p>در مدیریت کسب‌وکار، تصمیم‌های کوچک حقوقی و مالی می‌توانند اثر بزرگی بر آینده داشته باشند. این راهنما با زبان ساده، نکته‌های کلیدی و مسیر اقدام را توضیح می‌دهد.</p><h2>از کجا شروع کنیم؟</h2><p>ابتدا اطلاعات و قراردادهای خود را منظم کنید، سپس با استفاده از ابزارهای کاربان وضعیت فعلی را بررسی و برای گام بعدی تصمیم بگیرید.</p></> : null)}
+
+  {contractData?.pdf_url && <div className="related-box"><FileText /><div><strong>دانلود PDF</strong><p>شماره موبایل خود را وارد کنید تا نسخه رایگان قرارداد برای شما فعال شود.</p><form onSubmit={submitDownload}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button button-small" type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'در حال آماده‌سازی...' : 'فعال‌سازی دانلود'} <ArrowLeft size={15} /></button></form>{status === 'success' && <small className="admin-success">دانلود با موفقیت انجام شد.</small>}{status === 'error' && <small>شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید یا خطایی در دریافت فایل رخ داد.</small>}</div></div>}<div className="related-box"><FileText /><div><strong>برای تصمیم عملی آماده‌اید؟</strong><p>قراردادها و خدمات مرتبط را بررسی کنید.</p><a className="text-link" href="/قراردادها">مشاهده قراردادها <ArrowLeft size={15} /></a></div></div></div></div></section>;
 }
