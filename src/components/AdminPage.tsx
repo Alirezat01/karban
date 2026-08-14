@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { legalConfig, contractCatalog } from '@/data/config';
