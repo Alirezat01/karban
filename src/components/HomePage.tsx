@@ -3,7 +3,6 @@ import { ArrowLeft, BarChart3, BriefcaseBusiness, Calculator, CheckCircle2, Coin
 import { roleCards, serviceItems, specialistServices, toolItems } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
-import { notifyAdmin } from '@/lib/notify';
 import { normalizeMobile } from '@/lib/normalize';
 
 const icons = { briefcase: BriefcaseBusiness, shield: ShieldCheck, laptop: Laptop, file: FileText, calculator: Calculator, sun: Sun, chart: BarChart3, coins: Coins, scale: Scale, heart: HeartHandshake } as const;
@@ -17,7 +16,6 @@ export default function HomePage() {
     if (!isIranianMobile(mobile)) { setBriefStatus('error'); return; }
     const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'weekly_brief' });
     if (error) { console.error('weekly brief submission failed', error); setBriefStatus('error'); return; }
-    notifyAdmin(`📥 بریف هفتگی: ${normalizeMobile(mobile)}`);
     setBriefStatus('success'); setMobile('');
   };
 
@@ -32,6 +30,6 @@ export default function HomePage() {
     <section className="section tools-strip"><div className="container tools-cover"><div className="section-heading"><div><span className="eyebrow eyebrow-dark">ابزارهای هوشمند و تعاملی</span><h2>کمتر جست‌وجو کنید، بیشتر پیش بروید</h2></div><a className="text-link text-link-light" href="/ابزارهای-هوش-مصنوعی">همه ابزارها <ArrowLeft size={16} /></a></div><div className="tool-grid">{toolItems.map((tool) => { const Icon = icons[tool.icon]; return <a className="tool-card" href={tool.href} key={tool.title}><div className="tool-icon"><Icon size={22} /></div><h3>{tool.title}</h3><p>{tool.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></div></section>
 
     <section className="section values-section"><div className="container"><div className="center-heading"><span className="eyebrow">چرا کاربان؟</span><h2>برای رشد، به یک همراه قابل اتکا نیاز دارید</h2></div><div className="values-grid">{values.map(([Icon, title, text]) => <div className="value-item" key={title}><Icon size={22} /><h3>{title}</h3><p>{text}</p></div>)}</div></div></section>
-    <section className="brief-bar"><div className="container brief-inner"><div><span>بریف هفتگی کاربان</span><p>یک نکته کاربردی برای مدیریت بهتر کسب‌وکار، هر هفته در موبایل شما.</p>{briefStatus === 'success' && <div className="feedback-success"><Check size={16} /> عضویت شما با موفقیت ثبت شد.</div>}{briefStatus === 'error' && <small className="feedback-error">شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}</div><form onSubmit={submitBrief}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setBriefStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button" type="submit">عضویت <ArrowLeft size={16} /></button></form></div></section>
+    <section className="brief-bar"><div className="container brief-inner"><div><span>بریف هفتگی کاربان</span><p>یک نکته کاربردی برای مدیریت بهتر کسب‌وکار، هر هفته در موبایل شما.</p>{briefStatus === 'success' && <small>عضویت شما با موفقیت ثبت شد.</small>}{briefStatus === 'error' && <small>شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}</div><form onSubmit={submitBrief}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setBriefStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button" type="submit">عضویت <ArrowLeft size={16} /></button></form></div></section>
   </>;
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, BookOpen, FileText, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
@@ -30,6 +30,7 @@ export default function ArticlePage({ title, category, contractId }: Props) {
     // Insert Lead
     const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'contract_download' });
     if (error) { console.error('contract download lead failed', error); setStatus('error'); return; }
+
     notifyAdmin(`📥 دانلود قرارداد: ${title} | ${normalizeMobile(mobile)}`);
 
     // Fetch and watermark PDF if pdf_url exists

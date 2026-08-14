@@ -6,7 +6,7 @@ import { formatFa, formatPriceFa } from '@/lib/format';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
-type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body: string; pdf_url: string; };
+type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body?: string; pdf_url?: string; };
 type LeadRow = { id: string; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
@@ -196,6 +196,14 @@ function ContractsTab() {
     await supabase.from('contracts').insert({ title: form.title, type: form.type, industry: form.industry, summary: form.summary });
     setForm({ title: '', type: '', industry: '', summary: '' }); setShowAdd(false); load();
   };
+  const remove = async (id: string) => { await supabase.from('contracts').delete().eq('id', id); load(); };
+  const migrateLegacy = async () => {
+    setMigrating(true);
+    const rows = contractCatalog.map((c) => ({ title: c.title, type: c.type, industry: c.industry, summary: c.description }));
+    const { error } = await supabase.from('contracts').insert(rows);
+    setMigrating(false);
+    if (!error) load();
+  };
 
   useEffect(() => {
     if (form.type && form.industry) {
@@ -205,21 +213,11 @@ function ContractsTab() {
 
   useEffect(() => {
     if (editForm.type && editForm.industry && editing) {
-      // Only auto-fill if it's a generic title or empty, otherwise we might overwrite manual edits
       if (!editForm.title || editForm.title.startsWith('قرارداد ')) {
         setEditForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
       }
     }
   }, [editForm.type, editForm.industry]);
-
-  const remove = async (id: string) => { await supabase.from('contracts').delete().eq('id', id); load(); };
-  const migrateLegacy = async () => {
-    setMigrating(true);
-    const rows = contractCatalog.map((c) => ({ title: c.title, type: c.type, industry: c.industry, summary: c.description }));
-    const { error } = await supabase.from('contracts').insert(rows);
-    setMigrating(false);
-    if (!error) load();
-  };
 
   const startEdit = (c: ContractRow) => {
     setEditing(c.id);

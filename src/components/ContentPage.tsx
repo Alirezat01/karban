@@ -1,34 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards, Check } from 'lucide-react';
-import { contractCatalog, calculatorItems, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
+import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, calculatorItems } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
-import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin } from '@/lib/notify';
 import { formatFa, formatPriceFa } from '@/lib/format';
+import { normalizeMobile } from '@/lib/normalize';
 
 const icons = [Scale, FileText, WalletCards, Calculator, Users, BriefcaseBusiness];
 const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock };
 type Props = { kind: 'knowledge' | 'contracts' | 'tools' | 'simple'; title: string; description: string; eyebrow?: string };
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
 
-// We need an interface for the contract object so we can combine DB records and fallbacks
-interface ContractItem {
-  id: string;
-  type?: string;
-  industry?: string;
-  title: string;
-  description?: string;
-  icon?: number;
-  body?: string;
-}
-
 export default function ContentPage({ kind, title, description, eyebrow = 'کاربان' }: Props) {
-  const [typeFilter, setTypeFilter] = useState('همه انواع قرارداد');
+  const [typeFilter, setTypeFilter] = useState('همه انواع قرارداد'); const [industryFilter, setIndustryFilter] = useState('همه صنف‌ها');
   const [searchQuery, setSearchQuery] = useState('');
-  const [industryFilter, setIndustryFilter] = useState('همه صنف‌ها');
-
-  const [dbContracts, setDbContracts] = useState<ContractItem[]>([]);
+  const [dbContracts, setDbContracts] = useState<{id: string, title: string, type?: string, industry?: string, description?: string, body?: string, icon?: number}[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(true);
 
   useEffect(() => {
@@ -44,8 +31,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
       .then(({ data, error }) => {
         if (!active) return;
         if (error || !data || data.length === 0) {
-          // fallback to config.ts contractCatalog
-          setDbContracts(contractCatalog as ContractItem[]);
+          setDbContracts(contractCatalog as any[]);
         } else {
           const mapped = data.map((item, index) => ({
             id: item.id,
@@ -62,10 +48,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
       });
     return () => { active = false; };
   }, [kind]);
-
-
-
-  const filteredContracts = useMemo(() => {
+    const filteredContracts = useMemo(() => {
     return dbContracts.filter((item) => {
       const matchType = typeFilter === 'همه انواع قرارداد' || item.type === typeFilter;
       const matchInd = industryFilter === 'همه صنف‌ها' || item.industry === industryFilter;
@@ -73,18 +56,13 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
       const matchSearch = term === '' ||
         (item.title && item.title.toLowerCase().includes(term)) ||
         (item.description && item.description.toLowerCase().includes(term)) ||
-        // Accessing body requires it to be on the item. Wait, dbContracts doesn't map body currently. We need to map body too. Let's fix that.
-        // Actually, we should map 'body' to ContractItem.
         (item.body && item.body.toLowerCase().includes(term));
       return matchType && matchInd && matchSearch;
     });
   }, [dbContracts, typeFilter, industryFilter, searchQuery]);
-
   return <section className={`inner-page ${kind === 'tools' ? 'tools-page' : ''}`}><div className={`container ${kind === 'contracts' || kind === 'tools' ? '' : 'narrow-content'}`}><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p className="lead">{description}</p>
     {kind === 'knowledge' && <div className="category-grid">{['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => { const Icon = icons[index]; return <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}><Icon /><h2>{item}</h2><p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p><ArrowLeft size={16} /></a>; })}</div>}
-
-    {kind === 'contracts' && <>
-      <div className="filter-panel">
+    {kind === 'contracts' && <><div className="filter-panel">
         <strong>جستجو و فیلتر قراردادها</strong>
         <div className="filter-row">
           <input type="text" placeholder="جستجو در قراردادها..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{flex: 1}} />
@@ -98,32 +76,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
           </select>
         </div>
         <small>{formatFa(filteredContracts.length)} قرارداد متناسب با انتخاب شما</small>
-      </div>
-
-      {loadingContracts ? <p style={{textAlign: 'center', marginTop: '2rem'}}>در حال بارگذاری قراردادها...</p> :
-      <div className="contract-grid">
-        {filteredContracts.map((item) => {
-          const Icon = icons[item.icon || 0];
-          return <article className="contract-card" key={item.id}>
-            <div className="contract-card-top">
-              <Icon />
-              <div>
-                <small>{item.industry}</small>
-                <h2>{item.title}</h2>
-                <p>{item.description}</p>
-              </div>
-            </div>
-            <div className="contract-tiers">
-              <span>عمومی <b>رایگان</b></span>
-              <span>تخصصی <b>قیمت ثابت</b></span>
-              <span>اختصاصی <b>متخصص</b></span>
-            </div>
-            <a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a>
-          </article>;
-        })}
-      </div>}
-    </>}
-
+      </div>{loadingContracts ? <p style={{textAlign: 'center', marginTop: '2rem'}}>در حال بارگذاری قراردادها...</p> : <div className="contract-grid">{filteredContracts.map((item) => { const Icon = icons[item.icon || 0]; return <article className="contract-card" key={item.id}><div className="contract-card-top"><Icon /><div><small>{item.industry}</small><h2>{item.title}</h2><p>{item.description}</p></div></div><div className="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div><a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a></article>; })}</div>}</>}
     {kind === 'tools' && <><div className="tools-hero-card"><div><h2>ابزارهای هوش مصنوعی کاربان</h2><p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p></div><img src="/images/og-tools.png" alt="تصویر ماشین‌حساب کاربان" /></div><div className="tool-grid">{calculatorItems.map((item) => { const Icon = toolIcons[item.icon] || Calculator; return <a className="tool-card" href={item.href} key={item.title}><div className="tool-icon"><Icon size={22} /></div><h3>{item.title}</h3><p>{item.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></>}
     {kind === 'simple' && <div className="simple-panels"><h2>همه‌چیز برای یک تصمیم بهتر</h2><p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p><a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a></div>}
   </div></section>;
