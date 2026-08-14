@@ -78,7 +78,35 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
         <small>{formatFa(filteredContracts.length)} قرارداد متناسب با انتخاب شما</small>
       </div>{loadingContracts ? <p style={{textAlign: 'center', marginTop: '2rem'}}>در حال بارگذاری قراردادها...</p> : <div className="contract-grid">{filteredContracts.map((item) => { const Icon = icons[item.icon || 0]; return <article className="contract-card" key={item.id}><div className="contract-card-top"><Icon /><div><small>{item.industry}</small><h2>{item.title}</h2><p>{item.description}</p></div></div><div className="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div><a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a></article>; })}</div>}</>}
     {kind === 'tools' && <><div className="tools-hero-card"><div><h2>ابزارهای هوش مصنوعی کاربان</h2><p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p></div><img src="/images/og-tools.png" alt="تصویر ماشین‌حساب کاربان" /></div><div className="tool-grid">{calculatorItems.map((item) => { const Icon = toolIcons[item.icon] || Calculator; return <a className="tool-card" href={item.href} key={item.title}><div className="tool-icon"><Icon size={22} /></div><h3>{item.title}</h3><p>{item.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></>}
-    {kind === 'simple' && <div className="simple-panels"><h2>همه‌چیز برای یک تصمیم بهتر</h2><p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p><a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a></div>}
+    {kind === 'simple' && (
+      <div className="simple-panels">
+        {title === 'درباره کاربان' ? (
+          <>
+            <p style={{ lineHeight: '2' }}>
+              کاربان از یک مشاهده ساده متولد شد: هزاران رابطه کاری، همکاری و
+              قرارداد در کشور بدون نوشته درست، یا با نمونه‌های ناقص کپی‌شده از
+              اینترنت بسته می‌شود — و حاصل آن اختلاف، جریمه و اتلاف وقت هر دو طرف است.
+              کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی
+              به تفکیک صنف، ماشین‌حساب‌های دقیق حقوق و سنوات مطابق مقررات ۱۴۰۵، و
+              دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. روش ما ساده است:
+              متن حقوقی دقیق، به‌روز و در دسترس برای همه، به‌همراه ابزارهای هوشمندی
+              که محاسبه‌های پیچیده را به یک کلیک تبدیل می‌کنند. کاربان؛ از قرارداد تا آرامش.
+            </p>
+          </>
+        ) : title === 'تماس با کاربان' ? (
+          <>
+            <p>پاسخ‌گویی شنبه تا چهارشنبه، ۹ تا ۱۷ — hello@karbanapp.ir</p>
+            <a className="button" href="/تماس">فرم تماس <ArrowLeft size={17} /></a>
+          </>
+        ) : (
+          <>
+            <h2>همه‌چیز برای یک تصمیم بهتر</h2>
+            <p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p>
+            <a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a>
+          </>
+        )}
+      </div>
+    )}
   </div></section>;
 }
 
