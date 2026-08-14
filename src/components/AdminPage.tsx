@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { legalConfig } from '@/data/config';
+import { legalConfig, contractCatalog } from '@/data/config';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
@@ -91,7 +91,7 @@ function ServicesTab() {
   const [form, setForm] = useState({ title: '', price: '', description: '', domain: 'financial' as 'financial' | 'labor', unit: '', featured: false, kind: '' });
   const [showAdd, setShowAdd] = useState(false);
 
-  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('created_at'); setServices((data || []) as Service[]); setLoading(false); };
+  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('id'); setServices((data || []) as Service[]); setLoading(false); };
   useEffect(() => { load(); }, []);
 
   const save = async (id: string) => {
@@ -184,8 +184,9 @@ function ContractsTab() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ title: '', type: '', industry: '', summary: '' });
   const [showAdd, setShowAdd] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
-  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary').order('created_at'); setContracts((data || []) as ContractRow[]); setLoading(false); };
+  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
   useEffect(() => { load(); }, []);
   const add = async () => {
     if (!form.title) return;
@@ -193,6 +194,13 @@ function ContractsTab() {
     setForm({ title: '', type: '', industry: '', summary: '' }); setShowAdd(false); load();
   };
   const remove = async (id: string) => { await supabase.from('contracts').delete().eq('id', id); load(); };
+  const migrateLegacy = async () => {
+    setMigrating(true);
+    const rows = contractCatalog.map((c) => ({ title: c.title, type: c.type, industry: c.industry, summary: c.description }));
+    const { error } = await supabase.from('contracts').insert(rows);
+    setMigrating(false);
+    if (!error) load();
+  };
 
   if (loading) return <p>در حال بارگذاری…</p>;
   return <div className="admin-table-wrap">
@@ -208,7 +216,7 @@ function ContractsTab() {
       <thead><tr><th>عنوان</th><th>نوع</th><th>صنف</th><th>خلاصه</th><th></th></tr></thead>
       <tbody>
         {contracts.map((c) => <tr key={c.id}><td>{c.title}</td><td>{c.type || '—'}</td><td>{c.industry || '—'}</td><td>{c.summary || '—'}</td><td><button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button></td></tr>)}
-        {contracts.length === 0 && <tr><td colSpan={5}>هیچ قراردادی ثبت نشده است.</td></tr>}
+        {contracts.length === 0 && <tr><td colSpan={5}><div className="admin-empty"><p>هیچ قراردادی ثبت نشده است.</p><button className="button button-small" onClick={migrateLegacy} disabled={migrating}><ArrowLeft size={15} /> {migrating ? 'در حال انتقال…' : 'انتقال ۶۰ قرارداد از نسخه قدیمی'}</button></div></td></tr>}
       </tbody>
     </table>
   </div>;
