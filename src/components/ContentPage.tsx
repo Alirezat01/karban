@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards, Check } from 'lucide-react';
-import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, calculatorItems } from '@/data/config';
+import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards } from 'lucide-react';
+import { contractCatalog, contractTypes, industries, calculatorItems } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
-import { notifyAdmin } from '@/lib/notify';
-import { formatFa, formatPriceFa } from '@/lib/format';
 import { normalizeMobile } from '@/lib/normalize';
 
 const icons = [Scale, FileText, WalletCards, Calculator, Users, BriefcaseBusiness];
@@ -13,100 +11,13 @@ type Props = { kind: 'knowledge' | 'contracts' | 'tools' | 'simple'; title: stri
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
 
 export default function ContentPage({ kind, title, description, eyebrow = 'کاربان' }: Props) {
-  const [typeFilter, setTypeFilter] = useState('همه انواع قرارداد'); const [industryFilter, setIndustryFilter] = useState('همه صنف‌ها');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dbContracts, setDbContracts] = useState<{id: string, title: string, type?: string, industry?: string, description?: string, body?: string, icon?: number}[]>([]);
-  const [loadingContracts, setLoadingContracts] = useState(true);
-
-  useEffect(() => {
-    if (kind !== 'contracts') {
-      setLoadingContracts(false);
-      return;
-    }
-    let active = true;
-    supabase
-      .from('contracts')
-      .select('id,title,type,industry,summary,description,body,pdf_url')
-      .order('id')
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error || !data || data.length === 0) {
-          setDbContracts(contractCatalog as any[]);
-        } else {
-          const mapped = data.map((item, index) => ({
-            id: item.id,
-            title: item.title,
-            type: item.type || '',
-            industry: item.industry || '',
-            description: item.summary || item.description || '',
-            body: item.body || '',
-            icon: index % icons.length
-          }));
-          setDbContracts(mapped);
-        }
-        setLoadingContracts(false);
-      });
-    return () => { active = false; };
-  }, [kind]);
-    const filteredContracts = useMemo(() => {
-    return dbContracts.filter((item) => {
-      const matchType = typeFilter === 'همه انواع قرارداد' || item.type === typeFilter;
-      const matchInd = industryFilter === 'همه صنف‌ها' || item.industry === industryFilter;
-      const term = searchQuery.toLowerCase();
-      const matchSearch = term === '' ||
-        (item.title && item.title.toLowerCase().includes(term)) ||
-        (item.description && item.description.toLowerCase().includes(term)) ||
-        (item.body && item.body.toLowerCase().includes(term));
-      return matchType && matchInd && matchSearch;
-    });
-  }, [dbContracts, typeFilter, industryFilter, searchQuery]);
+  const [type, setType] = useState('همه انواع قرارداد'); const [industry, setIndustry] = useState('همه صنف‌ها');
+  const filteredContracts = useMemo(() => contractCatalog.filter((item) => (type === 'همه انواع قرارداد' || item.type === type) && (industry === 'همه صنف‌ها' || item.industry === industry)), [type, industry]);
   return <section className={`inner-page ${kind === 'tools' ? 'tools-page' : ''}`}><div className={`container ${kind === 'contracts' || kind === 'tools' ? '' : 'narrow-content'}`}><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p className="lead">{description}</p>
     {kind === 'knowledge' && <div className="category-grid">{['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => { const Icon = icons[index]; return <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}><Icon /><h2>{item}</h2><p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p><ArrowLeft size={16} /></a>; })}</div>}
-    {kind === 'contracts' && <><div className="filter-panel">
-        <strong>جستجو و فیلتر قراردادها</strong>
-        <div className="filter-row">
-          <input type="text" placeholder="جستجو در قراردادها..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{flex: 1}} />
-          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="نوع قرارداد">
-            <option>همه انواع قرارداد</option>
-            {CONTRACT_TYPES.map((item) => <option key={item}>{item}</option>)}
-          </select>
-          <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} aria-label="صنف یا شغل">
-            <option>همه صنف‌ها</option>
-            {INDUSTRIES.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </div>
-        <small>{formatFa(filteredContracts.length)} قرارداد متناسب با انتخاب شما</small>
-      </div>{loadingContracts ? <p style={{textAlign: 'center', marginTop: '2rem'}}>در حال بارگذاری قراردادها...</p> : <div className="contract-grid">{filteredContracts.map((item) => { const Icon = icons[item.icon || 0]; return <article className="contract-card" key={item.id}><div className="contract-card-top"><Icon /><div><small>{item.industry}</small><h2>{item.title}</h2><p>{item.description}</p></div></div><div className="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div><a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a></article>; })}</div>}</>}
+    {kind === 'contracts' && <><div className="filter-panel"><strong>فیلتر دو بعدی قراردادها</strong><div className="filter-row"><select value={type} onChange={(event) => setType(event.target.value)} aria-label="نوع قرارداد"><option>همه انواع قرارداد</option>{contractTypes.map((item) => <option key={item}>{item}</option>)}</select><select value={industry} onChange={(event) => setIndustry(event.target.value)} aria-label="صنف یا شغل"><option>همه صنف‌ها</option>{industries.map((item) => <option key={item}>{item}</option>)}</select></div><small>{filteredContracts.length} قرارداد متناسب با انتخاب شما</small></div><div className="contract-grid">{filteredContracts.map((item) => { const Icon = icons[item.icon]; return <article className="contract-card" key={item.id}><div className="contract-card-top"><Icon /><div><small>{item.industry}</small><h2>{item.title}</h2><p>{item.description}</p></div></div><div className="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div><a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a></article>; })}</div></>}
     {kind === 'tools' && <><div className="tools-hero-card"><div><h2>ابزارهای هوش مصنوعی کاربان</h2><p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p></div><img src="/images/og-tools.png" alt="تصویر ماشین‌حساب کاربان" /></div><div className="tool-grid">{calculatorItems.map((item) => { const Icon = toolIcons[item.icon] || Calculator; return <a className="tool-card" href={item.href} key={item.title}><div className="tool-icon"><Icon size={22} /></div><h3>{item.title}</h3><p>{item.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></>}
-    {kind === 'simple' && (
-      <div className="simple-panels">
-        {title === 'درباره کاربان' ? (
-          <>
-            <p style={{ lineHeight: '2' }}>
-              کاربان از یک مشاهده ساده متولد شد: هزاران رابطه کاری، همکاری و
-              قرارداد در کشور بدون نوشته درست، یا با نمونه‌های ناقص کپی‌شده از
-              اینترنت بسته می‌شود — و حاصل آن اختلاف، جریمه و اتلاف وقت هر دو طرف است.
-              کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی
-              به تفکیک صنف، ماشین‌حساب‌های دقیق حقوق و سنوات مطابق مقررات ۱۴۰۵، و
-              دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. روش ما ساده است:
-              متن حقوقی دقیق، به‌روز و در دسترس برای همه، به‌همراه ابزارهای هوشمندی
-              که محاسبه‌های پیچیده را به یک کلیک تبدیل می‌کنند. کاربان؛ از قرارداد تا آرامش.
-            </p>
-          </>
-        ) : title === 'تماس با کاربان' ? (
-          <>
-            <p>پاسخ‌گویی شنبه تا چهارشنبه، ۹ تا ۱۷ — hello@karbanapp.ir</p>
-            <a className="button" href="/تماس">فرم تماس <ArrowLeft size={17} /></a>
-          </>
-        ) : (
-          <>
-            <h2>همه‌چیز برای یک تصمیم بهتر</h2>
-            <p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p>
-            <a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a>
-          </>
-        )}
-      </div>
-    )}
+    {kind === 'simple' && <div className="simple-panels"><h2>همه‌چیز برای یک تصمیم بهتر</h2><p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p><a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a></div>}
   </div></section>;
 }
 
@@ -116,13 +27,13 @@ export function ServicesPage() {
   const consultationServices = services.filter((s) => !s.kind);
   const visibleServices = consultationServices.filter((item) => item.domain === domain);
   useEffect(() => { if (visibleServices.length && !visibleServices.some((item) => item.title === service)) setService(visibleServices[0].title); }, [domain, services, service, visibleServices]);
-  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } notifyAdmin(`📥 مشاوره: ${service} | ${normalizeMobile(mobile)}`); setStatus('success'); setMobile(''); };
+  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } setStatus('success'); setMobile(''); };
   const laborItems = consultationServices.filter((s) => s.domain === 'labor');
   const financialItems = consultationServices.filter((s) => s.domain === 'financial');
   const contractItems = services.filter((s) => s.kind);
   return <section className="inner-page"><div className="container"><div className="narrow-content"><span className="eyebrow">خدمات تخصصی کاربان</span><h1>خدمات تخصصی کاربان — از پرسش متنی تا همراهی کامل</h1><p className="lead">دو مسیر هم‌وزن برای امور مالی و روابط کار؛ از یک پرسش کوتاه تا همراهی کامل سازمانی.</p></div>
-    {laborItems.length > 0 && <section><h2>مشاوره روابط کار</h2><div className="plans-grid">{laborItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{formatPriceFa(plan.price)}</strong><small>{plan.unit}</small></article>)}</div></section>}
-    {financialItems.length > 0 && <section><h2>مشاوره مالی، مالیاتی و حسابرسی</h2><div className="plans-grid">{financialItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{formatPriceFa(plan.price)}</strong><small>{plan.unit}</small></article>)}</div></section>}
-    {contractItems.length > 0 && <section><h2>خدمات قراردادی و انجام‌کردنی <span className="plan-badge" style={{ position: 'static', display: 'inline-block', marginRight: '0.5rem' }}>انجام کار توسط متخصص</span></h2><div className="plans-grid">{contractItems.map((plan) => <article className="plan-card" key={plan.id}><h2>{plan.title}</h2><p>{plan.description}</p><strong>{formatPriceFa(plan.price)}</strong><small>{plan.unit}</small></article>)}</div></section>}
-    <div className="guarantee"><Scale size={23} /><span><strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.</span></div><form className="filter-panel" onSubmit={submitConsultation}><strong>فرم درخواست مشاوره</strong><div className="filter-row"><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه"><option value="financial">مالی و مالیاتی</option><option value="labor">روابط کار</option></select><select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">{visibleServices.map((item) => <option value={item.title} key={item.id}>{item.title}</option>)}</select><button className="button" type="submit" disabled={status === 'loading'}>ثبت درخواست <ArrowLeft size={15} /></button></div>{status === 'success' && <div className="feedback-success"><Check size={16} /> درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</div>}{status === 'error' && <small className="feedback-error">شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}</form></div></section>;
+    {laborItems.length > 0 && <section><h2>مشاوره روابط کار</h2><div className="plans-grid">{laborItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
+    {financialItems.length > 0 && <section><h2>مشاوره مالی، مالیاتی و حسابرسی</h2><div className="plans-grid">{financialItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
+    {contractItems.length > 0 && <section><h2>خدمات قراردادی و انجام‌کردنی <span className="plan-badge" style={{ position: 'static', display: 'inline-block', marginRight: '0.5rem' }}>انجام کار توسط متخصص</span></h2><div className="plans-grid">{contractItems.map((plan) => <article className="plan-card" key={plan.id}><h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
+    <div className="guarantee"><Scale size={23} /><span><strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.</span></div><form className="filter-panel" onSubmit={submitConsultation}><strong>فرم درخواست مشاوره</strong><div className="filter-row"><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه"><option value="financial">مالی و مالیاتی</option><option value="labor">روابط کار</option></select><select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">{visibleServices.map((item) => <option value={item.title} key={item.id}>{item.title}</option>)}</select><button className="button" type="submit" disabled={status === 'loading'}>ثبت درخواست <ArrowLeft size={15} /></button></div>{status === 'success' && <small>درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</small>}{status === 'error' && <small>شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}</form></div></section>;
 }

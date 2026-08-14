@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download, Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { legalConfig, contractCatalog, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
-import { formatFa, formatPriceFa } from '@/lib/format';
+import { legalConfig, contractCatalog } from '@/data/config';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
-type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body?: string; pdf_url?: string; };
+type ContractRow = { id: string; title: string; type: string; industry: string; summary: string };
 type LeadRow = { id: string; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
@@ -112,7 +111,7 @@ function ServicesTab() {
     <div className="admin-toolbar"><h2>مدیریت خدمات</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن خدمت</button></div>
     {showAdd && <div className="admin-form">
       <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
-      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت (ریال)" />
+      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت" />
       <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد (مثلاً هر درخواست)" />
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
       <select value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value as 'financial' | 'labor' })}><option value="financial">مالی</option><option value="labor">روابط کار</option></select>
@@ -125,7 +124,7 @@ function ServicesTab() {
       <tbody>
         {services.map((s) => <tr key={s.id}>
           <td>{editing === s.id ? <input value={s.title} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} /> : s.title}</td>
-          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : formatPriceFa(s.price)}</td>
+          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : s.price}</td>
           <td>{editing === s.id ? <select value={s.domain} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, domain: e.target.value as 'financial' | 'labor' } : x))}><option value="financial">مالی</option><option value="labor">روابط کار</option></select> : (s.domain === 'financial' ? 'مالی' : 'روابط کار')}</td>
           <td>{editing === s.id ? <input value={s.unit} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, unit: e.target.value } : x))} /> : s.unit}</td>
           <td>{editing === s.id ? <input type="checkbox" checked={s.featured} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, featured: e.target.checked } : x))} /> : (s.featured ? 'بله' : '—')}</td>
@@ -176,7 +175,7 @@ function SettingsTab() {
       {numField('سقف معافیت مالیاتی سالانه (تومان)', 'annualTaxFree')}
     </div>
     <button className="button" onClick={save}><Save size={16} /> ذخیره تنظیمات</button>
-    {saved && <div className="feedback-success"><Check size={16} /> تنظیمات ذخیره شد.</div>}
+    {saved && <small className="admin-success">تنظیمات ذخیره شد.</small>}
   </div>;
 }
 
@@ -186,10 +185,8 @@ function ContractsTab() {
   const [form, setForm] = useState({ title: '', type: '', industry: '', summary: '' });
   const [showAdd, setShowAdd] = useState(false);
   const [migrating, setMigrating] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<{title: string, type: string, industry: string, summary: string, body: string, pdf_url: string}>({ title: '', type: '', industry: '', summary: '', body: '', pdf_url: '' });
 
-  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary,body,pdf_url').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
+  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
   useEffect(() => { load(); }, []);
   const add = async () => {
     if (!form.title) return;
@@ -205,122 +202,20 @@ function ContractsTab() {
     if (!error) load();
   };
 
-  useEffect(() => {
-    if (form.type && form.industry) {
-      setForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
-    }
-  }, [form.type, form.industry]);
-
-  useEffect(() => {
-    if (editForm.type && editForm.industry && editing) {
-      if (!editForm.title || editForm.title.startsWith('قرارداد ')) {
-        setEditForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
-      }
-    }
-  }, [editForm.type, editForm.industry]);
-
-  const startEdit = (c: ContractRow) => {
-    setEditing(c.id);
-    setEditForm({
-      title: c.title || '',
-      type: c.type || '',
-      industry: c.industry || '',
-      summary: c.summary || '',
-      body: c.body || '',
-      pdf_url: c.pdf_url || ''
-    });
-  };
-
-  const saveEdit = async (id: string) => {
-    await supabase.from('contracts').update({
-      title: editForm.title,
-      type: editForm.type,
-      industry: editForm.industry,
-      summary: editForm.summary,
-      body: editForm.body,
-      pdf_url: editForm.pdf_url
-    }).eq('id', id);
-    setEditing(null);
-    load();
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, id: string) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const timestamp = Date.now();
-    const fileName = `contract-${id}-${timestamp}.pdf`;
-    const { error } = await supabase.storage.from('contracts').upload(fileName, file);
-    if (error) {
-      console.error('Upload failed:', error);
-      return;
-    }
-    const { data: { publicUrl } } = supabase.storage.from('contracts').getPublicUrl(fileName);
-    setEditForm(prev => ({ ...prev, pdf_url: publicUrl }));
-  };
-
   if (loading) return <p>در حال بارگذاری…</p>;
   return <div className="admin-table-wrap">
     <div className="admin-toolbar"><h2>قراردادها</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن قرارداد</button></div>
     {showAdd && <div className="admin-form">
-      <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} aria-label="نوع">
-        <option value="">انتخاب نوع</option>
-        {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-      </select>
-      <select value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} aria-label="صنف">
-        <option value="">انتخاب صنف</option>
-        {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-      </select>
-      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان (به‌طور خودکار ساخته می‌شود)" />
-      <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان" />
+      <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="نوع (کار، همکاری، …)" />
+      <input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="صنف" />
+      <input value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" />
       <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
     </div>}
     <table className="admin-table">
       <thead><tr><th>عنوان</th><th>نوع</th><th>صنف</th><th>خلاصه</th><th></th></tr></thead>
       <tbody>
-        {contracts.map((c) => (
-          <React.Fragment key={c.id}>
-            <tr>
-              <td>{c.title}</td>
-              <td>{c.type || '—'}</td>
-              <td>{c.industry || '—'}</td>
-              <td>{c.summary || '—'}</td>
-              <td className="admin-actions">
-                <button className="button button-small" onClick={() => editing === c.id ? setEditing(null) : startEdit(c)}>{editing === c.id ? 'لغو' : 'ویرایش'}</button>
-                <button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button>
-              </td>
-            </tr>
-            {editing === c.id && (
-              <tr>
-                <td colSpan={5}>
-                  <div className="admin-form" style={{ marginTop: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
-                    <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} aria-label="نوع">
-                      <option value="">انتخاب نوع</option>
-                      {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <select value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} aria-label="صنف">
-                      <option value="">انتخاب صنف</option>
-                      {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                    </select>
-                    <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="عنوان" />
-                    <textarea value={editForm.summary} onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
-                    <textarea
-                      value={editForm.body}
-                      onChange={(e) => setEditForm({ ...editForm, body: e.target.value })}
-                      placeholder="متن قرارداد (پشتیبانی از پاراگراف)"
-                      rows={10}
-                      style={{ width: '100%', resize: 'vertical' }}
-                    />
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <input type="file" accept="application/pdf" onChange={(e) => handleFileUpload(e, c.id)} />
-                      {editForm.pdf_url && <a href={editForm.pdf_url} target="_blank" rel="noreferrer">مشاهده PDF فعلی</a>}
-                    </div>
-                    <button className="button button-small" onClick={() => saveEdit(c.id)} style={{ alignSelf: 'flex-start' }}><Save size={15} /> ذخیره</button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </React.Fragment>
-        ))}
+        {contracts.map((c) => <tr key={c.id}><td>{c.title}</td><td>{c.type || '—'}</td><td>{c.industry || '—'}</td><td>{c.summary || '—'}</td><td><button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button></td></tr>)}
         {contracts.length === 0 && <tr><td colSpan={5}><div className="admin-empty"><p>هیچ قراردادی ثبت نشده است.</p><button className="button button-small" onClick={migrateLegacy} disabled={migrating}><ArrowLeft size={15} /> {migrating ? 'در حال انتقال…' : 'انتقال ۶۰ قرارداد از نسخه قدیمی'}</button></div></td></tr>}
       </tbody>
     </table>
@@ -366,7 +261,7 @@ function OrdersTab() {
       <thead><tr><th>موبایل</th><th>خدمت</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
       <tbody>
         {orders.map((o) => <tr key={o.id}>
-          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount ? formatPriceFa(o.amount) : '—'}</td>
+          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount || '—'}</td>
           <td><select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>{Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
           <td>{fmtDate(o.created_at)}</td>
         </tr>)}
