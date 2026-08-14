@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards } from 'lucide-react';
-import { contractCatalog, calculatorItems } from '@/data/config';
+import { contractCatalog, calculatorItems, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
+import { notifyAdmin } from '@/lib/notify';
 
 const icons = [Scale, FileText, WalletCards, Calculator, Users, BriefcaseBusiness];
 const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock };
@@ -18,10 +19,12 @@ interface ContractItem {
   title: string;
   description?: string;
   icon?: number;
+  body?: string;
 }
 
 export default function ContentPage({ kind, title, description, eyebrow = 'کاربان' }: Props) {
   const [typeFilter, setTypeFilter] = useState('همه انواع قرارداد');
+  const [searchQuery, setSearchQuery] = useState('');
   const [industryFilter, setIndustryFilter] = useState('همه صنف‌ها');
 
   const [dbContracts, setDbContracts] = useState<ContractItem[]>([]);
@@ -49,6 +52,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
             type: item.type || '',
             industry: item.industry || '',
             description: item.summary || item.description || '',
+            body: item.body || '',
             icon: index % icons.length
           }));
           setDbContracts(mapped);
@@ -58,37 +62,38 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
     return () => { active = false; };
   }, [kind]);
 
-  const contractTypesOptions = useMemo(() => {
-    const types = new Set(dbContracts.map(c => c.type).filter(Boolean));
-    return Array.from(types);
-  }, [dbContracts]);
 
-  const industriesOptions = useMemo(() => {
-    const inds = new Set(dbContracts.map(c => c.industry).filter(Boolean));
-    return Array.from(inds);
-  }, [dbContracts]);
 
   const filteredContracts = useMemo(() => {
-    return dbContracts.filter((item) =>
-      (typeFilter === 'همه انواع قرارداد' || item.type === typeFilter) &&
-      (industryFilter === 'همه صنف‌ها' || item.industry === industryFilter)
-    );
-  }, [dbContracts, typeFilter, industryFilter]);
+    return dbContracts.filter((item) => {
+      const matchType = typeFilter === 'همه انواع قرارداد' || item.type === typeFilter;
+      const matchInd = industryFilter === 'همه صنف‌ها' || item.industry === industryFilter;
+      const term = searchQuery.toLowerCase();
+      const matchSearch = term === '' ||
+        (item.title && item.title.toLowerCase().includes(term)) ||
+        (item.description && item.description.toLowerCase().includes(term)) ||
+        // Accessing body requires it to be on the item. Wait, dbContracts doesn't map body currently. We need to map body too. Let's fix that.
+        // Actually, we should map 'body' to ContractItem.
+        (item.body && item.body.toLowerCase().includes(term));
+      return matchType && matchInd && matchSearch;
+    });
+  }, [dbContracts, typeFilter, industryFilter, searchQuery]);
 
   return <section className={`inner-page ${kind === 'tools' ? 'tools-page' : ''}`}><div className={`container ${kind === 'contracts' || kind === 'tools' ? '' : 'narrow-content'}`}><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p className="lead">{description}</p>
     {kind === 'knowledge' && <div className="category-grid">{['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => { const Icon = icons[index]; return <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}><Icon /><h2>{item}</h2><p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p><ArrowLeft size={16} /></a>; })}</div>}
 
     {kind === 'contracts' && <>
       <div className="filter-panel">
-        <strong>فیلتر دو بعدی قراردادها</strong>
+        <strong>جستجو و فیلتر قراردادها</strong>
         <div className="filter-row">
+          <input type="text" placeholder="جستجو در قراردادها..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{flex: 1}} />
           <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="نوع قرارداد">
             <option>همه انواع قرارداد</option>
-            {contractTypesOptions.map((item) => <option key={item}>{item}</option>)}
+            {CONTRACT_TYPES.map((item) => <option key={item}>{item}</option>)}
           </select>
           <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} aria-label="صنف یا شغل">
             <option>همه صنف‌ها</option>
-            {industriesOptions.map((item) => <option key={item}>{item}</option>)}
+            {INDUSTRIES.map((item) => <option key={item}>{item}</option>)}
           </select>
         </div>
         <small>{filteredContracts.length} قرارداد متناسب با انتخاب شما</small>
@@ -129,7 +134,7 @@ export function ServicesPage() {
   const consultationServices = services.filter((s) => !s.kind);
   const visibleServices = consultationServices.filter((item) => item.domain === domain);
   useEffect(() => { if (visibleServices.length && !visibleServices.some((item) => item.title === service)) setService(visibleServices[0].title); }, [domain, services, service, visibleServices]);
-  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } setStatus('success'); setMobile(''); };
+  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } notifyAdmin(`📥 مشاوره: ${service} | ${normalizeMobile(mobile)}`); setStatus('success'); setMobile(''); };
   const laborItems = consultationServices.filter((s) => s.domain === 'labor');
   const financialItems = consultationServices.filter((s) => s.domain === 'financial');
   const contractItems = services.filter((s) => s.kind);

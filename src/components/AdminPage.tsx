@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { legalConfig, contractCatalog } from '@/data/config';
+import { legalConfig, contractCatalog, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
@@ -195,6 +195,22 @@ function ContractsTab() {
     await supabase.from('contracts').insert({ title: form.title, type: form.type, industry: form.industry, summary: form.summary });
     setForm({ title: '', type: '', industry: '', summary: '' }); setShowAdd(false); load();
   };
+
+  useEffect(() => {
+    if (form.type && form.industry) {
+      setForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
+    }
+  }, [form.type, form.industry]);
+
+  useEffect(() => {
+    if (editForm.type && editForm.industry && editing) {
+      // Only auto-fill if it's a generic title or empty, otherwise we might overwrite manual edits
+      if (!editForm.title || editForm.title.startsWith('قرارداد ')) {
+        setEditForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
+      }
+    }
+  }, [editForm.type, editForm.industry]);
+
   const remove = async (id: string) => { await supabase.from('contracts').delete().eq('id', id); load(); };
   const migrateLegacy = async () => {
     setMigrating(true);
@@ -247,10 +263,16 @@ function ContractsTab() {
   return <div className="admin-table-wrap">
     <div className="admin-toolbar"><h2>قراردادها</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن قرارداد</button></div>
     {showAdd && <div className="admin-form">
-      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان" />
-      <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="نوع (کار، همکاری، …)" />
-      <input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="صنف" />
-      <input value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" />
+      <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} aria-label="نوع">
+        <option value="">انتخاب نوع</option>
+        {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <select value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} aria-label="صنف">
+        <option value="">انتخاب صنف</option>
+        {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+      </select>
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان (به‌طور خودکار ساخته می‌شود)" />
+      <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
       <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
     </div>}
     <table className="admin-table">
@@ -272,10 +294,16 @@ function ContractsTab() {
               <tr>
                 <td colSpan={5}>
                   <div className="admin-form" style={{ marginTop: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                    <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} aria-label="نوع">
+                      <option value="">انتخاب نوع</option>
+                      {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <select value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} aria-label="صنف">
+                      <option value="">انتخاب صنف</option>
+                      {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                    </select>
                     <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="عنوان" />
-                    <input value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} placeholder="نوع (کار، همکاری، …)" />
-                    <input value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} placeholder="صنف" />
-                    <input value={editForm.summary} onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })} placeholder="خلاصه" />
+                    <textarea value={editForm.summary} onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
                     <textarea
                       value={editForm.body}
                       onChange={(e) => setEditForm({ ...editForm, body: e.target.value })}

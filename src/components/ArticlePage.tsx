@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
+import { notifyAdmin } from '@/lib/notify';
 
 type Props = { title: string; category: string; contractId?: string };
 
@@ -29,6 +30,7 @@ export default function ArticlePage({ title, category, contractId }: Props) {
     // Insert Lead
     const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'contract_download' });
     if (error) { console.error('contract download lead failed', error); setStatus('error'); return; }
+    notifyAdmin(`📥 دانلود قرارداد: ${title} | ${normalizeMobile(mobile)}`);
 
     // Fetch and watermark PDF if pdf_url exists
     if (contractData?.pdf_url) {

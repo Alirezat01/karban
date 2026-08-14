@@ -3,6 +3,7 @@ import { ArrowLeft, BarChart3, BriefcaseBusiness, Calculator, CheckCircle2, Coin
 import { roleCards, serviceItems, specialistServices, toolItems } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
+import { notifyAdmin } from '@/lib/notify';
 import { normalizeMobile } from '@/lib/normalize';
 
 const icons = { briefcase: BriefcaseBusiness, shield: ShieldCheck, laptop: Laptop, file: FileText, calculator: Calculator, sun: Sun, chart: BarChart3, coins: Coins, scale: Scale, heart: HeartHandshake } as const;
@@ -16,6 +17,7 @@ export default function HomePage() {
     if (!isIranianMobile(mobile)) { setBriefStatus('error'); return; }
     const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'weekly_brief' });
     if (error) { console.error('weekly brief submission failed', error); setBriefStatus('error'); return; }
+    notifyAdmin(`📥 بریف هفتگی: ${normalizeMobile(mobile)}`);
     setBriefStatus('success'); setMobile('');
   };
 
