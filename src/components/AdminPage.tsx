@@ -5,7 +5,7 @@ import { legalConfig, contractCatalog } from '@/data/config';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
-type ContractRow = { id: string; title: string; type: string; industry: string; summary: string };
+type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body: string; pdf_url: string; };
 type LeadRow = { id: string; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
@@ -185,8 +185,10 @@ function ContractsTab() {
   const [form, setForm] = useState({ title: '', type: '', industry: '', summary: '' });
   const [showAdd, setShowAdd] = useState(false);
   const [migrating, setMigrating] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{title: string, type: string, industry: string, summary: string, body: string, pdf_url: string}>({ title: '', type: '', industry: '', summary: '', body: '', pdf_url: '' });
 
-  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
+  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary,body,pdf_url').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
   useEffect(() => { load(); }, []);
   const add = async () => {
     if (!form.title) return;
@@ -202,6 +204,45 @@ function ContractsTab() {
     if (!error) load();
   };
 
+  const startEdit = (c: ContractRow) => {
+    setEditing(c.id);
+    setEditForm({
+      title: c.title || '',
+      type: c.type || '',
+      industry: c.industry || '',
+      summary: c.summary || '',
+      body: c.body || '',
+      pdf_url: c.pdf_url || ''
+    });
+  };
+
+  const saveEdit = async (id: string) => {
+    await supabase.from('contracts').update({
+      title: editForm.title,
+      type: editForm.type,
+      industry: editForm.industry,
+      summary: editForm.summary,
+      body: editForm.body,
+      pdf_url: editForm.pdf_url
+    }).eq('id', id);
+    setEditing(null);
+    load();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const timestamp = Date.now();
+    const fileName = `contract-${id}-${timestamp}.pdf`;
+    const { error } = await supabase.storage.from('contracts').upload(fileName, file);
+    if (error) {
+      console.error('Upload failed:', error);
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from('contracts').getPublicUrl(fileName);
+    setEditForm(prev => ({ ...prev, pdf_url: publicUrl }));
+  };
+
   if (loading) return <p>در حال بارگذاری…</p>;
   return <div className="admin-table-wrap">
     <div className="admin-toolbar"><h2>قراردادها</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن قرارداد</button></div>
@@ -215,7 +256,44 @@ function ContractsTab() {
     <table className="admin-table">
       <thead><tr><th>عنوان</th><th>نوع</th><th>صنف</th><th>خلاصه</th><th></th></tr></thead>
       <tbody>
-        {contracts.map((c) => <tr key={c.id}><td>{c.title}</td><td>{c.type || '—'}</td><td>{c.industry || '—'}</td><td>{c.summary || '—'}</td><td><button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button></td></tr>)}
+        {contracts.map((c) => (
+          <React.Fragment key={c.id}>
+            <tr>
+              <td>{c.title}</td>
+              <td>{c.type || '—'}</td>
+              <td>{c.industry || '—'}</td>
+              <td>{c.summary || '—'}</td>
+              <td className="admin-actions">
+                <button className="button button-small" onClick={() => editing === c.id ? setEditing(null) : startEdit(c)}>{editing === c.id ? 'لغو' : 'ویرایش'}</button>
+                <button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button>
+              </td>
+            </tr>
+            {editing === c.id && (
+              <tr>
+                <td colSpan={5}>
+                  <div className="admin-form" style={{ marginTop: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
+                    <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="عنوان" />
+                    <input value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} placeholder="نوع (کار، همکاری، …)" />
+                    <input value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} placeholder="صنف" />
+                    <input value={editForm.summary} onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })} placeholder="خلاصه" />
+                    <textarea
+                      value={editForm.body}
+                      onChange={(e) => setEditForm({ ...editForm, body: e.target.value })}
+                      placeholder="متن قرارداد (پشتیبانی از پاراگراف)"
+                      rows={10}
+                      style={{ width: '100%', resize: 'vertical' }}
+                    />
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input type="file" accept="application/pdf" onChange={(e) => handleFileUpload(e, c.id)} />
+                      {editForm.pdf_url && <a href={editForm.pdf_url} target="_blank" rel="noreferrer">مشاهده PDF فعلی</a>}
+                    </div>
+                    <button className="button button-small" onClick={() => saveEdit(c.id)} style={{ alignSelf: 'flex-start' }}><Save size={15} /> ذخیره</button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </React.Fragment>
+        ))}
         {contracts.length === 0 && <tr><td colSpan={5}><div className="admin-empty"><p>هیچ قراردادی ثبت نشده است.</p><button className="button button-small" onClick={migrateLegacy} disabled={migrating}><ArrowLeft size={15} /> {migrating ? 'در حال انتقال…' : 'انتقال ۶۰ قرارداد از نسخه قدیمی'}</button></div></td></tr>}
       </tbody>
     </table>
