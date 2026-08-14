@@ -1,0 +1,282 @@
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { legalConfig } from '@/data/config';
+
+type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
+type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
+type ContractRow = { id: string; title: string; type: string; industry: string; summary: string };
+type LeadRow = { id: string; mobile: string; source: string; created_at: string };
+type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
+type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
+type SalarySettings = {
+  year?: string; baseSalaryDaily?: number; housingAllowanceMonthly?: number;
+  foodAllowanceMonthly?: number; insuranceEmployeeRate?: number;
+  insuranceEmployerRate?: number; annualTaxFree?: number;
+};
+
+const fmtDate = (s: string) => { try { return new Intl.DateTimeFormat('fa-IR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(s)); } catch { return s; } };
+
+export default function AdminPage() {
+  const [session, setSession] = useState<'loading' | 'unauthenticated' | 'unauthorized' | 'authorized'>('loading');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [tab, setTab] = useState<Tab>('services');
+
+  useEffect(() => {
+    let active = true;
+    const check = async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!active) return;
+      if (!s) { setSession('unauthenticated'); return; }
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', s.user.id).maybeSingle();
+      if (!active) return;
+      if (profile?.role === 'admin') setSession('authorized'); else setSession('unauthorized');
+    };
+    check();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => { check(); });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const signIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setLoginError(error.message || 'ورود ناموفق بود.');
+  };
+  const signOut = async () => { await supabase.auth.signOut(); setSession('unauthenticated'); setEmail(''); setPassword(''); };
+
+  if (session === 'loading') return <div className="admin-loading">در حال بررسی…</div>;
+
+  if (session === 'unauthenticated') return (
+    <section className="admin-login"><div className="admin-login-card">
+      <ShieldCheck size={32} /><h1>ورود به پنل مدیریت</h1><p>برای دسترسی، ایمیل و رمز عبور مدیریت را وارد کنید.</p>
+      <form onSubmit={signIn}>
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ایمیل" aria-label="ایمیل" required />
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="رمز عبور" aria-label="رمز عبور" required />
+        {loginError && <small className="admin-error">{loginError}</small>}
+        <button className="button" type="submit">ورود <ArrowLeft size={16} /></button>
+      </form>
+    </div></section>
+  );
+
+  if (session === 'unauthorized') return (
+    <section className="admin-login"><div className="admin-login-card">
+      <ShieldCheck size={32} /><h1>دسترسی غیرمجاز</h1><p>حساب شما نقش مدیر ندارد. برای دسترسی، نقش کاربری شما باید به «admin» تغییر کند.</p>
+      <button className="button" onClick={signOut}>خروج <LogOut size={16} /></button>
+    </div></section>
+  );
+
+  const tabs: [Tab, string][] = [['services', 'خدمات'], ['settings', 'تنظیمات'], ['contracts', 'قراردادها'], ['leads', 'لیدها'], ['orders', 'سفارش‌ها'], ['consultations', 'درخواست‌های مشاوره']];
+
+  return <section className="admin-panel"><div className="container">
+    <div className="admin-header"><div className="admin-title"><ShieldCheck size={22} /><h1>پنل مدیریت کاربان</h1><span className="admin-badge">مدیر</span></div><button className="admin-logout" onClick={signOut}>خروج <LogOut size={15} /></button></div>
+    <nav className="admin-tabs">{tabs.map(([key, label]) => <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>{label}</button>)}</nav>
+    <div className="admin-content">
+      {tab === 'services' && <ServicesTab />}
+      {tab === 'settings' && <SettingsTab />}
+      {tab === 'contracts' && <ContractsTab />}
+      {tab === 'leads' && <LeadsTab />}
+      {tab === 'orders' && <OrdersTab />}
+      {tab === 'consultations' && <ConsultationsTab />}
+    </div>
+  </div></section>;
+}
+
+function ServicesTab() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState({ title: '', price: '', description: '', domain: 'financial' as 'financial' | 'labor', unit: '', featured: false, kind: '' });
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('created_at'); setServices((data || []) as Service[]); setLoading(false); };
+  useEffect(() => { load(); }, []);
+
+  const save = async (id: string) => {
+    const s = services.find((x) => x.id === id); if (!s) return;
+    await supabase.from('services').update({ title: s.title, price: s.price, description: s.description, domain: s.domain, unit: s.unit, featured: s.featured }).eq('id', id);
+    setEditing(null); load();
+  };
+  const add = async () => {
+    if (!form.title) return;
+    await supabase.from('services').insert({ title: form.title, price: form.price, description: form.description, domain: form.domain, unit: form.unit, featured: form.featured, kind: form.kind || null });
+    setForm({ title: '', price: '', description: '', domain: 'financial', unit: '', featured: false, kind: '' }); setShowAdd(false); load();
+  };
+  const remove = async (id: string) => { await supabase.from('services').delete().eq('id', id); load(); };
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  return <div className="admin-table-wrap">
+    <div className="admin-toolbar"><h2>مدیریت خدمات</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن خدمت</button></div>
+    {showAdd && <div className="admin-form">
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
+      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت" />
+      <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد (مثلاً هر درخواست)" />
+      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
+      <select value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value as 'financial' | 'labor' })}><option value="financial">مالی</option><option value="labor">روابط کار</option></select>
+      <input value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} placeholder="نوع kind (خالی = مشاوره)" />
+      <label><input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> پیشنهاد ویژه</label>
+      <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
+    </div>}
+    <table className="admin-table">
+      <thead><tr><th>عنوان</th><th>قیمت</th><th>حوزه</th><th>واحد</th><th>ویژه</th><th></th></tr></thead>
+      <tbody>
+        {services.map((s) => <tr key={s.id}>
+          <td>{editing === s.id ? <input value={s.title} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} /> : s.title}</td>
+          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : s.price}</td>
+          <td>{editing === s.id ? <select value={s.domain} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, domain: e.target.value as 'financial' | 'labor' } : x))}><option value="financial">مالی</option><option value="labor">روابط کار</option></select> : (s.domain === 'financial' ? 'مالی' : 'روابط کار')}</td>
+          <td>{editing === s.id ? <input value={s.unit} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, unit: e.target.value } : x))} /> : s.unit}</td>
+          <td>{editing === s.id ? <input type="checkbox" checked={s.featured} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, featured: e.target.checked } : x))} /> : (s.featured ? 'بله' : '—')}</td>
+          <td className="admin-actions">
+            {editing === s.id ? <button className="button button-small" onClick={() => save(s.id)}><Save size={14} /></button> : <button className="button button-small" onClick={() => setEditing(s.id)}>ویرایش</button>}
+            <button className="admin-delete" onClick={() => remove(s.id)}><Trash2 size={14} /></button>
+          </td>
+        </tr>)}
+      </tbody>
+    </table>
+  </div>;
+}
+
+function SettingsTab() {
+  const [settings, setSettings] = useState<SalarySettings>({});
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    supabase.from('settings').select('value').eq('key', 'salary_1405').maybeSingle().then(({ data }) => {
+      if (!active) return;
+      if (data?.value) setSettings(data.value as SalarySettings); else setSettings({ year: legalConfig.year, baseSalaryDaily: legalConfig.baseSalaryDaily, housingAllowanceMonthly: legalConfig.housingAllowanceMonthly, foodAllowanceMonthly: legalConfig.foodAllowanceMonthly, insuranceEmployeeRate: legalConfig.insuranceEmployeeRate, insuranceEmployerRate: legalConfig.insuranceEmployerRate, annualTaxFree: legalConfig.annualTaxFree });
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const save = async () => {
+    await supabase.from('settings').upsert({ key: 'salary_1405', value: settings, updated_at: new Date().toISOString() });
+    setSaved(true); setTimeout(() => setSaved(false), 2000);
+  };
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  const numField = (label: string, key: keyof SalarySettings) => (
+    <label className="settings-field">{label}<input type="number" value={settings[key] as number ?? 0} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} /></label>
+  );
+  return <div className="admin-settings">
+    <h2>تنظیمات پارامترهای ۱۴۰۵</h2>
+    <p>این اعداد در ماشین‌حساب‌های حقوق و دستمزد استفاده می‌شوند.</p>
+    <div className="settings-grid">
+      <label className="settings-field">سال<input value={settings.year ?? ''} onChange={(e) => setSettings({ ...settings, year: e.target.value })} /></label>
+      {numField('پایه حقوق روزانه (تومان)', 'baseSalaryDaily')}
+      {numField('بن کارگری ماهانه (تومان)', 'foodAllowanceMonthly')}
+      {numField('حق مسکن ماهانه (تومان)', 'housingAllowanceMonthly')}
+      {numField('سهم بیمه کارگر (٪)', 'insuranceEmployeeRate')}
+      {numField('سهم بیمه کارفرما (٪)', 'insuranceEmployerRate')}
+      {numField('سقف معافیت مالیاتی سالانه (تومان)', 'annualTaxFree')}
+    </div>
+    <button className="button" onClick={save}><Save size={16} /> ذخیره تنظیمات</button>
+    {saved && <small className="admin-success">تنظیمات ذخیره شد.</small>}
+  </div>;
+}
+
+function ContractsTab() {
+  const [contracts, setContracts] = useState<ContractRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ title: '', type: '', industry: '', summary: '' });
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary').order('created_at'); setContracts((data || []) as ContractRow[]); setLoading(false); };
+  useEffect(() => { load(); }, []);
+  const add = async () => {
+    if (!form.title) return;
+    await supabase.from('contracts').insert({ title: form.title, type: form.type, industry: form.industry, summary: form.summary });
+    setForm({ title: '', type: '', industry: '', summary: '' }); setShowAdd(false); load();
+  };
+  const remove = async (id: string) => { await supabase.from('contracts').delete().eq('id', id); load(); };
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  return <div className="admin-table-wrap">
+    <div className="admin-toolbar"><h2>قراردادها</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن قرارداد</button></div>
+    {showAdd && <div className="admin-form">
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان" />
+      <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="نوع (کار، همکاری، …)" />
+      <input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="صنف" />
+      <input value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" />
+      <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
+    </div>}
+    <table className="admin-table">
+      <thead><tr><th>عنوان</th><th>نوع</th><th>صنف</th><th>خلاصه</th><th></th></tr></thead>
+      <tbody>
+        {contracts.map((c) => <tr key={c.id}><td>{c.title}</td><td>{c.type || '—'}</td><td>{c.industry || '—'}</td><td>{c.summary || '—'}</td><td><button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button></td></tr>)}
+        {contracts.length === 0 && <tr><td colSpan={5}>هیچ قراردادی ثبت نشده است.</td></tr>}
+      </tbody>
+    </table>
+  </div>;
+}
+
+function LeadsTab() {
+  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { let active = true; supabase.from('leads').select('id,mobile,source,created_at').order('created_at', { ascending: false }).then(({ data }) => { if (active) { setLeads((data || []) as LeadRow[]); setLoading(false); } }); return () => { active = false; }; }, []);
+
+  const exportCSV = () => {
+    const csv = ['موبایل,منبع,تاریخ', ...leads.map((l) => `${l.mobile},${l.source},${fmtDate(l.created_at)}`)].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'leads.csv'; a.click(); URL.revokeObjectURL(url);
+  };
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  return <div className="admin-table-wrap">
+    <div className="admin-toolbar"><h2>لیدها</h2><button className="button button-small" onClick={exportCSV}><Download size={15} /> صادرات CSV</button></div>
+    <table className="admin-table">
+      <thead><tr><th>موبایل</th><th>منبع</th><th>تاریخ</th></tr></thead>
+      <tbody>
+        {leads.map((l) => <tr key={l.id}><td>{l.mobile}</td><td>{l.source}</td><td>{fmtDate(l.created_at)}</td></tr>)}
+        {leads.length === 0 && <tr><td colSpan={3}>هیچ لیدی ثبت نشده است.</td></tr>}
+      </tbody>
+    </table>
+  </div>;
+}
+
+function OrdersTab() {
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = async () => { setLoading(true); const { data } = await supabase.from('orders').select('id,mobile,service,amount,status,created_at').order('created_at', { ascending: false }); setOrders((data || []) as OrderRow[]); setLoading(false); };
+  useEffect(() => { load(); }, []);
+  const updateStatus = async (id: string, status: string) => { await supabase.from('orders').update({ status }).eq('id', id); load(); };
+  const statusLabels: Record<string, string> = { pending: 'در انتظار', processing: 'در حال انجام', completed: 'تکمیل شد', cancelled: 'لغو شد' };
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  return <div className="admin-table-wrap">
+    <h2>سفارش‌ها</h2>
+    <table className="admin-table">
+      <thead><tr><th>موبایل</th><th>خدمت</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+      <tbody>
+        {orders.map((o) => <tr key={o.id}>
+          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount || '—'}</td>
+          <td><select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>{Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+          <td>{fmtDate(o.created_at)}</td>
+        </tr>)}
+        {orders.length === 0 && <tr><td colSpan={5}>هیچ سفارشی ثبت نشده است.</td></tr>}
+      </tbody>
+    </table>
+  </div>;
+}
+
+function ConsultationsTab() {
+  const [items, setItems] = useState<ConsultRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { let active = true; supabase.from('consultation_requests').select('id,mobile,domain,service,created_at').order('created_at', { ascending: false }).then(({ data }) => { if (active) { setItems((data || []) as ConsultRow[]); setLoading(false); } }); return () => { active = false; }; }, []);
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  return <div className="admin-table-wrap">
+    <h2>درخواست‌های مشاوره</h2>
+    <table className="admin-table">
+      <thead><tr><th>موبایل</th><th>حوزه</th><th>خدمت</th><th>تاریخ</th></tr></thead>
+      <tbody>
+        {items.map((c) => <tr key={c.id}><td>{c.mobile}</td><td>{c.domain === 'financial' ? 'مالی' : 'روابط کار'}</td><td>{c.service}</td><td>{fmtDate(c.created_at)}</td></tr>)}
+        {items.length === 0 && <tr><td colSpan={4}>هیچ درخواستی ثبت نشده است.</td></tr>}
+      </tbody>
+    </table>
+  </div>;
+}
