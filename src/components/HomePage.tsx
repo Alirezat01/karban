@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BadgeCheck, BookMarked, Calculator, CheckCircle2, Coins, FileText, Sparkles, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, BookMarked, Calculator, CheckCircle2, Clock, Coins, FileText, Sparkles, Sun, TrendingUp } from 'lucide-react';
 import { roleCards, serviceItems, specialistServices, toolItems } from '@/data/config';
 
 const icons = {
@@ -12,6 +12,8 @@ const icons = {
   coins: Coins,
   scale: CheckCircle2,
   heart: BadgeCheck,
+  sun: Sun,
+  clock: Clock,
 } as const;
 
 const industriesTicker = [
