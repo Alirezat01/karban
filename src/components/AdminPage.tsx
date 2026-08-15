@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Download, LogOut, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
-import { formatEditableAmount, formatFaDate, formatFaNumber, formatRial } from '@/lib/format';
+import { formatFaDate, formatRial } from '@/lib/format';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations' | 'users';
 type Service = {
@@ -18,27 +18,21 @@ type Service = {
 };
 type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body: string; pdf_url: string };
 type LeadRow = { id: string; mobile: string; source: string; created_at: string };
-type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
+type OrderRow = { id: string; full_name: string; mobile: string; service_title: string; amount: number; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
-type SalarySettings = {
-  year?: string;
-  baseSalaryDaily?: number;
-  foodAllowanceMonthly?: number;
-  housingAllowanceMonthly?: number;
-  familyAllowanceMonthly?: number;
-  childAllowanceMonthly?: number;
-  overtimeMultiplier?: number;
-  insuranceRate?: number;
-  insuranceEmployeeRate?: number;
-  insuranceEmployerRate?: number;
-  annualTaxFree?: number;
-  taxExemptionMonthly?: number;
-};
 
 const fmtDate = (value: string) => formatFaDate(value);
 const loginLockKey = (email: string) => `karban-login-lock:${email.trim().toLowerCase()}`;
 const loginFailKey = (email: string) => `karban-login-fails:${email.trim().toLowerCase()}`;
 const sessionKey = 'karban-admin-session-start';
+
+const safeAmount = (raw: string) => {
+  const digits = raw
+    .replace(/[^0-9۰-۹]/g, '')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+  if (!digits) return '';
+  return Number(digits).toLocaleString('en-US');
+};
 
 async function sha256(value: string) {
   const data = new TextEncoder().encode(value);
@@ -63,6 +57,35 @@ function resetLoginState(email: string) {
   localStorage.removeItem(loginLockKey(email));
   localStorage.removeItem(loginFailKey(email));
 }
+
+type CalcParams = {
+  salary: { base: number; bon: number; housing: number; family: number; child_per: number; overtime_coef: number; insurance_employee: number; tax_exempt_monthly: number };
+  hiring: { insurance_employer: number; severance_months: number; eydi_months: number; leave_days: number };
+  tax_brackets: number[];
+  business_exempt: number;
+  bracket_caps: number[];
+  vat_rate: number;
+  retirement: { min_years: number; min_age: number; alt_years: number; alt_age: number; max_years: number };
+};
+
+const defaultCalcParams: CalcParams = {
+  salary: {
+    base: legalConfig.baseSalaryDaily * 30,
+    bon: legalConfig.foodAllowanceMonthly,
+    housing: legalConfig.housingAllowanceMonthly,
+    family: legalConfig.familyAllowanceMonthly,
+    child_per: legalConfig.childAllowanceMonthly,
+    overtime_coef: legalConfig.overtimeMultiplier,
+    insurance_employee: legalConfig.insuranceEmployeeRate,
+    tax_exempt_monthly: legalConfig.taxExemptionMonthly,
+  },
+  hiring: { insurance_employer: legalConfig.insuranceEmployerRate, severance_months: 1, eydi_months: 2, leave_days: 26 },
+  tax_brackets: [15, 20, 25, 30, 35],
+  business_exempt: 400000000,
+  bracket_caps: [2000000000, 4000000000, 10000000000, 50000000000],
+  vat_rate: 10,
+  retirement: { min_years: 20, min_age: 60, alt_years: 30, alt_age: 50, max_years: 42 },
+};
 
 export default function AdminPage() {
   const [session, setSession] = useState<'loading' | 'unauthenticated' | 'unauthorized' | 'authorized'>('loading');
@@ -242,6 +265,15 @@ export default function AdminPage() {
   );
 }
 
+function NumField({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <label className="settings-field">
+      {label}
+      <input type="number" value={value ?? 0} onChange={(e) => onChange(Number(e.target.value) || 0)} />
+    </label>
+  );
+}
+
 function ServicesTab() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -307,7 +339,7 @@ function ServicesTab() {
       {showAdd && (
         <div className="admin-form">
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
-          <input value={form.price} onChange={(e) => setForm({ ...form, price: formatEditableAmount(e.target.value) })} placeholder="قیمت" />
+          <input value={form.price} onChange={(e) => setForm({ ...form, price: safeAmount(e.target.value) })} placeholder="قیمت" />
           <input value={form.discount_percent} onChange={(e) => setForm({ ...form, discount_percent: Number(e.target.value) })} type="number" min={0} max={90} placeholder="درصد تخفیف" />
           <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد" />
           <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
@@ -349,7 +381,7 @@ function ServicesTab() {
               </td>
               <td>
                 {editing === service.id ? (
-                  <input value={service.price} onChange={(e) => updateField(service.id, 'price', formatEditableAmount(e.target.value))} />
+                  <input value={service.price} onChange={(e) => updateField(service.id, 'price', safeAmount(e.target.value))} placeholder="قیمت" />
                 ) : (
                   service.price
                 )}
@@ -404,34 +436,31 @@ function ServicesTab() {
 }
 
 function SettingsTab() {
-  const [settings, setSettings] = useState<SalarySettings>({});
+  const [p, setP] = useState<CalcParams>(defaultCalcParams);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let active = true;
     supabase
-      .from('settings')
+      .from('app_settings')
       .select('value')
-      .eq('key', 'salary_1405')
+      .eq('key', 'calc_1405')
       .maybeSingle()
       .then(({ data }) => {
         if (!active) return;
         if (data?.value) {
-          setSettings(data.value as SalarySettings);
-        } else {
-          setSettings({
-            year: legalConfig.year,
-            baseSalaryDaily: legalConfig.baseSalaryDaily,
-            foodAllowanceMonthly: legalConfig.foodAllowanceMonthly,
-            housingAllowanceMonthly: legalConfig.housingAllowanceMonthly,
-            familyAllowanceMonthly: legalConfig.familyAllowanceMonthly,
-            childAllowanceMonthly: legalConfig.childAllowanceMonthly,
-            overtimeMultiplier: legalConfig.overtimeMultiplier,
-            insuranceRate: legalConfig.insuranceRate,
-            annualTaxFree: legalConfig.annualTaxFree,
-            taxExemptionMonthly: legalConfig.taxExemptionMonthly,
-          });
+          const v = data.value as Record<string, unknown>;
+          setP((prev) => ({
+            ...prev,
+            salary: { ...prev.salary, ...((v.salary as object) || {}) },
+            hiring: { ...prev.hiring, ...((v.hiring as object) || {}) },
+            tax_brackets: (v.tax_brackets as number[]) || prev.tax_brackets,
+            business_exempt: (v.business_exempt as number) || prev.business_exempt,
+            bracket_caps: (v.bracket_caps as number[]) || prev.bracket_caps,
+            vat_rate: (v.vat_rate as number) || prev.vat_rate,
+            retirement: { ...prev.retirement, ...((v.retirement as object) || {}) },
+          }));
         }
         setLoading(false);
       });
@@ -441,43 +470,83 @@ function SettingsTab() {
   }, []);
 
   const save = async () => {
-    await supabase.from('settings').upsert({ key: 'salary_1405', value: settings, updated_at: new Date().toISOString() });
+    await supabase.from('app_settings').upsert({ key: 'calc_1405', value: p, updated_at: new Date().toISOString() });
+    await supabase.from('settings').upsert({
+      key: 'salary_1405',
+      value: {
+        year: legalConfig.year,
+        baseSalaryDaily: Math.round(p.salary.base / 30),
+        foodAllowanceMonthly: p.salary.bon,
+        housingAllowanceMonthly: p.salary.housing,
+        familyAllowanceMonthly: p.salary.family,
+        childAllowanceMonthly: p.salary.child_per,
+        overtimeMultiplier: p.salary.overtime_coef,
+        insuranceRate: p.salary.insurance_employee,
+        insuranceEmployeeRate: p.salary.insurance_employee,
+        insuranceEmployerRate: p.hiring.insurance_employer,
+        annualTaxFree: p.salary.tax_exempt_monthly * 12,
+        taxExemptionMonthly: p.salary.tax_exempt_monthly,
+      },
+      updated_at: new Date().toISOString(),
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
   if (loading) return <p>در حال بارگذاری...</p>;
 
-  const numField = (label: string, key: keyof SalarySettings) => (
-    <label className="settings-field">
-      {label}
-      <input type="number" value={settings[key] as number ?? 0} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} />
-    </label>
-  );
-
   return (
     <div className="admin-settings">
-      <h2>تنظیمات پارامترهای ۱۴۰۵</h2>
-      <p>این اعداد در ماشین‌حساب‌های حقوق و دستمزد استفاده می‌شوند.</p>
+      <h2>تنظیمات پارامترهای سالانه همه ماشین‌حساب‌ها</h2>
+      <p>این اعداد بلافاصله در همه ابزارهای هوشمند سایت اعمال می‌شوند.</p>
+
+      <h3>حقوق و دستمزد</h3>
       <div className="settings-grid">
-        <label className="settings-field">
-          سال
-          <input value={settings.year ?? ''} onChange={(e) => setSettings({ ...settings, year: e.target.value })} />
-        </label>
-        {numField('پایه حقوق روزانه (تومان)', 'baseSalaryDaily')}
-        {numField('بن کارگری ماهانه (تومان)', 'foodAllowanceMonthly')}
-        {numField('حق مسکن ماهانه (تومان)', 'housingAllowanceMonthly')}
-        {numField('عائله‌مندی ماهانه (تومان)', 'familyAllowanceMonthly')}
-        {numField('اولاد به ازای هر فرزند (تومان)', 'childAllowanceMonthly')}
-        {numField('ضریب اضافه‌کاری', 'overtimeMultiplier')}
-        {numField('سهم بیمه کارگر', 'insuranceRate')}
-        {numField('معافیت مالیاتی سالانه (تومان)', 'annualTaxFree')}
-        {numField('معافیت مالیاتی ماهانه (تومان)', 'taxExemptionMonthly')}
+        <NumField label="حقوق پایه ماهانه (ریال)" value={p.salary.base} onChange={(n) => setP({ ...p, salary: { ...p.salary, base: n } })} />
+        <NumField label="بن کارگری ماهانه (ریال)" value={p.salary.bon} onChange={(n) => setP({ ...p, salary: { ...p.salary, bon: n } })} />
+        <NumField label="کمک مسکن ماهانه (ریال)" value={p.salary.housing} onChange={(n) => setP({ ...p, salary: { ...p.salary, housing: n } })} />
+        <NumField label="عائله‌مندی ماهانه (ریال)" value={p.salary.family} onChange={(n) => setP({ ...p, salary: { ...p.salary, family: n } })} />
+        <NumField label="اولاد هر فرزند (ریال)" value={p.salary.child_per} onChange={(n) => setP({ ...p, salary: { ...p.salary, child_per: n } })} />
+        <NumField label="ضریب اضافه‌کاری" value={p.salary.overtime_coef} onChange={(n) => setP({ ...p, salary: { ...p.salary, overtime_coef: n } })} />
+        <NumField label="سهم بیمه کارگر (مثلاً 0.07)" value={p.salary.insurance_employee} onChange={(n) => setP({ ...p, salary: { ...p.salary, insurance_employee: n } })} />
+        <NumField label="معافیت مالیات حقوق ماهانه (ریال)" value={p.salary.tax_exempt_monthly} onChange={(n) => setP({ ...p, salary: { ...p.salary, tax_exempt_monthly: n } })} />
       </div>
+
+      <h3>هزینه استخدام</h3>
+      <div className="settings-grid">
+        <NumField label="سهم بیمه کارفرما (مثلاً 0.23)" value={p.hiring.insurance_employer} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, insurance_employer: n } })} />
+        <NumField label="سنوات (ماه به ازای هر سال)" value={p.hiring.severance_months} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, severance_months: n } })} />
+        <NumField label="عیدی (ماه)" value={p.hiring.eydi_months} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, eydi_months: n } })} />
+        <NumField label="مرخصی سالانه (روز)" value={p.hiring.leave_days} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, leave_days: n } })} />
+      </div>
+
+      <h3>مالیات</h3>
+      <div className="settings-grid">
+        <NumField label="نرخ ارزش افزوده (٪)" value={p.vat_rate} onChange={(n) => setP({ ...p, vat_rate: n })} />
+        <NumField label="معافیت سالانه مشاغل (ریال)" value={p.business_exempt} onChange={(n) => setP({ ...p, business_exempt: n })} />
+        <label className="settings-field">
+          پله‌های مالیات مشاغل (٪، با ویرگول)
+          <input value={p.tax_brackets.join(',')} onChange={(e) => setP({ ...p, tax_brackets: e.target.value.split(',').map((x) => Number(x.trim()) || 0).filter((x) => x > 0) })} />
+        </label>
+        <label className="settings-field">
+          سقف پله‌ها (ریال، با ویرگول)
+          <input value={p.bracket_caps.join(',')} onChange={(e) => setP({ ...p, bracket_caps: e.target.value.split(',').map((x) => Number(x.trim()) || 0).filter((x) => x > 0) })} />
+        </label>
+      </div>
+
+      <h3>بازنشستگی</h3>
+      <div className="settings-grid">
+        <NumField label="سن بازنشستگی عادی" value={p.retirement.min_age} onChange={(n) => setP({ ...p, retirement: { ...p.retirement, min_age: n } })} />
+        <NumField label="حداقل سابقه عادی (سال)" value={p.retirement.min_years} onChange={(n) => setP({ ...p, retirement: { ...p.retirement, min_years: n } })} />
+        <NumField label="سن حالت جایگزین" value={p.retirement.alt_age} onChange={(n) => setP({ ...p, retirement: { ...p.retirement, alt_age: n } })} />
+        <NumField label="سابقه حالت جایگزین (سال)" value={p.retirement.alt_years} onChange={(n) => setP({ ...p, retirement: { ...p.retirement, alt_years: n } })} />
+        <NumField label="سابقه بدون شرط سن (سال)" value={p.retirement.max_years} onChange={(n) => setP({ ...p, retirement: { ...p.retirement, max_years: n } })} />
+      </div>
+
       <button className="button button-green" onClick={save}>
         <Save size={16} /> ذخیره تنظیمات
       </button>
-      {saved && <small className="admin-success">✓ تنظیمات ذخیره شد.</small>}
+      {saved && <small className="admin-success">✓ تنظیمات ذخیره شد و در همه ماشین‌حساب‌ها اعمال می‌شود.</small>}
     </div>
   );
 }
@@ -728,7 +797,7 @@ function OrdersTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('orders').select('id,mobile,service,amount,status,created_at').order('created_at', { ascending: false });
+    const { data } = await supabase.from('orders').select('id,full_name,mobile,service_title,amount,status,created_at').order('created_at', { ascending: false });
     setOrders((data || []) as OrderRow[]);
     setLoading(false);
   };
@@ -751,6 +820,7 @@ function OrdersTab() {
       <table className="admin-table">
         <thead>
           <tr>
+            <th>نام</th>
             <th>موبایل</th>
             <th>خدمت</th>
             <th>مبلغ</th>
@@ -761,9 +831,10 @@ function OrdersTab() {
         <tbody>
           {orders.map((order) => (
             <tr key={order.id}>
+              <td>{order.full_name || '—'}</td>
               <td>{order.mobile || '—'}</td>
-              <td>{order.service || '—'}</td>
-              <td>{order.amount ? formatRial(order.amount) : '—'}</td>
+              <td>{order.service_title || '—'}</td>
+              <td>{order.amount ? `${formatRial(order.amount)} ریال` : '—'}</td>
               <td>
                 <select value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)}>
                   {Object.entries(statusLabels).map(([value, label]) => (
@@ -778,7 +849,7 @@ function OrdersTab() {
           ))}
           {orders.length === 0 && (
             <tr>
-              <td colSpan={5}>هیچ سفارشی ثبت نشده است.</td>
+              <td colSpan={6}>هیچ سفارشی ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
@@ -962,4 +1033,3 @@ function UsersTab() {
     </div>
   );
 }
-
