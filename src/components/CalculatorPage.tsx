@@ -233,18 +233,18 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="number" value={deduction} onChange={(e) => setDeduction(Number(e.target.value) || 0)} />
               </label>
               <div className="feedback-success result-box">
-                <Line label="حقوق پایه" value={`${formatRial(base)} ریال`} />
-                <Line label="بن کارگری" value={`${formatRial(params.salary.bon)} ریال`} />
-                <Line label="کمک مسکن" value={`${formatRial(params.salary.housing)} ریال`} />
-                {married && <Line label="عائله‌مندی" value={`${formatRial(salaryResult.familyPay)} ریال`} />}
-                {childrenCount > 0 && <Line label={`اولاد (${childrenCount} فرزند)`} value={`${formatRial(salaryResult.childPay)} ریال`} />}
-                {overtimeHours > 0 && <Line label={`اضافه‌کاری (${overtimeHours} ساعت)`} value={`${formatRial(salaryResult.overtimePay)} ریال`} />}
-                {bonus > 0 && <Line label="پاداش و مزایا" value={`${formatRial(bonus)} ریال`} />}
-                <Line label="ناخالص" value={`${formatRial(salaryResult.gross)} ریال`} strong />
-                <Line label="بیمه سهم کارگر (۷٪)" value={`${formatRial(salaryResult.insurance)} ریال`} minus />
-                <Line label="مالیات حقوق" value={`${formatRial(salaryResult.tax)} ریال`} minus />
-                {deduction > 0 && <Line label="کسورات دیگر" value={`${formatRial(deduction)} ریال`} minus />}
-                <Line label="خالص دریافتی" value={`${formatRial(salaryResult.net)} ریال`} strong />
+                <Line label="حقوق پایه" value={formatRial(base)} />
+                <Line label="بن کارگری" value={formatRial(params.salary.bon)} />
+                <Line label="کمک مسکن" value={formatRial(params.salary.housing)} />
+                {married && <Line label="عائله‌مندی" value={formatRial(salaryResult.familyPay)} />}
+                {childrenCount > 0 && <Line label={`اولاد (${childrenCount} فرزند)`} value={formatRial(salaryResult.childPay)} />}
+                {overtimeHours > 0 && <Line label={`اضافه‌کاری (${overtimeHours} ساعت)`} value={formatRial(salaryResult.overtimePay)} />}
+                {bonus > 0 && <Line label="پاداش و مزایا" value={formatRial(bonus)} />}
+                <Line label="ناخالص" value={formatRial(salaryResult.gross)} strong />
+                <Line label="بیمه سهم کارگر (۷٪)" value={formatRial(salaryResult.insurance)} minus />
+                <Line label="مالیات حقوق" value={formatRial(salaryResult.tax)} minus />
+                {deduction > 0 && <Line label="کسورات دیگر" value={formatRial(deduction)} minus />}
+                <Line label="خالص دریافتی" value={formatRial(salaryResult.net)} strong />
               </div>
             </>
           )}
@@ -255,14 +255,14 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
               </label>
               <div className="feedback-success result-box">
-                <Line label="حقوق پایه" value={`${formatRial(base)} ریال`} />
-                <Line label="بن کارگری" value={`${formatRial(params.salary.bon)} ریال`} />
-                <Line label="کمک مسکن" value={`${formatRial(params.salary.housing)} ریال`} />
-                <Line label={`بیمه سهم کارفرما (${Math.round(params.hiring.insurance_employer * 100)}٪)`} value={`${formatRial(hireResult.insurance)} ریال`} />
-                <Line label="ذخیره سنوات (ماهانه)" value={`${formatRial(hireResult.severance)} ریال`} />
-                <Line label="ذخیره عیدی (ماهانه)" value={`${formatRial(hireResult.eydi)} ریال`} />
-                <Line label="بهای تمام‌شدن ماهانه" value={`${formatRial(hireResult.total)} ریال`} strong />
-                <Line label="بهای تمام‌شدن سالانه" value={`${formatRial(hireResult.yearly)} ریال`} strong />
+                <Line label="حقوق پایه" value={formatRial(base)} />
+                <Line label="بن کارگری" value={formatRial(params.salary.bon)} />
+                <Line label="کمک مسکن" value={formatRial(params.salary.housing)} />
+                <Line label={`بیمه سهم کارفرما (${Math.round(params.hiring.insurance_employer * 100)}٪)`} value={formatRial(hireResult.insurance)} />
+                <Line label="ذخیره سنوات (ماهانه)" value={formatRial(hireResult.severance)} />
+                <Line label="ذخیره عیدی (ماهانه)" value={formatRial(hireResult.eydi)} />
+                <Line label="بهای تمام‌شدن ماهانه" value={formatRial(hireResult.total)} strong />
+                <Line label="بهای تمام‌شدن سالانه" value={formatRial(hireResult.yearly)} strong />
               </div>
               <p className="muted-note">هزینه استخدام فقط حقوق نیست؛ بیمه، عیدی و سنوات را هم باید از روز اول کنار بگذارید.</p>
             </>
@@ -277,8 +277,8 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="number" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} />
               </label>
               <div className="feedback-success result-box">
-                <Line label="سنوات هر سال" value={`${formatRial(severanceResult.perYear)} ریال`} />
-                <Line label={`جمع سنوات (${years} سال)`} value={`${formatRial(severanceResult.total)} ریال`} strong />
+                <Line label="سنوات هر سال" value={formatRial(severanceResult.perYear)} />
+                <Line label={`جمع سنوات (${years} سال)`} value={formatRial(severanceResult.total)} strong />
               </div>
             </>
           )}
@@ -298,7 +298,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <Line label="شرایط عادی (۶۰ سال + ۲۰ سال سابقه)" value={retirementResult.normal ? '✓ برقرار' : '✗ برقرار نیست'} />
                 <Line label="شرایط جایگزین (۵۰ سال + ۳۰ سال سابقه)" value={retirementResult.early ? '✓ برقرار' : '✗ برقرار نیست'} />
                 <Line label="بدون شرط سن (۴۲ سال سابقه)" value={retirementResult.full ? '✓ برقرار' : '✗ برقرار نیست'} />
-                <Line label="برآورد مستمری ماهانه" value={`${formatRial(retirementResult.pension)} ریال`} strong />
+                <Line label="برآورد مستمری ماهانه" value={formatRial(retirementResult.pension)} strong />
               </div>
               {!retirementResult.status && <p className="muted-note">هنوز شرایط بازنشستگی برقرار نیست؛ با افزایش سن یا سابقه دوباره بررسی کنید.</p>}
             </>
@@ -313,9 +313,9 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value) || 0)} />
               </label>
               <div className="feedback-success result-box">
-                <Line label="نرخ هر ساعت عادی" value={`${formatRial(Math.round(overtimeResult.hourly))} ریال`} />
-                <Line label="نرخ هر ساعت اضافه‌کاری (×۱٫۴)" value={`${formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} ریال`} />
-                <Line label={`جمع (${overtimeHours} ساعت)`} value={`${formatRial(overtimeResult.pay)} ریال`} strong />
+                <Line label="نرخ هر ساعت عادی" value={formatRial(Math.round(overtimeResult.hourly))} />
+                <Line label="نرخ هر ساعت اضافه‌کاری (×۱٫۴)" value={formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} />
+                <Line label={`جمع (${overtimeHours} ساعت)`} value={formatRial(overtimeResult.pay)} strong />
               </div>
             </>
           )}
@@ -329,13 +329,13 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="number" value={expenses} onChange={(e) => setExpenses(Number(e.target.value) || 0)} />
               </label>
               <div className="feedback-success result-box">
-                <Line label="سود سالانه" value={`${formatRial(businessTaxResult.profit)} ریال`} />
-                <Line label="معافیت سالانه مشاغل" value={`${formatRial(params.business_exempt)} ریال`} minus />
-                <Line label="سود مشمول مالیات" value={`${formatRial(businessTaxResult.taxable)} ریال`} />
+                <Line label="سود سالانه" value={formatRial(businessTaxResult.profit)} />
+                <Line label="معافیت سالانه مشاغل" value={formatRial(params.business_exempt)} minus />
+                <Line label="سود مشمول مالیات" value={formatRial(businessTaxResult.taxable)} />
                 {businessTaxResult.rows.map((r) => (
-                  <Line key={r.label} label={r.label} value={`${formatRial(r.amount)} ریال`} />
+                  <Line key={r.label} label={r.label} value={formatRial(r.amount)} />
                 ))}
-                <Line label="جمع مالیات سالانه" value={`${formatRial(businessTaxResult.total)} ریال`} strong />
+                <Line label="جمع مالیات سالانه" value={formatRial(businessTaxResult.total)} strong />
                 <Line label="نرخ مؤثر" value={`${businessTaxResult.effective}٪`} />
               </div>
             </>
@@ -351,9 +351,9 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <span>مبلغ واردشده شامل ارزش افزوده است (استخراج از داخل فاکتور)</span>
               </label>
               <div className="feedback-success result-box">
-                <Line label="مبلغ بدون ارزش افزوده" value={`${formatRial(vatResult.net)} ریال`} />
-                <Line label={`ارزش افزوده (${params.vat_rate}٪)`} value={`${formatRial(vatResult.vat)} ریال`} />
-                <Line label="مبلغ با ارزش افزوده" value={`${formatRial(vatResult.gross)} ریال`} strong />
+                <Line label="مبلغ بدون ارزش افزوده" value={formatRial(vatResult.net)} />
+                <Line label={`ارزش افزوده (${params.vat_rate}٪)`} value={formatRial(vatResult.vat)} />
+                <Line label="مبلغ با ارزش افزوده" value={formatRial(vatResult.gross)} strong />
               </div>
             </>
           )}
@@ -364,14 +364,14 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
               </label>
               <div className="feedback-success result-box">
-                <Line label="بیمه سهم کارگر" value={`${formatRial(salaryTaxResult.insurance)} ریال`} minus />
-                <Line label="معافیت ماهانه ۱۴۵" value={`${formatRial(params.salary.tax_exempt_monthly)} ریال`} minus />
-                <Line label="مازاد مشمول ماهانه" value={`${formatRial(salaryTaxResult.monthlyTaxable)} ریال`} />
+                <Line label="بیمه سهم کارگر" value={formatRial(salaryTaxResult.insurance)} minus />
+                <Line label="معافیت ماهانه ۱۴۵" value={formatRial(params.salary.tax_exempt_monthly)} minus />
+                <Line label="مازاد مشمول ماهانه" value={formatRial(salaryTaxResult.monthlyTaxable)} />
                 {salaryTaxResult.rows.map((r) => (
-                  <Line key={r.label} label={r.label} value={`${formatRial(r.amount)} ریال`} />
+                  <Line key={r.label} label={r.label} value={formatRial(r.amount)} />
                 ))}
-                <Line label="مالیات سالانه" value={`${formatRial(salaryTaxResult.total)} ریال`} strong />
-                <Line label="مالیات ماهانه تقریبی" value={`${formatRial(salaryTaxResult.monthly)} ریال`} strong />
+                <Line label="مالیات سالانه" value={formatRial(salaryTaxResult.total)} strong />
+                <Line label="مالیات ماهانه تقریبی" value={formatRial(salaryTaxResult.monthly)} strong />
               </div>
             </>
           )}
@@ -384,7 +384,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <li key={i}>{n}</li>
             ))}
           </ul>
-          <p className="muted-note"><ShieldCheck size={14} /> پارامترها مطابق مقررات ۱۴ است و از تب «تنظیمات» پنل ادمین قابل به‌روزرسانی است.</p>
+          <p className="muted-note"><ShieldCheck size={14} /> پارامترها مطابق مقررات ۱۴۵ است و از تب «تنظیمات» پنل ادمین قابل به‌روزرسانی است.</p>
         </div>
       </div>
     </section>
