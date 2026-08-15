@@ -15,8 +15,11 @@ const areaAdvice: Record<string, string> = {
 
 export default function BusinessHealthPage() {
   const [answers, setAnswers] = useState<Answer[]>(() => healthQuestions.map(() => null));
+  const [showResult, setShowResult] = useState(false);
+  const [warn, setWarn] = useState(false);
 
-  const allAnswered = answers.every((a) => a !== null);
+  const answeredCount = answers.filter((a) => a !== null).length;
+  const allAnswered = answeredCount === healthQuestions.length;
 
   const result = useMemo(() => {
     if (!allAnswered) return null;
@@ -43,30 +46,45 @@ export default function BusinessHealthPage() {
       <div className="container narrow-content">
         <span className="eyebrow">ابزار هوشمند · خودارزیابی</span>
         <h1>تست سلامت کسب‌وکار</h1>
-        <p className="lead">با ۱۶ پاسخ بله/خیر، تصویر فوری از سلامت حقوقی و مالی کسب‌وکار خود بگیرید. سؤال‌ها را صادقانه جواب بدهید؛ نتیجه همین‌جا و همان لحظه ساخته می‌شود.</p>
+        <p className="lead">با ۱۶ پاسخ بله/خیر، تصویر فوری از سلامت حقوقی و مالی کسب‌وکار خود بگیرید. صادقانه جواب بدهید و در پایان دکمه «نمایش نتیجه» را بزنید.</p>
 
-        {!result && (
-          <div className="health-grid">
-            {healthQuestions.map((q, i) => (
-              <div className="health-q" key={i}>
-                <span className="health-area">{q.area}</span>
-                <p>{q.q}</p>
-                <div className="health-btns">
-                  <button type="button" className={answers[i] === true ? 'yes on' : 'yes'} onClick={() => setAnswer(i, true)}>بله</button>
-                  <button type="button" className={answers[i] === false ? 'no on' : 'no'} onClick={() => setAnswer(i, false)}>خیر</button>
+        {!showResult && (
+          <>
+            <div className="health-grid">
+              {healthQuestions.map((q, i) => (
+                <div className="health-q" key={i}>
+                  <span className="health-area">{q.area}</span>
+                  <p>{q.q}</p>
+                  <div className="health-btns">
+                    <button type="button" className={answers[i] === true ? 'yes on' : 'yes'} onClick={() => setAnswer(i, true)}>بله</button>
+                    <button type="button" className={answers[i] === false ? 'no on' : 'no'} onClick={() => setAnswer(i, false)}>خیر</button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+
+            <div className="health-actions">
+              <p className="muted-note">{answeredCount} از {healthQuestions.length} سؤال پاسخ داده شد</p>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  if (!allAnswered) {
+                    setWarn(true);
+                    return;
+                  }
+                  setShowResult(true);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              >
+                نمایش نتیجه <ArrowLeft size={16} />
+              </button>
+              {warn && !allAnswered && <small className="news-err">ابتدا به همه سؤال‌ها پاسخ بله یا خیر بدهید.</small>}
+            </div>
+          </>
         )}
 
-        {!result && (
-          <p className="muted-note" style={{ textAlign: 'center', marginTop: '1.2rem' }}>
-            {answers.filter((a) => a !== null).length} از {healthQuestions.length} سؤال پاسخ داده شد
-          </p>
-        )}
-
-        {result && (
+        {showResult && result && (
           <div className="health-result">
             <div className="health-gauge" style={{ background: `conic-gradient(${levelColor} ${result.overall * 3.6}deg, #e8e8e8 0deg)` }}>
               <div className="health-gauge-inner">
@@ -109,7 +127,15 @@ export default function BusinessHealthPage() {
             <div className="health-cta">
               <a className="button" href="/قراردادها">بستن قراردادهای محکم <ArrowLeft size={16} /></a>
               <a className="button button-outline" href="/خدمات">مشاوره تخصصی <ArrowLeft size={16} /></a>
-              <button type="button" className="button button-outline" onClick={() => setAnswers(healthQuestions.map(() => null))}>
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={() => {
+                  setAnswers(healthQuestions.map(() => null));
+                  setShowResult(false);
+                  setWarn(false);
+                }}
+              >
                 پاسخ دوباره
               </button>
             </div>
