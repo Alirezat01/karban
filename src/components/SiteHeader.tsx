@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 const links = [
   ['دانشنامه', '/دانشنامه'],
@@ -14,8 +14,9 @@ export default function SiteHeader() {
   return (
     <header className="site-header">
       <div className="container header-inner">
-        <a className="brand" href="/" aria-label="کاربان، صفحه اصلی">
+        <a className="brand" href="/" aria-label="کاربان">
           <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="لوگوی کاربان" />
+          <span>کاربان</span>
         </a>
         <nav className="desktop-nav" aria-label="منوی اصلی">
           {links.map(([label, href]) => (
@@ -24,12 +25,7 @@ export default function SiteHeader() {
             </a>
           ))}
         </nav>
-        <div className="header-actions">
-          <a className="login-link" href="/ورود">
-            ورود <ArrowLeft size={15} />
-          </a>
-        </div>
-        <button className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label="باز کردن منو">
+        <button className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label="باز و بسته کردن منو">
           {open ? <X /> : <Menu />}
         </button>
       </div>
@@ -40,12 +36,8 @@ export default function SiteHeader() {
               {label}
             </a>
           ))}
-          <a className="login-link" href="/ورود" onClick={() => setOpen(false)}>
-            ورود
-          </a>
         </nav>
       )}
     </header>
   );
 }
-
