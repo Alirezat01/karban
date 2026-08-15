@@ -4,23 +4,22 @@ import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 
+const toEnDigits = (value: string) => value.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+
 export default function SiteFooter() {
   const [mobile, setMobile] = useState('');
   const [state, setState] = useState<'idle' | 'ok' | 'dup' | 'err'>('idle');
 
   async function subscribe(e: React.FormEvent) {
     e.preventDefault();
-    if (!isIranianMobile(mobile)) {
+    const cleaned = toEnDigits(mobile).trim();
+    if (!isIranianMobile(cleaned)) {
       setState('err');
       return;
     }
-    const { error } = await supabase.from('newsletter').insert({ mobile: normalizeMobile(mobile) });
+    const { error } = await supabase.from('newsletter').insert({ mobile: normalizeMobile(cleaned) });
     if (error) {
-      if (String(error.message).toLowerCase().includes('duplicate')) {
-        setState('dup');
-      } else {
-        setState('err');
-      }
+      setState('dup');
       return;
     }
     setState('ok');
@@ -69,30 +68,36 @@ export default function SiteFooter() {
           </p>
           <p className="footer-address">تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p>
         </div>
-        <div className="footer-news">
+      </div>
+
+      <div className="container footer-news-strip">
+        <div className="news-copy">
           <h3>خبرنامه کاربان</h3>
           <p>تغییرات قوانین، مهلت‌های مالیاتی و ابزارهای جدید؛ ماهی یک پیام، بدون اسپم.</p>
-          <form className="news-form" onSubmit={subscribe}>
-            <input
-              type="tel"
-              inputMode="numeric"
-              value={mobile}
-              onChange={(e) => {
-                setMobile(e.target.value);
-                setState('idle');
-              }}
-              placeholder="شماره موبایل"
-              aria-label="شماره موبایل برای خبرنامه"
-            />
-            <button className="button" type="submit">عضویت</button>
-          </form>
+        </div>
+        <form className="news-form" onSubmit={subscribe}>
+          <input
+            type="tel"
+            inputMode="tel"
+            value={mobile}
+            onChange={(e) => {
+              setMobile(e.target.value);
+              setState('idle');
+            }}
+            placeholder="شماره موبایل"
+            aria-label="شماره موبایل برای خبرنامه"
+          />
+          <button className="button" type="submit">عضویت</button>
+        </form>
+        <div className="news-msg">
           {state === 'ok' && <small className="news-ok"><CheckCircle2 size={14} /> عضویت شما در خبرنامه ثبت شد.</small>}
-          {state === 'dup' && <small className="news-ok">این شماره قبلاً در خبرنامه عضو شده است.</small>}
-          {state === 'err' && <small className="news-err">شماره موبایل معتبر وارد کنید؛ نمونه: ۰۹۱۲۳۴۵۶۷۸۹</small>}
+          {state === 'dup' && <small className="news-ok">این شماره قبلاً عضو شده است.</small>}
+          {state === 'err' && <small className="news-err">شماره معتبر وارد کنید؛ نمونه: ۰۹۲۳۴۵۶۷۸۹</small>}
         </div>
       </div>
+
       <div className="container footer-bottom">
-        <span>© ۱۴۰۵ کاربان. تمام حقوق محفوظ است.</span>
+        <span>© ۱۴۵ کاربان. تمام حقوق محفوظ است.</span>
         <span>ساخته‌شده برای رشد کسب‌وکارهای ایرانی</span>
       </div>
     </footer>
