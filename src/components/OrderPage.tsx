@@ -72,7 +72,7 @@ export default function OrderPage({ serviceId }: Props) {
       .single();
     setSending(false);
     if (dbError) { setError('ثبت سفارش انجام نشد؛ دوباره تلاش کنید یا از صفحه تماس پیام بدهید.'); return; }
-    void notifyAdmin(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)} ریال`);
+    void notifyAdmin(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)} ریال ریال`);
     setDoneCode(String(data.id).slice(0, 8));
   }
 
