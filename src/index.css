@@ -753,3 +753,9 @@
 .footer-news-strip .news-form { flex: 1 1 300px; display: flex; gap: 8px; }
 .footer-news-strip .news-form input { flex: 1; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.08); color: #fff; padding: 10px 14px; font-family: inherit; }
 .footer-news-strip .news-msg { width: 100%; min-height: 20px; }
+/* layer-4 extra */
+.health-actions { text-align: center; margin-top: 20px; }
+.health-actions .button { margin-top: 8px; }
+.health-actions .news-err { display: block; margin-top: 8px; }
+.contract-pre { white-space: pre-wrap; background: #fff; border: 1px solid #e6d3a3; border-radius: 10px; padding: 16px; line-height: 2.1; font-family: inherit; font-size: 0.92rem; color: #29424e; max-height: 480px; overflow: auto; }
+.calc-card select { width: 100%; margin-top: 6px; border: 1px solid #d8cdb4; border-radius: 10px; padding: 10px 12px; background: #fff; font-family: inherit; }
