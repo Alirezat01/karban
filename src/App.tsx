@@ -11,6 +11,7 @@ import AdminPage from '@/components/AdminPage';
 import BusinessHealthPage from '@/components/BusinessHealthPage';
 import ContractBuilderPage from '@/components/ContractBuilderPage';
 import OrderPage from '@/components/OrderPage';
+import { ArticlesListPage, ArticleViewPage } from '@/components/KnowledgePage';
 import TermsPage from '@/components/TermsPage';
 
 function Page({
@@ -184,10 +185,17 @@ export default function App() {
         </Page>
       );
     }
+    if (segments[1] === 'مقاله' && segments[2]) {
+      return (
+        <Page title="مقاله دانشنامه کاربان" description="مقاله تخصصی با استناد قانونی." breadcrumb={['دانشنامه', 'مقاله']}>
+          <ArticleViewPage articleId={segments[2]} />
+        </Page>
+      );
+    }
 
     return (
-      <Page title={`مقاله ${segments[1]}`} description="مقاله‌ای از دانشنامه کاربان." breadcrumb={['دانشنامه', `مقاله ${segments[1]}`]}>
-        <ArticlePage title={`مقاله ${segments[1]}`} category="دانشنامه کاربان" />
+      <Page title="دانشنامه کاربان" description="مقاله‌های تخصصی کسب‌وکار با استناد قانونی." breadcrumb={['دانشنامه']}>
+        <ArticlesListPage categoryIndex={Number(segments[1]) || 1} />
       </Page>
     );
   }
