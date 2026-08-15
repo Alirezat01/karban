@@ -1,71 +1,130 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle2, CircleHelp, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, HeartPulse, ShieldCheck } from 'lucide-react';
+import { healthQuestions, legalNotes } from '@/data/config';
 
-const questions = [
-  'فرآیندهای کلیدی شما مکتوب شده‌اند؟',
-  'قراردادهای اصلی کسب‌وکار به‌روز هستند؟',
-  'حقوق و بیمه نیروها به‌موقع پرداخت می‌شود؟',
-  'حساب‌های مالی ماهانه بررسی می‌شوند؟',
-  'مالیات و اظهارنامه‌ها برنامه مشخص دارند؟',
-  'برای جذب و نگهداشت نیروی خوب برنامه دارید؟',
-  'ریسک‌های حقوقی هر ماه مرور می‌شوند؟',
-  'دسترسی به اسناد مهم سازمان‌دهی شده است؟',
-  'در صورت بحران، برنامه واکنش سریع دارید؟',
-  'شاخص‌های رشد کسب‌وکار را دنبال می‌کنید؟',
-] as const;
+type Answer = boolean | null;
+
+const areas = ['قراردادها', 'حقوق و بیمه', 'مالی و مالیات', 'عملیات'] as const;
+
+const areaAdvice: Record<string, string> = {
+  'قراردادها': 'قراردادهای نانوشته بزرگ‌ترین منبع اختلاف‌اند؛ از بانک قراردادهای کاربان، نسخه مکتوب هر توافق را همین هفته ببندید.',
+  'حقوق و بیمه': 'جریمه‌های بیمه و اداره کار از هر هزینه‌ای سنگین‌تر است؛ بیمه همه کارکنان و پرداخت به‌موقع را در اولویت بگذارید.',
+  'مالی و مالیات': 'جریمه‌های مالیاتی معمولاً قابل بخشش نیستند؛ ثبت منظم درآمد/هزینه و اظهارنامه به‌موقع، ریسک را نزدیک صفر می‌کند.',
+  'عملیات': 'وابستگی به یک نفر یعنی ریسک توقف کسب‌وکار؛ وظایف را مستند و جانشین‌پروری کنید.',
+};
 
 export default function BusinessHealthPage() {
-  const [answers, setAnswers] = useState<boolean[]>(Array.from({ length: questions.length }, () => true));
+  const [answers, setAnswers] = useState<Answer[]>(() => healthQuestions.map(() => null));
 
-  const score = useMemo(() => answers.filter(Boolean).length, [answers]);
-  const status = score >= 8 ? 'سالم' : score >= 5 ? 'نیازمند اصلاح' : 'بحرانی';
+  const allAnswered = answers.every((a) => a !== null);
+
+  const result = useMemo(() => {
+    if (!allAnswered) return null;
+    const byArea = areas.map((area) => {
+      const idx = healthQuestions.map((q, i) => ({ q, i })).filter((x) => x.q.area === area).map((x) => x.i);
+      const yes = idx.filter((i) => answers[i] === true).length;
+      const score = Math.round((yes / idx.length) * 100);
+      return { area, score, yes, total: idx.length };
+    });
+    const overall = Math.round(byArea.reduce((s, b) => s + b.score, 0) / byArea.length);
+    const level = overall >= 80 ? 'سالم' : overall >= 50 ? 'نیازمند اصلاح' : 'بحرانی';
+    const weak = byArea.filter((b) => b.score < 70);
+    return { byArea, overall, level, weak };
+  }, [answers, allAnswered]);
+
+  const setAnswer = (i: number, value: boolean) => {
+    setAnswers((prev) => prev.map((a, idx) => (idx === i ? value : a)));
+  };
+
+  const levelColor = result?.level === 'سالم' ? '#1f7a4d' : result?.level === 'نیازمند اصلاح' ? '#b9770e' : '#b3261e';
 
   return (
     <section className="inner-page">
       <div className="container narrow-content">
-        <span className="eyebrow">
-          <ShieldCheck size={15} /> ابزار هوشمند
-        </span>
+        <span className="eyebrow">ابزار هوشمند · خودارزیابی</span>
         <h1>تست سلامت کسب‌وکار</h1>
-        <p className="lead">با ۱۰ پاسخ بله/خیر، یک تصویر فوری از سلامت عملیاتی، حقوقی و مالی کسب‌وکار خود بگیرید.</p>
+        <p className="lead">با ۱۶ پاسخ بله/خیر، تصویر فوری از سلامت حقوقی و مالی کسب‌وکار خود بگیرید. سؤال‌ها را صادقانه جواب بدهید؛ نتیجه همین‌جا و همان لحظه ساخته می‌شود.</p>
 
-        <div className="health-grid">
-          {questions.map((question, index) => (
-            <label className="health-row" key={question}>
-              <span>{question}</span>
-              <div className="health-options">
-                <button
-                  type="button"
-                  className={answers[index] ? 'active' : ''}
-                  onClick={() => setAnswers((current) => current.map((value, i) => (i === index ? true : value)))}
-                >
-                  بله
-                </button>
-                <button
-                  type="button"
-                  className={!answers[index] ? 'active' : ''}
-                  onClick={() => setAnswers((current) => current.map((value, i) => (i === index ? false : value)))}
-                >
-                  خیر
-                </button>
+        {!result && (
+          <div className="health-grid">
+            {healthQuestions.map((q, i) => (
+              <div className="health-q" key={i}>
+                <span className="health-area">{q.area}</span>
+                <p>{q.q}</p>
+                <div className="health-btns">
+                  <button type="button" className={answers[i] === true ? 'yes on' : 'yes'} onClick={() => setAnswer(i, true)}>بله</button>
+                  <button type="button" className={answers[i] === false ? 'no on' : 'no'} onClick={() => setAnswer(i, false)}>خیر</button>
+                </div>
               </div>
-            </label>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        <div className="health-result">
-          <div className="health-result-head">
-            <CheckCircle2 size={18} />
-            <strong>نتیجه سلامت</strong>
+        {!result && (
+          <p className="muted-note" style={{ textAlign: 'center', marginTop: '1.2rem' }}>
+            {answers.filter((a) => a !== null).length} از {healthQuestions.length} سؤال پاسخ داده شد
+          </p>
+        )}
+
+        {result && (
+          <div className="health-result">
+            <div className="health-gauge" style={{ background: `conic-gradient(${levelColor} ${result.overall * 3.6}deg, #e8e8e8 0deg)` }}>
+              <div className="health-gauge-inner">
+                <strong>{result.overall}٪</strong>
+                <span>{result.level}</span>
+              </div>
+            </div>
+
+            <h2><HeartPulse size={20} /> کارنامه سلامت کسب‌وکار شما</h2>
+
+            <div className="health-bars">
+              {result.byArea.map((b) => (
+                <div className="health-bar-row" key={b.area}>
+                  <span>{b.area}</span>
+                  <div className="health-bar">
+                    <div className="health-bar-fill" style={{ width: `${b.score}%`, background: b.score >= 80 ? '#1f7a4d' : b.score >= 50 ? '#b9770e' : '#b3261e' }} />
+                  </div>
+                  <strong>{b.score}٪</strong>
+                </div>
+              ))}
+            </div>
+
+            {result.weak.length > 0 ? (
+              <div className="legal-box">
+                <h2>چرا این وضعیت؟ و چه باید کرد؟</h2>
+                <ul>
+                  {result.weak.map((w) => (
+                    <li key={w.area}>
+                      <strong>{w.area} ({w.score}٪):</strong> {areaAdvice[w.area]}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <div className="feedback-success">
+                <ShieldCheck size={24} /> کسب‌وکار شما از نظر حقوقی و مالی در وضعیت سالمی است؛ همین مسیر را ادامه دهید و سالانه بازبینی کنید.
+              </div>
+            )}
+
+            <div className="health-cta">
+              <a className="button" href="/قراردادها">بستن قراردادهای محکم <ArrowLeft size={16} /></a>
+              <a className="button button-outline" href="/خدمات">مشاوره تخصصی <ArrowLeft size={16} /></a>
+              <button type="button" className="button button-outline" onClick={() => setAnswers(healthQuestions.map(() => null))}>
+                پاسخ دوباره
+              </button>
+            </div>
           </div>
-          <div className="health-score">
-            <span>{score}</span>
-            <small>از {questions.length}</small>
-          </div>
-          <p>{status}</p>
+        )}
+
+        <div className="legal-box">
+          <h2><ShieldCheck size={18} /> مبنای سؤالات</h2>
+          <ul>
+            {(legalNotes['تست-سلامت'] || []).map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
   );
 }
-
