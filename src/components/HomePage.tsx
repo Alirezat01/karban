@@ -17,27 +17,7 @@ const icons: Record<string, typeof Calculator> = {
   clock: Clock,
 };
 
-type HomeService = { id: string; title: string; description: string; icon?: string };
-
-function useCount(target: number, started: boolean) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!started) return;
-    let frame = 0;
-    const step = Math.max(1, Math.round(target / 40));
-    const id = setInterval(() => {
-      frame += step;
-      if (frame >= target) {
-        setValue(target);
-        clearInterval(id);
-      } else {
-        setValue(frame);
-      }
-    }, 40);
-    return () => clearInterval(id);
-  }, [target, started]);
-  return value;
-}
+type HomeService = { id: string; title: string; description: string };
 
 export default function HomePage() {
   const [services, setServices] = useState<HomeService[]>([]);
@@ -77,13 +57,9 @@ export default function HomePage() {
     return pool.slice(0, 3);
   }, [services]);
 
-  const c1 = useCount(60, revealed);
-  const c2 = useCount(140, revealed);
-  const c3 = useCount(7, revealed);
-
   return (
     <div className={revealed ? 'home-page is-ready' : 'home-page'}>
-      <section className="hero-home">
+      <section className="hero-home hero-animated">
         <div className="container hero-inner">
           <div className="hero-copy">
             <span className="hero-eyebrow">پلتفرم هوشمند قرارداد، حقوق و دانشنامه</span>
@@ -110,23 +86,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="counters-home" data-reveal>
-        <div className="container counter-row">
-          <div className="counter">
-            <strong>+{c1}</strong>
-            <span>قرارداد تخصصی</span>
-          </div>
-          <div className="counter">
-            <strong>{c2}</strong>
-            <span>پارامتر حقوقی</span>
-          </div>
-          <div className="counter">
-            <strong>{c3}</strong>
-            <span>ابزار هوشمند</span>
-          </div>
-        </div>
-      </section>
-
       <section className="ticker-home" aria-hidden="true">
         <div className="ticker-track">
           {[...INDUSTRIES, ...INDUSTRIES].map((item, index) => (
@@ -147,21 +106,18 @@ export default function HomePage() {
             </a>
           </div>
           <div className="service-grid-home">
-            {randomServices.map((item) => {
-              const Icon = icons.chart;
-              return (
-                <a className="service-card-home" href={`/سفارش/${item.id}`} key={item.id}>
-                  <div className="service-icon">
-                    <Icon size={22} />
-                  </div>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                  <span>
-                    مشاهده و سفارش <ArrowLeft size={14} />
-                  </span>
-                </a>
-              );
-            })}
+            {randomServices.map((item) => (
+              <a className="service-card-home" href={`/سفارش/${item.id}`} key={item.id}>
+                <div className="service-icon">
+                  <TrendingUp size={22} />
+                </div>
+                <h3>{item.title}</h3>
+                <p>{item.description}</p>
+                <span>
+                  مشاهده و سفارش <ArrowLeft size={14} />
+                </span>
+              </a>
+            ))}
           </div>
         </div>
       </section>
