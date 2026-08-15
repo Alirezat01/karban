@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BadgeCheck, BookMarked, Calculator, CheckCircle2, Clock, Coins, FileText, Sparkles, Sun, TrendingUp } from 'lucide-react';
-import { roleCards, serviceItems, specialistServices, toolItems } from '@/data/config';
+import { INDUSTRIES, roleCards, toolItems } from '@/data/config';
+import { supabase } from '@/lib/supabase';
 
-const icons = {
+const icons: Record<string, typeof Calculator> = {
   briefcase: Sparkles,
   shield: BadgeCheck,
   laptop: BookMarked,
@@ -14,141 +15,127 @@ const icons = {
   heart: BadgeCheck,
   sun: Sun,
   clock: Clock,
-} as const;
+};
 
-const industriesTicker = [
-  'پزشکان',
-  'فروشگاه آنلاین',
-  'رستوران',
-  'استارتاپ',
-  'فریلنسر',
-  'مشاور املاک',
-  'ساخت‌وساز',
-  'آموزشگاه',
-  'شرکت حسابداری',
-  'کارخانه',
-];
+type HomeService = { id: string; title: string; description: string; icon?: string };
 
-function useCount(target: number) {
+function useCount(target: number, started: boolean) {
   const [value, setValue] = useState(0);
   useEffect(() => {
+    if (!started) return;
     let frame = 0;
-    const start = performance.now();
-    const duration = 1200;
-    const tick = (time: number) => {
-      const progress = Math.min(1, (time - start) / duration);
-      setValue(Math.round(target * progress));
-      if (progress < 1) frame = window.requestAnimationFrame(tick);
-    };
-    frame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame);
-  }, [target]);
+    const step = Math.max(1, Math.round(target / 40));
+    const id = setInterval(() => {
+      frame += step;
+      if (frame >= target) {
+        setValue(target);
+        clearInterval(id);
+      } else {
+        setValue(frame);
+      }
+    }, 40);
+    return () => clearInterval(id);
+  }, [target, started]);
   return value;
 }
 
 export default function HomePage() {
-  const [visible, setVisible] = useState(false);
-  const contractCount = useCount(60);
-  const parameterCount = useCount(140);
-  const toolCount = useCount(7);
+  const [services, setServices] = useState<HomeService[]>([]);
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
-    const nodes = document.querySelectorAll<HTMLElement>('[data-reveal]');
+    let active = true;
+    supabase
+      .from('services')
+      .select('id,title,description')
+      .order('created_at')
+      .then(({ data }) => {
+        if (active && data) setServices(data as HomeService[]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-            observer.unobserve(entry.target);
-          }
-        });
+        if (entries.some((e) => e.isIntersecting)) setRevealed(true);
       },
-      { threshold: 0.18 },
+      { threshold: 0.1 },
     );
-    nodes.forEach((node) => observer.observe(node));
-    setVisible(true);
+    document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
 
-  const heroServices = useMemo(() => serviceItems.slice(0, 2), []);
+  const randomServices = useMemo(() => {
+    const pool = [...services];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, 3);
+  }, [services]);
+
+  const c1 = useCount(60, revealed);
+  const c2 = useCount(140, revealed);
+  const c3 = useCount(7, revealed);
 
   return (
-    <div className={visible ? 'home-page is-ready' : 'home-page'}>
-      <section className="hero-home hero-home-navy">
-        <div className="hero-girih" />
-        <div className="container hero-grid hero-grid-home">
-          <div className="hero-copy hero-copy-home" data-reveal>
-            <span className="eyebrow eyebrow-gold">پلتفرم هوشمند قرارداد، حقوق و دانشنامه</span>
+    <div className={revealed ? 'home-page is-ready' : 'home-page'}>
+      <section className="hero-home">
+        <div className="container hero-inner">
+          <div className="hero-copy">
+            <span className="hero-eyebrow">پلتفرم هوشمند قرارداد، حقوق و دانشنامه</span>
             <h1>رشد مطمئن کسب‌وکار شما با کاربان</h1>
-            <p className="lead">
-              کاربان بانک قرارداد تخصصی، ماشین‌حساب‌های دقیق حقوق و سنوات، و دانشنامه کاربردی حقوق کار را کنار هم می‌آورد تا تصمیم‌های حساس، ساده و مطمئن شوند.
+            <p className="hero-lead">
+              کاربان بانک قرارداد تخصصی، ماشین‌حساب‌های دقیق حقوق و سنوات، و دانشنامه کاربردی حقوق کار را کنار هم آورده تا تصمیم‌های حساس، ساده و مطمئن شوند.
             </p>
-            <div className="hero-actions">
-              <a className="button button-gold" href="/قراردادها">
-                شروع کنید <ArrowLeft size={17} />
-              </a>
-              <a className="button button-outline button-outline-light" href="/تماس-با-ما">
-                مشاوره رایگان
-              </a>
-            </div>
-            <div className="hero-stats">
-              <div className="stat-card">
-                <strong>+{contractCount}</strong>
-                <span>قرارداد</span>
-              </div>
-              <div className="stat-card">
-                <strong>{parameterCount}</strong>
-                <span>پارامتر</span>
-              </div>
-              <div className="stat-card">
-                <strong>{toolCount}</strong>
-                <span>ابزار</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="hero-stack" data-reveal>
-            <div className="contract-float-card">
-              <div className="contract-seal">کاربان</div>
-              <span className="contract-label">نمونه قرارداد هوشمند</span>
-              <h2>قرارداد استخدام و همکاری</h2>
-              <ul>
-                <li>متن حقوقی روشن و قابل ویرایش</li>
-                <li>متناسب با صنف و نوع همکاری</li>
-                <li>قابل دانلود و ارجاع در چند ثانیه</li>
-              </ul>
-            </div>
-            <div className="hero-side-grid">
-              <div className="hero-mini-card">
-                <Sparkles size={18} />
-                <span>متن دقیق</span>
-              </div>
-              <div className="hero-mini-card">
-                <TrendingUp size={18} />
-                <span>رشد پایدار</span>
-              </div>
-              <div className="hero-mini-card">
-                <Coins size={18} />
-                <span>مدیریت مالی</span>
-              </div>
-              <div className="hero-mini-card">
-                <FileText size={18} />
-                <span>قرارداد امن</span>
-              </div>
+            <div className="role-grid">
+              {roleCards.map((role) => {
+                const Icon = icons[role.icon] || Sparkles;
+                return (
+                  <a className={`role-card role-${role.accent}`} href={role.href} key={role.title}>
+                    <Icon size={22} />
+                    <h3>{role.title}</h3>
+                    <p>{role.description}</p>
+                    <span>
+                      ورود به مسیر <ArrowLeft size={14} />
+                    </span>
+                  </a>
+                );
+              })}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="ticker-strip" data-reveal>
+      <section className="counters-home" data-reveal>
+        <div className="container counter-row">
+          <div className="counter">
+            <strong>+{c1}</strong>
+            <span>قرارداد تخصصی</span>
+          </div>
+          <div className="counter">
+            <strong>{c2}</strong>
+            <span>پارامتر حقوقی</span>
+          </div>
+          <div className="counter">
+            <strong>{c3}</strong>
+            <span>ابزار هوشمند</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="ticker-home" aria-hidden="true">
         <div className="ticker-track">
-          {[...industriesTicker, ...industriesTicker].map((item, index) => (
+          {[...INDUSTRIES, ...INDUSTRIES].map((item, index) => (
             <span key={`${item}-${index}`}>{item}</span>
           ))}
         </div>
       </section>
 
-      <section className="section section-services section-services-home" data-reveal>
+      <section className="section-services-home" data-reveal>
         <div className="container">
           <div className="section-heading">
             <div>
@@ -159,38 +146,22 @@ export default function HomePage() {
               مشاهده همه خدمات <ArrowLeft size={16} />
             </a>
           </div>
-          <div className="service-grid service-grid-home">
-            {heroServices.map((item, index) => {
-              const Icon = icons[item.icon];
+          <div className="service-grid-home">
+            {randomServices.map((item) => {
+              const Icon = icons.chart;
               return (
-                <a className="service-card service-card-home" href={item.href} key={item.title}>
-                  <div className="service-ribbon">تخفیف ویژه</div>
+                <a className="service-card-home" href={`/سفارش/${item.id}`} key={item.id}>
                   <div className="service-icon">
                     <Icon size={22} />
                   </div>
                   <h3>{item.title}</h3>
                   <p>{item.description}</p>
-                  <span>انتخاب این مسیر <ArrowLeft size={14} /></span>
-                  <small>{index === 0 ? 'مشاوره و ثبت سفارش سریع' : 'پشتیبانی مستقیم و شفاف'}</small>
+                  <span>
+                    مشاهده و سفارش <ArrowLeft size={14} />
+                  </span>
                 </a>
               );
             })}
-            <div className="service-card specialist-card specialist-card-home">
-              <span className="plan-badge">انجام کار توسط متخصص</span>
-              <div className="service-icon">
-                <Sparkles size={22} />
-              </div>
-              <h3>خدمات تخصصی برای سازمان شما</h3>
-              <p>وقتی یک کار باید دقیق، سریع و با مسئولیت‌پذیری انجام شود.</p>
-              <div className="specialist-list">
-                {specialistServices.map(([title, price]) => (
-                  <a href="/تماس-با-ما" key={title}>
-                    <span>{title}</span>
-                    <b>{price}</b>
-                  </a>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -206,17 +177,19 @@ export default function HomePage() {
               همه ابزارها <ArrowLeft size={16} />
             </a>
           </div>
-          <div className="tool-grid tool-grid-home">
+          <div className="tool-grid-home">
             {toolItems.map((tool) => {
-              const Icon = icons[tool.icon];
+              const Icon = icons[tool.icon] || Calculator;
               return (
-                <a className="tool-card tool-card-gold" href={tool.href} key={tool.title}>
+                <a className="tool-card-gold" href={tool.href} key={tool.title}>
                   <div className="tool-icon">
                     <Icon size={22} />
                   </div>
                   <h3>{tool.title}</h3>
                   <p>{tool.description}</p>
-                  <span>ورود به ابزار <ArrowLeft size={15} /></span>
+                  <span>
+                    ورود به ابزار <ArrowLeft size={15} />
+                  </span>
                 </a>
               );
             })}
@@ -224,68 +197,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="how-it-works" data-reveal>
+      <section className="how-home" data-reveal>
         <div className="container">
-          <div className="center-heading">
-            <span className="eyebrow">چگونه کار می‌کند</span>
-            <h2>سه مرحله تا تصمیمی روشن‌تر</h2>
-          </div>
-          <div className="timeline-grid">
-            <div className="timeline-step">
-              <span>۱</span>
-              <h3>انتخاب مسیر</h3>
-              <p>از میان قراردادها، خدمات یا ابزارها مسیر مناسب را انتخاب کنید.</p>
-            </div>
-            <div className="timeline-step">
-              <span>۲</span>
-              <h3>ورود اطلاعات</h3>
-              <p>چند پاسخ کوتاه بدهید تا محاسبه یا پیشنهاد مناسب آماده شود.</p>
-            </div>
-            <div className="timeline-step">
-              <span>۳</span>
-              <h3>نتیجه و اقدام</h3>
-              <p>خروجی دقیق را ببینید و در همان لحظه برای اقدام بعدی تصمیم بگیرید.</p>
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">چگونه کار می‌کند</span>
+              <h2>سه قدم تا آرامش کاری</h2>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="section values-section values-section-home" data-reveal>
-        <div className="container">
-          <div className="center-heading">
-            <span className="eyebrow">چرا کاربان؟</span>
-            <h2>برای رشد، به یک همراه قابل اتکا نیاز دارید</h2>
+          <div className="how-steps">
+            <div className="how-step">
+              <strong>۱</strong>
+              <h3>مسیرت را انتخاب کن</h3>
+              <p>کارفرما، کارمند یا فریلنسر؛ هر مسیر، ابزار و قراردادهای خودش را دارد.</p>
+            </div>
+            <div className="how-step">
+              <strong>۲</strong>
+              <h3>بساز و محاسبه کن</h3>
+              <p>قرارداد ببند، حقوق و مالیات را دقیق محاسبه کن، سلامت کسب‌وکار را بسنج.</p>
+            </div>
+            <div className="how-step">
+              <strong>۳</strong>
+              <h3>با خیال راحت رشد کن</h3>
+              <p>متن محکم، عدد دقیق و مشاوره تخصصی؛ از قرارداد تا آرامش.</p>
+            </div>
           </div>
-          <div className="values-grid">
-            {[
-              ['اعتماد', 'اطلاعات و تصمیم‌ها با دقت محافظت می‌شوند.'],
-              ['تخصص', 'دانش حقوقی و مالی را به زبان قابل استفاده ارائه می‌کنیم.'],
-              ['امنیت', 'مسیرهای امن برای قرارداد، داده و تعامل با متخصص.'],
-              ['همراهی', 'از سؤال اول تا اجرای تصمیم کنار شما می‌مانیم.'],
-              ['رشد', 'ابزارهای ساده برای ساختن آینده‌ای بهتر.'],
-            ].map(([title, text]) => (
-              <div className="value-item" key={title}>
-                <BadgeCheck size={22} />
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="brief-bar brief-bar-home" data-reveal>
-        <div className="container brief-inner">
-          <div>
-            <span>هفته‌نامه کاربان</span>
-            <p>یک نکته کاربردی برای مدیریت بهتر کسب‌وکار، هر هفته در موبایل شما.</p>
-          </div>
-          <form onSubmit={(event) => event.preventDefault()}>
-            <input type="tel" inputMode="numeric" placeholder="شماره موبایل" aria-label="شماره موبایل" />
-            <button className="button button-gold" type="submit">
-              عضویت <ArrowLeft size={16} />
-            </button>
-          </form>
         </div>
       </section>
     </div>
