@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download, Check } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { legalConfig, contractCatalog } from '@/data/config';
+import { formatFa, formatPriceFa } from '@/lib/format';
 
 type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
-type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
+type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null; discount_percent?: number };
 type ContractRow = { id: string; title: string; type: string; industry: string; summary: string };
 type LeadRow = { id: string; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
@@ -68,7 +69,7 @@ export default function AdminPage() {
     </div></section>
   );
 
-  const tabs: [Tab, string][] = [['services', 'خدمات'], ['settings', 'تنظیمات'], ['contracts', 'قراردادها'], ['leads', 'لیدها'], ['orders', 'سفارش‌ها'], ['consultations', 'درخواست‌های مشاوره']];
+  const tabs: [Tab, string][] = [['services', 'خدمات'], ['settings', 'تنظیمات'], ['contracts', 'قراردادها'], ['leads', 'لیدها'], ['orders', 'سفارش‌ها'], ['consultations', 'درخواست‌های مشاوره'], ['users', 'مدیریت کاربران']];
 
   return <section className="admin-panel"><div className="container">
     <div className="admin-header"><div className="admin-title"><ShieldCheck size={22} /><h1>پنل مدیریت کاربان</h1><span className="admin-badge">مدیر</span></div><button className="admin-logout" onClick={signOut}>خروج <LogOut size={15} /></button></div>
@@ -80,6 +81,7 @@ export default function AdminPage() {
       {tab === 'leads' && <LeadsTab />}
       {tab === 'orders' && <OrdersTab />}
       {tab === 'consultations' && <ConsultationsTab />}
+      {tab === 'users' && <UsersTab />}
     </div>
   </div></section>;
 }
@@ -88,21 +90,29 @@ function ServicesTab() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
-  const [form, setForm] = useState({ title: '', price: '', description: '', domain: 'financial' as 'financial' | 'labor', unit: '', featured: false, kind: '' });
+  const [form, setForm] = useState({ title: '', price: '', description: '', domain: 'financial' as 'financial' | 'labor', unit: '', featured: false, kind: '', discount_percent: 0 });
   const [showAdd, setShowAdd] = useState(false);
 
-  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('id'); setServices((data || []) as Service[]); setLoading(false); };
+  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind,discount_percent').order('id'); setServices((data || []) as Service[]); setLoading(false); };
   useEffect(() => { load(); }, []);
 
   const save = async (id: string) => {
     const s = services.find((x) => x.id === id); if (!s) return;
-    await supabase.from('services').update({ title: s.title, price: s.price, description: s.description, domain: s.domain, unit: s.unit, featured: s.featured }).eq('id', id);
+    await supabase.from('services').update({ title: s.title, price: s.price, description: s.description, domain: s.domain, unit: s.unit, featured: s.featured, discount_percent: s.discount_percent }).eq('id', id);
     setEditing(null); load();
+  };
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: Function) => {
+    const rawValue = e.target.value.replace(/,/g, '');
+    if (!isNaN(Number(rawValue)) && rawValue !== '') {
+      setter(Number(rawValue).toLocaleString('en-US'));
+    } else if (rawValue === '') {
+      setter('');
+    }
   };
   const add = async () => {
     if (!form.title) return;
-    await supabase.from('services').insert({ title: form.title, price: form.price, description: form.description, domain: form.domain, unit: form.unit, featured: form.featured, kind: form.kind || null });
-    setForm({ title: '', price: '', description: '', domain: 'financial', unit: '', featured: false, kind: '' }); setShowAdd(false); load();
+    await supabase.from('services').insert({ title: form.title, price: form.price, description: form.description, domain: form.domain, unit: form.unit, featured: form.featured, kind: form.kind || null, discount_percent: form.discount_percent });
+    setForm({ title: '', price: '', description: '', domain: 'financial', unit: '', featured: false, kind: '', discount_percent: 0 }); setShowAdd(false); load();
   };
   const remove = async (id: string) => { await supabase.from('services').delete().eq('id', id); load(); };
 
@@ -111,8 +121,9 @@ function ServicesTab() {
     <div className="admin-toolbar"><h2>مدیریت خدمات</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن خدمت</button></div>
     {showAdd && <div className="admin-form">
       <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
-      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت" />
+      <input value={form.price} onChange={(e) => handlePriceChange(e, (val: string) => setForm({ ...form, price: val }))} placeholder="قیمت (ریال)" />
       <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد (مثلاً هر درخواست)" />
+      <input type="number" min="0" max="90" value={form.discount_percent || ''} onChange={(e) => setForm({ ...form, discount_percent: Number(e.target.value) })} placeholder="درصد تخفیف (۰-۹۰)" />
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
       <select value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value as 'financial' | 'labor' })}><option value="financial">مالی</option><option value="labor">روابط کار</option></select>
       <input value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} placeholder="نوع kind (خالی = مشاوره)" />
@@ -120,13 +131,14 @@ function ServicesTab() {
       <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
     </div>}
     <table className="admin-table">
-      <thead><tr><th>عنوان</th><th>قیمت</th><th>حوزه</th><th>واحد</th><th>ویژه</th><th></th></tr></thead>
+      <thead><tr><th>عنوان</th><th>قیمت</th><th>حوزه</th><th>واحد</th><th>تخفیف٪</th><th>ویژه</th><th></th></tr></thead>
       <tbody>
         {services.map((s) => <tr key={s.id}>
           <td>{editing === s.id ? <input value={s.title} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} /> : s.title}</td>
-          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : s.price}</td>
+          <td>{editing === s.id ? <input value={s.price} onChange={(e) => handlePriceChange(e, (val: string) => setServices(services.map((x) => x.id === s.id ? { ...x, price: val } : x)))} /> : formatPriceFa(s.price)}</td>
           <td>{editing === s.id ? <select value={s.domain} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, domain: e.target.value as 'financial' | 'labor' } : x))}><option value="financial">مالی</option><option value="labor">روابط کار</option></select> : (s.domain === 'financial' ? 'مالی' : 'روابط کار')}</td>
           <td>{editing === s.id ? <input value={s.unit} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, unit: e.target.value } : x))} /> : s.unit}</td>
+          <td>{editing === s.id ? <input type="number" min="0" max="90" value={s.discount_percent || 0} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, discount_percent: Number(e.target.value) } : x))} /> : (s.discount_percent ? s.discount_percent + '%' : '—')}</td>
           <td>{editing === s.id ? <input type="checkbox" checked={s.featured} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, featured: e.target.checked } : x))} /> : (s.featured ? 'بله' : '—')}</td>
           <td className="admin-actions">
             {editing === s.id ? <button className="button button-small" onClick={() => save(s.id)}><Save size={14} /></button> : <button className="button button-small" onClick={() => setEditing(s.id)}>ویرایش</button>}
@@ -147,7 +159,7 @@ function SettingsTab() {
     let active = true;
     supabase.from('settings').select('value').eq('key', 'salary_1405').maybeSingle().then(({ data }) => {
       if (!active) return;
-      if (data?.value) setSettings(data.value as SalarySettings); else setSettings({ year: legalConfig.year, baseSalaryDaily: legalConfig.baseSalaryDaily, housingAllowanceMonthly: legalConfig.housingAllowanceMonthly, foodAllowanceMonthly: legalConfig.foodAllowanceMonthly, insuranceEmployeeRate: legalConfig.insuranceEmployeeRate, insuranceEmployerRate: legalConfig.insuranceEmployerRate, annualTaxFree: legalConfig.annualTaxFree });
+      if (data?.value) setSettings(data.value as SalarySettings); else setSettings({ year: legalConfig.year, baseSalaryDaily: legalConfig.baseSalaryDaily, housingAllowanceMonthly: legalConfig.housingAllowanceMonthly, foodAllowanceMonthly: legalConfig.foodAllowanceMonthly, insuranceEmployeeRate: legalConfig.insuranceEmployeeRate, insuranceEmployerRate: legalConfig.insuranceEmployerRate, annualTaxFree: legalConfig.annualTaxFree, familyAllowanceMonthly: 5000000, childAllowanceMonthly: legalConfig.baseSalaryDaily * 3, overtimeRate: 1.4 });
       setLoading(false);
     });
     return () => { active = false; };
@@ -160,22 +172,25 @@ function SettingsTab() {
 
   if (loading) return <p>در حال بارگذاری…</p>;
   const numField = (label: string, key: keyof SalarySettings) => (
-    <label className="settings-field">{label}<input type="number" value={settings[key] as number ?? 0} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} /></label>
+    <label className="settings-field">{label}<input type="number" step="any" value={settings[key] as number ?? 0} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} /></label>
   );
   return <div className="admin-settings">
-    <h2>تنظیمات پارامترهای ۱۴۰۵</h2>
+    <h2>تنظیمات پارامترهای حقوق</h2>
     <p>این اعداد در ماشین‌حساب‌های حقوق و دستمزد استفاده می‌شوند.</p>
     <div className="settings-grid">
       <label className="settings-field">سال<input value={settings.year ?? ''} onChange={(e) => setSettings({ ...settings, year: e.target.value })} /></label>
-      {numField('پایه حقوق روزانه (تومان)', 'baseSalaryDaily')}
-      {numField('بن کارگری ماهانه (تومان)', 'foodAllowanceMonthly')}
-      {numField('حق مسکن ماهانه (تومان)', 'housingAllowanceMonthly')}
-      {numField('سهم بیمه کارگر (٪)', 'insuranceEmployeeRate')}
-      {numField('سهم بیمه کارفرما (٪)', 'insuranceEmployerRate')}
-      {numField('سقف معافیت مالیاتی سالانه (تومان)', 'annualTaxFree')}
+      {numField('پایه حقوق روزانه (ریال)', 'baseSalaryDaily')}
+      {numField('بن کارگری ماهانه (ریال)', 'foodAllowanceMonthly')}
+      {numField('حق مسکن ماهانه (ریال)', 'housingAllowanceMonthly')}
+      {numField('عائله‌مندی (ریال)', 'familyAllowanceMonthly')}
+      {numField('اولاد (ریال)', 'childAllowanceMonthly')}
+      {numField('ضریب اضافه‌کاری', 'overtimeRate')}
+      {numField('سهم بیمه کارگر (نسبت)', 'insuranceEmployeeRate')}
+      {numField('سهم بیمه کارفرما (نسبت)', 'insuranceEmployerRate')}
+      {numField('سقف معافیت مالیاتی سالانه (ریال)', 'annualTaxFree')}
     </div>
     <button className="button" onClick={save}><Save size={16} /> ذخیره تنظیمات</button>
-    {saved && <small className="admin-success">تنظیمات ذخیره شد.</small>}
+    {saved && <div className="feedback-success"><Check size={16} /> تنظیمات ذخیره شد.</div>}
   </div>;
 }
 
@@ -261,7 +276,7 @@ function OrdersTab() {
       <thead><tr><th>موبایل</th><th>خدمت</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
       <tbody>
         {orders.map((o) => <tr key={o.id}>
-          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount || '—'}</td>
+          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount ? formatPriceFa(o.amount) : '—'}</td>
           <td><select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>{Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
           <td>{fmtDate(o.created_at)}</td>
         </tr>)}
@@ -284,6 +299,77 @@ function ConsultationsTab() {
       <tbody>
         {items.map((c) => <tr key={c.id}><td>{c.mobile}</td><td>{c.domain === 'financial' ? 'مالی' : 'روابط کار'}</td><td>{c.service}</td><td>{fmtDate(c.created_at)}</td></tr>)}
         {items.length === 0 && <tr><td colSpan={4}>هیچ درخواستی ثبت نشده است.</td></tr>}
+      </tbody>
+    </table>
+  </div>;
+}
+
+
+function UsersTab() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ username: '', password: '' });
+  const [showAdd, setShowAdd] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  // Basic mock fetch for UI completion since schema isn't provided
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('admin_users').select('id,username,created_at,is_locked,lock_until').order('created_at');
+    setUsers(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const hashPassword = async (pwd: string) => {
+    const msgUint8 = new TextEncoder().encode(pwd);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const add = async () => {
+    if (!form.username || !form.password) return;
+    setStatus('loading');
+    const hashed = await hashPassword(form.password);
+    const { error } = await supabase.from('admin_users').insert({
+      username: form.username,
+      password_hash: hashed,
+      failed_attempts: 0
+    });
+    if (error) { setStatus('error'); return; }
+    setForm({ username: '', password: '' });
+    setShowAdd(false);
+    setStatus('success');
+    load();
+  };
+
+  const remove = async (id: string) => {
+    await supabase.from('admin_users').delete().eq('id', id);
+    load();
+  };
+
+  if (loading) return <p>در حال بارگذاری…</p>;
+  return <div className="admin-table-wrap">
+    <div className="admin-toolbar"><h2>مدیریت کاربران</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن مدیر</button></div>
+    {showAdd && <div className="admin-form">
+      <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="نام کاربری" />
+      <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="رمز عبور" />
+      <button className="button button-small" onClick={add} disabled={status === 'loading'}><Save size={15} /> ذخیره</button>
+      {status === 'success' && <div className="feedback-success"><Check size={16} /> مدیر جدید اضافه شد.</div>}
+      {status === 'error' && <small className="feedback-error">خطا در ذخیره‌سازی</small>}
+    </div>}
+    <table className="admin-table">
+      <thead><tr><th>نام کاربری</th><th>وضعیت قفل</th><th>تاریخ ایجاد</th><th></th></tr></thead>
+      <tbody>
+        {users.map((u) => <tr key={u.id}>
+          <td>{u.username}</td>
+          <td>{u.is_locked ? 'قفل شده' : 'فعال'}</td>
+          <td>{new Date(u.created_at).toLocaleDateString('fa-IR')}</td>
+          <td><button className="admin-delete" onClick={() => remove(u.id)}><Trash2 size={14} /></button></td>
+        </tr>)}
+        {users.length === 0 && <tr><td colSpan={4}>هیچ کاربری یافت نشد.</td></tr>}
       </tbody>
     </table>
   </div>;

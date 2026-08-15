@@ -1,18 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://karban.ir/</loc></url>
-  <url><loc>https://karban.ir/کارفرما</loc></url>
-  <url><loc>https://karban.ir/کارمند</loc></url>
-  <url><loc>https://karban.ir/فریلنسر</loc></url>
-  <url><loc>https://karban.ir/دانشنامه</loc></url>
-  <url><loc>https://karban.ir/قراردادها</loc></url>
-  <url><loc>https://karban.ir/خدمات</loc></url>
-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی</loc></url>
-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/محاسبه-حقوق</loc></url>
-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/هزینه-استخدام</loc></url>
-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/سنوات</loc></url>
-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/بازنشستگی</loc></url>
-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/اضافه-کاری</loc></url>
-  <url><loc>https://karban.ir/درباره-ما</loc></url>
-  <url><loc>https://karban.ir/تماس</loc></url>
+  <url><loc>https://karbanapp.ir/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://karbanapp.ir/خدمات</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://karbanapp.ir/قراردادها</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://karbanapp.ir/دانشنامه</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://karbanapp.ir/ابزارهای-هوش-مصنوعی</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
 </urlset>
