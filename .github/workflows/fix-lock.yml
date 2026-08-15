@@ -13,11 +13,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: remove win32-only rollup from package.json
+        run: |
+          node -e "const fs=require('fs');const f=JSON.parse(fs.readFileSync('package.json'));for(const k of ['dependencies','devDependencies','optionalDependencies']){if(f[k])delete f[k]['@rollup/rollup-win32-x64-msvc'];}fs.writeFileSync('package.json',JSON.stringify(f,null,2)+'\n')"
       - run: rm -f package-lock.json && npm install
       - name: commit and push
         run: |
           git config user.name "lockfix-bot"
           git config user.email "lockfix@users.noreply.github.com"
-          git add package-lock.json
-          git diff --cached --quiet || git commit -m "chore: regenerate cross-platform package-lock"
+          git add package.json package-lock.json
+          git diff --cached --quiet || git commit -m "chore: drop win32 rollup dep, regenerate cross-platform lock"
           git push origin main
