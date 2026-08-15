@@ -9,6 +9,7 @@ import ArticlePage from '@/components/ArticlePage';
 import RolePage from '@/components/RolePage';
 import AdminPage from '@/components/AdminPage';
 import BusinessHealthPage from '@/components/BusinessHealthPage';
+import ContractBuilderPage from '@/components/ContractBuilderPage';
 import OrderPage from '@/components/OrderPage';
 import TermsPage from '@/components/TermsPage';
 
@@ -229,6 +230,14 @@ export default function App() {
   }
 
   if (segments[0] === 'ابزارهای-هوش-مصنوعی') {
+        if (segments[1] === 'ساخت-قرارداد') {
+      return (
+        <Page title="ساخت قرارداد هوشمند" description="قرارداد متناسب با نیاز شما، در چند مرحله." breadcrumb={['ابزارهای هوش مصنوعی', 'ساخت قرارداد']}>
+          <ContractBuilderPage />
+        </Page>
+      );
+    }
+
     if (segments[1] === 'تست-سلامت') {
       return (
         <Page
