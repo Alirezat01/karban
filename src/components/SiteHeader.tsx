@@ -16,7 +16,6 @@ export default function SiteHeader() {
       <div className="container header-inner">
         <a className="brand" href="/" aria-label="کاربان">
           <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="لوگوی کاربان" />
-          <span>کاربان</span>
         </a>
         <nav className="desktop-nav" aria-label="منوی اصلی">
           {links.map(([label, href]) => (
