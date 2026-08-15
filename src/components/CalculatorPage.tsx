@@ -1,322 +1,392 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Calculator, CircleHelp, MessageCircle } from 'lucide-react';
-import { legalConfig } from '@/data/config';
+import { Scale, ShieldCheck } from 'lucide-react';
+import { legalConfig, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
-import { formatRial, formatFaNumber } from '@/lib/format';
+import { formatRial } from '@/lib/format';
 
-type CalculatorType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime';
-type Props = { type: CalculatorType; title: string; description: string };
+export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax';
 
-type SalarySettings = {
-  year?: string;
-  baseSalaryDaily?: number;
-  housingAllowanceMonthly?: number;
-  foodAllowanceMonthly?: number;
-  familyAllowanceMonthly?: number;
-  childAllowanceMonthly?: number;
-  overtimeMultiplier?: number;
-  insuranceEmployeeRate?: number;
-  insuranceEmployerRate?: number;
-  insuranceRate?: number;
-  annualTaxFree?: number;
-  taxExemptionMonthly?: number;
+type Props = { type: CalcType; title: string; description: string };
+
+type Params = {
+  salary: { base: number; bon: number; housing: number; family: number; child_per: number; overtime_coef: number; insurance_employee: number; tax_exempt_monthly: number };
+  hiring: { insurance_employer: number; severance_months: number; eydi_months: number; leave_days: number };
+  tax_brackets: number[];
+  business_exempt: number;
+  bracket_caps: number[];
+  vat_rate: number;
+  retirement: { min_years: number; min_age: number; alt_years: number; alt_age: number; max_years: number };
 };
 
-const money = (value: number) => formatRial(Math.max(0, Math.round(value)));
+const defaultParams: Params = {
+  salary: {
+    base: legalConfig.baseSalaryDaily * 30,
+    bon: legalConfig.foodAllowanceMonthly,
+    housing: legalConfig.housingAllowanceMonthly,
+    family: legalConfig.familyAllowanceMonthly,
+    child_per: legalConfig.childAllowanceMonthly,
+    overtime_coef: legalConfig.overtimeMultiplier,
+    insurance_employee: legalConfig.insuranceEmployeeRate,
+    tax_exempt_monthly: legalConfig.taxExemptionMonthly,
+  },
+  hiring: { insurance_employer: legalConfig.insuranceEmployerRate, severance_months: 1, eydi_months: 2, leave_days: 26 },
+  tax_brackets: [15, 20, 25, 30, 35],
+  business_exempt: 400000000,
+  bracket_caps: [2000000000, 4000000000, 10000000000, 50000000000],
+  vat_rate: 10,
+  retirement: { min_years: 20, min_age: 60, alt_years: 30, alt_age: 50, max_years: 42 },
+};
+
+const noteKey: Record<CalcType, string> = {
+  salary: 'محاسبه-حقوق',
+  hire: 'هزینه-استخدام',
+  severance: 'سنوات',
+  retirement: 'بازنشستگی',
+  overtime: 'اضافه-کاری',
+  'business-tax': 'مالیات-مشاغل',
+  vat: 'ارزش-افزوده',
+  'salary-tax': 'مالیات-حقوق',
+};
+
+function Line({ label, value, strong, minus }: { label: string; value: string; strong?: boolean; minus?: boolean }) {
+  return (
+    <div className={`calc-line ${strong ? 'calc-line-strong' : ''}`}>
+      <span>{label}</span>
+      <strong>{minus ? '− ' : ''}{value}</strong>
+    </div>
+  );
+}
 
 export default function CalculatorPage({ type, title, description }: Props) {
-  const [salary, setSalary] = useState(120000000);
-  const [daysWorked, setDaysWorked] = useState(30);
-  const [married, setMarried] = useState(true);
-  const [children, setChildren] = useState(0);
-  const [overtimeHours, setOvertimeHours] = useState(10);
-  const [shortageDays, setShortageDays] = useState(0);
+  const [params, setParams] = useState<Params>(defaultParams);
+
+  const [base, setBase] = useState(defaultParams.salary.base);
+  const [overtimeHours, setOvertimeHours] = useState(0);
+  const [childrenCount, setChildrenCount] = useState(0);
+  const [married, setMarried] = useState(false);
   const [bonus, setBonus] = useState(0);
-  const [seniorityYears, setSeniorityYears] = useState(3);
-  const [hireFactor, setHireFactor] = useState(1);
-  const [years, setYears] = useState(3);
-  const [hours, setHours] = useState(10);
-  const [age, setAge] = useState(35);
-  const [insuredYears, setInsuredYears] = useState(8);
-  const [calculated, setCalculated] = useState(false);
-  const [cfg, setCfg] = useState(legalConfig);
+  const [deduction, setDeduction] = useState(0);
+
+  const [years, setYears] = useState(10);
+  const [age, setAge] = useState(40);
+  const [insuredYears, setInsuredYears] = useState(10);
+
+  const [revenue, setRevenue] = useState(5000000000);
+  const [expenses, setExpenses] = useState(3000000000);
+
+  const [vatAmount, setVatAmount] = useState(100000000);
+  const [vatMode, setVatMode] = useState<'add' | 'inside'>('add');
 
   useEffect(() => {
     let active = true;
     supabase
-      .from('settings')
+      .from('app_settings')
       .select('value')
-      .eq('key', 'salary_1405')
+      .eq('key', 'calc_1405')
       .maybeSingle()
       .then(({ data }) => {
         if (!active || !data) return;
-        const s = data.value as SalarySettings;
-        setCfg({
-          year: s.year ?? legalConfig.year,
-          baseSalaryDaily: s.baseSalaryDaily ?? legalConfig.baseSalaryDaily,
-          housingAllowanceMonthly: s.housingAllowanceMonthly ?? legalConfig.housingAllowanceMonthly,
-          foodAllowanceMonthly: s.foodAllowanceMonthly ?? legalConfig.foodAllowanceMonthly,
-          familyAllowanceMonthly: s.familyAllowanceMonthly ?? legalConfig.familyAllowanceMonthly,
-          childAllowanceMonthly: s.childAllowanceMonthly ?? legalConfig.childAllowanceMonthly,
-          overtimeMultiplier: s.overtimeMultiplier ?? legalConfig.overtimeMultiplier,
-          insuranceEmployeeRate: s.insuranceEmployeeRate ?? legalConfig.insuranceEmployeeRate,
-          insuranceEmployerRate: s.insuranceEmployerRate ?? legalConfig.insuranceEmployerRate,
-          insuranceRate: s.insuranceRate ?? legalConfig.insuranceRate,
-          annualTaxFree: s.annualTaxFree ?? legalConfig.annualTaxFree,
-          taxExemptionMonthly: s.taxExemptionMonthly ?? legalConfig.taxExemptionMonthly,
-        });
+        const v = data.value as Record<string, unknown>;
+        setParams((prev) => ({
+          ...prev,
+          salary: { ...prev.salary, ...((v.salary as object) || {}) },
+          hiring: { ...prev.hiring, ...((v.hiring as object) || {}) },
+          tax_brackets: (v.tax_brackets as number[]) || prev.tax_brackets,
+          business_exempt: (v.business_exempt as number) || prev.business_exempt,
+          bracket_caps: (v.bracket_caps as number[]) || prev.bracket_caps,
+          vat_rate: (v.vat_rate as number) || prev.vat_rate,
+          retirement: { ...prev.retirement, ...((v.retirement as object) || {}) },
+        }));
       });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
-  const calculation = useMemo(() => {
-    const dailyBase = cfg.baseSalaryDaily || 0;
-    const basePay = dailyBase * daysWorked;
-    const housing = cfg.housingAllowanceMonthly || 0;
-    const food = cfg.foodAllowanceMonthly || 0;
-    const family = married ? cfg.familyAllowanceMonthly || 0 : 0;
-    const childSupport = children * (cfg.childAllowanceMonthly || 0);
-    const seniorityBonus = basePay * Math.min(0.2, seniorityYears * 0.01);
-    const overtime = overtimeHours * ((salary / 220) * (cfg.overtimeMultiplier || 1.4));
-    const shortage = shortageDays * dailyBase;
-    const gross = basePay + housing + food + family + childSupport + seniorityBonus + overtime + bonus - shortage;
-    const insurance = gross * (cfg.insuranceRate ?? cfg.insuranceEmployeeRate ?? 0.07);
-    const annualAdjusted = gross * 12;
-    const taxBase = Math.max(0, annualAdjusted - (cfg.annualTaxFree || 0));
-    const tax = taxBase * 0.1 / 12;
-    const net = gross - insurance - tax;
-    return { basePay, housing, food, family, childSupport, seniorityBonus, overtime, shortage, bonus, gross, insurance, tax, net };
-  }, [bonus, children, cfg, daysWorked, married, overtimeHours, seniorityYears, shortageDays, salary]);
+  const hourly = useMemo(() => base / 220, [base]);
 
-  const salaryPart = type === 'salary' ? Math.max(10, Math.min(80, (salary / 300000000) * 100)) : 60;
-  const insurancePart = type === 'salary' ? 7 : 20;
-  const taxPart = Math.max(5, 100 - salaryPart - insurancePart);
+  const salaryResult = useMemo(() => {
+    const overtimePay = Math.round(hourly * params.salary.overtime_coef * overtimeHours);
+    const familyPay = married ? params.salary.family : 0;
+    const childPay = childrenCount * params.salary.child_per;
+    const gross = base + params.salary.bon + params.salary.housing + familyPay + childPay + overtimePay + bonus;
+    const insurance = Math.round((base + params.salary.bon + params.salary.housing) * params.salary.insurance_employee);
+    const taxable = Math.max(0, gross - insurance - params.salary.tax_exempt_monthly);
+    let tax = 0;
+    if (taxable > 0) {
+      const steps = [
+        { up: params.salary.tax_exempt_monthly * 0.25, rate: 0.1 },
+        { up: params.salary.tax_exempt_monthly * 0.5, rate: 0.15 },
+        { up: params.salary.tax_exempt_monthly * 1, rate: 0.2 },
+        { up: Infinity, rate: 0.3 },
+      ];
+      let rest = taxable;
+      let prevUp = 0;
+      for (const s of steps) {
+        const slice = Math.min(rest, s.up - prevUp);
+        if (slice > 0) tax += slice * s.rate;
+        rest -= slice;
+        prevUp = s.up;
+        if (rest <= 0) break;
+      }
+    }
+    tax = Math.round(tax);
+    const net = gross - insurance - tax - deduction;
+    return { overtimePay, familyPay, childPay, gross, insurance, tax, net };
+  }, [base, bonus, deduction, hourly, married, childrenCount, overtimeHours, params.salary]);
 
-  const range = (label: string, value: number, setValue: (value: number) => void, min: number, max: number, step: number) => (
-    <label className="range-field">
-      {label}
-      <strong>{formatFaNumber(value)}</strong>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => {
-          setValue(Number(event.target.value));
-          setCalculated(false);
-        }}
-      />
-      <input
-        type="number"
-        value={value}
-        onChange={(event) => {
-          setValue(Number(event.target.value));
-          setCalculated(false);
-        }}
-      />
-    </label>
-  );
+  const hireResult = useMemo(() => {
+    const insurance = Math.round((base + params.salary.bon + params.salary.housing) * params.hiring.insurance_employer);
+    const severance = Math.round((base * params.hiring.severance_months) / 12);
+    const eydi = Math.round((base * params.hiring.eydi_months) / 12);
+    const total = base + params.salary.bon + params.salary.housing + insurance + severance + eydi;
+    return { insurance, severance, eydi, total, yearly: total * 12 };
+  }, [base, params]);
 
-  const faqData: Record<CalculatorType, { intro: string; faqs: [string, string][] }> = {
-    salary: {
-      intro: 'این محاسبه‌گر بر اساس پارامترهای سال ۱۴۰۵ و اطلاعات ورودی شما، یک برآورد سریع و قابل فهم ارائه می‌کند.',
-      faqs: [
-        ['بیمه چند درصد است؟', 'سهم بیمه کارگر ۷٪ در نظر گرفته شده و با تنظیمات سالانه از پنل مدیریت قابل تغییر است.'],
-        ['مالیات چگونه حساب می‌شود؟', 'از معافیت سالانه و نرخ تقریبی پلکانی استفاده می‌شود تا نتیجه‌ای نزدیک به واقعیت بگیرید.'],
-        ['اضافه‌کاری چگونه محاسبه می‌شود؟', 'نرخ اضافه‌کاری با ضریب ۱.۴ و بر اساس دستمزد ساعتی برآورد می‌شود.'],
-      ],
-    },
-    severance: {
-      intro: 'سنوات پایان خدمت برای هر سال سابقه معادل یک ماه آخرین مزد است و می‌تواند به‌صورت تقریبی محاسبه شود.',
-      faqs: [
-        ['با استعفا هم سنوات می‌گیرم؟', 'بله، در بسیاری از حالت‌ها سنوات به کارگر تعلق می‌گیرد و به علت پایان همکاری وابسته است.'],
-        ['سنوات مشمول بیمه است؟', 'خیر، سنوات پایان خدمت معمولاً جزو کسورات بیمه قرار نمی‌گیرد.'],
-        ['فرمول ساده چیست؟', 'هر سال سابقه را در یک ماه آخرین مزد ضرب کنید.'],
-      ],
-    },
-    retirement: {
-      intro: 'مسیرهای بازنشستگی و مستمری به سن، سابقه و شرایط شغلی وابسته‌اند و این ابزار یک برآورد اولیه می‌دهد.',
-      faqs: [
-        ['شرط سن چیست؟', 'بسته به سابقه و نوع شغل، شرایط متفاوت است و باید با آخرین مقررات تطبیق داده شود.'],
-        ['مستمری چگونه محاسبه می‌شود؟', 'بر مبنای میانگین دستمزد و سابقه بیمه، برآورد اولیه انجام می‌شود.'],
-        ['کارهای سخت و زیان‌آور چه می‌شوند؟', 'این موارد قواعد ویژه دارند و نتیجه‌ی نهایی باید با مقررات همان سال کنترل شود.'],
-      ],
-    },
-    hire: {
-      intro: 'هزینه استخدام فقط حقوق نیست؛ بیمه، مزایا و تعهدات کارفرما نیز در محاسبه‌ی واقعی نقش دارند.',
-      faqs: [
-        ['سهم بیمه کارفرما چند درصد است؟', 'سهم کارفرما در این مدل ۲۳٪ از مزد پایه در نظر گرفته می‌شود.'],
-        ['هزینه واقعی استخدام چیست؟', 'حقوق پایه به‌علاوه‌ی سهم بیمه و مزایای مرتبط، عدد واقعی را می‌سازد.'],
-        ['چطور به عدد دقیق‌تر برسم؟', 'پارامترهای سال و مزایا را از تنظیمات پنل به‌روز نگه دارید.'],
-      ],
-    },
-    overtime: {
-      intro: 'اضافه‌کاری با ضریب ۱.۴ محاسبه می‌شود و دستمزد ساعتی از تقسیم مزد ماهانه بر ۲۲۰ ساعت به دست می‌آید.',
-      faqs: [
-        ['نرخ اضافه‌کاری چیست؟', 'هر ساعت اضافه‌کاری معادل ۱۴۰٪ مزد عادی ساعتی است.'],
-        ['مزد ساعتی چگونه حساب می‌شود؟', 'مزد ماهانه استاندارد بر ۲۲۰ ساعت تقسیم می‌شود.'],
-        ['حداکثر اضافه‌کاری مجاز چقدر است؟', 'عدد نهایی باید با ضوابط سازمانی و مقررات سالانه تطبیق داده شود.'],
-      ],
-    },
-  };
+  const severanceResult = useMemo(() => ({ total: Math.round(base * years), perYear: base }), [base, years]);
 
-  const content = faqData[type];
+  const retirementResult = useMemo(() => {
+    const r = params.retirement;
+    const normal = age >= r.min_age && insuredYears >= r.min_years;
+    const early = age >= r.alt_age && insuredYears >= r.alt_years;
+    const full = insuredYears >= r.max_years;
+    const status = full || normal || early;
+    const pension = Math.round(base * Math.min(1, insuredYears / 30));
+    return { normal, early, full, status, pension };
+  }, [age, insuredYears, base, params.retirement]);
 
-  const renderSalaryOutput = () => (
-    <div className={`salary-output ${calculated ? 'is-visible' : ''}`}>
-      <div className="salary-output-head">
-        <span>خروجی itemized</span>
-        <strong>{money(calculation.net)}</strong>
-      </div>
-      <div className="salary-output-list">
-        <div><span>حقوق پایه</span><b>{money(calculation.basePay)}</b></div>
-        <div><span>بن و مزایا</span><b>{money(calculation.food + calculation.housing + calculation.family + calculation.childSupport)}</b></div>
-        <div><span>اضافه‌کاری</span><b>{money(calculation.overtime)}</b></div>
-        <div><span>پاداش</span><b>{money(calculation.bonus)}</b></div>
-        <div><span>سنوات/سابقه</span><b>{money(calculation.seniorityBonus)}</b></div>
-        <div><span>کسری</span><b>-{money(calculation.shortage)}</b></div>
-        <div><span>بیمه</span><b>-{money(calculation.insurance)}</b></div>
-        <div><span>مالیات</span><b>-{money(calculation.tax)}</b></div>
-      </div>
-      <div className="salary-output-foot">
-        <span>حقوق خالص</span>
-        <strong>{money(calculation.net)}</strong>
-      </div>
-    </div>
-  );
+  const overtimeResult = useMemo(() => ({ pay: Math.round(hourly * params.salary.overtime_coef * overtimeHours), hourly }), [hourly, overtimeHours, params.salary.overtime_coef]);
+
+  const businessTaxResult = useMemo(() => {
+    const profit = Math.max(0, revenue - expenses);
+    const taxable = Math.max(0, profit - params.business_exempt);
+    const rates = params.tax_brackets;
+    const caps = [...params.bracket_caps, Infinity];
+    let rest = taxable;
+    let prev = 0;
+    const rows: { label: string; amount: number }[] = [];
+    for (let i = 0; i < rates.length; i++) {
+      const slice = Math.min(rest, caps[i] - prev);
+      if (slice > 0) rows.push({ label: `پله ${i + 1} — ${rates[i]}٪`, amount: Math.round((slice * rates[i]) / 100) });
+      rest -= slice;
+      prev = caps[i];
+      if (rest <= 0) break;
+    }
+    const total = rows.reduce((s, r) => s + r.amount, 0);
+    return { profit, taxable, rows, total, effective: profit > 0 ? Math.round((total / profit) * 1000) / 10 : 0 };
+  }, [revenue, expenses, params.business_exempt, params.tax_brackets, params.bracket_caps]);
+
+  const vatResult = useMemo(() => {
+    const rate = params.vat_rate / 100;
+    if (vatMode === 'add') {
+      return { vat: Math.round(vatAmount * rate), gross: Math.round(vatAmount * (1 + rate)), net: vatAmount };
+    }
+    const net = Math.round(vatAmount / (1 + rate));
+    return { vat: vatAmount - net, gross: vatAmount, net };
+  }, [vatAmount, vatMode, params.vat_rate]);
+
+  const salaryTaxResult = useMemo(() => {
+    const insurance = Math.round((base + params.salary.bon + params.salary.housing) * params.salary.insurance_employee);
+    const monthlyTaxable = Math.max(0, base - insurance - params.salary.tax_exempt_monthly);
+    const annualTaxable = monthlyTaxable * 12;
+    let rest = annualTaxable;
+    let prev = 0;
+    const rows: { label: string; amount: number }[] = [];
+    for (const b of legalConfig.taxBrackets) {
+      const slice = Math.min(rest, b.max - prev);
+      if (slice > 0) rows.push({ label: `پله ${Math.round(b.rate * 100)}٪`, amount: Math.round(slice * b.rate) });
+      rest -= slice;
+      prev = b.max;
+      if (rest <= 0) break;
+    }
+    const total = rows.reduce((s, r) => s + r.amount, 0);
+    return { insurance, monthlyTaxable, rows, total, monthly: Math.round(total / 12) };
+  }, [base, params.salary]);
+
+  const notes = legalNotes[noteKey[type]] || [];
 
   return (
-    <section className="inner-page calculator-page">
-      <div className="container calc-layout">
-        <div className="calc-copy">
-          <span className="eyebrow">ابزارهای کاربان · قانون کار {cfg.year}</span>
-          <h1>{title}</h1>
-          <p className="lead">{description}</p>
-          <div className="education">
-            <h2>قبل از محاسبه بدانید</h2>
-            <p>{content.intro}</p>
-          </div>
-          <div className="faq">
-            <h2>پرسش‌های متداول</h2>
-            {content.faqs.map(([q, a]) => (
-              <details key={q}>
-                <summary>
-                  {q}
-                  <CircleHelp size={16} />
-                </summary>
-                <p>{a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
+    <section className="inner-page">
+      <div className="container narrow-content">
+        <span className="eyebrow">ابزارهای هوش مصنوعی · قانون کار ۱۴</span>
+        <h1>{title}</h1>
+        <p className="lead">{description}</p>
 
-        <div className="calculator-card">
-          <div className="calc-card-head">
-            <Calculator />
-            <span>محاسبه‌گر {cfg.year}</span>
-          </div>
-
-          {range('حقوق یا درآمد ماهانه (تومان)', salary, setSalary, 30000000, 300000000, 1000000)}
-
+        <div className="contact-card calc-card">
           {type === 'salary' && (
             <>
-              {range('روز کارکرد', daysWorked, setDaysWorked, 1, 31, 1)}
-              <label className="switch-field">
-                <span>تأهل</span>
-                <button type="button" className={married ? 'active' : ''} onClick={() => setMarried(true)}>
-                  متأهل
-                </button>
-                <button type="button" className={!married ? 'active' : ''} onClick={() => setMarried(false)}>
-                  مجرد
-                </button>
+              <label>حقوق پایه ماهانه (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
               </label>
-              {range('تعداد فرزند', children, setChildren, 0, 10, 1)}
-              {range('اضافه‌کاری (ساعت)', overtimeHours, setOvertimeHours, 0, 120, 1)}
-              {range('کسری (روز)', shortageDays, setShortageDays, 0, 31, 1)}
-              {range('پاداش', bonus, setBonus, 0, 50000000, 500000)}
-              {range('سابقه (سال)', seniorityYears, setSeniorityYears, 0, 30, 1)}
+              <label>ساعت اضافه‌کاری در ماه
+                <input type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value) || 0)} />
+              </label>
+              <label>تعداد فرزند
+                <input type="number" value={childrenCount} onChange={(e) => setChildrenCount(Number(e.target.value) || 0)} />
+              </label>
+              <label className="terms-check">
+                <input type="checkbox" checked={married} onChange={(e) => setMarried(e.target.checked)} />
+                <span>متأهل هستم (حق عائله‌مندی)</span>
+              </label>
+              <label>پاداش و سایر مزایا (ریال)
+                <input type="number" value={bonus} onChange={(e) => setBonus(Number(e.target.value) || 0)} />
+              </label>
+              <label>کسورات دیگر (ریال)
+                <input type="number" value={deduction} onChange={(e) => setDeduction(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="حقوق پایه" value={`${formatRial(base)} ریال`} />
+                <Line label="بن کارگری" value={`${formatRial(params.salary.bon)} ریال`} />
+                <Line label="کمک مسکن" value={`${formatRial(params.salary.housing)} ریال`} />
+                {married && <Line label="عائله‌مندی" value={`${formatRial(salaryResult.familyPay)} ریال`} />}
+                {childrenCount > 0 && <Line label={`اولاد (${childrenCount} فرزند)`} value={`${formatRial(salaryResult.childPay)} ریال`} />}
+                {overtimeHours > 0 && <Line label={`اضافه‌کاری (${overtimeHours} ساعت)`} value={`${formatRial(salaryResult.overtimePay)} ریال`} />}
+                {bonus > 0 && <Line label="پاداش و مزایا" value={`${formatRial(bonus)} ریال`} />}
+                <Line label="ناخالص" value={`${formatRial(salaryResult.gross)} ریال`} strong />
+                <Line label="بیمه سهم کارگر (۷٪)" value={`${formatRial(salaryResult.insurance)} ریال`} minus />
+                <Line label="مالیات حقوق" value={`${formatRial(salaryResult.tax)} ریال`} minus />
+                {deduction > 0 && <Line label="کسورات دیگر" value={`${formatRial(deduction)} ریال`} minus />}
+                <Line label="خالص دریافتی" value={`${formatRial(salaryResult.net)} ریال`} strong />
+              </div>
+            </>
+          )}
+
+          {type === 'hire' && (
+            <>
+              <label>حقوق پایه ماهانه کارمند (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="حقوق پایه" value={`${formatRial(base)} ریال`} />
+                <Line label="بن کارگری" value={`${formatRial(params.salary.bon)} ریال`} />
+                <Line label="کمک مسکن" value={`${formatRial(params.salary.housing)} ریال`} />
+                <Line label={`بیمه سهم کارفرما (${Math.round(params.hiring.insurance_employer * 100)}٪)`} value={`${formatRial(hireResult.insurance)} ریال`} />
+                <Line label="ذخیره سنوات (ماهانه)" value={`${formatRial(hireResult.severance)} ریال`} />
+                <Line label="ذخیره عیدی (ماهانه)" value={`${formatRial(hireResult.eydi)} ریال`} />
+                <Line label="بهای تمام‌شدن ماهانه" value={`${formatRial(hireResult.total)} ریال`} strong />
+                <Line label="بهای تمام‌شدن سالانه" value={`${formatRial(hireResult.yearly)} ریال`} strong />
+              </div>
+              <p className="muted-note">هزینه استخدام فقط حقوق نیست؛ بیمه، عیدی و سنوات را هم باید از روز اول کنار بگذارید.</p>
             </>
           )}
 
           {type === 'severance' && (
             <>
-              {range('روزهای کارکرد', daysWorked, setDaysWorked, 1, 31, 1)}
-              {range('سابقه (سال)', years, setYears, 1, 30, 1)}
+              <label>آخرین حقوق ماهانه (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <label>سابقه کار (سال)
+                <input type="number" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="سنوات هر سال" value={`${formatRial(severanceResult.perYear)} ریال`} />
+                <Line label={`جمع سنوات (${years} سال)`} value={`${formatRial(severanceResult.total)} ریال`} strong />
+              </div>
             </>
           )}
-
-          {type === 'overtime' && range('ساعات اضافه‌کاری', hours, setHours, 1, 100, 1)}
 
           {type === 'retirement' && (
             <>
-              {range('سن فعلی', age, setAge, 18, 70, 1)}
-              {range('سابقه بیمه (سال)', insuredYears, setInsuredYears, 1, 40, 1)}
+              <label>سن فعلی
+                <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value) || 0)} />
+              </label>
+              <label>سابقه پرداخت حق بیمه (سال)
+                <input type="number" value={insuredYears} onChange={(e) => setInsuredYears(Number(e.target.value) || 0)} />
+              </label>
+              <label>میانگین حقوق دو سال آخر (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="شرایط عادی (۶۰ سال + ۲۰ سال سابقه)" value={retirementResult.normal ? '✓ برقرار' : '✗ برقرار نیست'} />
+                <Line label="شرایط جایگزین (۵۰ سال + ۳۰ سال سابقه)" value={retirementResult.early ? '✓ برقرار' : '✗ برقرار نیست'} />
+                <Line label="بدون شرط سن (۴۲ سال سابقه)" value={retirementResult.full ? '✓ برقرار' : '✗ برقرار نیست'} />
+                <Line label="برآورد مستمری ماهانه" value={`${formatRial(retirementResult.pension)} ریال`} strong />
+              </div>
+              {!retirementResult.status && <p className="muted-note">هنوز شرایط بازنشستگی برقرار نیست؛ با افزایش سن یا سابقه دوباره بررسی کنید.</p>}
             </>
           )}
 
-          {type === 'hire' && range('ضریب استخدام', hireFactor, setHireFactor, 1, 3, 0.1)}
-
-          {type === 'salary' && (
-            <div className="calc-hints">
-              <span>سهم بیمه کارگر: ۷٪</span>
-              <span>ضریب اضافه‌کاری: {cfg.overtimeMultiplier?.toFixed(1) || '۱.۴'}</span>
-              <span>عائله‌مندی و اولاد بر اساس تنظیمات</span>
-            </div>
-          )}
-
-          <button
-            className="button full-button calculate-button"
-            type="button"
-            onClick={() => {
-              setCalculated(true);
-            }}
-          >
-            محاسبه نتیجه <ArrowLeft size={17} />
-          </button>
-
-          {type === 'salary' ? (
-            renderSalaryOutput()
-          ) : (
-            <div className={`result-box result-box-green ${calculated ? 'result-visible' : ''}`}>
-              <span>برآورد شما</span>
-              <strong>
-                {money(
-                  type === 'hire'
-                    ? salary * hireFactor
-                    : type === 'severance'
-                      ? (salary / 30) * daysWorked * years
-                      : type === 'overtime'
-                        ? (salary / 220) * (cfg.overtimeMultiplier || 1.4) * hours
-                        : Math.max(0, age + insuredYears >= 60 ? salary * 0.9 : salary * 0.6),
-                )}
-                <small> ریال</small>
-              </strong>
-              <div className="result-legend">
-                <span>
-                  <i className="legend-salary" />
-                  حقوق
-                </span>
-                <span>
-                  <i className="legend-insurance" />
-                  بیمه
-                </span>
-                <span>
-                  <i className="legend-tax" />
-                  مالیات
-                </span>
+          {type === 'overtime' && (
+            <>
+              <label>حقوق پایه ماهانه (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <label>ساعت اضافه‌کاری
+                <input type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="نرخ هر ساعت عادی" value={`${formatRial(Math.round(overtimeResult.hourly))} ریال`} />
+                <Line label="نرخ هر ساعت اضافه‌کاری (×۱٫۴)" value={`${formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} ریال`} />
+                <Line label={`جمع (${overtimeHours} ساعت)`} value={`${formatRial(overtimeResult.pay)} ریال`} strong />
               </div>
-            </div>
+            </>
           )}
 
-          <a className="button full-button" href="/خدمات">
-            مشاوره مرتبط <MessageCircle size={17} />
-          </a>
+          {type === 'business-tax' && (
+            <>
+              <label>درآمد سالانه (ریال)
+                <input type="number" value={revenue} onChange={(e) => setRevenue(Number(e.target.value) || 0)} />
+              </label>
+              <label>هزینه‌های سالانه قابل‌قبول (ریال)
+                <input type="number" value={expenses} onChange={(e) => setExpenses(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="سود سالانه" value={`${formatRial(businessTaxResult.profit)} ریال`} />
+                <Line label="معافیت سالانه مشاغل" value={`${formatRial(params.business_exempt)} ریال`} minus />
+                <Line label="سود مشمول مالیات" value={`${formatRial(businessTaxResult.taxable)} ریال`} />
+                {businessTaxResult.rows.map((r) => (
+                  <Line key={r.label} label={r.label} value={`${formatRial(r.amount)} ریال`} />
+                ))}
+                <Line label="جمع مالیات سالانه" value={`${formatRial(businessTaxResult.total)} ریال`} strong />
+                <Line label="نرخ مؤثر" value={`${businessTaxResult.effective}٪`} />
+              </div>
+            </>
+          )}
+
+          {type === 'vat' && (
+            <>
+              <label>مبلغ (ریال)
+                <input type="number" value={vatAmount} onChange={(e) => setVatAmount(Number(e.target.value) || 0)} />
+              </label>
+              <label className="terms-check">
+                <input type="checkbox" checked={vatMode === 'inside'} onChange={(e) => setVatMode(e.target.checked ? 'inside' : 'add')} />
+                <span>مبلغ واردشده شامل ارزش افزوده است (استخراج از داخل فاکتور)</span>
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="مبلغ بدون ارزش افزوده" value={`${formatRial(vatResult.net)} ریال`} />
+                <Line label={`ارزش افزوده (${params.vat_rate}٪)`} value={`${formatRial(vatResult.vat)} ریال`} />
+                <Line label="مبلغ با ارزش افزوده" value={`${formatRial(vatResult.gross)} ریال`} strong />
+              </div>
+            </>
+          )}
+
+          {type === 'salary-tax' && (
+            <>
+              <label>حقوق ماهانه مشمول (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <div className="feedback-success result-box">
+                <Line label="بیمه سهم کارگر" value={`${formatRial(salaryTaxResult.insurance)} ریال`} minus />
+                <Line label="معافیت ماهانه ۱۴۵" value={`${formatRial(params.salary.tax_exempt_monthly)} ریال`} minus />
+                <Line label="مازاد مشمول ماهانه" value={`${formatRial(salaryTaxResult.monthlyTaxable)} ریال`} />
+                {salaryTaxResult.rows.map((r) => (
+                  <Line key={r.label} label={r.label} value={`${formatRial(r.amount)} ریال`} />
+                ))}
+                <Line label="مالیات سالانه" value={`${formatRial(salaryTaxResult.total)} ریال`} strong />
+                <Line label="مالیات ماهانه تقریبی" value={`${formatRial(salaryTaxResult.monthly)} ریال`} strong />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="legal-box">
+          <h2><Scale size={18} /> مبنای قانونی</h2>
+          <ul>
+            {notes.map((n, i) => (
+              <li key={i}>{n}</li>
+            ))}
+          </ul>
+          <p className="muted-note"><ShieldCheck size={14} /> پارامترها مطابق مقررات ۱۴ است و از تب «تنظیمات» پنل ادمین قابل به‌روزرسانی است.</p>
         </div>
       </div>
     </section>
   );
 }
-
