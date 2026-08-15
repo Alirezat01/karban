@@ -241,7 +241,7 @@ export function ServicesPage() {
   const renderPrice = (value: string, discountPercent?: number | null) => {
     const result = priceText(value, discountPercent);
     if (typeof result === 'string') {
-      return <strong>{result} ریال</strong>;
+      return<strong>{result}</strong>;
     }
     return (
       <div className="service-price-group">
