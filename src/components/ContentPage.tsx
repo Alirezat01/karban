@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, BriefcaseBusiness } from 'lucide-react';
+import { ArrowLeft, Calculator, Clock, Coins, FileText, HeartHandshake, Scale, Sun, BriefcaseBusiness, TrendingUp } from 'lucide-react';
 import { contractCatalog, calculatorItems, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
 import { supabase } from '@/lib/supabase';
-import { isIranianMobile } from '@/lib/validation';
-import { normalizeMobile } from '@/lib/normalize';
-import { notifyAdmin } from '@/lib/notify';
-import { formatEditableAmount, formatRial, toNumericValue } from '@/lib/format';
+import { formatRial, toNumericValue } from '@/lib/format';
 
 const icons = [Scale, FileText, BriefcaseBusiness, Calculator, Sun, HeartHandshake];
-const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock };
+const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock, chart: TrendingUp, coins: Coins };
 
 type Props = { kind: 'knowledge' | 'contracts' | 'tools' | 'simple'; title: string; description: string; eyebrow?: string };
 type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null; discount_percent?: number | null };
@@ -216,10 +213,6 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
 
 export function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
-  const [mobile, setMobile] = useState('');
-  const [domain, setDomain] = useState<'financial' | 'labor'>('financial');
-  const [service, setService] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     let active = true;
@@ -241,36 +234,14 @@ export function ServicesPage() {
   }, []);
 
   const consultationServices = services.filter((s) => !s.kind);
-  const visibleServices = consultationServices.filter((item) => item.domain === domain);
-
-  useEffect(() => {
-    if (visibleServices.length && !visibleServices.some((item) => item.title === service)) {
-      setService(visibleServices[0].title);
-    }
-  }, [domain, services, service, visibleServices]);
-
-  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!isIranianMobile(mobile) || !service) {
-      setStatus('error');
-      return;
-    }
-    setStatus('loading');
-    const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service });
-    if (error) {
-      console.error('consultation request failed', error);
-      setStatus('error');
-      return;
-    }
-    notifyAdmin(`📥 مشاوره: ${service} | ${normalizeMobile(mobile)}`);
-    setStatus('success');
-    setMobile('');
-  };
+  const laborItems = consultationServices.filter((s) => s.domain === 'labor');
+  const financialItems = consultationServices.filter((s) => s.domain === 'financial');
+  const contractItems = services.filter((s) => s.kind);
 
   const renderPrice = (value: string, discountPercent?: number | null) => {
     const result = priceText(value, discountPercent);
     if (typeof result === 'string') {
-      return <strong>{result}</strong>;
+      return <strong>{result} ریال</strong>;
     }
     return (
       <div className="service-price-group">
@@ -283,20 +254,17 @@ export function ServicesPage() {
   const renderServiceCard = (plan: Service) => {
     const discounted = plan.discount_percent || 0;
     return (
-      <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>
+      <a className={`plan-card plan-link ${plan.featured ? 'plan-featured' : ''}`} href={`/سفارش/${plan.id}`} key={plan.id}>
         {plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}
         {discounted > 0 && <span className="discount-ribbon">تخفیف ویژه</span>}
         <h2>{plan.title}</h2>
         <p>{plan.description}</p>
         {renderPrice(plan.price, discounted)}
         <small>{plan.unit}</small>
-      </article>
+        <span className="plan-cta">ثبت سفارش <ArrowLeft size={15} /></span>
+      </a>
     );
   };
-
-  const laborItems = consultationServices.filter((s) => s.domain === 'labor');
-  const financialItems = consultationServices.filter((s) => s.domain === 'financial');
-  const contractItems = services.filter((s) => s.kind);
 
   return (
     <section className="inner-page">
@@ -304,7 +272,7 @@ export function ServicesPage() {
         <div className="narrow-content">
           <span className="eyebrow">خدمات تخصصی کاربان</span>
           <h1>خدمات قراردادی و تخصصی</h1>
-          <p className="lead">دو مسیر هم‌وزن برای امور مالی و روابط کار؛ از یک پرسش کوتاه تا همراهی کامل سازمانی.</p>
+          <p className="lead">روی هر خدمت بزنید تا توضیح کامل را ببینید و همان‌جا سفارش بدهید.</p>
         </div>
 
         {laborItems.length > 0 && (
@@ -323,10 +291,7 @@ export function ServicesPage() {
 
         {contractItems.length > 0 && (
           <section>
-            <h2>
-              خدمات قراردادی و انجام‌کاری
-              <span className="plan-badge plan-badge-inline">انجام کار توسط متخصص</span>
-            </h2>
+            <h2>خدمات قراردادی</h2>
             <div className="plans-grid">{contractItems.map(renderServiceCard)}</div>
           </section>
         )}
@@ -334,47 +299,10 @@ export function ServicesPage() {
         <div className="guarantee">
           <Scale size={23} />
           <span>
-            <strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.
+            <strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.
           </span>
         </div>
-
-        <form className="filter-panel" onSubmit={submitConsultation}>
-          <strong>فرم درخواست مشاوره</strong>
-          <div className="filter-row">
-            <div className="input-with-check">
-              <input
-                type="tel"
-                inputMode="numeric"
-                value={mobile}
-                onChange={(event) => {
-                  setMobile(event.target.value);
-                  setStatus('idle');
-                }}
-                placeholder="شماره موبایل"
-                aria-label="شماره موبایل"
-              />
-              {isIranianMobile(mobile) && <span className="green-check">✓</span>}
-            </div>
-            <select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه">
-              <option value="financial">مالی و مالیاتی</option>
-              <option value="labor">روابط کار</option>
-            </select>
-            <select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">
-              {visibleServices.map((item) => (
-                <option value={item.title} key={item.id}>
-                  {item.title}
-                </option>
-              ))}
-            </select>
-            <button className="button" type="submit" disabled={status === 'loading'}>
-              ثبت درخواست <ArrowLeft size={15} />
-            </button>
-          </div>
-          {status === 'success' && <small className="admin-success">✓ درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</small>}
-          {status === 'error' && <small className="admin-error">شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}
-        </form>
       </div>
     </section>
   );
 }
-
