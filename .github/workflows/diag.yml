@@ -1,0 +1,16 @@
+name: diag
+on:
+  workflow_dispatch:
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: typecheck
+        run: |
+          npx tsc --noEmit > tsc.log 2>&1 || true
+          cat tsc.log
