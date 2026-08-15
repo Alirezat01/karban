@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/build.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.24.0",
     "@supabase/supabase-js": "^2.112.3",
     "lucide-react": "^0.446.0",
     "pdf-lib": "^1.17.1",

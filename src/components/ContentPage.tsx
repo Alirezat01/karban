@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards } from 'lucide-react';
+import { ArrowLeft, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, BriefcaseBusiness } from 'lucide-react';
 import { contractCatalog, calculatorItems, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin } from '@/lib/notify';
+import { formatEditableAmount, formatRial, toNumericValue } from '@/lib/format';
 
-const icons = [Scale, FileText, WalletCards, Calculator, Users, BriefcaseBusiness];
+const icons = [Scale, FileText, BriefcaseBusiness, Calculator, Sun, HeartHandshake];
 const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock };
-type Props = { kind: 'knowledge' | 'contracts' | 'tools' | 'simple'; title: string; description: string; eyebrow?: string };
-type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
 
-// We need an interface for the contract object so we can combine DB records and fallbacks
-interface ContractItem {
+type Props = { kind: 'knowledge' | 'contracts' | 'tools' | 'simple'; title: string; description: string; eyebrow?: string };
+type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null; discount_percent?: number | null };
+
+type ContractItem = {
   id: string;
   type?: string;
   industry?: string;
@@ -20,13 +21,20 @@ interface ContractItem {
   description?: string;
   icon?: number;
   body?: string;
-}
+};
+
+const priceText = (value: string, discountPercent?: number | null) => {
+  const base = toNumericValue(value);
+  if (!base) return value;
+  if (!discountPercent || discountPercent <= 0) return formatRial(base);
+  const discounted = Math.max(0, Math.round(base * (1 - discountPercent / 100)));
+  return { base: formatRial(base), discounted: formatRial(discounted) };
+};
 
 export default function ContentPage({ kind, title, description, eyebrow = 'کاربان' }: Props) {
   const [typeFilter, setTypeFilter] = useState('همه انواع قرارداد');
   const [searchQuery, setSearchQuery] = useState('');
   const [industryFilter, setIndustryFilter] = useState('همه صنف‌ها');
-
   const [dbContracts, setDbContracts] = useState<ContractItem[]>([]);
   const [loadingContracts, setLoadingContracts] = useState(true);
 
@@ -35,6 +43,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
       setLoadingContracts(false);
       return;
     }
+
     let active = true;
     supabase
       .from('contracts')
@@ -43,104 +52,329 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
       .then(({ data, error }) => {
         if (!active) return;
         if (error || !data || data.length === 0) {
-          // fallback to config.ts contractCatalog
           setDbContracts(contractCatalog as ContractItem[]);
         } else {
-          const mapped = data.map((item, index) => ({
-            id: item.id,
-            title: item.title,
-            type: item.type || '',
-            industry: item.industry || '',
-            description: item.summary || item.description || '',
-            body: item.body || '',
-            icon: index % icons.length
-          }));
-          setDbContracts(mapped);
+          setDbContracts(
+            data.map((item, index) => ({
+              id: item.id,
+              title: item.title,
+              type: item.type || '',
+              industry: item.industry || '',
+              description: item.summary || item.description || '',
+              body: item.body || '',
+              icon: index % icons.length,
+            })),
+          );
         }
         setLoadingContracts(false);
       });
-    return () => { active = false; };
+
+    return () => {
+      active = false;
+    };
   }, [kind]);
 
+  const filteredContracts = useMemo(
+    () =>
+      dbContracts.filter((item) => {
+        const matchType = typeFilter === 'همه انواع قرارداد' || item.type === typeFilter;
+        const matchInd = industryFilter === 'همه صنف‌ها' || item.industry === industryFilter;
+        const term = searchQuery.trim().toLowerCase();
+        const matchSearch =
+          term === '' ||
+          item.title.toLowerCase().includes(term) ||
+          (item.description || '').toLowerCase().includes(term) ||
+          (item.body || '').toLowerCase().includes(term);
+        return matchType && matchInd && matchSearch;
+      }),
+    [dbContracts, typeFilter, industryFilter, searchQuery],
+  );
 
+  return (
+    <section className={`inner-page ${kind === 'tools' ? 'tools-page' : ''}`}>
+      <div className={`container ${kind === 'contracts' || kind === 'tools' ? '' : 'narrow-content'}`}>
+        <span className="eyebrow">{eyebrow}</span>
+        <h1>{title}</h1>
+        <p className="lead">{description}</p>
 
-  const filteredContracts = useMemo(() => {
-    return dbContracts.filter((item) => {
-      const matchType = typeFilter === 'همه انواع قرارداد' || item.type === typeFilter;
-      const matchInd = industryFilter === 'همه صنف‌ها' || item.industry === industryFilter;
-      const term = searchQuery.toLowerCase();
-      const matchSearch = term === '' ||
-        (item.title && item.title.toLowerCase().includes(term)) ||
-        (item.description && item.description.toLowerCase().includes(term)) ||
-        // Accessing body requires it to be on the item. Wait, dbContracts doesn't map body currently. We need to map body too. Let's fix that.
-        // Actually, we should map 'body' to ContractItem.
-        (item.body && item.body.toLowerCase().includes(term));
-      return matchType && matchInd && matchSearch;
-    });
-  }, [dbContracts, typeFilter, industryFilter, searchQuery]);
+        {kind === 'knowledge' && (
+          <div className="category-grid">
+            {['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => {
+              const Icon = icons[index];
+              return (
+                <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}>
+                  <Icon />
+                  <h2>{item}</h2>
+                  <p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p>
+                  <ArrowLeft size={16} />
+                </a>
+              );
+            })}
+          </div>
+        )}
 
-  return <section className={`inner-page ${kind === 'tools' ? 'tools-page' : ''}`}><div className={`container ${kind === 'contracts' || kind === 'tools' ? '' : 'narrow-content'}`}><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p className="lead">{description}</p>
-    {kind === 'knowledge' && <div className="category-grid">{['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => { const Icon = icons[index]; return <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}><Icon /><h2>{item}</h2><p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p><ArrowLeft size={16} /></a>; })}</div>}
-
-    {kind === 'contracts' && <>
-      <div className="filter-panel">
-        <strong>جستجو و فیلتر قراردادها</strong>
-        <div className="filter-row">
-          <input type="text" placeholder="جستجو در قراردادها..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{flex: 1}} />
-          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="نوع قرارداد">
-            <option>همه انواع قرارداد</option>
-            {CONTRACT_TYPES.map((item) => <option key={item}>{item}</option>)}
-          </select>
-          <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} aria-label="صنف یا شغل">
-            <option>همه صنف‌ها</option>
-            {INDUSTRIES.map((item) => <option key={item}>{item}</option>)}
-          </select>
-        </div>
-        <small>{filteredContracts.length} قرارداد متناسب با انتخاب شما</small>
-      </div>
-
-      {loadingContracts ? <p style={{textAlign: 'center', marginTop: '2rem'}}>در حال بارگذاری قراردادها...</p> :
-      <div className="contract-grid">
-        {filteredContracts.map((item) => {
-          const Icon = icons[item.icon || 0];
-          return <article className="contract-card" key={item.id}>
-            <div className="contract-card-top">
-              <Icon />
-              <div>
-                <small>{item.industry}</small>
-                <h2>{item.title}</h2>
-                <p>{item.description}</p>
+        {kind === 'contracts' && (
+          <>
+            <div className="filter-panel">
+              <strong>جست‌وجو و فیلتر قراردادها</strong>
+              <div className="filter-row">
+                <input type="text" placeholder="جست‌وجو در قراردادها..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ flex: 1 }} />
+                <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="نوع قرارداد">
+                  <option>همه انواع قرارداد</option>
+                  {CONTRACT_TYPES.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+                <select value={industryFilter} onChange={(event) => setIndustryFilter(event.target.value)} aria-label="صنف یا شغل">
+                  <option>همه صنف‌ها</option>
+                  {INDUSTRIES.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
               </div>
+              <small>{filteredContracts.length} قرارداد متناسب با انتخاب شما</small>
             </div>
-            <div className="contract-tiers">
-              <span>عمومی <b>رایگان</b></span>
-              <span>تخصصی <b>قیمت ثابت</b></span>
-              <span>اختصاصی <b>متخصص</b></span>
-            </div>
-            <a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a>
-          </article>;
-        })}
-      </div>}
-    </>}
 
-    {kind === 'tools' && <><div className="tools-hero-card"><div><h2>ابزارهای هوش مصنوعی کاربان</h2><p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p></div><img src="/images/og-tools.png" alt="تصویر ماشین‌حساب کاربان" /></div><div className="tool-grid">{calculatorItems.map((item) => { const Icon = toolIcons[item.icon] || Calculator; return <a className="tool-card" href={item.href} key={item.title}><div className="tool-icon"><Icon size={22} /></div><h3>{item.title}</h3><p>{item.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></>}
-    {kind === 'simple' && <div className="simple-panels"><h2>همه‌چیز برای یک تصمیم بهتر</h2><p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p><a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a></div>}
-  </div></section>;
+            {loadingContracts ? (
+              <p style={{ textAlign: 'center', marginTop: '2rem' }}>در حال بارگذاری قراردادها...</p>
+            ) : (
+              <div className="contract-grid">
+                {filteredContracts.map((item) => {
+                  const Icon = icons[item.icon || 0];
+                  return (
+                    <article className="contract-card" key={item.id}>
+                      <div className="contract-card-top">
+                        <Icon />
+                        <div>
+                          <small>{item.industry}</small>
+                          <h2>{item.title}</h2>
+                          <p>{item.description}</p>
+                        </div>
+                      </div>
+                      <div className="contract-tiers">
+                        <span>
+                          عمومی <b>رایگان</b>
+                        </span>
+                        <span>
+                          تخصصی <b>قیمت ثابت</b>
+                        </span>
+                        <span>
+                          اختصاصی <b>متخصص</b>
+                        </span>
+                      </div>
+                      <a className="button button-small" href={`/قراردادها/${item.id}`}>
+                        مشاهده <ArrowLeft size={15} />
+                      </a>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {kind === 'tools' && (
+          <>
+            <div className="tools-hero-card">
+              <div>
+                <h2>ابزارهای هوش مصنوعی کاربان</h2>
+                <p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p>
+              </div>
+              <img src="/images/og-tools.png" alt="تصویر ابزارهای کاربان" />
+            </div>
+            <div className="tool-grid">
+              {calculatorItems.map((item) => {
+                const Icon = toolIcons[item.icon] || Calculator;
+                return (
+                  <a className="tool-card" href={item.href} key={item.title}>
+                    <div className="tool-icon">
+                      <Icon size={22} />
+                    </div>
+                    <h3>{item.title}</h3>
+                    <p>{item.description}</p>
+                    <span>ورود به ابزار <ArrowLeft size={15} /></span>
+                  </a>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {kind === 'simple' && (
+          <div className="simple-panels">
+            <h2>همه‌چیز برای یک تصمیم بهتر</h2>
+            <p>{description}</p>
+            <a className="button" href="/تماس-با-ما">
+              با ما در تماس باشید <ArrowLeft size={17} />
+            </a>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 export function ServicesPage() {
-  const [services, setServices] = useState<Service[]>([]); const [mobile, setMobile] = useState(''); const [domain, setDomain] = useState<'financial' | 'labor'>('financial'); const [service, setService] = useState(''); const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  useEffect(() => { let active = true; supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('created_at').then(({ data, error }) => { if (!active) return; if (error) { console.error('services load failed', error); return; } setServices((data || []) as Service[]); }); return () => { active = false; }; }, []);
+  const [services, setServices] = useState<Service[]>([]);
+  const [mobile, setMobile] = useState('');
+  const [domain, setDomain] = useState<'financial' | 'labor'>('financial');
+  const [service, setService] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from('services')
+      .select('id,title,price,description,domain,unit,featured,kind,discount_percent')
+      .order('created_at')
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error('services load failed', error);
+          return;
+        }
+        setServices((data || []) as Service[]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const consultationServices = services.filter((s) => !s.kind);
   const visibleServices = consultationServices.filter((item) => item.domain === domain);
-  useEffect(() => { if (visibleServices.length && !visibleServices.some((item) => item.title === service)) setService(visibleServices[0].title); }, [domain, services, service, visibleServices]);
-  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } notifyAdmin(`📥 مشاوره: ${service} | ${normalizeMobile(mobile)}`); setStatus('success'); setMobile(''); };
+
+  useEffect(() => {
+    if (visibleServices.length && !visibleServices.some((item) => item.title === service)) {
+      setService(visibleServices[0].title);
+    }
+  }, [domain, services, service, visibleServices]);
+
+  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isIranianMobile(mobile) || !service) {
+      setStatus('error');
+      return;
+    }
+    setStatus('loading');
+    const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service });
+    if (error) {
+      console.error('consultation request failed', error);
+      setStatus('error');
+      return;
+    }
+    notifyAdmin(`📥 مشاوره: ${service} | ${normalizeMobile(mobile)}`);
+    setStatus('success');
+    setMobile('');
+  };
+
+  const renderPrice = (value: string, discountPercent?: number | null) => {
+    const result = priceText(value, discountPercent);
+    if (typeof result === 'string') {
+      return <strong>{result}</strong>;
+    }
+    return (
+      <div className="service-price-group">
+        <del>{result.base}</del>
+        <strong>{result.discounted}</strong>
+      </div>
+    );
+  };
+
+  const renderServiceCard = (plan: Service) => {
+    const discounted = plan.discount_percent || 0;
+    return (
+      <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>
+        {plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}
+        {discounted > 0 && <span className="discount-ribbon">تخفیف ویژه</span>}
+        <h2>{plan.title}</h2>
+        <p>{plan.description}</p>
+        {renderPrice(plan.price, discounted)}
+        <small>{plan.unit}</small>
+      </article>
+    );
+  };
+
   const laborItems = consultationServices.filter((s) => s.domain === 'labor');
   const financialItems = consultationServices.filter((s) => s.domain === 'financial');
   const contractItems = services.filter((s) => s.kind);
-  return <section className="inner-page"><div className="container"><div className="narrow-content"><span className="eyebrow">خدمات تخصصی کاربان</span><h1>خدمات تخصصی کاربان — از پرسش متنی تا همراهی کامل</h1><p className="lead">دو مسیر هم‌وزن برای امور مالی و روابط کار؛ از یک پرسش کوتاه تا همراهی کامل سازمانی.</p></div>
-    {laborItems.length > 0 && <section><h2>مشاوره روابط کار</h2><div className="plans-grid">{laborItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
-    {financialItems.length > 0 && <section><h2>مشاوره مالی، مالیاتی و حسابرسی</h2><div className="plans-grid">{financialItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
-    {contractItems.length > 0 && <section><h2>خدمات قراردادی و انجام‌کردنی <span className="plan-badge" style={{ position: 'static', display: 'inline-block', marginRight: '0.5rem' }}>انجام کار توسط متخصص</span></h2><div className="plans-grid">{contractItems.map((plan) => <article className="plan-card" key={plan.id}><h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
-    <div className="guarantee"><Scale size={23} /><span><strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.</span></div><form className="filter-panel" onSubmit={submitConsultation}><strong>فرم درخواست مشاوره</strong><div className="filter-row"><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه"><option value="financial">مالی و مالیاتی</option><option value="labor">روابط کار</option></select><select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">{visibleServices.map((item) => <option value={item.title} key={item.id}>{item.title}</option>)}</select><button className="button" type="submit" disabled={status === 'loading'}>ثبت درخواست <ArrowLeft size={15} /></button></div>{status === 'success' && <small>درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</small>}{status === 'error' && <small>شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}</form></div></section>;
+
+  return (
+    <section className="inner-page">
+      <div className="container">
+        <div className="narrow-content">
+          <span className="eyebrow">خدمات تخصصی کاربان</span>
+          <h1>خدمات قراردادی و تخصصی</h1>
+          <p className="lead">دو مسیر هم‌وزن برای امور مالی و روابط کار؛ از یک پرسش کوتاه تا همراهی کامل سازمانی.</p>
+        </div>
+
+        {laborItems.length > 0 && (
+          <section>
+            <h2>مشاوره روابط کار</h2>
+            <div className="plans-grid">{laborItems.map(renderServiceCard)}</div>
+          </section>
+        )}
+
+        {financialItems.length > 0 && (
+          <section>
+            <h2>مشاوره مالی، مالیاتی و حسابرسی</h2>
+            <div className="plans-grid">{financialItems.map(renderServiceCard)}</div>
+          </section>
+        )}
+
+        {contractItems.length > 0 && (
+          <section>
+            <h2>
+              خدمات قراردادی و انجام‌کاری
+              <span className="plan-badge plan-badge-inline">انجام کار توسط متخصص</span>
+            </h2>
+            <div className="plans-grid">{contractItems.map(renderServiceCard)}</div>
+          </section>
+        )}
+
+        <div className="guarantee">
+          <Scale size={23} />
+          <span>
+            <strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.
+          </span>
+        </div>
+
+        <form className="filter-panel" onSubmit={submitConsultation}>
+          <strong>فرم درخواست مشاوره</strong>
+          <div className="filter-row">
+            <div className="input-with-check">
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={mobile}
+                onChange={(event) => {
+                  setMobile(event.target.value);
+                  setStatus('idle');
+                }}
+                placeholder="شماره موبایل"
+                aria-label="شماره موبایل"
+              />
+              {isIranianMobile(mobile) && <span className="green-check">✓</span>}
+            </div>
+            <select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه">
+              <option value="financial">مالی و مالیاتی</option>
+              <option value="labor">روابط کار</option>
+            </select>
+            <select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">
+              {visibleServices.map((item) => (
+                <option value={item.title} key={item.id}>
+                  {item.title}
+                </option>
+              ))}
+            </select>
+            <button className="button" type="submit" disabled={status === 'loading'}>
+              ثبت درخواست <ArrowLeft size={15} />
+            </button>
+          </div>
+          {status === 'success' && <small className="admin-success">✓ درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</small>}
+          {status === 'error' && <small className="admin-error">شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}
+        </form>
+      </div>
+    </section>
+  );
 }
+
