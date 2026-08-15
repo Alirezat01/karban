@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { useSEO } from '@/lib/seo';
@@ -14,15 +14,25 @@ type Props = {
 export default function Layout({ children, title, description, breadcrumb, jsonLd }: Props) {
   useSEO({ title, description, path: window.location.pathname, jsonLd });
 
+  const pathSegments = window.location.pathname.split('/').filter(Boolean);
+
   return (
     <>
       <SiteHeader />
-      {breadcrumb && (
+      {breadcrumb && breadcrumb.length > 0 && (
         <div className="container breadcrumb" aria-label="مسیر صفحه">
           <a href="/">خانه</a>
-          {breadcrumb.map((item) => (
-            <span key={item}>/ {item}</span>
-          ))}
+          {breadcrumb.map((item, index) => {
+            const last = index === breadcrumb.length - 1;
+            const href = '/' + pathSegments.slice(0, index + 1).join('/');
+            return last ? (
+              <span key={item}>/ {item}</span>
+            ) : (
+              <a key={item} href={href}>
+                / {item}
+              </a>
+            );
+          })}
         </div>
       )}
       <main>{children}</main>
@@ -30,4 +40,3 @@ export default function Layout({ children, title, description, breadcrumb, jsonL
     </>
   );
 }
-
