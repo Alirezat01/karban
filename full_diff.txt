@@ -1,0 +1,1418 @@
+diff --git a/index.html b/index.html
+index d730a2b..bdc68e4 100644
+--- a/index.html
++++ b/index.html
+@@ -11,7 +11,22 @@
+     <meta property="og:image" content="https://bolt.new/static/og_default.png">
+     <meta name="twitter:card" content="summary_large_image">
+     <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
+-</head>
++
++    <script type="application/ld+json">
++    {
++      "@context": "https://schema.org",
++      "@type": "Organization",
++      "name": "کاربان",
++      "url": "https://karbanapp.ir",
++      "logo": "https://karbanapp.ir/assets/images/logo.png",
++      "contactPoint": {
++        "@type": "ContactPoint",
++        "telephone": "021-88342679",
++        "contactType": "customer service"
++      }
++    }
++    </script>
++  </head>
+   <body>
+     <div id="root"></div>
+     <script type="module" src="/src/main.tsx"></script>
+diff --git a/package-lock.json b/package-lock.json
+index 3452fc6..ece09b1 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -10,6 +10,7 @@
+       "dependencies": {
+         "@supabase/supabase-js": "^2.112.3",
+         "lucide-react": "^0.446.0",
++        "pdf-lib": "^1.17.1",
+         "react": "^18.3.1",
+         "react-dom": "^18.3.1"
+       },
+@@ -986,6 +987,24 @@
+         "node": ">= 8"
+       }
+     },
++    "node_modules/@pdf-lib/standard-fonts": {
++      "version": "1.0.0",
++      "resolved": "https://registry.npmjs.org/@pdf-lib/standard-fonts/-/standard-fonts-1.0.0.tgz",
++      "integrity": "sha512-hU30BK9IUN/su0Mn9VdlVKsWBS6GyhVfqjwl1FjZN4TxP6cCw0jP2w7V3Hf5uX7M0AZJ16vey9yE0ny7Sa59ZA==",
++      "license": "MIT",
++      "dependencies": {
++        "pako": "^1.0.6"
++      }
++    },
++    "node_modules/@pdf-lib/upng": {
++      "version": "1.0.1",
++      "resolved": "https://registry.npmjs.org/@pdf-lib/upng/-/upng-1.0.1.tgz",
++      "integrity": "sha512-dQK2FUMQtowVP00mtIksrlZhdFXQZPC+taih1q4CvPZ5vqdxR/LKBaFg0oAfzd1GlHZXXSPdQfzQnt+ViGvEIQ==",
++      "license": "MIT",
++      "dependencies": {
++        "pako": "^1.0.10"
++      }
++    },
+     "node_modules/@pkgjs/parseargs": {
+       "version": "0.11.0",
+       "resolved": "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz",
+@@ -1349,17 +1368,6 @@
+       "integrity": "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==",
+       "dev": true
+     },
+-    "node_modules/@types/node": {
+-      "version": "24.3.1",
+-      "resolved": "https://registry.npmjs.org/@types/node/-/node-24.3.1.tgz",
+-      "integrity": "sha512-3vXmQDXy+woz+gnrTvuvNrPzekOi+Ds0ReMxw0LzBiK3a+1k0kQn9f2NWk+lgD4rJehFUmYy2gMhJ2ZI+7YP9g==",
+-      "dev": true,
+-      "optional": true,
+-      "peer": true,
+-      "dependencies": {
+-        "undici-types": "~7.10.0"
+-      }
+-    },
+     "node_modules/@types/prop-types": {
+       "version": "15.7.13",
+       "resolved": "https://registry.npmjs.org/@types/prop-types/-/prop-types-15.7.13.tgz",
+@@ -3087,6 +3095,12 @@
+       "integrity": "sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==",
+       "dev": true
+     },
++    "node_modules/pako": {
++      "version": "1.0.11",
++      "resolved": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
++      "integrity": "sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==",
++      "license": "(MIT AND Zlib)"
++    },
+     "node_modules/parent-module": {
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/parent-module/-/parent-module-1.0.1.tgz",
+@@ -3145,6 +3159,24 @@
+       "integrity": "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==",
+       "dev": true
+     },
++    "node_modules/pdf-lib": {
++      "version": "1.17.1",
++      "resolved": "https://registry.npmjs.org/pdf-lib/-/pdf-lib-1.17.1.tgz",
++      "integrity": "sha512-V/mpyJAoTsN4cnP31vc0wfNA1+p20evqqnap0KLoRUN0Yk/p3wN52DOEsL4oBFcLdb76hlpKPtzJIgo67j/XLw==",
++      "license": "MIT",
++      "dependencies": {
++        "@pdf-lib/standard-fonts": "^1.0.0",
++        "@pdf-lib/upng": "^1.0.1",
++        "pako": "^1.0.11",
++        "tslib": "^1.11.1"
++      }
++    },
++    "node_modules/pdf-lib/node_modules/tslib": {
++      "version": "1.14.1",
++      "resolved": "https://registry.npmjs.org/tslib/-/tslib-1.14.1.tgz",
++      "integrity": "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==",
++      "license": "0BSD"
++    },
+     "node_modules/picocolors": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz",
+@@ -3879,14 +3911,6 @@
+         }
+       }
+     },
+-    "node_modules/undici-types": {
+-      "version": "7.10.0",
+-      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.10.0.tgz",
+-      "integrity": "sha512-t5Fy/nfn+14LuOc2KNYg75vZqClpAiqscVvMygNnlsHBFpSXdJaYtXMcdNLpl/Qvc3P2cB3s6lOV51nqsFq4ag==",
+-      "dev": true,
+-      "optional": true,
+-      "peer": true
+-    },
+     "node_modules/update-browserslist-db": {
+       "version": "1.1.1",
+       "resolved": "https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.1.1.tgz",
+diff --git a/package.json b/package.json
+index 9004921..56a90ea 100644
+--- a/package.json
++++ b/package.json
+@@ -13,6 +13,7 @@
+   "dependencies": {
+     "@supabase/supabase-js": "^2.112.3",
+     "lucide-react": "^0.446.0",
++    "pdf-lib": "^1.17.1",
+     "react": "^18.3.1",
+     "react-dom": "^18.3.1"
+   },
+diff --git a/public/robots.txt b/public/robots.txt
+index 9265246..1f915c6 100644
+--- a/public/robots.txt
++++ b/public/robots.txt
+@@ -1,3 +1,4 @@
+ User-agent: *
+ Allow: /
+-Sitemap: https://karban.ir/sitemap.xml
++
++Sitemap: https://karbanapp.ir/sitemap.xml
+diff --git a/public/sitemap.xml b/public/sitemap.xml
+index 6348b47..e37db54 100644
+--- a/public/sitemap.xml
++++ b/public/sitemap.xml
+@@ -1,18 +1,8 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+-  <url><loc>https://karban.ir/</loc></url>
+-  <url><loc>https://karban.ir/کارفرما</loc></url>
+-  <url><loc>https://karban.ir/کارمند</loc></url>
+-  <url><loc>https://karban.ir/فریلنسر</loc></url>
+-  <url><loc>https://karban.ir/دانشنامه</loc></url>
+-  <url><loc>https://karban.ir/قراردادها</loc></url>
+-  <url><loc>https://karban.ir/خدمات</loc></url>
+-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی</loc></url>
+-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/محاسبه-حقوق</loc></url>
+-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/هزینه-استخدام</loc></url>
+-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/سنوات</loc></url>
+-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/بازنشستگی</loc></url>
+-  <url><loc>https://karban.ir/ابزارهای-هوش-مصنوعی/اضافه-کاری</loc></url>
+-  <url><loc>https://karban.ir/درباره-ما</loc></url>
+-  <url><loc>https://karban.ir/تماس</loc></url>
++  <url><loc>https://karbanapp.ir/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
++  <url><loc>https://karbanapp.ir/خدمات</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
++  <url><loc>https://karbanapp.ir/قراردادها</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
++  <url><loc>https://karbanapp.ir/دانشنامه</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
++  <url><loc>https://karbanapp.ir/ابزارهای-هوش-مصنوعی</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+ </urlset>
+diff --git a/src/App.tsx b/src/App.tsx
+index 52a8199..2e27444 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -19,12 +19,13 @@ const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirem
+ };
+ export default function App() {
+   const route = useRoute(); const segments = route.split('/').filter(Boolean); let content: React.ReactNode; let title = 'کاربان'; let description = 'کاربان، پلتفرم هوشمند مدیریت کسب‌وکار برای کاربران ایرانی.'; let breadcrumb: string[] | undefined;
+-  if (route === '/' || segments.length === 0) { content = <HomePage />; title = 'کاربان | پلتفرم هوشمند مدیریت کسب‌وکار؛ قرارداد، مالیات، روابط کار'; description = 'دانلود نمونه قرارداد، ماشین‌حساب حقوق و دستمزد ۱۴۰ و مشاوره مالی و روابط کار؛ کاربان همراه مطمئن رشد کسب‌وکار شما.'; }
++  if (route === '/' || segments.length === 0) { content = <HomePage />; title = 'کاربان | پلتفرم هوشمند مدیریت کسب‌وکار؛ قرارداد، مالیات، روابط کار'; description = 'کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها.'; }
+   else if (['کارفرما', 'کارمند', 'فریلنسر'].includes(segments[0])) { const role = segments[0] as 'کارفرما' | 'کارمند' | 'فریلنسر'; content = <RolePage role={role} />; title = role; description = `مسیر ${role} در کاربان: قرارداد، حقوق، قانون کار و رشد.`; breadcrumb = [role]; }
+   else if (segments[0] === 'دانشنامه') { content = segments.length === 1 ? <ContentPage kind="knowledge" title="راهنمای قانون کار و تأمین اجتماعی، به زبان ساده اما مستند" description="راهنمای مستند قانون کار، تأمین اجتماعی و مالیات به زبان ساده با ذکر ماده قانون؛ همیشه به‌روز." eyebrow="دانشنامه" /> : <ArticlePage title={`مقاله ${segments[1]}`} category="دانشنامه کاربان" />; title = segments.length === 1 ? 'دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان' : `مقاله ${segments[1]}`; description = 'راهنمای مستند قانون کار، تأمین اجتماعی و مالیات به زبان ساده با ذکر ماده قانون؛ همیشه به‌روز.'; breadcrumb = ['دانشنامه', ...(segments.length > 1 ? [`مقاله ${segments[1]}`] : [])]; }
+-  else if (segments[0] === 'قراردادها') { content = segments.length === 1 ? <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" /> : <ArticlePage title={`جزئیات قرارداد ${segments.slice(1).join(' ')}`} category="قراردادهای کاربان" />; title = segments.length === 1 ? 'بانک نمونه قرارداد | دانلود قرارداد کار، همکاری، پیمانکاری | کاربان' : `قرارداد ${segments.slice(1).join(' ')}`; description = 'بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی.'; breadcrumb = ['قراردادها', ...(segments.length > 1 ? [segments.slice(1).join(' ')] : [])]; }
++  else if (segments[0] === 'قراردادها') { content = segments.length === 1 ? <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" /> : <ArticlePage title={`جزئیات قرارداد ${segments.slice(1).join(' ')}`} category="قراردادهای کاربان" contractId={segments[1]} />; title = segments.length === 1 ? 'بانک نمونه قرارداد | دانلود قرارداد کار، همکاری، پیمانکاری | کاربان' : `قرارداد ${segments.slice(1).join(' ')}`; description = 'بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی.'; breadcrumb = ['قراردادها', ...(segments.length > 1 ? [segments.slice(1).join(' ')] : [])]; }
+   else if (segments[0] === 'خدمات') { content = <ServicesPage />; title = 'مشاوره مالی، مالیاتی و روابط کار | خدمات تخصصی کاربان'; description = 'مشاوره متنی، تلفنی و حضوری + انجام اظهارنامه، بازبینی و تنظیم قرارداد؛ با ضمانت بازگشت وجه ۷ روزه و متخصص تأییدشده.'; breadcrumb = ['خدمات']; }
+   else if (segments[0] === 'ابزارهای-هوش-مصنوعی') { const calc = calcMap[segments[1]]; content = segments.length === 1 ? <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام و اضافه‌کاری مطابق پارامترهای رسمی ۱۴۰." eyebrow="ابزارهای هوش مصنوعی" /> : calc ? <CalculatorPage type={calc.type} title={calc.title} description={calc.desc} /> : segments[1] === 'ساخت-قرارداد' || segments[1] === 'تست-سلامت' ? <ContentPage kind="simple" title={segments[1] === 'ساخت-قرارداد' ? 'ساخت قرارداد هوشمند' : 'تست سلامت کسب‌وکار'} description="با چند پاسخ کوتاه، مسیر مناسب تصمیم‌گیری را پیدا کنید." eyebrow="ابزار هوشمند" /> : <NotFound />; title = calc?.title || (segments.length === 1 ? 'ابزارهای هوش مصنوعی کاربان | محاسبه حقوق، سنوات، بازنشستگی ۱۴۰۵' : 'ابزار هوشمند'); description = calc?.desc || 'ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام و اضافه‌کاری مطابق پارامترهای رسمی ۱۴۰.'; breadcrumb = ['ابزارهای هوش مصنوعی', ...(segments.length > 1 ? [title] : [])]; }
++
+   else if (['درباره-ما', 'تماس', 'ورود'].includes(segments[0])) { const labels: Record<string, string> = { 'درباره-ما': 'درباره کاربان', تماس: 'تماس با کاربان', ورود: 'ورود به کاربان' }; title = labels[segments[0]]; description = 'اطلاعات و خدمات کاربان برای مدیریت بهتر کسب‌وکار.'; content = <ContentPage kind="simple" title={title} description={description} eyebrow={title} />; breadcrumb = [title]; }
+   else if (segments[0] === 'admin') { return <div dir="rtl" className="app-root"><AdminPage /></div>; }
+   else { content = <NotFound />; title = 'پیدا نشد'; description = 'صفحه پیدا نشد.'; }
+diff --git a/src/components/AdminPage.tsx b/src/components/AdminPage.tsx
+index d436008..a7cda59 100644
+--- a/src/components/AdminPage.tsx
++++ b/src/components/AdminPage.tsx
+@@ -1,11 +1,12 @@
+-import { useEffect, useState } from 'react';
+-import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download } from 'lucide-react';
++import React, { useEffect, useState } from 'react';
++import { ArrowLeft, ShieldCheck, LogOut, Plus, Save, Trash2, Download, Check } from 'lucide-react';
+ import { supabase } from '@/lib/supabase';
+-import { legalConfig, contractCatalog } from '@/data/config';
++import { legalConfig, contractCatalog, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
++import { formatFa, formatPriceFa } from '@/lib/format';
+
+ type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations';
+ type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
+-type ContractRow = { id: string; title: string; type: string; industry: string; summary: string };
++type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body?: string; pdf_url?: string; };
+ type LeadRow = { id: string; mobile: string; source: string; created_at: string };
+ type OrderRow = { id: string; mobile: string; service: string; amount: string; status: string; created_at: string };
+ type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
+@@ -68,7 +69,7 @@ export default function AdminPage() {
+     </div></section>
+   );
+
+-  const tabs: [Tab, string][] = [['services', 'خدمات'], ['settings', 'تنظیمات'], ['contracts', 'قراردادها'], ['leads', 'لیدها'], ['orders', 'سفارش‌ها'], ['consultations', 'درخواست‌های مشاوره']];
++  const tabs: [Tab, string][] = [['services', 'خدمات'], ['settings', 'تنظیمات'], ['contracts', 'قراردادها'], ['leads', 'لیدها'], ['orders', 'سفارش‌ها'], ['consultations', 'درخواست‌های مشاوره'], ['users', 'مدیریت کاربران']];
+
+   return <section className="admin-panel"><div className="container">
+     <div className="admin-header"><div className="admin-title"><ShieldCheck size={22} /><h1>پنل مدیریت کاربان</h1><span className="admin-badge">مدیر</span></div><button className="admin-logout" onClick={signOut}>خروج <LogOut size={15} /></button></div>
+@@ -80,6 +81,7 @@ export default function AdminPage() {
+       {tab === 'leads' && <LeadsTab />}
+       {tab === 'orders' && <OrdersTab />}
+       {tab === 'consultations' && <ConsultationsTab />}
++      {tab === 'users' && <UsersTab />}
+     </div>
+   </div></section>;
+ }
+@@ -88,21 +90,29 @@ function ServicesTab() {
+   const [services, setServices] = useState<Service[]>([]);
+   const [loading, setLoading] = useState(true);
+   const [editing, setEditing] = useState<string | null>(null);
+-  const [form, setForm] = useState({ title: '', price: '', description: '', domain: 'financial' as 'financial' | 'labor', unit: '', featured: false, kind: '' });
++  const [form, setForm] = useState({ title: '', price: '', description: '', domain: 'financial' as 'financial' | 'labor', unit: '', featured: false, kind: '', discount_percent: 0 });
+   const [showAdd, setShowAdd] = useState(false);
+
+-  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('id'); setServices((data || []) as Service[]); setLoading(false); };
++  const load = async () => { setLoading(true); const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind,discount_percent').order('id'); setServices((data || []) as Service[]); setLoading(false); };
+   useEffect(() => { load(); }, []);
+
+   const save = async (id: string) => {
+     const s = services.find((x) => x.id === id); if (!s) return;
+-    await supabase.from('services').update({ title: s.title, price: s.price, description: s.description, domain: s.domain, unit: s.unit, featured: s.featured }).eq('id', id);
++    await supabase.from('services').update({ title: s.title, price: s.price, description: s.description, domain: s.domain, unit: s.unit, featured: s.featured, discount_percent: s.discount_percent }).eq('id', id);
+     setEditing(null); load();
+   };
++  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: Function) => {
++    const rawValue = e.target.value.replace(/,/g, '');
++    if (!isNaN(Number(rawValue)) && rawValue !== '') {
++      setter(Number(rawValue).toLocaleString('en-US'));
++    } else if (rawValue === '') {
++      setter('');
++    }
++  };
+   const add = async () => {
+     if (!form.title) return;
+-    await supabase.from('services').insert({ title: form.title, price: form.price, description: form.description, domain: form.domain, unit: form.unit, featured: form.featured, kind: form.kind || null });
+-    setForm({ title: '', price: '', description: '', domain: 'financial', unit: '', featured: false, kind: '' }); setShowAdd(false); load();
++    await supabase.from('services').insert({ title: form.title, price: form.price, description: form.description, domain: form.domain, unit: form.unit, featured: form.featured, kind: form.kind || null, discount_percent: form.discount_percent });
++    setForm({ title: '', price: '', description: '', domain: 'financial', unit: '', featured: false, kind: '', discount_percent: 0 }); setShowAdd(false); load();
+   };
+   const remove = async (id: string) => { await supabase.from('services').delete().eq('id', id); load(); };
+
+@@ -111,8 +121,9 @@ function ServicesTab() {
+     <div className="admin-toolbar"><h2>مدیریت خدمات</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن خدمت</button></div>
+     {showAdd && <div className="admin-form">
+       <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
+-      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت" />
++      <input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="قیمت (ریال)" />
+       <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد (مثلاً هر درخواست)" />
++      <input type="number" min="0" max="90" value={form.discount_percent || ''} onChange={(e) => setForm({ ...form, discount_percent: Number(e.target.value) })} placeholder="درصد تخفیف (۰-۹۰)" />
+       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
+       <select value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value as 'financial' | 'labor' })}><option value="financial">مالی</option><option value="labor">روابط کار</option></select>
+       <input value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} placeholder="نوع kind (خالی = مشاوره)" />
+@@ -120,13 +131,14 @@ function ServicesTab() {
+       <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
+     </div>}
+     <table className="admin-table">
+-      <thead><tr><th>عنوان</th><th>قیمت</th><th>حوزه</th><th>واحد</th><th>ویژه</th><th></th></tr></thead>
++      <thead><tr><th>عنوان</th><th>قیمت</th><th>حوزه</th><th>واحد</th><th>تخفیف٪</th><th>ویژه</th><th></th></tr></thead>
+       <tbody>
+         {services.map((s) => <tr key={s.id}>
+           <td>{editing === s.id ? <input value={s.title} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, title: e.target.value } : x))} /> : s.title}</td>
+-          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : s.price}</td>
++          <td>{editing === s.id ? <input value={s.price} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, price: e.target.value } : x))} /> : formatPriceFa(s.price)}</td>
+           <td>{editing === s.id ? <select value={s.domain} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, domain: e.target.value as 'financial' | 'labor' } : x))}><option value="financial">مالی</option><option value="labor">روابط کار</option></select> : (s.domain === 'financial' ? 'مالی' : 'روابط کار')}</td>
+           <td>{editing === s.id ? <input value={s.unit} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, unit: e.target.value } : x))} /> : s.unit}</td>
++          <td>{editing === s.id ? <input type="number" min="0" max="90" value={s.discount_percent || 0} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, discount_percent: Number(e.target.value) } : x))} /> : (s.discount_percent ? s.discount_percent + '%' : '—')}</td>
+           <td>{editing === s.id ? <input type="checkbox" checked={s.featured} onChange={(e) => setServices(services.map((x) => x.id === s.id ? { ...x, featured: e.target.checked } : x))} /> : (s.featured ? 'بله' : '—')}</td>
+           <td className="admin-actions">
+             {editing === s.id ? <button className="button button-small" onClick={() => save(s.id)}><Save size={14} /></button> : <button className="button button-small" onClick={() => setEditing(s.id)}>ویرایش</button>}
+@@ -147,7 +159,7 @@ function SettingsTab() {
+     let active = true;
+     supabase.from('settings').select('value').eq('key', 'salary_1405').maybeSingle().then(({ data }) => {
+       if (!active) return;
+-      if (data?.value) setSettings(data.value as SalarySettings); else setSettings({ year: legalConfig.year, baseSalaryDaily: legalConfig.baseSalaryDaily, housingAllowanceMonthly: legalConfig.housingAllowanceMonthly, foodAllowanceMonthly: legalConfig.foodAllowanceMonthly, insuranceEmployeeRate: legalConfig.insuranceEmployeeRate, insuranceEmployerRate: legalConfig.insuranceEmployerRate, annualTaxFree: legalConfig.annualTaxFree });
++      if (data?.value) setSettings(data.value as SalarySettings); else setSettings({ year: legalConfig.year, baseSalaryDaily: legalConfig.baseSalaryDaily, housingAllowanceMonthly: legalConfig.housingAllowanceMonthly, foodAllowanceMonthly: legalConfig.foodAllowanceMonthly, insuranceEmployeeRate: legalConfig.insuranceEmployeeRate, insuranceEmployerRate: legalConfig.insuranceEmployerRate, annualTaxFree: legalConfig.annualTaxFree, familyAllowanceMonthly: 5000000, childAllowanceMonthly: legalConfig.baseSalaryDaily * 3, overtimeRate: 1.4 });
+       setLoading(false);
+     });
+     return () => { active = false; };
+@@ -160,22 +172,25 @@ function SettingsTab() {
+
+   if (loading) return <p>در حال بارگذاری…</p>;
+   const numField = (label: string, key: keyof SalarySettings) => (
+-    <label className="settings-field">{label}<input type="number" value={settings[key] as number ?? 0} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} /></label>
++    <label className="settings-field">{label}<input type="number" step="any" value={settings[key] as number ?? 0} onChange={(e) => setSettings({ ...settings, [key]: Number(e.target.value) })} /></label>
+   );
+   return <div className="admin-settings">
+-    <h2>تنظیمات پارامترهای ۱۴۰۵</h2>
++    <h2>تنظیمات پارامترهای حقوق</h2>
+     <p>این اعداد در ماشین‌حساب‌های حقوق و دستمزد استفاده می‌شوند.</p>
+     <div className="settings-grid">
+       <label className="settings-field">سال<input value={settings.year ?? ''} onChange={(e) => setSettings({ ...settings, year: e.target.value })} /></label>
+-      {numField('پایه حقوق روزانه (تومان)', 'baseSalaryDaily')}
+-      {numField('بن کارگری ماهانه (تومان)', 'foodAllowanceMonthly')}
+-      {numField('حق مسکن ماهانه (تومان)', 'housingAllowanceMonthly')}
+-      {numField('سهم بیمه کارگر (٪)', 'insuranceEmployeeRate')}
+-      {numField('سهم بیمه کارفرما (٪)', 'insuranceEmployerRate')}
+-      {numField('سقف معافیت مالیاتی سالانه (تومان)', 'annualTaxFree')}
++      {numField('پایه حقوق روزانه (ریال)', 'baseSalaryDaily')}
++      {numField('بن کارگری ماهانه (ریال)', 'foodAllowanceMonthly')}
++      {numField('حق مسکن ماهانه (ریال)', 'housingAllowanceMonthly')}
++      {numField('عائله‌مندی (ریال)', 'familyAllowanceMonthly')}
++      {numField('اولاد (ریال)', 'childAllowanceMonthly')}
++      {numField('ضریب اضافه‌کاری', 'overtimeRate')}
++      {numField('سهم بیمه کارگر (نسبت)', 'insuranceEmployeeRate')}
++      {numField('سهم بیمه کارفرما (نسبت)', 'insuranceEmployerRate')}
++      {numField('سقف معافیت مالیاتی سالانه (ریال)', 'annualTaxFree')}
+     </div>
+     <button className="button" onClick={save}><Save size={16} /> ذخیره تنظیمات</button>
+-    {saved && <small className="admin-success">تنظیمات ذخیره شد.</small>}
++    {saved && <div className="feedback-success"><Check size={16} /> تنظیمات ذخیره شد.</div>}
+   </div>;
+ }
+
+@@ -185,8 +200,10 @@ function ContractsTab() {
+   const [form, setForm] = useState({ title: '', type: '', industry: '', summary: '' });
+   const [showAdd, setShowAdd] = useState(false);
+   const [migrating, setMigrating] = useState(false);
++  const [editing, setEditing] = useState<string | null>(null);
++  const [editForm, setEditForm] = useState<{title: string, type: string, industry: string, summary: string, body: string, pdf_url: string}>({ title: '', type: '', industry: '', summary: '', body: '', pdf_url: '' });
+
+-  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
++  const load = async () => { setLoading(true); const { data } = await supabase.from('contracts').select('id,title,type,industry,summary,body,pdf_url').order('id'); setContracts((data || []) as ContractRow[]); setLoading(false); };
+   useEffect(() => { load(); }, []);
+   const add = async () => {
+     if (!form.title) return;
+@@ -202,20 +219,122 @@ function ContractsTab() {
+     if (!error) load();
+   };
+
++  useEffect(() => {
++    if (form.type && form.industry) {
++      setForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
++    }
++  }, [form.type, form.industry]);
++
++  useEffect(() => {
++    if (editForm.type && editForm.industry && editing) {
++      if (!editForm.title || editForm.title.startsWith('قرارداد ')) {
++        setEditForm(prev => ({ ...prev, title: `قرارداد ${prev.type} ${prev.industry}` }));
++      }
++    }
++  }, [editForm.type, editForm.industry]);
++
++  const startEdit = (c: ContractRow) => {
++    setEditing(c.id);
++    setEditForm({
++      title: c.title || '',
++      type: c.type || '',
++      industry: c.industry || '',
++      summary: c.summary || '',
++      body: c.body || '',
++      pdf_url: c.pdf_url || ''
++    });
++  };
++
++  const saveEdit = async (id: string) => {
++    await supabase.from('contracts').update({
++      title: editForm.title,
++      type: editForm.type,
++      industry: editForm.industry,
++      summary: editForm.summary,
++      body: editForm.body,
++      pdf_url: editForm.pdf_url
++    }).eq('id', id);
++    setEditing(null);
++    load();
++  };
++
++  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, id: string) => {
++    const file = event.target.files?.[0];
++    if (!file) return;
++    const timestamp = Date.now();
++    const fileName = `contract-${id}-${timestamp}.pdf`;
++    const { error } = await supabase.storage.from('contracts').upload(fileName, file);
++    if (error) {
++      console.error('Upload failed:', error);
++      return;
++    }
++    const { data: { publicUrl } } = supabase.storage.from('contracts').getPublicUrl(fileName);
++    setEditForm(prev => ({ ...prev, pdf_url: publicUrl }));
++  };
++
+   if (loading) return <p>در حال بارگذاری…</p>;
+   return <div className="admin-table-wrap">
+     <div className="admin-toolbar"><h2>قراردادها</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن قرارداد</button></div>
+     {showAdd && <div className="admin-form">
+-      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان" />
+-      <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="نوع (کار، همکاری، …)" />
+-      <input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="صنف" />
+-      <input value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" />
++      <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} aria-label="نوع">
++        <option value="">انتخاب نوع</option>
++        {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
++      </select>
++      <select value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} aria-label="صنف">
++        <option value="">انتخاب صنف</option>
++        {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
++      </select>
++      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان (به‌طور خودکار ساخته می‌شود)" />
++      <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
+       <button className="button button-small" onClick={add}><Save size={15} /> ذخیره</button>
+     </div>}
+     <table className="admin-table">
+       <thead><tr><th>عنوان</th><th>نوع</th><th>صنف</th><th>خلاصه</th><th></th></tr></thead>
+       <tbody>
+-        {contracts.map((c) => <tr key={c.id}><td>{c.title}</td><td>{c.type || '—'}</td><td>{c.industry || '—'}</td><td>{c.summary || '—'}</td><td><button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button></td></tr>)}
++        {contracts.map((c) => (
++          <React.Fragment key={c.id}>
++            <tr>
++              <td>{c.title}</td>
++              <td>{c.type || '—'}</td>
++              <td>{c.industry || '—'}</td>
++              <td>{c.summary || '—'}</td>
++              <td className="admin-actions">
++                <button className="button button-small" onClick={() => editing === c.id ? setEditing(null) : startEdit(c)}>{editing === c.id ? 'لغو' : 'ویرایش'}</button>
++                <button className="admin-delete" onClick={() => remove(c.id)}><Trash2 size={14} /></button>
++              </td>
++            </tr>
++            {editing === c.id && (
++              <tr>
++                <td colSpan={5}>
++                  <div className="admin-form" style={{ marginTop: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px' }}>
++                    <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} aria-label="نوع">
++                      <option value="">انتخاب نوع</option>
++                      {CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
++                    </select>
++                    <select value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} aria-label="صنف">
++                      <option value="">انتخاب صنف</option>
++                      {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
++                    </select>
++                    <input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} placeholder="عنوان" />
++                    <textarea value={editForm.summary} onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
++                    <textarea
++                      value={editForm.body}
++                      onChange={(e) => setEditForm({ ...editForm, body: e.target.value })}
++                      placeholder="متن قرارداد (پشتیبانی از پاراگراف)"
++                      rows={10}
++                      style={{ width: '100%', resize: 'vertical' }}
++                    />
++                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
++                      <input type="file" accept="application/pdf" onChange={(e) => handleFileUpload(e, c.id)} />
++                      {editForm.pdf_url && <a href={editForm.pdf_url} target="_blank" rel="noreferrer">مشاهده PDF فعلی</a>}
++                    </div>
++                    <button className="button button-small" onClick={() => saveEdit(c.id)} style={{ alignSelf: 'flex-start' }}><Save size={15} /> ذخیره</button>
++                  </div>
++                </td>
++              </tr>
++            )}
++          </React.Fragment>
++        ))}
+         {contracts.length === 0 && <tr><td colSpan={5}><div className="admin-empty"><p>هیچ قراردادی ثبت نشده است.</p><button className="button button-small" onClick={migrateLegacy} disabled={migrating}><ArrowLeft size={15} /> {migrating ? 'در حال انتقال…' : 'انتقال ۶۰ قرارداد از نسخه قدیمی'}</button></div></td></tr>}
+       </tbody>
+     </table>
+@@ -261,7 +380,7 @@ function OrdersTab() {
+       <thead><tr><th>موبایل</th><th>خدمت</th><th>مبلغ</th><th>وضعیت</th><th>تاریخ</th></tr></thead>
+       <tbody>
+         {orders.map((o) => <tr key={o.id}>
+-          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount || '—'}</td>
++          <td>{o.mobile || '—'}</td><td>{o.service || '—'}</td><td>{o.amount ? formatPriceFa(o.amount) : '—'}</td>
+           <td><select value={o.status} onChange={(e) => updateStatus(o.id, e.target.value)}>{Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></td>
+           <td>{fmtDate(o.created_at)}</td>
+         </tr>)}
+@@ -288,3 +407,74 @@ function ConsultationsTab() {
+     </table>
+   </div>;
+ }
++
++
++function UsersTab() {
++  const [users, setUsers] = useState<any[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [form, setForm] = useState({ username: '', password: '' });
++  const [showAdd, setShowAdd] = useState(false);
++  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
++
++  // Basic mock fetch for UI completion since schema isn't provided
++  const load = async () => {
++    setLoading(true);
++    const { data } = await supabase.from('admin_users').select('id,username,created_at,is_locked,lock_until').order('created_at');
++    setUsers(data || []);
++    setLoading(false);
++  };
++
++  useEffect(() => { load(); }, []);
++
++  const hashPassword = async (pwd: string) => {
++    const msgUint8 = new TextEncoder().encode(pwd);
++    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
++    const hashArray = Array.from(new Uint8Array(hashBuffer));
++    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
++  };
++
++  const add = async () => {
++    if (!form.username || !form.password) return;
++    setStatus('loading');
++    const hashed = await hashPassword(form.password);
++    const { error } = await supabase.from('admin_users').insert({
++      username: form.username,
++      password_hash: hashed,
++      failed_attempts: 0
++    });
++    if (error) { setStatus('error'); return; }
++    setForm({ username: '', password: '' });
++    setShowAdd(false);
++    setStatus('success');
++    load();
++  };
++
++  const remove = async (id: string) => {
++    await supabase.from('admin_users').delete().eq('id', id);
++    load();
++  };
++
++  if (loading) return <p>در حال بارگذاری…</p>;
++  return <div className="admin-table-wrap">
++    <div className="admin-toolbar"><h2>مدیریت کاربران</h2><button className="button button-small" onClick={() => setShowAdd(!showAdd)}><Plus size={15} /> افزودن مدیر</button></div>
++    {showAdd && <div className="admin-form">
++      <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="نام کاربری" />
++      <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="رمز عبور" />
++      <button className="button button-small" onClick={add} disabled={status === 'loading'}><Save size={15} /> ذخیره</button>
++      {status === 'success' && <div className="feedback-success"><Check size={16} /> مدیر جدید اضافه شد.</div>}
++      {status === 'error' && <small className="feedback-error">خطا در ذخیره‌سازی</small>}
++    </div>}
++    <table className="admin-table">
++      <thead><tr><th>نام کاربری</th><th>وضعیت قفل</th><th>تاریخ ایجاد</th><th></th></tr></thead>
++      <tbody>
++        {users.map((u) => <tr key={u.id}>
++          <td>{u.username}</td>
++          <td>{u.is_locked ? 'قفل شده' : 'فعال'}</td>
++          <td>{new Date(u.created_at).toLocaleDateString('fa-IR')}</td>
++          <td><button className="admin-delete" onClick={() => remove(u.id)}><Trash2 size={14} /></button></td>
++        </tr>)}
++        {users.length === 0 && <tr><td colSpan={4}>هیچ کاربری یافت نشد.</td></tr>}
++      </tbody>
++    </table>
++  </div>;
++}
+diff --git a/src/components/ArticlePage.tsx b/src/components/ArticlePage.tsx
+index b835a3d..18f4cb8 100644
+--- a/src/components/ArticlePage.tsx
++++ b/src/components/ArticlePage.tsx
+@@ -1,14 +1,94 @@
+-import { useState } from 'react';
+-import { ArrowLeft, BookOpen, FileText } from 'lucide-react';
++import React, { useState, useEffect } from 'react';
++import { ArrowLeft, BookOpen, FileText, Check } from 'lucide-react';
+ import { supabase } from '@/lib/supabase';
+ import { isIranianMobile } from '@/lib/validation';
+ import { normalizeMobile } from '@/lib/normalize';
++import { PDFDocument, StandardFonts, rgb, degrees } from 'pdf-lib';
++import { notifyAdmin } from '@/lib/notify';
++
++type Props = { title: string; category: string; contractId?: string };
++
++export default function ArticlePage({ title, category, contractId }: Props) {
++  const [mobile, setMobile] = useState('');
++  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
++  const [contractData, setContractData] = useState<{body?: string, pdf_url?: string} | null>(null);
++  const isContract = category.includes('قرارداد');
++
++  useEffect(() => {
++    if (contractId) {
++      supabase.from('contracts').select('body, pdf_url').eq('id', contractId).maybeSingle().then(({ data }) => {
++        if (data) setContractData(data);
++      });
++    }
++  }, [contractId]);
++
++  const submitDownload = async (event: React.FormEvent<HTMLFormElement>) => {
++    event.preventDefault();
++    if (!isIranianMobile(mobile)) { setStatus('error'); return; }
++    setStatus('loading');
++
++    // Insert Lead
++    const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'contract_download' });
++    if (error) { console.error('contract download lead failed', error); setStatus('error'); return; }
++
++    notifyAdmin(`📥 دانلود قرارداد: ${title} | ${normalizeMobile(mobile)}`);
++
++    // Fetch and watermark PDF if pdf_url exists
++    if (contractData?.pdf_url) {
++      try {
++        const response = await fetch(contractData.pdf_url);
++        const arrayBuffer = await response.arrayBuffer();
++
++        const pdfDoc = await PDFDocument.load(arrayBuffer);
++        const pages = pdfDoc.getPages();
++        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
++
++        const watermarkText = `karbanapp.ir - ${normalizeMobile(mobile)}`;
++
++        for (const page of pages) {
++          const { width, height } = page.getSize();
++          page.drawText(watermarkText, {
++            x: width / 4,
++            y: height / 2,
++            size: 30,
++            font: font,
++            color: rgb(0.75, 0.75, 0.75),
++            rotate: degrees(45),
++            opacity: 0.5,
++          });
++        }
++
++        const pdfBytes = await pdfDoc.save();
++        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
++        const url = URL.createObjectURL(blob);
++        const a = document.createElement('a');
++        a.href = url;
++        a.download = 'contract.pdf';
++        a.click();
++        URL.revokeObjectURL(url);
++      } catch (err) {
++        console.error('PDF modification failed', err);
++        setStatus('error');
++        return;
++      }
++    }
++
++    setStatus('success');
++    setMobile('');
++  };
+
+-type Props = { title: string; category: string };
+-export default function ArticlePage({ title, category }: Props) {
+-  const [mobile, setMobile] = useState(''); const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle'); const isContract = category.includes('قرارداد');
+-  const submitDownload = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile)) { setStatus('error'); return; } const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'free_download' }); if (error) { console.error('free download lead failed', error); setStatus('error'); return; } setStatus('success'); setMobile(''); };
+   const isContractDetail = isContract && title.includes('قرارداد کار');
+   const contractFaqs: [string, string][] = [['بیمه برای کارگر الزامی است؟', 'بله، طبق ماده ۱۴۸ قانون کار، بیمه تأمین اجتماعی برای تمامی کارکنان الزامی است و کارفرما مکلف به پرداخت سهم خود است.'], ['دوره آزمایشی چقدر است؟', 'حداکثر ۱ ماه برای کارگران ساده و ۳ ماه برای کارگران متخصص و فنی (ماده ۱۱ قانون کار).'], ['سنوات چگونه محاسبه می‌شود؟', 'هر سال سابقه کار معادل یک ماه آخرین مزد پایه است (ماده ۲۴ قانون کار).']];
+-  return <section className="inner-page"><div className="container article-shell"><span className="eyebrow"><BookOpen size={15} /> {category}</span><h1>{title}</h1><p className="article-intro">{isContractDetail ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.' : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارکنان و متخصصان ایرانی.'}</p><div className="article-body">{isContractDetail ? <><p>قرارداد کار مهم‌ترین سند حقوقی کارگر و کارفرماست. این قرارداد نوع رابطه کاری، مدت، مزد، ساعات کار، مرخصی و تعهدات هر دو طرف را مشخص می‌کند و در صورت بروز اختلاف، مرجع اصلی استناد است.</p><div className="related-box"><FileText /><div><strong>مستندات قانونی</strong><ul><li>ماده ۳ — لزوم کتبی بودن قرارداد کار</li><li>ماده ۱۱ — دوره آزمایشی و مدت آن</li><li>ماده ۴ — منع تبعیض در استخدام</li><li>ماده ۵ — شرایط کار و ساعات کار</li><li>ماده ۶ — تعهدات کارفرما</li></ul></div></div><div className="faq"><h2>پرسش‌های متداول</h2>{contractFaqs.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></> : <><p>در مدیریت کسب‌وکار، تصمیم‌های کوچک حقوقی و مالی می‌توانند اثر بزرگی بر آینده داشته باشند. این راهنما با زبان ساده، نکته‌های کلیدی و مسیر اقدام را توضیح می‌دهد.</p><h2>از کجا شروع کنیم؟</h2><p>ابتدا اطلاعات و قراردادهای خود را منظم کنید، سپس با استفاده از ابزارهای کاربان وضعیت فعلی را بررسی و برای گام بعدی تصمیم بگیرید.</p></>}{isContract && <div className="related-box"><FileText /><div><strong>دانلود رایگان قرارداد</strong><p>شماره موبایل خود را وارد کنید تا نسخه رایگان قرارداد برای شما فعال شود.</p><form onSubmit={submitDownload}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button button-small" type="submit">فعال‌سازی دانلود <ArrowLeft size={15} /></button></form>{status === 'success' && <a className="text-link" href="/assets/free-contract.txt" download>دریافت فایل قرارداد <ArrowLeft size={15} /></a>}{status === 'error' && <small>شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}</div></div>}<div className="related-box"><FileText /><div><strong>برای تصمیم عملی آماده‌اید؟</strong><p>قراردادها و خدمات مرتبط را بررسی کنید.</p><a className="text-link" href="/قراردادها">مشاهده قراردادها <ArrowLeft size={15} /></a></div></div></div></div></section>;
+-}
++
++  return <section className="inner-page"><div className="container article-shell"><span className="eyebrow"><BookOpen size={15} /> {category}</span><h1>{title}</h1><p className="article-intro">{isContractDetail ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.' : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارکنان و متخصصان ایرانی.'}</p><div className="article-body">
++
++  {contractData?.body && (
++    <div className="contract-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '2' }}>
++      {contractData.body}
++    </div>
++  )}
++
++  {isContractDetail && !contractData?.body ? <><p>قرارداد کار مهم‌ترین سند حقوقی کارگر و کارفرماست. این قرارداد نوع رابطه کاری، مدت، مزد، ساعات کار، مرخصی و تعهدات هر دو طرف را مشخص می‌کند و در صورت بروز اختلاف، مرجع اصلی استناد است.</p><div className="related-box"><FileText /><div><strong>مستندات قانونی</strong><ul><li>ماده ۳ — لزوم کتبی بودن قرارداد کار</li><li>ماده ۱۱ — دوره آزمایشی و مدت آن</li><li>ماده ۴ — منع تبعیض در استخدام</li><li>ماده ۵ — شرایط کار و ساعات کار</li><li>ماده ۶ — تعهدات کارفرما</li></ul></div></div><div className="faq"><h2>پرسش‌های متداول</h2>{contractFaqs.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></> : (!isContractDetail && !contractData?.body ? <><p>در مدیریت کسب‌وکار، تصمیم‌های کوچک حقوقی و مالی می‌توانند اثر بزرگی بر آینده داشته باشند. این راهنما با زبان ساده، نکته‌های کلیدی و مسیر اقدام را توضیح می‌دهد.</p><h2>از کجا شروع کنیم؟</h2><p>ابتدا اطلاعات و قراردادهای خود را منظم کنید، سپس با استفاده از ابزارهای کاربان وضعیت فعلی را بررسی و برای گام بعدی تصمیم بگیرید.</p></> : null)}
++
++  {contractData?.pdf_url && <div className="related-box"><FileText /><div><strong>دانلود PDF</strong><p>شماره موبایل خود را وارد کنید تا نسخه رایگان قرارداد برای شما فعال شود.</p><form onSubmit={submitDownload}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button button-small" type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'در حال آماده‌سازی...' : 'فعال‌سازی دانلود'} <ArrowLeft size={15} /></button></form>{status === 'success' && <div className="feedback-success"><Check size={16} /> دانلود با موفقیت انجام شد.</div>}{status === 'error' && <small className="feedback-error">شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید یا خطایی در دریافت فایل رخ داد.</small>}</div></div>}<div className="related-box"><FileText /><div><strong>برای تصمیم عملی آماده‌اید؟</strong><p>قراردادها و خدمات مرتبط را بررسی کنید.</p><a className="text-link" href="/قراردادها">مشاهده قراردادها <ArrowLeft size={15} /></a></div></div></div></div></section>;
++}
+\ No newline at end of file
+diff --git a/src/components/CalculatorPage.tsx b/src/components/CalculatorPage.tsx
+index dfacd05..b108c90 100644
+--- a/src/components/CalculatorPage.tsx
++++ b/src/components/CalculatorPage.tsx
+@@ -1,7 +1,11 @@
+-import { useEffect, useMemo, useState } from 'react';
+-import { ArrowLeft, Calculator, CircleHelp, MessageCircle } from 'lucide-react';
++import React, { useEffect, useMemo, useState } from 'react';
++import { useSEO } from '@/lib/useSEO';
++
++
++import { ArrowLeft, Calculator, CircleHelp, MessageCircle, Check } from 'lucide-react';
+ import { legalConfig } from '@/data/config';
+ import { supabase } from '@/lib/supabase';
++import { formatFa, formatPriceFa } from '@/lib/format';
+
+ type CalculatorType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime';
+ type Props = { type: CalculatorType; title: string; description: string };
+@@ -9,16 +13,87 @@ const format = (value: number) => new Intl.NumberFormat('fa-IR').format(Math.max
+
+ type SalarySettings = {
+   year?: string; baseSalaryDaily?: number; housingAllowanceMonthly?: number; foodAllowanceMonthly?: number;
+-  insuranceEmployeeRate?: number; insuranceEmployerRate?: number; annualTaxFree?: number;
++  insuranceEmployeeRate?: number; insuranceEmployerRate?: number; annualTaxFree?: number; familyAllowanceMonthly?: number; childAllowanceMonthly?: number; overtimeRate?: number;
+ };
+
+ export default function CalculatorPage({ type, title, description }: Props) {
+-  const [salary, setSalary] = useState(120000000); const [days, setDays] = useState(30); const [years, setYears] = useState(3); const [hours, setHours] = useState(10); const [age, setAge] = useState(35); const [insuredYears, setInsuredYears] = useState(8); const [calculated, setCalculated] = useState(false);
++  useSEO('محاسبه‌گر حقوق و مزایا ۱۴۰۵ | کاربان', 'ابزار دقیق محاسبه حقوق، دستمزد، اضافه‌کاری، سنوات و بیمه ۱۴۰۵ بر اساس آخرین تغییرات قانون کار ایران.');
++
++  const [salary, setSalary] = useState(120000000);
++  const [days, setDays] = useState(30);
++  const [years, setYears] = useState(3);
++  const [hours, setHours] = useState(10);
++  const [age, setAge] = useState(35);
++  const [insuredYears, setInsuredYears] = useState(8);
++  const [calculated, setCalculated] = useState(false);
++
++
++  const [isMarried, setIsMarried] = useState(false);
++  const [childrenCount, setChildrenCount] = useState(0);
++  const [overtimeHours, setOvertimeHours] = useState(0);
++  const [absenceHours, setAbsenceHours] = useState(0);
++  const [bonuses, setBonuses] = useState(0);
++
+   const [cfg, setCfg] = useState(legalConfig);
+-  useEffect(() => { let active = true; supabase.from('settings').select('value').eq('key', 'salary_1405').maybeSingle().then(({ data }) => { if (!active || !data) return; const s = data.value as SalarySettings; setCfg({ year: s.year ?? legalConfig.year, baseSalaryDaily: s.baseSalaryDaily ?? legalConfig.baseSalaryDaily, housingAllowanceMonthly: s.housingAllowanceMonthly ?? legalConfig.housingAllowanceMonthly, foodAllowanceMonthly: s.foodAllowanceMonthly ?? legalConfig.foodAllowanceMonthly, insuranceEmployeeRate: s.insuranceEmployeeRate ?? legalConfig.insuranceEmployeeRate, insuranceEmployerRate: s.insuranceEmployerRate ?? legalConfig.insuranceEmployerRate, annualTaxFree: s.annualTaxFree ?? legalConfig.annualTaxFree, taxBrackets: legalConfig.taxBrackets }); }); return () => { active = false; }; }, []);
+-  const result = useMemo(() => { const insurance = salary * cfg.insuranceEmployeeRate; const tax = Math.max(0, salary * 12 - cfg.annualTaxFree) * 0.1 / 12; if (type === 'salary') return salary + cfg.housingAllowanceMonthly + cfg.foodAllowanceMonthly - insurance - tax; if (type === 'hire') return salary * (1 + cfg.insuranceEmployerRate); if (type === 'severance') return salary / 30 * days * years; if (type === 'overtime') return salary / 220 * 1.4 * hours; return Math.max(0, age + insuredYears >= 60 ? salary * 0.9 : salary * 0.6); }, [type, salary, days, years, hours, age, insuredYears, cfg]);
++  useEffect(() => {
++    let active = true;
++    supabase.from('settings').select('value').eq('key', 'salary_1405').maybeSingle().then(({ data }) => {
++      if (!active || !data) return;
++      const s = data.value as SalarySettings;
++      setCfg({
++        year: s.year ?? legalConfig.year,
++        baseSalaryDaily: s.baseSalaryDaily ?? legalConfig.baseSalaryDaily,
++        housingAllowanceMonthly: s.housingAllowanceMonthly ?? legalConfig.housingAllowanceMonthly,
++        foodAllowanceMonthly: s.foodAllowanceMonthly ?? legalConfig.foodAllowanceMonthly,
++        insuranceEmployeeRate: s.insuranceEmployeeRate ?? legalConfig.insuranceEmployeeRate,
++        insuranceEmployerRate: s.insuranceEmployerRate ?? legalConfig.insuranceEmployerRate,
++        annualTaxFree: s.annualTaxFree ?? legalConfig.annualTaxFree,
++        taxBrackets: legalConfig.taxBrackets,
++        familyAllowanceMonthly: s.familyAllowanceMonthly ?? 5000000,
++        childAllowanceMonthly: s.childAllowanceMonthly ?? (legalConfig.baseSalaryDaily * 3),
++        overtimeRate: s.overtimeRate ?? 1.4
++      } as any);
++
++    });
++    return () => { active = false; };
++  }, []);
++
++  const results = useMemo(() => {
++    const base = (cfg.baseSalaryDaily * days);
++    const food = (cfg.foodAllowanceMonthly * days) / 30;
++    const housing = (cfg.housingAllowanceMonthly * days) / 30;
++    const family = isMarried ? (cfg as any).familyAllowanceMonthly : 0;
++    const child = childrenCount * (cfg as any).childAllowanceMonthly;
++    const overtime = (base / 220) * (cfg as any).overtimeRate * overtimeHours;
++    const absence = (base / 220) * absenceHours;
++    const severanceMonthly = (base / 12) * years;
++
++
++    const subjectToInsurance = base + food + housing + overtime + bonuses;
++    const insurance = subjectToInsurance * cfg.insuranceEmployeeRate;
++
++    const gross = subjectToInsurance + family + child + severanceMonthly - absence;
++
++    const taxable = Math.max(0, gross - (cfg.annualTaxFree / 12));
++    let tax = taxable > 0 ? taxable * 0.1 : 0;
++
++
++    const net = gross - insurance - tax;
++
++    let res = 0;
++    if (type === 'salary') res = net;
++    else if (type === 'hire') res = salary * (1 + cfg.insuranceEmployerRate);
++    else if (type === 'severance') res = salary / 30 * days * years;
++    else if (type === 'overtime') res = salary / 220 * 1.4 * hours;
++    else res = Math.max(0, age + insuredYears >= 60 ? salary * 0.9 : salary * 0.6);
++
++    return {
++        base, food, housing, family, child, overtime, absence, severanceMonthly, insurance, tax, gross, net, res
++    };
++  }, [type, salary, days, years, hours, age, insuredYears, cfg, isMarried, childrenCount, overtimeHours, absenceHours, bonuses]);
++
+   const salaryPart = type === 'salary' ? Math.max(10, Math.min(80, (salary / 300000000) * 100)) : 60; const insurancePart = type === 'salary' ? 7 : 20; const taxPart = Math.max(5, 100 - salaryPart - insurancePart);
+-  const range = (label: string, value: number, setValue: (value: number) => void, min: number, max: number, step: number) => <label className="range-field">{label}<strong>{format(value)}</strong><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => { setValue(Number(event.target.value)); setCalculated(false); }} /><input type="number" value={value} onChange={(event) => { setValue(Number(event.target.value)); setCalculated(false); }} /></label>;
++  const range = (label: string, value: number, setValue: (value: number) => void, min: number, max: number, step: number) => <label className="range-field">{label}<strong>{formatFa(value)}</strong><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => { setValue(Number(event.target.value)); setCalculated(false); }} /><input type="number" value={value} onChange={(event) => { setValue(Number(event.target.value)); setCalculated(false); }} /></label>;
+   const faqData: Record<CalculatorType, { intro: string; faqs: [string, string][] }> = {
+     salary: { intro: 'اضافه‌کاری هر ساعت ۴۰٪ بالاتر از مزد عادی است (ماده ۵۹ قانون کار). کسورات شامل بیمه ۷٪ سهم کارگر و مالیات بر اساس پلکان معافیت سالانه محاسبه می‌شود.', faqs: [['بیمه سهم کارگر چند درصد است؟', '۷ درصد از مزد پایه به‌عنوان سهم بیمه کارگر کسر می‌شود (ماده ۳۷ قانون تأمین اجتماعی).'], ['مالیات چگونه محاسبه می‌شود؟', 'بر اساس پلکان معافیت سالانه؛ سقف معافیت ۱۴۰۵ معادل ۲۸۸ میلیون تومان است و نرخ‌های ۱۰ تا ۳۰ درصد پلکانی اعمال می‌شود.'], ['اضافه‌کاری چه نرخی دارد؟', 'هر ساعت اضافه‌کاری معادل ۱۴۰٪ مزد عادی ساعتی است (ماده ۵۹ قانون کار).']] },
+     severance: { intro: 'سنوات پایان خدمت به هر علت از جمله استعفا تعلق می‌گیرد (ماده ۲۴ قانون کار: «به هر علت»). سنوات مشمول کسر بیمه نیست و فرمول آن: هر سال سابقه معادل یک ماه آخرین مزد.', faqs: [['با استعفا هم سنوات می‌گیرم؟', 'بله، ماده ۲۴ قانون کار صراحتاً بیان می‌کند سنوات «به هر علت» تعلق می‌گیرد.'], ['سنوات مشمول کسر بیمه است؟', 'خیر، سنوات پایان خدمت مشمول کسر بیمه تأمین اجتماعی نیست.'], ['فرمول محاسبه سنوات چیست؟', 'هر سال سابقه کار معادل یک ماه آخرین مزد پایه است.']] },
+@@ -27,5 +102,57 @@ export default function CalculatorPage({ type, title, description }: Props) {
+     overtime: { intro: 'اضافه‌کاری هر ساعت ۴۰٪ بالاتر از مزد عادی محاسبه می‌شود (ماده ۵۹ قانون کار). مزد ساعتی از تقسیم مزد ماهانه بر ۲۲۰ ساعت به‌دست می‌آید.', faqs: [['نرخ اضافه‌کاری چیست؟', 'هر ساعت اضافه‌کاری معادل ۱۴۰٪ مزد عادی ساعتی است (ماده ۵۹).'], ['مزد ساعتی چگونه محاسبه می‌شود؟', 'مزد ماهانه تقسیم بر ۲۲۰ ساعت کار استاندارد ماهانه.'], ['حداکثر اضافه‌کاری مجاز چقدر است؟', 'حداکثر ۴۴ ساعت اضافه‌کاری در ماه با رعایت شرط‌های قانون کار مجاز است.']] },
+   };
+   const content = faqData[type];
+-  return <section className="inner-page calculator-page"><div className="container calc-layout"><div className="calc-copy"><span className="eyebrow">ابزارهای کاربان · قانون کار {cfg.year}</span><h1>{title}</h1><p className="lead">{description}</p><div className="education"><h2>قبل از محاسبه بدانید</h2><p>{content.intro}</p></div><div className="faq"><h2>پرسش‌های متداول</h2>{content.faqs.map(([q, a]) => <details key={q}><summary>{q}<CircleHelp size={16} /></summary><p>{a}</p></details>)}</div></div><div className="calculator-card"><div className="calc-card-head"><Calculator /><span>محاسبه‌گر {cfg.year}</span></div>{range('حقوق یا درآمد ماهانه (تومان)', salary, setSalary, 30000000, 300000000, 1000000)}{type === 'severance' && <>{range('روزهای کارکرد', days, setDays, 1, 31, 1)}{range('سابقه (سال)', years, setYears, 1, 30, 1)}</>}{type === 'overtime' && range('ساعات اضافه‌کاری', hours, setHours, 1, 100, 1)}{type === 'retirement' && <>{range('سن فعلی', age, setAge, 18, 70, 1)}{range('سابقه بیمه (سال)', insuredYears, setInsuredYears, 1, 40, 1)}</>}{type === 'salary' && <div className="calc-hints"><span>سهم بیمه کارمند: ۷٪</span><span>سهم بیمه کارفرما: ۲۳٪</span></div>}<button className="button full-button calculate-button" type="button" onClick={() => setCalculated(true)}>محاسبه نتیجه <ArrowLeft size={17} /></button><div className={`result-layout ${calculated ? 'result-visible' : ''}`}><div className="pie-chart" style={{ background: `conic-gradient(#0F5132 0 ${salaryPart}%, #C9A227 ${salaryPart}% ${salaryPart + insurancePart}%, #12344D ${salaryPart + insurancePart}% 100%)` }} /><div className="result-box"><span>برآورد شما</span><strong>{format(result)} <small>تومان</small></strong><div className="result-legend"><span><i className="legend-salary" />حقوق</span><span><i className="legend-insurance" />بیمه</span><span><i className="legend-tax" />مالیات</span></div></div></div><a className="button full-button" href="/خدمات">مشاوره مرتبط <MessageCircle size={17} /></a></div></div></section>;
++  return <section className="inner-page calculator-page"><div className="container calc-layout"><div className="calc-copy"><span className="eyebrow">ابزارهای کاربان · قانون کار {cfg.year}</span><h1>{title}</h1><p className="lead">{description}</p><div className="education"><h2>قبل از محاسبه بدانید</h2><p>{content.intro}</p></div><div className="faq"><h2>پرسش‌های متداول</h2>{content.faqs.map(([q, a]) => <details key={q}><summary>{q}<CircleHelp size={16} /></summary><p>{a}</p></details>)}</div></div><div className="calculator-card"><div className="calc-card-head"><Calculator /><span>محاسبه‌گر {cfg.year}</span></div>
++
++  {type === 'salary' ? (
++      <>
++        {range('روزهای کارکرد', days, setDays, 1, 31, 1)}
++        <label className="range-field" style={{flexDirection: 'row', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
++          <input type="checkbox" checked={isMarried} onChange={(e) => { setIsMarried(e.target.checked); setCalculated(false); }} />
++          <span>تأهل</span>
++        </label>
++        {range('تعداد فرزند', childrenCount, setChildrenCount, 0, 10, 1)}
++        {range('ساعات اضافه‌کاری', overtimeHours, setOvertimeHours, 0, 120, 1)}
++        {range('ساعات کسری', absenceHours, setAbsenceHours, 0, 120, 1)}
++        {range('پاداش و مزایا (ریال)', bonuses, setBonuses, 0, 500000000, 1000000)}
++        {range('سابقه (سال)', years, setYears, 0, 30, 1)}
++      </>
++  ) : (
++      <>
++        {range('حقوق یا درآمد ماهانه (ریال)', salary, setSalary, 30000000, 300000000, 1000000)}
++        {type === 'severance' && <>{range('روزهای کارکرد', days, setDays, 1, 31, 1)}{range('سابقه (سال)', years, setYears, 1, 30, 1)}</>}
++        {type === 'overtime' && range('ساعات اضافه‌کاری', hours, setHours, 1, 100, 1)}
++        {type === 'retirement' && <>{range('سن فعلی', age, setAge, 18, 70, 1)}{range('سابقه بیمه (سال)', insuredYears, setInsuredYears, 1, 40, 1)}</>}
++      </>
++  )}
++
++  {type === 'salary' && <div className="calc-hints"><span>سهم بیمه کارمند: ۷٪</span><span>سهم بیمه کارفرما: ۲۳٪</span></div>}<button className="button full-button calculate-button" type="button" onClick={() => setCalculated(true)}>محاسبه نتیجه <ArrowLeft size={17} /></button><div className={`result-layout ${calculated ? 'result-visible' : ''}`}><div className="pie-chart" style={{ background: `conic-gradient(#0F5132 0 ${salaryPart}%, #C9A227 ${salaryPart}% ${salaryPart + insurancePart}%, #12344D ${salaryPart + insurancePart}% 100%)` }} />
++
++  <div className="result-box">
++      {type === 'salary' ? (
++          <div className="feedback-success" style={{flexDirection: 'column', alignItems: 'flex-start', width: '100%', boxSizing: 'border-box'}}>
++              <div style={{display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px', width: '100%'}}>
++                  <Check size={16} /> <strong>دریافتی خالص: {formatPriceFa(results.net)}</strong>
++              </div>
++              <ul style={{fontSize: '0.85rem', width: '100%', lineHeight: '1.8'}}>
++                  <li>پایه: {formatPriceFa(results.base)}</li>
++                  <li>بن: {formatPriceFa(results.food)}</li>
++                  <li>مسکن: {formatPriceFa(results.housing)}</li>
++                  <li>عائله‌مندی: {formatPriceFa(results.family)}</li>
++                  <li>اولاد: {formatPriceFa(results.child)}</li>
++                  <li>اضافه‌کاری: {formatPriceFa(results.overtime)}</li>
++                  <li>سنوات ماهانه: {formatPriceFa(results.severanceMonthly)}</li>
++                  <li>پاداش: {formatPriceFa(bonuses)}</li>
++                  <li style={{color: '#d93025'}}>کسری: {formatPriceFa(results.absence)}</li>
++                  <li style={{color: '#d93025'}}>بیمه: {formatPriceFa(results.insurance)}</li>
++                  <li style={{color: '#d93025'}}>مالیات: {formatPriceFa(results.tax)}</li>
++              </ul>
++          </div>
++      ) : (
++          <>
++            <span>برآورد شما</span><strong>{formatPriceFa(results.res)}</strong>
++            <div className="result-legend"><span><i className="legend-salary" />حقوق</span><span><i className="legend-insurance" />بیمه</span><span><i className="legend-tax" />مالیات</span></div>
++          </>
++      )}
++  </div></div><a className="button full-button" href="/خدمات">مشاوره مرتبط <MessageCircle size={17} /></a></div></div></section>;
+ }
+diff --git a/src/components/ContentPage.tsx b/src/components/ContentPage.tsx
+index 562131c..83a81e0 100644
+--- a/src/components/ContentPage.tsx
++++ b/src/components/ContentPage.tsx
+@@ -1,39 +1,90 @@
+ import { useEffect, useMemo, useState } from 'react';
+-import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards } from 'lucide-react';
+-import { contractCatalog, contractTypes, industries, calculatorItems } from '@/data/config';
++import { useSEO } from '@/lib/useSEO';
++
++import { ArrowLeft, BriefcaseBusiness, Calculator, Clock, FileText, HeartHandshake, Scale, Sun, Users, WalletCards, Check } from 'lucide-react';
++import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, calculatorItems } from '@/data/config';
++
+ import { supabase } from '@/lib/supabase';
+ import { isIranianMobile } from '@/lib/validation';
++import { notifyAdmin } from '@/lib/notify';
++import { formatFa, formatPriceFa } from '@/lib/format';
+ import { normalizeMobile } from '@/lib/normalize';
+
+ const icons = [Scale, FileText, WalletCards, Calculator, Users, BriefcaseBusiness];
+ const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock };
+ type Props = { kind: 'knowledge' | 'contracts' | 'tools' | 'simple'; title: string; description: string; eyebrow?: string };
+-type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null };
++type Service = { id: string; title: string; price: string; description: string; domain: 'financial' | 'labor'; unit: string; featured: boolean; kind: string | null; discount_percent?: number };
+
+ export default function ContentPage({ kind, title, description, eyebrow = 'کاربان' }: Props) {
++  useSEO('کاربان | صفحه محتوا', 'مطالب تخصصی حوزه مدیریت، منابع انسانی و حقوقی در پلتفرم کاربان');
+   const [type, setType] = useState('همه انواع قرارداد'); const [industry, setIndustry] = useState('همه صنف‌ها');
+   const filteredContracts = useMemo(() => contractCatalog.filter((item) => (type === 'همه انواع قرارداد' || item.type === type) && (industry === 'همه صنف‌ها' || item.industry === industry)), [type, industry]);
+   return <section className={`inner-page ${kind === 'tools' ? 'tools-page' : ''}`}><div className={`container ${kind === 'contracts' || kind === 'tools' ? '' : 'narrow-content'}`}><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p className="lead">{description}</p>
+     {kind === 'knowledge' && <div className="category-grid">{['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => { const Icon = icons[index]; return <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}><Icon /><h2>{item}</h2><p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p><ArrowLeft size={16} /></a>; })}</div>}
+-    {kind === 'contracts' && <><div className="filter-panel"><strong>فیلتر دو بعدی قراردادها</strong><div className="filter-row"><select value={type} onChange={(event) => setType(event.target.value)} aria-label="نوع قرارداد"><option>همه انواع قرارداد</option>{contractTypes.map((item) => <option key={item}>{item}</option>)}</select><select value={industry} onChange={(event) => setIndustry(event.target.value)} aria-label="صنف یا شغل"><option>همه صنف‌ها</option>{industries.map((item) => <option key={item}>{item}</option>)}</select></div><small>{filteredContracts.length} قرارداد متناسب با انتخاب شما</small></div><div className="contract-grid">{filteredContracts.map((item) => { const Icon = icons[item.icon]; return <article className="contract-card" key={item.id}><div className="contract-card-top"><Icon /><div><small>{item.industry}</small><h2>{item.title}</h2><p>{item.description}</p></div></div><div className="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div><a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a></article>; })}</div></>}
++    {kind === 'contracts' && <><div className="filter-panel"><strong>فیلتر دو بعدی قراردادها</strong><div className="filter-row"><select value={type} onChange={(event) => setType(event.target.value)} aria-label="نوع قرارداد"><option>همه انواع قرارداد</option>{CONTRACT_TYPES.map((item) => <option key={item}>{item}</option>)}</select><select value={industry} onChange={(event) => setIndustry(event.target.value)} aria-label="صنف یا شغل"><option>همه صنف‌ها</option>{INDUSTRIES.map((item) => <option key={item}>{item}</option>)}</select></div><small>{formatFa(filteredContracts.length)} قرارداد متناسب با انتخاب شما</small></div><div className="contract-grid">{filteredContracts.map((item) => { const Icon = icons[item.icon]; return <article className="contract-card" key={item.id}><div className="contract-card-top"><Icon /><div><small>{item.industry}</small><h2>{item.title}</h2><p>{item.description}</p></div></div><div className="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div><a className="button button-small" href={`/قراردادها/${item.id}`}>مشاهده <ArrowLeft size={15} /></a></article>; })}</div></>}
++
+     {kind === 'tools' && <><div className="tools-hero-card"><div><h2>ابزارهای هوش مصنوعی کاربان</h2><p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p></div><img src="/images/og-tools.png" alt="تصویر ماشین‌حساب کاربان" /></div><div className="tool-grid">{calculatorItems.map((item) => { const Icon = toolIcons[item.icon] || Calculator; return <a className="tool-card" href={item.href} key={item.title}><div className="tool-icon"><Icon size={22} /></div><h3>{item.title}</h3><p>{item.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></>}
+-    {kind === 'simple' && <div className="simple-panels"><h2>همه‌چیز برای یک تصمیم بهتر</h2><p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p><a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a></div>}
++    {kind === 'simple' && (
++      <div className="simple-panels">
++        {title === 'درباره کاربان' ? (
++          <>
++            <p style={{ lineHeight: '2' }}>
++              کاربان از یک مشاهده ساده متولد شد: هزاران رابطه کاری، همکاری و
++              قرارداد در کشور بدون نوشته درست، یا با نمونه‌های ناقص کپی‌شده از
++              اینترنت بسته می‌شود — و حاصل آن اختلاف، جریمه و اتلاف وقت هر دو طرف است.
++              کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی
++              به تفکیک صنف، ماشین‌حساب‌های دقیق حقوق و سنوات مطابق مقررات ۱۴۰۵، و
++              دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. روش ما ساده است:
++              متن حقوقی دقیق، به‌روز و در دسترس برای همه، به‌همراه ابزارهای هوشمندی
++              که محاسبه‌های پیچیده را به یک کلیک تبدیل می‌کنند. کاربان؛ از قرارداد تا آرامش.
++            </p>
++          </>
++        ) : title === 'تماس با کاربان' ? (
++          <>
++            <p>پاسخ‌گویی شنبه تا چهارشنبه، ۹ تا ۱۷ — hello@karbanapp.ir</p>
++            <a className="button" href="/تماس">فرم تماس <ArrowLeft size={17} /></a>
++          </>
++        ) : (
++          <>
++            <h2>همه‌چیز برای یک تصمیم بهتر</h2>
++            <p>کاربان با ترکیب آموزش، ابزار و خدمات تخصصی، مسیر مدیریت کسب‌وکار را برای شما ساده‌تر می‌کند. محتوای این بخش به‌صورت منظم به‌روز می‌شود.</p>
++            <a className="button" href="/تماس">با ما در تماس باشید <ArrowLeft size={17} /></a>
++          </>
++        )}
++      </div>
++    )}
+   </div></section>;
+ }
+
+ export function ServicesPage() {
+   const [services, setServices] = useState<Service[]>([]); const [mobile, setMobile] = useState(''); const [domain, setDomain] = useState<'financial' | 'labor'>('financial'); const [service, setService] = useState(''); const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+-  useEffect(() => { let active = true; supabase.from('services').select('id,title,price,description,domain,unit,featured,kind').order('created_at').then(({ data, error }) => { if (!active) return; if (error) { console.error('services load failed', error); return; } setServices((data || []) as Service[]); }); return () => { active = false; }; }, []);
++  useEffect(() => { let active = true; supabase.from('services').select('id,title,price,description,domain,unit,featured,kind,discount_percent').order('created_at').then(({ data, error }) => { if (!active) return; if (error) { console.error('services load failed', error); return; } setServices((data || []) as Service[]); }); return () => { active = false; }; }, []);
+   const consultationServices = services.filter((s) => !s.kind);
+   const visibleServices = consultationServices.filter((item) => item.domain === domain);
+   useEffect(() => { if (visibleServices.length && !visibleServices.some((item) => item.title === service)) setService(visibleServices[0].title); }, [domain, services, service, visibleServices]);
+-  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } setStatus('success'); setMobile(''); };
++  const submitConsultation = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!isIranianMobile(mobile) || !service) { setStatus('error'); return; } setStatus('loading'); const { error } = await supabase.from('consultation_requests').insert({ mobile: normalizeMobile(mobile), domain, service }); if (error) { console.error('consultation request failed', error); setStatus('error'); return; } notifyAdmin(`📥 مشاوره: ${service} | ${normalizeMobile(mobile)}`); setStatus('success'); setMobile(''); };
+   const laborItems = consultationServices.filter((s) => s.domain === 'labor');
+   const financialItems = consultationServices.filter((s) => s.domain === 'financial');
+   const contractItems = services.filter((s) => s.kind);
++
++  const renderPrice = (price: string, discount?: number) => {
++    if (!discount || discount <= 0) return <strong>{formatPriceFa(price)}</strong>;
++    const numPrice = parseFloat(price.replace(/,/g, ''));
++    if (isNaN(numPrice)) return <strong>{formatPriceFa(price)}</strong>;
++    const discounted = numPrice * (100 - discount) / 100;
++    return (
++      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
++        <span style={{ textDecoration: 'line-through', color: '#d93025', fontSize: '0.9rem' }}>{formatPriceFa(price)}</span>
++        <strong style={{ color: '#d93025' }}>{formatPriceFa(discounted.toString())}</strong>
++      </div>
++    );
++  };
++  const renderRibbon = (discount?: number) => discount && discount > 0 ? <div className="discount-ribbon">تخفیف ویژه</div> : null;
++
+   return <section className="inner-page"><div className="container"><div className="narrow-content"><span className="eyebrow">خدمات تخصصی کاربان</span><h1>خدمات تخصصی کاربان — از پرسش متنی تا همراهی کامل</h1><p className="lead">دو مسیر هم‌وزن برای امور مالی و روابط کار؛ از یک پرسش کوتاه تا همراهی کامل سازمانی.</p></div>
+-    {laborItems.length > 0 && <section><h2>مشاوره روابط کار</h2><div className="plans-grid">{laborItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
+-    {financialItems.length > 0 && <section><h2>مشاوره مالی، مالیاتی و حسابرسی</h2><div className="plans-grid">{financialItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} key={plan.id}>{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
+-    {contractItems.length > 0 && <section><h2>خدمات قراردادی و انجام‌کردنی <span className="plan-badge" style={{ position: 'static', display: 'inline-block', marginRight: '0.5rem' }}>انجام کار توسط متخصص</span></h2><div className="plans-grid">{contractItems.map((plan) => <article className="plan-card" key={plan.id}><h2>{plan.title}</h2><p>{plan.description}</p><strong>{plan.price}</strong><small>{plan.unit}</small></article>)}</div></section>}
+-    <div className="guarantee"><Scale size={23} /><span><strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.</span></div><form className="filter-panel" onSubmit={submitConsultation}><strong>فرم درخواست مشاوره</strong><div className="filter-row"><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه"><option value="financial">مالی و مالیاتی</option><option value="labor">روابط کار</option></select><select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">{visibleServices.map((item) => <option value={item.title} key={item.id}>{item.title}</option>)}</select><button className="button" type="submit" disabled={status === 'loading'}>ثبت درخواست <ArrowLeft size={15} /></button></div>{status === 'success' && <small>درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</small>}{status === 'error' && <small>شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}</form></div></section>;
++    {laborItems.length > 0 && <section><h2>مشاوره روابط کار</h2><div className="plans-grid">{laborItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} style={{position:'relative', overflow:'hidden'}} key={plan.id}>{renderRibbon(plan.discount_percent)}{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p>{renderPrice(plan.price, plan.discount_percent)}<small>{plan.unit}</small></article>)}</div></section>}
++    {financialItems.length > 0 && <section><h2>مشاوره مالی، مالیاتی و حسابرسی</h2><div className="plans-grid">{financialItems.map((plan) => <article className={`plan-card ${plan.featured ? 'plan-featured' : ''}`} style={{position:'relative', overflow:'hidden'}} key={plan.id}>{renderRibbon(plan.discount_percent)}{plan.featured && <span className="plan-badge">پیشنهاد کاربان</span>}<h2>{plan.title}</h2><p>{plan.description}</p>{renderPrice(plan.price, plan.discount_percent)}<small>{plan.unit}</small></article>)}</div></section>}
++    {contractItems.length > 0 && <section><h2>خدمات قراردادی و تخصصی <span className="plan-badge" style={{ position: 'static', display: 'inline-block', marginRight: '0.5rem' }}>انجام کار توسط متخصص</span></h2><div className="plans-grid">{contractItems.map((plan) => <article className="plan-card" style={{position:'relative', overflow:'hidden'}} key={plan.id}>{renderRibbon(plan.discount_percent)}<h2>{plan.title}</h2><p>{plan.description}</p>{renderPrice(plan.price, plan.discount_percent)}<small>{plan.unit}</small></article>)}</div></section>}
++
++    <div className="guarantee"><Scale size={23} /><span><strong>درخواست مشاوره</strong> — شماره موبایل، حوزه و خدمت موردنظر را ثبت کنید.</span></div><form className="filter-panel" onSubmit={submitConsultation}><strong>فرم درخواست مشاوره</strong><div className="filter-row"><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><select value={domain} onChange={(event) => setDomain(event.target.value as 'financial' | 'labor')} aria-label="حوزه"><option value="financial">مالی و مالیاتی</option><option value="labor">روابط کار</option></select><select value={service} onChange={(event) => setService(event.target.value)} aria-label="خدمت">{visibleServices.map((item) => <option value={item.title} key={item.id}>{item.title}</option>)}</select><button className="button" type="submit" disabled={status === 'loading'}>ثبت درخواست <ArrowLeft size={15} /></button></div>{status === 'success' && <div className="feedback-success"><Check size={16} /> درخواست شما ثبت شد؛ با شما تماس می‌گیریم.</div>}{status === 'error' && <small className="feedback-error">شماره موبایل معتبر و یک خدمت را انتخاب کنید.</small>}</form></div></section>;
+ }
+diff --git a/src/components/HomePage.tsx b/src/components/HomePage.tsx
+index 2407552..ffd3dd8 100644
+--- a/src/components/HomePage.tsx
++++ b/src/components/HomePage.tsx
+@@ -1,14 +1,39 @@
+-import { useState } from 'react';
+-import { ArrowLeft, BarChart3, BriefcaseBusiness, Calculator, CheckCircle2, Coins, FileText, HeartHandshake, Laptop, LockKeyhole, Scale, ShieldCheck, Sparkles, Sprout, Sun, TrendingUp } from 'lucide-react';
+-import { roleCards, serviceItems, specialistServices, toolItems } from '@/data/config';
+-import { supabase } from '@/lib/supabase';
++import React, { useState, useEffect, useRef } from 'react';
++import { useSEO } from '@/lib/useSEO';
++
++import { ArrowLeft, BookOpen, Calculator, CheckCircle2, FileText, Sparkles, Scale, HeartHandshake, Zap, Check, ChevronLeft, ShieldCheck, Building2, TrendingUp, HelpCircle } from 'lucide-react';
+ import { isIranianMobile } from '@/lib/validation';
++import { notifyAdmin } from '@/lib/notify';
++import { supabase } from '@/lib/supabase';
+ import { normalizeMobile } from '@/lib/normalize';
++import { formatFa } from '@/lib/format';
++
++function useIntersectionObserver() {
++  const ref = useRef<HTMLDivElement>(null);
++  const [isVisible, setIsVisible] = useState(false);
++
++  useEffect(() => {
++    const observer = new IntersectionObserver(([entry]) => {
++      if (entry.isIntersecting) {
++        setIsVisible(true);
++        observer.unobserve(entry.target);
++      }
++    }, { threshold: 0.1 });
++
++    if (ref.current) observer.observe(ref.current);
++    return () => observer.disconnect();
++  }, []);
++
++  return { ref, isVisible };
++}
+
+-const icons = { briefcase: BriefcaseBusiness, shield: ShieldCheck, laptop: Laptop, file: FileText, calculator: Calculator, sun: Sun, chart: BarChart3, coins: Coins, scale: Scale, heart: HeartHandshake } as const;
+-const values = [[LockKeyhole, 'اعتماد', 'اطلاعات و تصمیم‌های شما با دقت محافظت می‌شوند.'], [Scale, 'تخصص', 'دانش حقوقی و مالی را به زبان قابل استفاده ارائه می‌کنیم.'], [ShieldCheck, 'امنیت', 'مسیرهای امن برای قرارداد، داده و تعامل با متخصص.'], [HeartHandshake, 'همراهی', 'از سؤال اول تا اجرای تصمیم کنار شما می‌مانیم.'], [Sprout, 'رشد', 'ابزارهای ساده برای ساختن آینده‌ای بهتر.']] as const;
++function Reveal({ children, className = '' }: { children: React.ReactNode, className?: string }) {
++  const { ref, isVisible } = useIntersectionObserver();
++  return <div ref={ref} className={`reveal-element ${isVisible ? 'visible' : ''} ${className}`}>{children}</div>;
++}
+
+ export default function HomePage() {
++  useSEO('کاربان | مرجع قراردادها و مدیریت کسب‌وکار', 'کاربان؛ دانلود قراردادهای معتبر، محاسبه‌گر حقوق و دستمزد، ابزارهای هوش مصنوعی و آموزش راه‌اندازی کسب‌وکار در ایران.');
+   const [mobile, setMobile] = useState('');
+   const [briefStatus, setBriefStatus] = useState<'idle' | 'success' | 'error'>('idle');
+   const submitBrief = async (event: React.FormEvent<HTMLFormElement>) => {
+@@ -16,20 +41,116 @@ export default function HomePage() {
+     if (!isIranianMobile(mobile)) { setBriefStatus('error'); return; }
+     const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'weekly_brief' });
+     if (error) { console.error('weekly brief submission failed', error); setBriefStatus('error'); return; }
++    notifyAdmin(`📥 بریف هفتگی: ${normalizeMobile(mobile)}`);
+     setBriefStatus('success'); setMobile('');
+   };
+
+-  return <>
+-    <section className="hero-home"><div className="hero-orb hero-orb-one" /><div className="hero-orb hero-orb-two" /><div className="container hero-grid">
+-      <div className="hero-copy"><span className="eyebrow"><Sparkles size={15} /> پلتفرم هوشمند مدیریت کسب‌وکار ایران</span><h1>کاربان، همراه مطمئن <span>رشد کسب‌وکار</span> شما</h1><p>از قرارداد و قانون کار تا مالیات و حسابداری؛ ابزار و تخصص موردنیاز کسب‌وکار شما، در یک مرجع مطمئن فارسی.</p><div className="hero-note"><CheckCircle2 size={17} /> محتوای کاربردی، ابزار واقعی، متخصصان تأییدشده</div></div>
+-      <div className="role-panel"><div className="role-panel-heading"><span>از کجا شروع می‌کنید؟</span><small>مسیر مناسب خود را انتخاب کنید</small></div><div className="role-cards">{roleCards.map((role) => { const Icon = icons[role.icon]; return <a className={`role-card role-${role.accent}`} href={role.href} key={role.title}><div className="role-icon"><Icon size={24} /></div><div><h2>{role.title}</h2><p>{role.description}</p></div><ArrowLeft size={18} className="role-arrow" /></a>; })}</div><a className="expert-link" href="/تماس">متخصص هستی؟ به شبکه متخصصان بپیوند <ArrowLeft size={15} /></a></div>
+-    </div><div className="container"><div className="hero-floats"><div className="hero-arrow"><span /></div><div className="float-card float-contract"><FileText size={17} /><span>قرارداد امن</span></div><div className="float-card float-growth"><TrendingUp size={17} /><span>رشد پایدار</span></div><div className="float-card float-coin"><Coins size={17} /><span>مدیریت مالی</span></div></div></div></section>
++  const industries = ['پزشکان', 'رستوران‌ها', 'برنامه‌نویسان', 'فروشگاه آنلاین', 'مشاوران املاک', 'آموزشگاه‌ها', 'طلا و جواهر', 'حمل‌ونقل'];
++
++  return <div className="home-redesign">
++    <section className="hero-section">
++      <div className="girih-pattern"></div>
++      <div className="container hero-content">
++        <Reveal>
++          <h1>رشد مطمئن کسب‌وکار شما با کاربان</h1>
++          <p>از قرارداد و قانون کار تا مالیات و حسابداری؛ ابزار و تخصص موردنیاز کسب‌وکار شما، در یک مرجع مطمئن فارسی.</p>
++          <div className="hero-ctas">
++            <a href="/قراردادها" className="button gold-btn">شروع کنید <ArrowLeft size={16} /></a>
++            <a href="/خدمات" className="button outline-gold-btn">مشاوره رایگان</a>
++          </div>
++        </Reveal>
++        <Reveal className="hero-card-container">
++          <div className="floating-card">
++            <ShieldCheck size={40} className="golden-seal" />
++            <div className="fc-lines">
++              <div className="fc-line w-3/4"></div>
++              <div className="fc-line w-full"></div>
++              <div className="fc-line w-5/6"></div>
++              <div className="fc-line w-1/2 mt-4"></div>
++            </div>
++            <div className="fc-signature"></div>
++          </div>
++        </Reveal>
++      </div>
++    </section>
++
++    <section className="stats-section">
++      <div className="container stats-grid">
++        <Reveal className="stat-item"><strong>{formatFa('+۶۰')}</strong><span>قرارداد تخصصی</span></Reveal>
++        <Reveal className="stat-item"><strong>{formatFa('۱۴۰۵')}</strong><span>پارامتر حقوق کار</span></Reveal>
++        <Reveal className="stat-item"><strong>{formatFa('۷')}</strong><span>ابزار هوشمند</span></Reveal>
++      </div>
++    </section>
++
++    <div className="marquee-wrapper">
++      <div className="marquee-content">
++        {[...industries, ...industries, ...industries].map((ind, i) => (
++          <span key={i}>{ind} <Sparkles size={12} className="mx-2 inline text-karban-gold" /> </span>
++        ))}
++      </div>
++    </div>
++
++    <section className="services-section container">
++      <Reveal><h2 className="section-title">خدمات جامع کاربان</h2></Reveal>
++      <div className="services-grid">
++        {[
++          {title: 'بانک قراردادها', icon: FileText, desc: 'دانلود قراردادهای تخصصی'},
++          {title: 'مشاوره روابط کار', icon: Users, desc: 'حل اختلافات کارگر و کارفرما', discount: true},
++          {title: 'مشاوره مالی', icon: Calculator, desc: 'مالیات و حسابداری', discount: false},
++          {title: 'بسته ثبت شرکت', icon: Building2, desc: 'ثبت و راه‌اندازی قانونی', discount: true}
++        ].map((s, i) => (
++          <Reveal key={i} className="service-card">
++            {s.discount && <div className="discount-ribbon">تخفیف ویژه</div>}
++            <s.icon size={30} />
++            <h3>{s.title}</h3>
++            <p>{s.desc}</p>
++            <a href="/خدمات">اطلاعات بیشتر <ChevronLeft size={16} /></a>
++          </Reveal>
++        ))}
++      </div>
++    </section>
+
+-    <section className="section section-services"><div className="container"><div className="section-heading"><div><span className="eyebrow">یک مرجع، دو مسیر اصلی</span><h2>برای هر تصمیم مهم، کنار شما هستیم</h2></div><a className="text-link" href="/خدمات">مشاهده همه خدمات <ArrowLeft size={16} /></a></div><div className="service-grid service-grid-two">{serviceItems.map((item) => { const Icon = icons[item.icon]; return <a className="service-card service-card-large" href={item.href} key={item.title}><div className="service-icon"><Icon size={25} /></div><h3>{item.title}</h3><p>{item.description}</p><span>انتخاب این مسیر <ArrowLeft size={14} /></span><div className="service-ladder"><small>نردبان خدمات</small><b>مشاوره متنی · ۲۹۰ هزار</b><b>تلفنی ۳۰ دقیقه · ۸۹۰ هزار</b><b>حضوری ۱ ساعت · ۲,۹۰۰,۰۰۰</b><b>پکیج ماهانه · ۱۲,۹۰۰,۰۰۰</b></div></a>; })}<div className="service-card specialist-card"><span className="plan-badge">انجام کار توسط متخصص</span><div className="service-icon"><Sparkles size={25} /></div><h3>خدمات تخصصی برای سازمان شما</h3><p>وقتی یک کار باید دقیق، سریع و با مسئولیت‌پذیری انجام شود.</p><div className="specialist-list">{specialistServices.map(([title, price]) => <a href="/تماس" key={title}><span>{title}</span><b>{price}</b></a>)}</div></div></div></div></section>
++    <section className="tools-section">
++      <div className="container">
++        <Reveal><h2 className="section-title text-white">ابزارهای هوشمند</h2></Reveal>
++        <div className="tools-grid">
++          {[
++            {title: 'محاسبه حقوق', href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق'},
++            {title: 'هزینه استخدام', href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام'},
++            {title: 'سنوات', href: '/ابزارهای-هوش-مصنوعی/سنوات'},
++            {title: 'تست سلامت', href: '/ابزارهای-هوش-مصنوعی/تست-سلامت'}
++          ].map((t, i) => (
++            <Reveal key={i}>
++              <a href={t.href} className="tool-tile">
++                <h3>{t.title}</h3>
++                <ArrowLeft size={18} />
++              </a>
++            </Reveal>
++          ))}
++        </div>
++      </div>
++    </section>
+
+-    <section className="section tools-strip"><div className="container tools-cover"><div className="section-heading"><div><span className="eyebrow eyebrow-dark">ابزارهای هوشمند و تعاملی</span><h2>کمتر جست‌وجو کنید، بیشتر پیش بروید</h2></div><a className="text-link text-link-light" href="/ابزارهای-هوش-مصنوعی">همه ابزارها <ArrowLeft size={16} /></a></div><div className="tool-grid">{toolItems.map((tool) => { const Icon = icons[tool.icon]; return <a className="tool-card" href={tool.href} key={tool.title}><div className="tool-icon"><Icon size={22} /></div><h3>{tool.title}</h3><p>{tool.description}</p><span>ورود به ابزار <ArrowLeft size={15} /></span></a>; })}</div></div></section>
++    <section className="timeline-section container">
++      <Reveal><h2 className="section-title">چگونه کار می‌کند؟</h2></Reveal>
++      <div className="timeline">
++        <div className="timeline-line"></div>
++        {[
++          {title: 'انتخاب نیاز', icon: HelpCircle, desc: 'قرارداد، مشاوره یا محاسبه‌گر موردنیاز خود را پیدا کنید.'},
++          {title: 'تکمیل اطلاعات', icon: FileText, desc: 'فرم‌های ساده و هوشمند را تکمیل کنید.'},
++          {title: 'رشد پایدار', icon: TrendingUp, desc: 'تصمیم‌های مطمئن بگیرید و کسب‌وکارتان را توسعه دهید.'}
++        ].map((step, i) => (
++          <Reveal key={i} className="timeline-step">
++            <div className="step-icon"><step.icon size={24} /></div>
++            <div className="step-content">
++              <h3>{step.title}</h3>
++              <p>{step.desc}</p>
++            </div>
++          </Reveal>
++        ))}
++      </div>
++    </section>
+
+-    <section className="section values-section"><div className="container"><div className="center-heading"><span className="eyebrow">چرا کاربان؟</span><h2>برای رشد، به یک همراه قابل اتکا نیاز دارید</h2></div><div className="values-grid">{values.map(([Icon, title, text]) => <div className="value-item" key={title}><Icon size={22} /><h3>{title}</h3><p>{text}</p></div>)}</div></div></section>
+-    <section className="brief-bar"><div className="container brief-inner"><div><span>بریف هفتگی کاربان</span><p>یک نکته کاربردی برای مدیریت بهتر کسب‌وکار، هر هفته در موبایل شما.</p>{briefStatus === 'success' && <small>عضویت شما با موفقیت ثبت شد.</small>}{briefStatus === 'error' && <small>شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}</div><form onSubmit={submitBrief}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setBriefStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button" type="submit">عضویت <ArrowLeft size={16} /></button></form></div></section>
+-  </>;
++    <section className="brief-bar"><div className="container brief-inner"><div><span>بریف هفتگی کاربان</span><p>یک نکته کاربردی برای مدیریت بهتر کسب‌وکار، هر هفته در موبایل شما.</p>{briefStatus === 'success' && <div className="feedback-success"><Check size={16} /> عضویت شما با موفقیت ثبت شد.</div>}{briefStatus === 'error' && <small className="feedback-error">شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}</div><form onSubmit={submitBrief}><input type="tel" inputMode="numeric" value={mobile} onChange={(event) => { setMobile(event.target.value); setBriefStatus('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل" /><button className="button gold-btn" type="submit">عضویت <ArrowLeft size={16} /></button></form></div></section>
++  </div>;
+ }
+diff --git a/src/components/SiteFooter.tsx b/src/components/SiteFooter.tsx
+index 24f622b..95bd4a1 100644
+--- a/src/components/SiteFooter.tsx
++++ b/src/components/SiteFooter.tsx
+@@ -5,6 +5,6 @@ export default function SiteFooter() {
+     <div className="footer-brand"><img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" /><p>مرجع هوشمند مدیریت کسب‌وکار برای کاربران ایرانی؛ از اولین قرارداد تا رشد پایدار.</p><div className="socials"><a href="/تماس" aria-label="اینستاگرام"><Instagram size={18} /></a><a href="/تماس" aria-label="لینکدین"><Linkedin size={18} /></a><a href="/تماس" aria-label="تلگرام"><Send size={18} /></a></div></div>
+     <div><h3>دسترسی سریع</h3><a href="/دانشنامه">دانشنامه</a><a href="/قراردادها">قراردادها</a><a href="/خدمات">خدمات</a><a href="/ابزارهای-هوش-مصنوعی">ابزارهای هوش مصنوعی</a></div>
+     <div><h3>کاربان</h3><a href="/درباره-ما">درباره ما</a><a href="/تماس">تماس با ما</a></div>
+-    <div><h3>با ما در تماس باشید</h3><p className="contact-line"><Phone size={16} /> ۰۲۱-۱۲۳۴۵۶۷۸</p><p className="contact-line"><Mail size={16} /> hello@karban.ir</p><p className="footer-address">تهران، خیابان ولیعصر</p></div>
++    <div><h3>با ما در تماس باشید</h3><p className="contact-line"><Phone size={16} /> ۰۲۱-۸۸۳۴۲۶۷۹</p><p className="contact-line"><Mail size={16} /> hello@karbanapp.ir</p><p className="footer-address">تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p></div>
+   </div><div className="container footer-bottom"><span>© ۱۴۰۵ کاربان. تمام حقوق محفوظ است.</span><span>ساخته‌شده برای رشد کسب‌وکارهای ایرانی</span></div></footer>;
+ }
+diff --git a/src/data/config.ts b/src/data/config.ts
+index 2ae7579..ba9411b 100644
+--- a/src/data/config.ts
++++ b/src/data/config.ts
+@@ -45,6 +45,6 @@ export const calculatorItems = [
+   { title: 'اضافه‌کاری', description: 'مبلغ اضافه‌کاری را بر اساس نرخ قانونی ببینید.', href: '/ابزارهای-هوش-مصنوعی/اضافه-کاری', icon: 'clock' },
+ ];
+
+-export const contractTypes = ['کار', 'همکاری', 'پیمانکاری', 'شراکت', 'محرمانگی'] as const;
+-export const industries = ['پزشکان', 'برنامه‌نویسان', 'فروشگاه آنلاین', 'مدرس‌ها', 'رستوران', 'مهندسی و ساختمان', 'فریلنسری', 'تجاری', 'آژانس تبلیغاتی', 'تولیدکنندگان', 'مشاوران', 'استارتاپ‌ها'] as const;
+-export const contractCatalog = contractTypes.flatMap((type) => industries.map((industry, index) => ({ id: `${type}-${industry}`, type, industry, title: `قرارداد ${type} ${industry}`, description: `نسخه استاندارد و تخصصی برای همکاری‌های حوزه ${industry}.`, icon: index % 3 })));
++export const CONTRACT_TYPES = ['کار', 'همکاری', 'پیمانکاری', 'خدمات', 'مشاوره', 'فروش', 'تأمین کالا', 'اجاره', 'لیزینگ', 'نمایندگی', 'توزیع', 'وکالت', 'محرمانگی', 'عدم رقابت', 'آموزش', 'کارآموزی', 'مشارکت مدنی', 'حمل‌ونقل', 'پشتیبانی و نگهداری', 'فرانچایز'] as const;
++export const INDUSTRIES = ['پزشکان', 'دندانپزشکان', 'پیراپزشکی', 'داروخانه‌ها', 'برنامه‌نویسان', 'طراحان گرافیک', 'تولیدکنندگان محتوا', 'فروشگاه‌های آنلاین', 'استارتاپ‌ها', 'رستوران‌ها', 'کافه‌ها', 'سوپرمارکت‌ها', 'قنادی‌ها', 'پوشاک', 'خیاطی', 'کفش و چرم', 'آرایشگاه‌ها و سالن‌های زیبایی', 'آموزشگاه‌ها', 'مدرس‌ها', 'مربیان ورزشی', 'باشگاه‌ها', 'مشاوران املاک', 'ساخت‌وساز', 'مهندسان', 'معماران', 'پیمانکاران ساختمان', 'برق‌کاران', 'لوله‌کش‌ها', 'مکانیک‌ها', 'تعمیرگاه‌ها', 'فروشندگان خودرو', 'نمایشگاه‌های خودرو', 'شرکت‌های حمل‌ونقل', 'رانندگان', 'آژانس‌ها', 'گردشگری', 'آژانس‌های هواپیمایی', 'هتل‌ها', 'وکلا', 'دفاتر اسناد رسمی', 'حسابداران', 'شرکت‌های حسابداری', 'فریلنسرها', 'عکاسان و آتلیه‌ها', 'تبلیغات و چاپ', 'کشاورزی', 'دامداری', 'گل‌فروشی‌ها', 'طلا و جواهر', 'صرافی‌ها', 'بیمه', 'بازاریابی دیجیتال'] as const;
++export const contractCatalog = CONTRACT_TYPES.flatMap((type) => INDUSTRIES.map((industry, index) => ({ id: `${type}-${industry}`, type, industry, title: `قرارداد ${type} ${industry}`, description: `نسخه استاندارد و تخصصی برای همکاری‌های حوزه ${industry}.`, icon: index % 3 })));
+diff --git a/src/index.css b/src/index.css
+index db4ff36..e07f67e 100644
+--- a/src/index.css
++++ b/src/index.css
+@@ -428,3 +428,136 @@
+   .admin-table { font-size: 0.82rem; }
+   .admin-table th, .admin-table td { padding: 0.5rem 0.5rem; }
+ }
++
++/* Success and Error messages */
++.feedback-success {
++  background-color: #e6f4ea;
++  color: #1e8e3e;
++  padding: 8px 12px;
++  border-radius: 4px;
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  font-size: 0.875rem;
++  margin-top: 8px;
++  border: 1px solid #ceead6;
++}
++
++.feedback-error {
++  color: #d93025;
++  font-size: 0.875rem;
++  margin-top: 8px;
++  display: block;
++}
++
++
++.discount-ribbon {
++  position: absolute;
++  top: 15px;
++  right: -35px;
++  background: #d93025;
++  color: white;
++  padding: 4px 40px;
++  transform: rotate(45deg);
++  font-size: 0.75rem;
++  font-weight: bold;
++  z-index: 10;
++  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
++}
++.tools-hero-card {
++  margin-top: 2rem;
++}
++.tool-card h3 {
++  opacity: 1 !important;
++  visibility: visible !important;
++  color: #12344d;
++}
++
++
++/* --- HomePage Redesign --- */
++.home-redesign { font-family: 'Vazirmatn', sans-serif; overflow-x: hidden; }
++.reveal-element { opacity: 0; transform: translateY(30px); transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
++.reveal-element.visible { opacity: 1; transform: translateY(0); }
++
++.hero-section {
++  position: relative;
++  background-color: #12344D;
++  color: white;
++  padding: 6rem 0;
++  overflow: hidden;
++}
++.girih-pattern {
++  position: absolute;
++  top: 0; left: 0; right: 0; bottom: 0;
++  background-image: radial-gradient(circle at center, rgba(201,162,39,0.15) 1px, transparent 1px);
++  background-size: 20px 20px;
++  animation: pattern-drift 40s linear infinite;
++  opacity: 0.5;
++}
++@keyframes pattern-drift { 0% { background-position: 0 0; } 100% { background-position: 100px 100px; } }
++
++.hero-content {
++  display: flex;
++  align-items: center;
++  justify-content: space-between;
++  gap: 3rem;
++  position: relative;
++  z-index: 2;
++}
++.hero-content h1 { font-size: 2.8rem; font-weight: 800; color: #fff; margin-bottom: 1rem; line-height: 1.3; }
++.hero-content p { font-size: 1.1rem; color: #cbd5e1; margin-bottom: 2rem; max-width: 500px; line-height: 1.8; }
++.hero-ctas { display: flex; gap: 1rem; }
++
++.gold-btn { background-color: #C9A227 !important; color: #12344D !important; border-color: #C9A227 !important; }
++.gold-btn:hover { background-color: #E0BE4A !important; box-shadow: 0 0 15px rgba(201,162,39,0.5); }
++.outline-gold-btn { background: transparent !important; border: 1px solid #C9A227 !important; color: #C9A227 !important; }
++.outline-gold-btn:hover { background: rgba(201,162,39,0.1) !important; }
++
++.hero-card-container { flex-shrink: 0; }
++.floating-card {
++  background: white;
++  width: 280px;
++  height: 350px;
++  border-radius: 12px;
++  padding: 2rem;
++  position: relative;
++  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
++  animation: float 6s ease-in-out infinite;
++}
++@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
++.golden-seal { color: #C9A227; position: absolute; top: -15px; left: -15px; background: white; border-radius: 50%; padding: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
++.fc-line { height: 8px; background: #e2e8f0; border-radius: 4px; margin-bottom: 1rem; }
++.fc-signature { height: 40px; width: 80px; border-bottom: 2px solid #12344D; margin-top: 3rem; margin-right: auto; }
++
++.stats-section { background: white; padding: 3rem 0; border-bottom: 1px solid #f1f5f9; }
++.stats-grid { display: flex; justify-content: space-around; text-align: center; }
++.stat-item strong { display: block; font-size: 2.5rem; color: #12344D; margin-bottom: 0.5rem; }
++.stat-item span { color: #64748b; font-size: 0.9rem; }
++
++.marquee-wrapper { background: #12344D; color: #C9A227; padding: 1rem 0; overflow: hidden; white-space: nowrap; }
++.marquee-content { display: inline-block; animation: marquee 30s linear infinite; font-weight: bold; }
++@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(50%); } }
++
++.services-section { padding: 5rem 0; }
++.section-title { text-align: center; font-size: 2rem; margin-bottom: 3rem; color: #12344D; }
++.services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
++.service-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; text-align: right; position: relative; overflow: hidden; transition: box-shadow 0.3s; }
++.service-card:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
++.service-card svg { color: #C9A227; margin-bottom: 1.5rem; }
++.service-card h3 { font-size: 1.2rem; color: #12344D; margin-bottom: 0.5rem; }
++.service-card p { color: #64748b; margin-bottom: 1.5rem; font-size: 0.95rem; }
++.service-card a { color: #1e4a6e; font-weight: bold; display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
++
++.tools-section { background: #12344D; padding: 5rem 0; }
++.tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
++.tool-tile { background: rgba(201,162,39,0.05); border: 1px solid rgba(201,162,39,0.3); border-radius: 12px; padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; color: #C9A227; text-decoration: none; transition: all 0.3s; }
++.tool-tile:hover { background: rgba(201,162,39,0.15); box-shadow: 0 0 20px rgba(201,162,39,0.2); transform: translateY(-3px); }
++.tool-tile h3 { margin: 0; font-size: 1.1rem; }
++
++.timeline-section { padding: 5rem 0; }
++.timeline { position: relative; max-width: 600px; margin: 0 auto; }
++.timeline-line { position: absolute; right: 24px; top: 0; bottom: 0; width: 2px; background: #C9A227; z-index: 0; }
++.timeline-step { display: flex; align-items: flex-start; gap: 2rem; margin-bottom: 3rem; position: relative; z-index: 1; }
++.step-icon { width: 50px; height: 50px; border-radius: 50%; background: #C9A227; color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(201,162,39,0.3); }
++.step-content h3 { color: #12344D; margin: 0 0 0.5rem 0; font-size: 1.2rem; }
++.step-content p { color: #64748b; margin: 0; }
+diff --git a/src/lib/format.ts b/src/lib/format.ts
+new file mode 100644
+index 0000000..95e8956
+--- /dev/null
++++ b/src/lib/format.ts
+@@ -0,0 +1,13 @@
++export const formatFa = (num: number | string): string => {
++  if (num === null || num === undefined) return '';
++  const parsed = typeof num === 'string' ? parseFloat(num.replace(/,/g, '')) : num;
++  if (isNaN(parsed)) return String(num); // Fallback if it's not a valid number
++  return parsed.toLocaleString('fa-IR');
++};
++
++export const formatPriceFa = (price: number | string): string => {
++  if (price === null || price === undefined || price === '') return '';
++  const parsed = typeof price === 'string' ? parseFloat(price.replace(/,/g, '')) : price;
++  if (isNaN(parsed)) return String(price); // Fallback if not a number
++  return `${parsed.toLocaleString('fa-IR')} ریال`;
++};
+diff --git a/src/lib/notify.ts b/src/lib/notify.ts
+new file mode 100644
+index 0000000..40c84e2
+--- /dev/null
++++ b/src/lib/notify.ts
+@@ -0,0 +1,24 @@
++export const notifyAdmin = (text: string) => {
++  try {
++    const botToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
++    const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID;
++
++    if (!botToken || !chatId) {
++      console.warn('Telegram credentials not configured.');
++      return;
++    }
++
++    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++      },
++      body: JSON.stringify({
++        chat_id: chatId,
++        text,
++      }),
++    }).catch((err) => console.error('Telegram notify fetch failed:', err));
++  } catch (error) {
++    console.error('Telegram notify error:', error);
++  }
++};
+diff --git a/src/lib/useSEO.ts b/src/lib/useSEO.ts
+new file mode 100644
+index 0000000..af528b7
+--- /dev/null
++++ b/src/lib/useSEO.ts
+@@ -0,0 +1,60 @@
++import { useEffect } from 'react';
++
++export function useSEO(title: string, description: string) {
++  useEffect(() => {
++    document.title = title;
++
++    // Standard Meta
++    let metaDesc = document.querySelector('meta[name="description"]');
++    if (!metaDesc) {
++      metaDesc = document.createElement('meta');
++      metaDesc.setAttribute('name', 'description');
++      document.head.appendChild(metaDesc);
++    }
++    metaDesc.setAttribute('content', description);
++
++    // Open Graph
++    let ogTitle = document.querySelector('meta[property="og:title"]');
++    if (!ogTitle) {
++      ogTitle = document.createElement('meta');
++      ogTitle.setAttribute('property', 'og:title');
++      document.head.appendChild(ogTitle);
++    }
++    ogTitle.setAttribute('content', title);
++
++    let ogDesc = document.querySelector('meta[property="og:description"]');
++    if (!ogDesc) {
++      ogDesc = document.createElement('meta');
++      ogDesc.setAttribute('property', 'og:description');
++      document.head.appendChild(ogDesc);
++    }
++    ogDesc.setAttribute('content', description);
++
++    // Twitter
++    let twTitle = document.querySelector('meta[name="twitter:title"]');
++    if (!twTitle) {
++      twTitle = document.createElement('meta');
++      twTitle.setAttribute('name', 'twitter:title');
++      document.head.appendChild(twTitle);
++    }
++    twTitle.setAttribute('content', title);
++
++    let twDesc = document.querySelector('meta[name="twitter:description"]');
++    if (!twDesc) {
++      twDesc = document.createElement('meta');
++      twDesc.setAttribute('name', 'twitter:description');
++      document.head.appendChild(twDesc);
++    }
++    twDesc.setAttribute('content', description);
++
++    // Canonical
++    let canonical = document.querySelector('link[rel="canonical"]');
++    if (!canonical) {
++      canonical = document.createElement('link');
++      canonical.setAttribute('rel', 'canonical');
++      document.head.appendChild(canonical);
++    }
++    canonical.setAttribute('href', window.location.href);
++
++  }, [title, description]);
++}

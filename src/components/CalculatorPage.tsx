@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSEO } from '@/lib/useSEO';
 
+
 import { ArrowLeft, Calculator, CircleHelp, MessageCircle, Check } from 'lucide-react';
 import { legalConfig } from '@/data/config';
 import { supabase } from '@/lib/supabase';
@@ -15,8 +16,9 @@ type SalarySettings = {
   insuranceEmployeeRate?: number; insuranceEmployerRate?: number; annualTaxFree?: number; familyAllowanceMonthly?: number; childAllowanceMonthly?: number; overtimeRate?: number;
 };
 
-export default function CalculatorPage({
-  useSEO('محاسبه‌گر حقوق و مزایا ۱۴۰۵ | کاربان', 'ابزار دقیق محاسبه حقوق، دستمزد، اضافه‌کاری، سنوات و بیمه ۱۴۰۵ بر اساس آخرین تغییرات قانون کار ایران.'); type, title, description }: Props) {
+export default function CalculatorPage({ type, title, description }: Props) {
+  useSEO('محاسبه‌گر حقوق و مزایا ۱۴۰۵ | کاربان', 'ابزار دقیق محاسبه حقوق، دستمزد، اضافه‌کاری، سنوات و بیمه ۱۴۰۵ بر اساس آخرین تغییرات قانون کار ایران.');
+
   const [salary, setSalary] = useState(120000000);
   const [days, setDays] = useState(30);
   const [years, setYears] = useState(3);
@@ -24,6 +26,7 @@ export default function CalculatorPage({
   const [age, setAge] = useState(35);
   const [insuredYears, setInsuredYears] = useState(8);
   const [calculated, setCalculated] = useState(false);
+
 
   const [isMarried, setIsMarried] = useState(false);
   const [childrenCount, setChildrenCount] = useState(0);
@@ -50,6 +53,7 @@ export default function CalculatorPage({
         childAllowanceMonthly: s.childAllowanceMonthly ?? (legalConfig.baseSalaryDaily * 3),
         overtimeRate: s.overtimeRate ?? 1.4
       } as any);
+
     });
     return () => { active = false; };
   }, []);
@@ -64,6 +68,7 @@ export default function CalculatorPage({
     const absence = (base / 220) * absenceHours;
     const severanceMonthly = (base / 12) * years;
 
+
     const subjectToInsurance = base + food + housing + overtime + bonuses;
     const insurance = subjectToInsurance * cfg.insuranceEmployeeRate;
 
@@ -71,6 +76,7 @@ export default function CalculatorPage({
 
     const taxable = Math.max(0, gross - (cfg.annualTaxFree / 12));
     let tax = taxable > 0 ? taxable * 0.1 : 0;
+
 
     const net = gross - insurance - tax;
 
