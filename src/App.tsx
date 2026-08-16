@@ -15,6 +15,7 @@ const BusinessHealthPage = React.lazy(() => import('@/components/BusinessHealthP
 const OrderPage = React.lazy(() => import('@/components/OrderPage'));
 const TermsPage = React.lazy(() => import('@/components/ContractBuilderPage').then(() => import('@/components/TermsPage')));
 const ContractBuilderPage = React.lazy(() => import('@/components/ContractBuilderPage'));
+const PrivacyPage = React.lazy(() => import('@/components/PrivacyPage'));
 
 function Page({ title, description, breadcrumb, children }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode }) {
   return (
@@ -68,6 +69,14 @@ export default function App() {
     return (
       <Page title="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها" description="بیش از ۸۰ قرارداد تخصصی، ۸ ماشین‌حساب دقیق حقوق و مالیات، و ۲۵ مقاله حقوقی با استناد قانون کار و قانون مدنی.">
         <HomePage />
+      </Page>
+    );
+  }
+
+    if (segments[0] === 'حریم-خصوصی') {
+    return (
+      <Page title="حریم خصوصی کاربان" description="سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود." breadcrumb={['حریم خصوصی']}>
+        <PrivacyPage />
       </Page>
     );
   }
