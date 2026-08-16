@@ -839,7 +839,7 @@ function OrdersTab() {
               <td>{order.full_name || '—'}</td>
               <td>{order.mobile || '—'}</td>
               <td>{order.service_title || '—'}</td>
-              <td>{order.amount ? `$`${formatRial(order.amount)} ریال` ریال` : '—'}</td>
+              <td>{order.amount ? formatRial(order.amount) : '—'}</td>
               <td>
                 <select value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)}>
                   {Object.entries(statusLabels).map(([value, label]) => (
