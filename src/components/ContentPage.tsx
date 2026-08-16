@@ -44,7 +44,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
     let active = true;
     supabase
       .from('contracts')
-      .select('id,title,type,industry,summary,description,body,pdf_url')
+      .select('id,title,type,industry,summary,body,pdf_url')
       .order('id')
       .then(({ data, error }) => {
         if (!active) return;
