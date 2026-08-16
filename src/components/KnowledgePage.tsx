@@ -4,6 +4,33 @@ import { supabase } from '@/lib/supabase';
 
 export const KNOWLEDGE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
 
+const relatedLinks: Record<string, { href: string; label: string }[]> = {
+  'حقوقی و قانون کار': [
+    { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق ۱۴۰۵' },
+    { href: '/ابزارهای-هوش-مصنوعی/سنوات', label: 'ماشین‌حساب سنوات' },
+    { href: '/قراردادها', label: 'بانک قراردادها' },
+  ],
+  'مالیات': [
+    { href: '/ابزارهای-هوش-مصنوعی/مالیات-مشاغل', label: 'ماشین‌حساب مالیات مشاغل' },
+    { href: '/ابزارهای-هوش-مصنوعی/ارزش-افزوده', label: 'ماشین‌حساب ارزش افزوده' },
+    { href: '/ابزارهای-هوش-مصنوعی/مالیات-حقوق', label: 'ماشین‌حساب مالیات حقوق' },
+  ],
+  'حسابداری': [
+    { href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', label: 'ماشین‌حساب هزینه استخدام' },
+    { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق' },
+  ],
+  'منابع انسانی': [
+    { href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', label: 'ماشین‌حساب هزینه استخدام' },
+    { href: '/ابزارهای-هوش-مصنوعی/سنوات', label: 'ماشین‌حساب سنوات' },
+    { href: '/ابزارهای-هوش-مصنوعی/تست-سلامت', label: 'تست سلامت کسب‌وکار' },
+  ],
+  'مدیریت': [
+    { href: '/ابزارهای-هوش-مصنوعی/تست-سلامت', label: 'تست سلامت کسب‌وکار' },
+    { href: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد', label: 'ساخت قرارداد هوشمند' },
+    { href: '/خدمات', label: 'خدمات تخصصی کاربان' },
+  ],
+};
+
 type Article = { id: number; category: string; title: string; intro: string; body: string; author: string };
 
 export function ArticlesListPage({ categoryIndex }: { categoryIndex: number }) {
@@ -71,7 +98,7 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
       .maybeSingle()
       .then(({ data }) => {
         if (active) {
-                    const a = (data as Article) || null;
+          const a = (data as Article) || null;
           setArticle(a);
           if (a) document.title = `${a.title} | کاربان`;
           setLoading(false);
@@ -103,6 +130,8 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
     );
   }
 
+  const links = relatedLinks[article.category] || [];
+
   return (
     <section className="inner-page">
       <div className="container narrow-content">
@@ -115,6 +144,20 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
             p.startsWith('## ') ? <h2 key={i}>{p.replace('## ', '')}</h2> : <p key={i}>{p}</p>,
           )}
         </div>
+
+        {links.length > 0 && (
+          <div className="related-box">
+            <h2>ابزارهای مرتبط</h2>
+            <div className="related-links">
+              {links.map((l) => (
+                <a key={l.href} href={l.href}>
+                  {l.label} <ArrowLeft size={14} />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         <a className="button" href="/دانشنامه">بازگشت به دانشنامه</a>
       </div>
     </section>
