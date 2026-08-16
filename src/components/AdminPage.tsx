@@ -29,7 +29,7 @@ const sessionKey = 'karban-admin-session-start';
 const safeAmount = (raw: string) => {
   const digits = raw
     .replace(/[^0-9۰-۹]/g, '')
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۴۵۶۸۹'.indexOf(d)));
   if (!digits) return '';
   return Number(digits).toLocaleString('en-US');
 };
@@ -226,7 +226,7 @@ export default function AdminPage() {
     ['leads', 'لیدها'],
     ['orders', 'سفارش‌ها'],
     ['consultations', 'درخواست‌های مشاوره'],
-        ['users', 'مدیریت کاربران'],
+    ['users', 'مدیریت کاربران'],
     ['newsletter', 'خبرنامه'],
   ];
 
@@ -259,7 +259,7 @@ export default function AdminPage() {
           {tab === 'leads' && <LeadsTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'consultations' && <ConsultationsTab />}
-                    {tab === 'users' && <UsersTab />}
+          {tab === 'users' && <UsersTab />}
           {tab === 'newsletter' && <NewsletterTab />}
         </div>
       </div>
@@ -297,13 +297,14 @@ function ServicesTab() {
   const save = async (id: string) => {
     const current = services.find((service) => service.id === id);
     if (!current) return;
-       const { error } = await supabase.from('services').update(current).eq('id', id);
+    const { error } = await supabase.from('services').update(current).eq('id', id);
     if (error) {
       alert('ذخیره نشد: ' + error.message);
       return;
     }
     setEditing(null);
     load();
+  };
 
   const add = async () => {
     if (!form.title) return;
@@ -1038,6 +1039,7 @@ function UsersTab() {
     </div>
   );
 }
+
 function NewsletterTab() {
   const [items, setItems] = useState<{ id: number; mobile: string; created_at: string }[]>([]);
   const [loading, setLoading] = useState(true);
