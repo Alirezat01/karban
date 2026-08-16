@@ -75,9 +75,7 @@ export default function HomePage() {
                     <Icon size={22} />
                     <h3>{role.title}</h3>
                     <p>{role.description}</p>
-                    <span>
-                      ورود به مسیر <ArrowLeft size={14} />
-                    </span>
+                    <span>ورود به مسیر <ArrowLeft size={14} /></span>
                   </a>
                 );
               })}
@@ -101,21 +99,15 @@ export default function HomePage() {
               <span className="eyebrow">خدمات منتخب</span>
               <h2>مسیر درست را سریع‌تر پیدا کنید</h2>
             </div>
-            <a className="text-link" href="/خدمات">
-              مشاهده همه خدمات <ArrowLeft size={16} />
-            </a>
+            <a className="text-link" href="/خدمات">مشاهده همه خدمات <ArrowLeft size={16} /></a>
           </div>
           <div className="service-grid-home">
             {randomServices.map((item) => (
               <a className="service-card-home" href={`/سفارش/${item.id}`} key={item.id}>
-                <div className="service-icon">
-                  <TrendingUp size={22} />
-                </div>
+                <div className="service-icon"><TrendingUp size={22} /></div>
                 <h3>{item.title}</h3>
                 <p>{item.description}</p>
-                <span>
-                  مشاهده و سفارش <ArrowLeft size={14} />
-                </span>
+                <span>مشاهده و سفارش <ArrowLeft size={14} /></span>
               </a>
             ))}
           </div>
@@ -129,23 +121,17 @@ export default function HomePage() {
               <span className="eyebrow eyebrow-dark">ابزارهای هوشمند و تعاملی</span>
               <h2>کمتر جست‌وجو کنید، بیشتر پیش بروید</h2>
             </div>
-            <a className="text-link text-link-light" href="/ابزارهای-هوش-مصنوعی">
-              همه ابزارها <ArrowLeft size={16} />
-            </a>
+            <a className="text-link text-link-light" href="/ابزارهای-هوش-مصنوعی">همه ابزارها <ArrowLeft size={16} /></a>
           </div>
           <div className="tool-grid-home">
             {toolItems.map((tool) => {
               const Icon = icons[tool.icon] || Calculator;
               return (
                 <a className="tool-card-gold" href={tool.href} key={tool.title}>
-                  <div className="tool-icon">
-                    <Icon size={22} />
-                  </div>
+                  <div className="tool-icon"><Icon size={22} /></div>
                   <h3>{tool.title}</h3>
                   <p>{tool.description}</p>
-                  <span>
-                    ورود به ابزار <ArrowLeft size={15} />
-                  </span>
+                  <span>ورود به ابزار <ArrowLeft size={15} /></span>
                 </a>
               );
             })}
@@ -162,21 +148,9 @@ export default function HomePage() {
             </div>
           </div>
           <div className="how-steps">
-            <div className="how-step">
-              <strong>۱</strong>
-              <h3>مسیرت را انتخاب کن</h3>
-              <p>کارفرما، کارمند یا فریلنسر؛ هر مسیر، ابزار و قراردادهای خودش را دارد.</p>
-            </div>
-            <div className="how-step">
-              <strong>۲</strong>
-              <h3>بساز و محاسبه کن</h3>
-              <p>قرارداد ببند، حقوق و مالیات را دقیق محاسبه کن، سلامت کسب‌وکار را بسنج.</p>
-            </div>
-            <div className="how-step">
-              <strong>۳</strong>
-              <h3>با خیال راحت رشد کن</h3>
-              <p>متن محکم، عدد دقیق و مشاوره تخصصی؛ از قرارداد تا آرامش.</p>
-            </div>
+            <div className="how-step"><strong>۱</strong><h3>مسیرت را انتخاب کن</h3><p>کارفرما، کارمند یا فریلنسر؛ هر مسیر، ابزار و قراردادهای خودش را دارد.</p></div>
+            <div className="how-step"><strong>۲</strong><h3>بساز و محاسبه کن</h3><p>قرارداد ببند، حقوق و مالیات را دقیق محاسبه کن، سلامت کسب‌وکار را بسنج.</p></div>
+            <div className="how-step"><strong>۳</strong><h3>با خیال راحت رشد کن</h3><p>متن محکم، عدد دقیق و مشاوره تخصصی؛ از قرارداد تا آرامش.</p></div>
           </div>
         </div>
       </section>
