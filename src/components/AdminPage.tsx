@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 
-type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations' | 'users';
+type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter';
 type Service = {
   id: string;
   title: string;
@@ -226,7 +226,8 @@ export default function AdminPage() {
     ['leads', 'لیدها'],
     ['orders', 'سفارش‌ها'],
     ['consultations', 'درخواست‌های مشاوره'],
-    ['users', 'مدیریت کاربران'],
+        ['users', 'مدیریت کاربران'],
+    ['newsletter', 'خبرنامه'],
   ];
 
   return (
@@ -258,7 +259,8 @@ export default function AdminPage() {
           {tab === 'leads' && <LeadsTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'consultations' && <ConsultationsTab />}
-          {tab === 'users' && <UsersTab />}
+                    {tab === 'users' && <UsersTab />}
+          {tab === 'newsletter' && <NewsletterTab />}
         </div>
       </div>
     </section>
@@ -1031,6 +1033,55 @@ function UsersTab() {
               </td>
             </tr>
           ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function NewsletterTab() {
+  const [items, setItems] = useState<{ id: number; mobile: string; created_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from('newsletter')
+      .select('id,mobile,created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (active) {
+          setItems((data || []) as { id: number; mobile: string; created_at: string }[]);
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) return <p>در حال بارگذاری...</p>;
+  return (
+    <div className="admin-table-wrap">
+      <h2>اعضای خبرنامه</h2>
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>موبایل</th>
+            <th>تاریخ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id}>
+              <td>{item.mobile}</td>
+              <td>{fmtDate(item.created_at)}</td>
+            </tr>
+          ))}
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={2}>هنوز عضوی ثبت نشده است.</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
