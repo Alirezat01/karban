@@ -149,15 +149,9 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
                         </div>
                       </div>
                       <div className="contract-tiers">
-                        <span>
-                          عمومی <b>رایگان</b>
-                        </span>
-                        <span>
-                          تخصصی <b>قیمت ثابت</b>
-                        </span>
-                        <span>
-                          اختصاصی <b>متخصص</b>
-                        </span>
+                        <span>عمومی <b>رایگان</b></span>
+                        <span>تخصصی <b>قیمت ثابت</b></span>
+                        <span>اختصاصی <b>متخصص</b></span>
                       </div>
                       <a className="button button-small" href={`/قراردادها/${item.id}`}>
                         مشاهده <ArrowLeft size={15} />
@@ -184,9 +178,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
                 const Icon = toolIcons[item.icon] || Calculator;
                 return (
                   <a className="tool-card" href={item.href} key={item.title}>
-                    <div className="tool-icon">
-                      <Icon size={22} />
-                    </div>
+                    <div className="tool-icon"><Icon size={22} /></div>
                     <h3>{item.title}</h3>
                     <p>{item.description}</p>
                     <span>ورود به ابزار <ArrowLeft size={15} /></span>
@@ -201,9 +193,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
           <div className="simple-panels">
             <h2>همه‌چیز برای یک تصمیم بهتر</h2>
             <p>{description}</p>
-            <a className="button" href="/تماس-با-ما">
-              با ما در تماس باشید <ArrowLeft size={17} />
-            </a>
+            <a className="button" href="/تماس-با-ما">با ما در تماس باشید <ArrowLeft size={17} /></a>
           </div>
         )}
       </div>
@@ -241,7 +231,7 @@ export function ServicesPage() {
   const renderPrice = (value: string, discountPercent?: number | null) => {
     const result = priceText(value, discountPercent);
     if (typeof result === 'string') {
-      return<strong>{result}</strong>;
+      return <strong>{result}</strong>;
     }
     return (
       <div className="service-price-group">
@@ -298,9 +288,7 @@ export function ServicesPage() {
 
         <div className="guarantee">
           <Scale size={23} />
-          <span>
-            <strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.
-          </span>
+          <span><strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.</span>
         </div>
       </div>
     </section>
