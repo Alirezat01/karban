@@ -1,23 +1,27 @@
+import React, { Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
-import HomePage from '@/components/HomePage';
-import ContentPage, { ServicesPage } from '@/components/ContentPage';
-import CalculatorPage from '@/components/CalculatorPage';
-import ArticlePage from '@/components/ArticlePage';
-import RolePage from '@/components/RolePage';
-import AdminPage from '@/components/AdminPage';
-import BusinessHealthPage from '@/components/BusinessHealthPage';
-import OrderPage from '@/components/OrderPage';
-import TermsPage from '@/components/TermsPage';
-import ContractBuilderPage from '@/components/ContractBuilderPage';
-import { ArticlesListPage, ArticleViewPage } from '@/components/KnowledgePage';
+
+const HomePage = React.lazy(() => import('@/components/HomePage'));
+const ContentPage = React.lazy(() => import('@/components/ContentPage'));
+const CalculatorPage = React.lazy(() => import('@/components/CalculatorPage'));
+const ArticlePage = React.lazy(() => import('@/components/ArticlePage'));
+const RolePage = React.lazy(() => import('@/components/RolePage'));
+const AdminPage = React.lazy(() => import('@/components/AdminPage'));
+const BusinessHealthPage = React.lazy(() => import('@/components/BusinessHealthPage'));
+const OrderPage = React.lazy(() => import('@/components/OrderPage'));
+const TermsPage = React.lazy(() => import('@/components/TermsPage'));
+const ContractBuilderPage = React.lazy(() => import('@/components/ContractBuilderPage'));
+const { ArticlesListPage, ArticleViewPage } = React.lazy(() => import('@/components/KnowledgePage')) as any;
 
 function Page({ title, description, breadcrumb, children }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode }) {
   return (
     <Layout title={title} description={description} breadcrumb={breadcrumb}>
-      {children}
+      <Suspense fallback={<div style={{ textAlign: 'center', padding: '3rem' }}>در حال بارگذاری...</div>}>
+        {children}
+      </Suspense>
     </Layout>
   );
 }
@@ -52,7 +56,7 @@ export default function App() {
 
   if (route === '/' || segments.length === 0) {
     return (
-      <Page title="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها." description="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها.">
+      <Page title="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها" description="بیش از ۸۰ قرارداد تخصصی، ۸ ماشین‌حساب دقیق حقوق و مالیات، و ۲۵ مقاله حقوقی با استناد قانون کار و قانون مدنی.">
         <HomePage />
       </Page>
     );
@@ -110,8 +114,8 @@ export default function App() {
   if (segments[0] === 'قراردادها') {
     if (segments.length === 1) {
       return (
-        <Page title="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF." description="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF." breadcrumb={['قراردادها']}>
-          <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" />
+        <Page title="بیش از ۸۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF" description="بیش از ۸۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF." breadcrumb={['قراردادها']}>
+          <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۸۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" />
         </Page>
       );
     }
@@ -125,8 +129,8 @@ export default function App() {
 
   if (segments[0] === 'خدمات') {
     return (
-      <Page title="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." description="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." breadcrumb={['خدمات']}>
-        <ServicesPage />
+      <Page title="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین" description="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." breadcrumb={['خدمات']}>
+        <ContentPage.ServicesPage />
       </Page>
     );
   }
@@ -158,8 +162,8 @@ export default function App() {
     }
 
     return (
-      <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵." description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵." breadcrumb={['ابزارهای هوش مصنوعی']}>
-        <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰." eyebrow="ابزارهای هوش مصنوعی" />
+      <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵" description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." breadcrumb={['ابزارهای هوش مصنوعی']}>
+        <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." eyebrow="ابزارهای هوش مصنوعی" />
       </Page>
     );
   }
@@ -171,7 +175,7 @@ export default function App() {
           <div className="container narrow-content">
             <span className="eyebrow">درباره ما</span>
             <h1>درباره کاربان</h1>
-            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۵، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
+            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۰۵، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
           </div>
         </section>
       </Page>
@@ -187,7 +191,7 @@ export default function App() {
             <h1>تماس با کاربان</h1>
             <div className="contact-card">
               <p>تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p>
-              <p>تلفن گویا: ۰۲-۸۸۳۴۲۶۷۹</p>
+              <p>تلفن گویا: ۰۲۱-۸۸۳۴۲۶۷۹</p>
               <p>شنبه تا چهارشنبه ۹ تا ۱۷</p>
               <p>hello@karbanapp.ir</p>
             </div>
