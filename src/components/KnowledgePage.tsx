@@ -130,7 +130,11 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
     );
   }
 
-  const links = relatedLinks[article.category] || [];
+    const links = relatedLinks[article.category] || [
+    { href: '/ابزارهای-هوش-مصنوعی', label: 'ابزارهای هوش مصنوعی کاربان' },
+    { href: '/قراردادها', label: 'بانک قراردادها' },
+    { href: '/خدمات', label: 'خدمات تخصصی' },
+  ];
 
   return (
     <section className="inner-page">
