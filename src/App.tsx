@@ -9,22 +9,12 @@ import ArticlePage from '@/components/ArticlePage';
 import RolePage from '@/components/RolePage';
 import AdminPage from '@/components/AdminPage';
 import BusinessHealthPage from '@/components/BusinessHealthPage';
-import ContractBuilderPage from '@/components/ContractBuilderPage';
 import OrderPage from '@/components/OrderPage';
-import { ArticlesListPage, ArticleViewPage } from '@/components/KnowledgePage';
 import TermsPage from '@/components/TermsPage';
+import ContractBuilderPage from '@/components/ContractBuilderPage';
+import { ArticlesListPage, ArticleViewPage } from '@/components/KnowledgePage';
 
-function Page({
-  title,
-  description,
-  breadcrumb,
-  children,
-}: {
-  title: string;
-  description: string;
-  breadcrumb?: string[];
-  children: ReactNode;
-}) {
+function Page({ title, description, breadcrumb, children }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode }) {
   return (
     <Layout title={title} description={description} breadcrumb={breadcrumb}>
       {children}
@@ -39,99 +29,22 @@ function NotFound() {
         <span className="eyebrow">خطا ۴۰۴</span>
         <h1>این صفحه پیدا نشد</h1>
         <p className="lead">صفحه‌ای که دنبال آن بودید وجود ندارد یا جابه‌جا شده است.</p>
-        <a className="button" href="/">
-          بازگشت به خانه <ArrowLeft size={17} />
-        </a>
+        <a className="button" href="/">بازگشت به خانه <ArrowLeft size={17} /></a>
       </div>
     </section>
   );
 }
 
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax'; title: string; desc: string }> = {
-  'محاسبه-حقوق': {
-    type: 'salary',
-    title: 'محاسبه حقوق و دستمزد ۱۴۵',
-    desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.',
-  },
-  'هزینه-استخدام': {
-    type: 'hire',
-    title: 'ماشین‌حساب هزینه استخدام',
-    desc: 'بهای تمام‌شدن واقعی یک کارمند، قلم‌به‌قلم.',
-  },
-  'سنوات': {
-    type: 'severance',
-    title: 'ماشین‌حساب سنوات پایان خدمت',
-    desc: 'مبلغ سنوات پایان کار را محاسبه کنید.',
-  },
-  'بازنشستگی': {
-    type: 'retirement',
-    title: 'ماشین‌حساب بازنشستگی تأمین اجتماعی',
-    desc: 'وضعیت بازنشستگی و برآورد مستمری را ببینید.',
-  },
-  'اضافه-کاری': {
-    type: 'overtime',
-    title: 'ماشین‌حساب اضافه‌کاری',
-    desc: 'مبلغ اضافه‌کاری را بر اساس نرخ قانونی محاسبه کنید.',
-  },
-  'مالیات-مشاغل': {
-    type: 'business-tax',
-    title: 'ماشین‌حساب مالیات مشاغل و مغازه',
-    desc: 'محاسبه پلکانی ماده ۱۳۱ با معافیت سالانه.',
-  },
-  'ارزش-افزوده': {
-    type: 'vat',
-    title: 'ماشین‌حساب ارزش افزوده',
-    desc: 'محاسبه ۱۰٪ — از پایه یا از داخل فاکتور.',
-  },
-  'مالیات-حقوق': {
-    type: 'salary-tax',
-    title: 'ماشین‌حساب مالیات حقوق',
-    desc: 'پلکانی مالیات حقوق با معافیت ماهانه ۱۴۵.',
-  },
+  'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
+  'هزینه-استخدام': { type: 'hire', title: 'ماشین‌حساب هزینه استخدام', desc: 'بهای تمام‌شدن واقعی یک کارمند، قلم‌به‌قلم.' },
+  'سنوات': { type: 'severance', title: 'ماشین‌حساب سنوات پایان خدمت', desc: 'مبلغ سنوات پایان کار را محاسبه کنید.' },
+  'بازنشستگی': { type: 'retirement', title: 'ماشین‌حساب بازنشستگی تأمین اجتماعی', desc: 'وضعیت بازنشستگی و برآورد مستمری را ببینید.' },
+  'اضافه-کاری': { type: 'overtime', title: 'ماشین‌حساب اضافه‌کاری', desc: 'مبلغ اضافه‌کاری را بر اساس نرخ قانونی محاسبه کنید.' },
+  'مالیات-مشاغل': { type: 'business-tax', title: 'ماشین‌حساب مالیات مشاغل و مغازه', desc: 'محاسبه پلکانی ماده ۱۳۱ با معافیت سالانه.' },
+  'ارزش-افزوده': { type: 'vat', title: 'ماشین‌حساب ارزش افزوده', desc: 'محاسبه ۱۰٪ — از پایه یا از داخل فاکتور.' },
+  'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق', desc: 'پلکانی مالیات حقوق با معافیت ماهانه ۱۴۰۵.' },
 };
-
-function TrustAboutPage() {
-  return (
-    <Page
-      title="درباره کاربان"
-      description="کاربان از یک مشاهده ساده متولد شد: هزاران رابطه کاری، همکاری و قرارداد در کشور بدون نوشته درست، یا با نمونه‌های ناقص کپی‌شده از اینترنت بسته می‌شود — و حاصل آن اختلاف، جریمه و اتلاف وقت هر دو طرف است. کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق حقوق و سنوات مطابق مقررات ۱۴، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. روش ما ساده است: متن حقوقی دقیق، به‌روز و در دسترس برای همه، به‌همراه ابزارهای هوشمندی که محاسبه‌های پیچیده را به یک کلیک تبدیل می‌کنند. کاربان؛ از قرارداد تا آرامش."
-      breadcrumb={['درباره ما']}
-    >
-      <section className="inner-page">
-        <div className="container narrow-content">
-          <span className="eyebrow">درباره ما</span>
-          <h1>درباره کاربان</h1>
-          <p className="article-intro">
-            کاربان از یک مشاهده ساده متولد شد: هزاران رابطه کاری، همکاری و قرارداد در کشور بدون نوشته درست، یا با نمونه‌های ناقص کپی‌شده از اینترنت بسته می‌شود — و حاصل آن اختلاف، جریمه و اتلاف وقت هر دو طرف است. کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق حقوق و سنوات مطابق مقررات ۱۴، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. روش ما ساده است: متن حقوقی دقیق، به‌روز و در دسترس برای همه، به‌همراه ابزارهای هوشمندی که محاسبه‌های پیچیده را به یک کلیک تبدیل می‌کنند. کاربان؛ از قرارداد تا آرامش.
-          </p>
-        </div>
-      </section>
-    </Page>
-  );
-}
-
-function TrustContactPage() {
-  return (
-    <Page
-      title="تماس با کاربان"
-      description="تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم | تلفن گویا: ۰۲-۸۸۳۶۷۹ | شنبه تا چهارشنبه ۹ تا ۷ | hello@karbanapp.ir"
-      breadcrumb={['تماس با ما']}
-    >
-      <section className="inner-page">
-        <div className="container narrow-content">
-          <span className="eyebrow">تماس با ما</span>
-          <h1>تماس با کاربان</h1>
-          <div className="contact-card">
-            <p>تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p>
-            <p>تلفن گویا: ۰۲-۸۸۳۴۶۷۹</p>
-            <p>شنبه تا چهارشنبه ۹ تا ۱۷</p>
-            <p>hello@karbanapp.ir</p>
-          </div>
-        </div>
-      </section>
-    </Page>
-  );
-}
 
 export default function App() {
   const route = useRoute();
@@ -139,10 +52,7 @@ export default function App() {
 
   if (route === '/' || segments.length === 0) {
     return (
-      <Page
-        title="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها."
-        description="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها."
-      >
+      <Page title="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها." description="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها.">
         <HomePage />
       </Page>
     );
@@ -176,15 +86,12 @@ export default function App() {
   if (segments[0] === 'دانشنامه') {
     if (segments.length === 1) {
       return (
-        <Page
-          title="دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان"
-          description="مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده."
-          breadcrumb={['دانشنامه']}
-        >
+        <Page title="دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان" description="مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده." breadcrumb={['دانشنامه']}>
           <ContentPage kind="knowledge" title="راهنمای قانون کار و تأمین اجتماعی، به زبان ساده اما مستند" description="راهنمای مستند قانون کار، تأمین اجتماعی و مالیات به زبان ساده با ذکر ماده قانون؛ همیشه به‌روز." eyebrow="دانشنامه" />
         </Page>
       );
     }
+
     if (segments[1] === 'مقاله' && segments[2]) {
       return (
         <Page title="مقاله دانشنامه کاربان" description="مقاله تخصصی با استناد قانونی." breadcrumb={['دانشنامه', 'مقاله']}>
@@ -203,17 +110,8 @@ export default function App() {
   if (segments[0] === 'قراردادها') {
     if (segments.length === 1) {
       return (
-        <Page
-          title="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF."
-          description="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF."
-          breadcrumb={['قراردادها']}
-        >
-          <ContentPage
-            kind="contracts"
-            title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده"
-            description="بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی."
-            eyebrow="قراردادها"
-          />
+        <Page title="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF." description="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF." breadcrumb={['قراردادها']}>
+          <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" />
         </Page>
       );
     }
@@ -227,33 +125,25 @@ export default function App() {
 
   if (segments[0] === 'خدمات') {
     return (
-      <Page
-        title="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین."
-        description="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین."
-        breadcrumb={['خدمات']}
-      >
+      <Page title="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." description="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." breadcrumb={['خدمات']}>
         <ServicesPage />
       </Page>
     );
   }
 
   if (segments[0] === 'ابزارهای-هوش-مصنوعی') {
-        if (segments[1] === 'ساخت-قرارداد') {
+    if (segments[1] === 'تست-سلامت') {
       return (
-        <Page title="ساخت قرارداد هوشمند" description="قرارداد متناسب با نیاز شما، در چند مرحله." breadcrumb={['ابزارهای هوش مصنوعی', 'ساخت قرارداد']}>
-          <ContractBuilderPage />
+        <Page title="تست سلامت کسب‌وکار" description="نقاط قوت و ریسک‌های کسب‌وکار را بشناسید." breadcrumb={['ابزارهای هوش مصنوعی', 'تست سلامت']}>
+          <BusinessHealthPage />
         </Page>
       );
     }
 
-    if (segments[1] === 'تست-سلامت') {
+    if (segments[1] === 'ساخت-قرارداد') {
       return (
-        <Page
-          title="تست سلامت کسب‌وکار"
-          description="نقاط قوت و ریسک‌های کسب‌وکار را بشناسید."
-          breadcrumb={['ابزارهای هوش مصنوعی', 'تست سلامت']}
-        >
-          <BusinessHealthPage />
+        <Page title="ساخت قرارداد هوشمند" description="قرارداد متناسب با نیاز شما، در چند مرحله." breadcrumb={['ابزارهای هوش مصنوعی', 'ساخت قرارداد']}>
+          <ContractBuilderPage />
         </Page>
       );
     }
@@ -268,27 +158,43 @@ export default function App() {
     }
 
     return (
-      <Page
-        title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵."
-        description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵."
-        breadcrumb={['ابزارهای هوش مصنوعی']}
-      >
-        <ContentPage
-          kind="tools"
-          title="ابزارهای هوش مصنوعی کاربان"
-          description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴."
-          eyebrow="ابزارهای هوش مصنوعی"
-        />
+      <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵." description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵." breadcrumb={['ابزارهای هوش مصنوعی']}>
+        <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰." eyebrow="ابزارهای هوش مصنوعی" />
       </Page>
     );
   }
 
   if (segments[0] === 'درباره-ما') {
-    return <TrustAboutPage />;
+    return (
+      <Page title="درباره کاربان" description="کاربان؛ از قرارداد تا آرامش." breadcrumb={['درباره ما']}>
+        <section className="inner-page">
+          <div className="container narrow-content">
+            <span className="eyebrow">درباره ما</span>
+            <h1>درباره کاربان</h1>
+            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۵، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
+          </div>
+        </section>
+      </Page>
+    );
   }
 
   if (segments[0] === 'تماس-با-ما') {
-    return <TrustContactPage />;
+    return (
+      <Page title="تماس با کاربان" description="تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم | hello@karbanapp.ir" breadcrumb={['تماس با ما']}>
+        <section className="inner-page">
+          <div className="container narrow-content">
+            <span className="eyebrow">تماس با ما</span>
+            <h1>تماس با کاربان</h1>
+            <div className="contact-card">
+              <p>تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p>
+              <p>تلفن گویا: ۰۲-۸۸۳۴۲۶۷۹</p>
+              <p>شنبه تا چهارشنبه ۹ تا ۱۷</p>
+              <p>hello@karbanapp.ir</p>
+            </div>
+          </div>
+        </section>
+      </Page>
+    );
   }
 
   if (segments[0] === 'admin') {
