@@ -3,18 +3,18 @@ import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
+import ContentPage, { ServicesPage } from '@/components/ContentPage';
+import { ArticlesListPage, ArticleViewPage } from '@/components/KnowledgePage';
 
 const HomePage = React.lazy(() => import('@/components/HomePage'));
-const ContentPage = React.lazy(() => import('@/components/ContentPage'));
 const CalculatorPage = React.lazy(() => import('@/components/CalculatorPage'));
 const ArticlePage = React.lazy(() => import('@/components/ArticlePage'));
 const RolePage = React.lazy(() => import('@/components/RolePage'));
 const AdminPage = React.lazy(() => import('@/components/AdminPage'));
 const BusinessHealthPage = React.lazy(() => import('@/components/BusinessHealthPage'));
 const OrderPage = React.lazy(() => import('@/components/OrderPage'));
-const TermsPage = React.lazy(() => import('@/components/TermsPage'));
+const TermsPage = React.lazy(() => import('@/components/ContractBuilderPage').then(() => import('@/components/TermsPage')));
 const ContractBuilderPage = React.lazy(() => import('@/components/ContractBuilderPage'));
-const { ArticlesListPage, ArticleViewPage } = React.lazy(() => import('@/components/KnowledgePage')) as any;
 
 function Page({ title, description, breadcrumb, children }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode }) {
   return (
@@ -30,7 +30,7 @@ function NotFound() {
   return (
     <section className="inner-page">
       <div className="container narrow-content">
-        <span className="eyebrow">خطا ۴۰۴</span>
+        <span className="eyebrow">خطا ۴۰</span>
         <h1>این صفحه پیدا نشد</h1>
         <p className="lead">صفحه‌ای که دنبال آن بودید وجود ندارد یا جابه‌جا شده است.</p>
         <a className="button" href="/">بازگشت به خانه <ArrowLeft size={17} /></a>
@@ -40,7 +40,7 @@ function NotFound() {
 }
 
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax'; title: string; desc: string }> = {
-  'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
+  'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
   'هزینه-استخدام': { type: 'hire', title: 'ماشین‌حساب هزینه استخدام', desc: 'بهای تمام‌شدن واقعی یک کارمند، قلم‌به‌قلم.' },
   'سنوات': { type: 'severance', title: 'ماشین‌حساب سنوات پایان خدمت', desc: 'مبلغ سنوات پایان کار را محاسبه کنید.' },
   'بازنشستگی': { type: 'retirement', title: 'ماشین‌حساب بازنشستگی تأمین اجتماعی', desc: 'وضعیت بازنشستگی و برآورد مستمری را ببینید.' },
@@ -130,7 +130,7 @@ export default function App() {
   if (segments[0] === 'خدمات') {
     return (
       <Page title="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین" description="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." breadcrumb={['خدمات']}>
-        <ContentPage.ServicesPage />
+        <ServicesPage />
       </Page>
     );
   }
@@ -162,7 +162,7 @@ export default function App() {
     }
 
     return (
-      <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵" description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." breadcrumb={['ابزارهای هوش مصنوعی']}>
+      <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰" description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." breadcrumb={['ابزارهای هوش مصنوعی']}>
         <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." eyebrow="ابزارهای هوش مصنوعی" />
       </Page>
     );
@@ -175,7 +175,7 @@ export default function App() {
           <div className="container narrow-content">
             <span className="eyebrow">درباره ما</span>
             <h1>درباره کاربان</h1>
-            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۰۵، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
+            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۰، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
           </div>
         </section>
       </Page>
