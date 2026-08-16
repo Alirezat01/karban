@@ -29,8 +29,7 @@ const safeAmount = (raw: string) => {
   const digits = raw
     .replace(/[^0-9۰-۹]/g, '')
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۴۵۶۸۹'.indexOf(d)));
-  if (!digits) return '';
-  return Number(digits).toLocaleString('en-US');
+   return digits;
 };
 
 async function sha256(value: string) {
