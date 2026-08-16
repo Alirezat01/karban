@@ -51,6 +51,7 @@ export default function SiteFooter() {
           <a href="/درباره-ما">درباره ما</a>
           <a href="/تماس-با-ما">تماس با ما</a>
           <a href="/قوانین">قوانین و شرایط</a>
+                    <a href="/حریم-خصوصی">حریم خصوصی</a>
         </div>
         <div>
           <h3>تماس</h3>
