@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Download, LogOut, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
+import { ArrowLeft, LogOut, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 
-type Tab = 'services' | 'settings' | 'contracts' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter';
+type Tab = 'services' | 'settings' | 'contracts' | 'orders' | 'consultations' | 'users' | 'newsletter';
 type Service = {
   id: string;
   title: string;
@@ -17,7 +17,6 @@ type Service = {
   discount_percent?: number | null;
 };
 type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body: string; pdf_url: string };
-type LeadRow = { id: string; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; full_name: string; mobile: string; service_title: string; amount: number; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
 
@@ -223,7 +222,6 @@ export default function AdminPage() {
     ['services', 'خدمات'],
     ['settings', 'تنظیمات'],
     ['contracts', 'قراردادها'],
-    ['leads', 'لیدها'],
     ['orders', 'سفارش‌ها'],
     ['consultations', 'درخواست‌های مشاوره'],
     ['users', 'مدیریت کاربران'],
@@ -256,7 +254,6 @@ export default function AdminPage() {
           {tab === 'services' && <ServicesTab />}
           {tab === 'settings' && <SettingsTab />}
           {tab === 'contracts' && <ContractsTab />}
-          {tab === 'leads' && <LeadsTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'consultations' && <ConsultationsTab />}
           {tab === 'users' && <UsersTab />}
@@ -297,7 +294,8 @@ function ServicesTab() {
   const save = async (id: string) => {
     const current = services.find((service) => service.id === id);
     if (!current) return;
-    const { error } = await supabase.from('services').update(current).eq('id', id);
+    const { id: _skip, ...payload } = current;
+    const { error } = await supabase.from('services').update(payload).eq('id', id);
     if (error) {
       alert('ذخیره نشد: ' + error.message);
       return;
@@ -721,74 +719,6 @@ function ContractsTab() {
                   </button>
                 </div>
               </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function LeadsTab() {
-  const [leads, setLeads] = useState<LeadRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    supabase
-      .from('leads')
-      .select('id,mobile,source,created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (active) {
-          setLeads((data || []) as LeadRow[]);
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const exportCSV = () => {
-    const rows = ['موبایل,منبع,تاریخ', ...leads.map((lead) => `${lead.mobile},${lead.source},${fmtDate(lead.created_at)}`)];
-    const blob = new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'leads.csv';
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  if (loading) return <p>در حال بارگذاری...</p>;
-  return (
-    <div className="admin-table-wrap">
-      <div className="admin-toolbar">
-        <h2>لیدها</h2>
-        <button className="button button-small" onClick={exportCSV}>
-          <Download size={15} /> صادرات CSV
-        </button>
-      </div>
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>موبایل</th>
-            <th>منبع</th>
-            <th>تاریخ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.map((lead) => (
-            <tr key={lead.id}>
-              <td>{lead.mobile}</td>
-              <td>{lead.source}</td>
-              <td>{fmtDate(lead.created_at)}</td>
-            </tr>
-          ))}
-          {leads.length === 0 && (
-            <tr>
-              <td colSpan={3}>هیچ لیدی ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
