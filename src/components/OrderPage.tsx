@@ -3,7 +3,7 @@ import { ArrowLeft, BadgeCheck, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
-import { notifyAdmin } from '@/lib/notify';
+import { notifyAdmin, sendEmail } from '@/lib/notify';
 import { formatRial, toNumericValue } from '@/lib/format';
 
 type Service = {
@@ -59,7 +59,7 @@ export default function OrderPage({ serviceId }: Props) {
       return;
     }
     if (!mobileOk) {
-      setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹');
+      setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۲۳۴۵۶۷۸۹');
       return;
     }
     if (!terms) {
@@ -86,8 +86,16 @@ export default function OrderPage({ serviceId }: Props) {
       setError('ثبت سفارش انجام نشد؛ دوباره تلاش کنید یا از صفحه تماس پیام بدهید.');
       return;
     }
+    const code = String(data.id).slice(0, 8);
     void notifyAdmin(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)}`);
-    setDoneCode(String(data.id).slice(0, 8));
+    if (email.trim()) {
+      void sendEmail(
+        email.trim(),
+        `کاربان: سفارش شما ثبت شد (${code})`,
+        `سلام ${fullName.trim()}،\nسفارش «${service.title}» با کد پیگیری ${code} ثبت شد.\nهمکاران ما برای هماهنگی پرداخت و شروع کار با شما تماس می‌گیرند.\nکاربان؛ از قرارداد تا آرامش.`,
+      );
+    }
+    setDoneCode(code);
   }
 
   if (loading) {
@@ -123,7 +131,7 @@ export default function OrderPage({ serviceId }: Props) {
             <BadgeCheck size={28} />
             <h1>سفارش شما ثبت شد</h1>
             <p>کد پیگیری: <strong>{doneCode}</strong></p>
-            <p>پرداخت آنلاین به‌زودی فعال می‌شود؛ تا آن زمان همکاران ما برای هماهنگی پرداخت و شروع کار با شما تماس می‌گیرند.</p>
+            <p>اگر ایمیل وارد کرده باشید، رسید سفارش همین حالا برایتان ارسال شد؛ همکاران ما نیز به‌زودی تماس می‌گیرند.</p>
             <a className="button" href="/">بازگشت به خانه</a>
           </div>
         </div>
@@ -161,7 +169,7 @@ export default function OrderPage({ serviceId }: Props) {
           </label>
           {mobile && mobileOk ? <span className="ok-tick">✓ شماره معتبر است</span> : null}
           <label>
-            ایمیل (اختیاری)
+            ایمیل (اختیاری — برای دریافت رسید سفارش)
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
           </label>
           <label>
