@@ -25,13 +25,7 @@ export default function Layout({ children, title, description, breadcrumb, jsonL
           {breadcrumb.map((item, index) => {
             const last = index === breadcrumb.length - 1;
             const href = '/' + pathSegments.slice(0, index + 1).join('/');
-            return last ? (
-              <span key={item}>/ {item}</span>
-            ) : (
-              <a key={item} href={href}>
-                / {item}
-              </a>
-            );
+            return last ? <span key={item}>/ {item}</span> : <a key={item} href={href}>/ {item}</a>;
           })}
         </div>
       )}
