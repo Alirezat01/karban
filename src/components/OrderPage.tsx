@@ -40,7 +40,9 @@ export default function OrderPage({ serviceId }: Props) {
         setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [serviceId]);
 
   const baseAmount = useMemo(() => (service ? toNumericValue(service.price) : 0), [service]);
@@ -52,9 +54,18 @@ export default function OrderPage({ serviceId }: Props) {
     e.preventDefault();
     setError('');
     if (!service) return;
-    if (fullName.trim().length < 3) { setError('نام و نام خانوادگی را کامل وارد کنید.'); return; }
-    if (!mobileOk) { setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹'); return; }
-    if (!terms) { setError('برای ادامه، قوانین و شرایط را بپذیرید.'); return; }
+    if (fullName.trim().length < 3) {
+      setError('نام و نام خانوادگی را کامل وارد کنید.');
+      return;
+    }
+    if (!mobileOk) {
+      setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹');
+      return;
+    }
+    if (!terms) {
+      setError('برای ادامه، قوانین و شرایط را بپذیرید.');
+      return;
+    }
     setSending(true);
     const { data, error: dbError } = await supabase
       .from('orders')
@@ -71,13 +82,22 @@ export default function OrderPage({ serviceId }: Props) {
       .select()
       .single();
     setSending(false);
-    if (dbError) { setError('ثبت سفارش انجام نشد؛ دوباره تلاش کنید یا از صفحه تماس پیام بدهید.'); return; }
-    void notifyAdmin(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)} ریال ریال`);
+    if (dbError) {
+      setError('ثبت سفارش انجام نشد؛ دوباره تلاش کنید یا از صفحه تماس پیام بدهید.');
+      return;
+    }
+    void notifyAdmin(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)}`);
     setDoneCode(String(data.id).slice(0, 8));
   }
 
   if (loading) {
-    return <section className="inner-page"><div className="container narrow-content"><p>در حال بارگذاری خدمت…</p></div></section>;
+    return (
+      <section className="inner-page">
+        <div className="container narrow-content">
+          <p>در حال بارگذاری خدمت…</p>
+        </div>
+      </section>
+    );
   }
 
   if (!service) {
@@ -87,7 +107,9 @@ export default function OrderPage({ serviceId }: Props) {
           <span className="eyebrow">ثبت سفارش</span>
           <h1>خدمت پیدا نشد</h1>
           <p className="lead">خدمتی که انتخاب کرده‌اید در دسترس نیست.</p>
-          <a className="button" href="/خدمات">مشاهده خدمات <ArrowLeft size={16} /></a>
+          <a className="button" href="/خدمات">
+            مشاهده خدمات <ArrowLeft size={16} />
+          </a>
         </div>
       </section>
     );
@@ -121,32 +143,41 @@ export default function OrderPage({ serviceId }: Props) {
           <div className="order-line"><span>واحد</span><strong>{service.unit || '—'}</strong></div>
           <div className="order-line">
             <span>مبلغ</span>
-            <strong>{discount > 0 ? <s className="old-price">{formatRial(baseAmount)}</s> : null} {formatRial(finalAmount)} ریال</strong>
+            <strong>
+              {discount > 0 ? <s className="old-price">{formatRial(baseAmount)}</s> : null} {formatRial(finalAmount)}
+            </strong>
           </div>
           {discount > 0 && <div className="order-ribbon">تخفیف {discount}٪ فعال شد</div>}
         </div>
 
         <form className="consult-form order-form" onSubmit={submit} noValidate>
-          <label>نام و نام خانوادگی *
+          <label>
+            نام و نام خانوادگی *
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="مثلاً: علی رضایی" />
           </label>
-          <label>شماره موبایل *
-            <input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="۰۹۲…" inputMode="tel" className={mobile && mobileOk ? 'input-ok' : ''} />
+          <label>
+            شماره موبایل *
+            <input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="۰۹۱۲…" inputMode="tel" className={mobile && mobileOk ? 'input-ok' : ''} />
           </label>
           {mobile && mobileOk ? <span className="ok-tick">✓ شماره معتبر است</span> : null}
-          <label>ایمیل (اختیاری)
+          <label>
+            ایمیل (اختیاری)
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
           </label>
-          <label>نام شرکت / کسب‌وکار (اختیاری)
+          <label>
+            نام شرکت / کسب‌وکار (اختیاری)
             <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="اختیاری" />
           </label>
-          <label>توضیح درخواست (اختیاری)
+          <label>
+            توضیح درخواست (اختیاری)
             <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="اگر نکته‌ای هست بنویسید…" />
           </label>
 
           <label className="terms-check">
             <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-            <span><a href="/قوانین" target="_blank" rel="noreferrer">قوانین و شرایط</a> کاربان را خواندم و می‌پذیرم. *</span>
+            <span>
+              <a href="/قوانین" target="_blank" rel="noreferrer">قوانین و شرایط</a> کاربان را خواندم و می‌پذیرم. *
+            </span>
           </label>
 
           {error ? <div className="form-error">{error}</div> : null}
@@ -154,7 +185,9 @@ export default function OrderPage({ serviceId }: Props) {
           <button className="button" disabled={sending}>
             {sending ? 'در حال ثبت…' : 'ثبت سفارش'} <ArrowLeft size={16} />
           </button>
-          <p className="muted-note"><ShieldCheck size={14} /> پرداخت آنلاین به‌زودی؛ فعلاً پس از ثبت سفارش، هماهنگی پرداخت تلفنی انجام می‌شود.</p>
+          <p className="muted-note">
+            <ShieldCheck size={14} /> پرداخت آنلاین به‌زودی؛ فعلاً پس از ثبت سفارش، هماهنگی پرداخت تلفنی انجام می‌شود.
+          </p>
         </form>
       </div>
     </section>
