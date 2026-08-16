@@ -166,13 +166,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
 
         {kind === 'tools' && (
           <>
-            <div className="tools-hero-card">
-              <div>
-                <h2>ابزارهای هوش مصنوعی کاربان</h2>
-                <p>با چند عدد ساده، تصویر روشن‌تری از حقوق، بیمه، مالیات و سلامت کسب‌وکار خود بسازید.</p>
-              </div>
-              <img src="/images/og-tools.png" alt="تصویر ابزارهای کاربان" />
-            </div>
+           
             <div className="tool-grid">
               {calculatorItems.map((item) => {
                 const Icon = toolIcons[item.icon] || Calculator;
