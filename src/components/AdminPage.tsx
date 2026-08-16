@@ -295,10 +295,13 @@ function ServicesTab() {
   const save = async (id: string) => {
     const current = services.find((service) => service.id === id);
     if (!current) return;
-    await supabase.from('services').update(current).eq('id', id);
+       const { error } = await supabase.from('services').update(current).eq('id', id);
+    if (error) {
+      alert('ذخیره نشد: ' + error.message);
+      return;
+    }
     setEditing(null);
     load();
-  };
 
   const add = async () => {
     if (!form.title) return;
