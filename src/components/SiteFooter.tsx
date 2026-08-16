@@ -22,7 +22,6 @@ export default function SiteFooter() {
       setState(error.code === '23505' ? 'dup' : 'err');
       return;
     }
-    }
     setState('ok');
     setMobile('');
   }
@@ -35,15 +34,9 @@ export default function SiteFooter() {
           <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
           <p>مرجع هوشمند مدیریت کسب‌وکار برای کارفرمایان، کارمندان و فریلنسرها؛ از قرارداد تا آرامش.</p>
           <div className="socials">
-            <a href="/تماس-با-ما" aria-label="اینستاگرام">
-              <Instagram size={18} />
-            </a>
-            <a href="/تماس-با-ما" aria-label="لینکدین">
-              <Linkedin size={18} />
-            </a>
-            <a href="/تماس-با-ما" aria-label="تلگرام">
-              <Send size={18} />
-            </a>
+            <a href="/تماس-با-ما" aria-label="اینستاگرام"><Instagram size={18} /></a>
+            <a href="/تماس-با-ما" aria-label="لینکدین"><Linkedin size={18} /></a>
+            <a href="/تماس-با-ما" aria-label="تلگرام"><Send size={18} /></a>
           </div>
         </div>
         <div>
@@ -61,12 +54,8 @@ export default function SiteFooter() {
         </div>
         <div>
           <h3>تماس</h3>
-          <p className="contact-line">
-            <Phone size={16} /> ۰۲-۸۸۳۲۶۷۹
-          </p>
-          <p className="contact-line">
-            <Mail size={16} /> hello@karbanapp.ir
-          </p>
+          <p className="contact-line"><Phone size={16} /> ۰۲۱-۸۸۳۴۲۶۷۹</p>
+          <p className="contact-line"><Mail size={16} /> hello@karbanapp.ir</p>
           <p className="footer-address">تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p>
         </div>
       </div>
@@ -77,28 +66,18 @@ export default function SiteFooter() {
           <p>تغییرات قوانین، مهلت‌های مالیاتی و ابزارهای جدید؛ ماهی یک پیام، بدون اسپم.</p>
         </div>
         <form className="news-form" onSubmit={subscribe}>
-          <input
-            type="tel"
-            inputMode="tel"
-            value={mobile}
-            onChange={(e) => {
-              setMobile(e.target.value);
-              setState('idle');
-            }}
-            placeholder="شماره موبایل"
-            aria-label="شماره موبایل برای خبرنامه"
-          />
+          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); setState('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل برای خبرنامه" />
           <button className="button" type="submit">عضویت</button>
         </form>
         <div className="news-msg">
           {state === 'ok' && <small className="news-ok"><CheckCircle2 size={14} /> عضویت شما در خبرنامه ثبت شد.</small>}
           {state === 'dup' && <small className="news-ok">این شماره قبلاً عضو شده است.</small>}
-          {state === 'err' && <small className="news-err">شماره معتبر وارد کنید؛ نمونه: ۰۹۲۳۴۵۶۷۸۹</small>}
+          {state === 'err' && <small className="news-err">شماره معتبر وارد کنید؛ نمونه: ۰۹۱۲۳۴۵۶۷۸۹</small>}
         </div>
       </div>
 
       <div className="container footer-bottom">
-        <span>© ۱۴۵ کاربان. تمام حقوق محفوظ است.</span>
+        <span>© ۱۴۰۵ کاربان. تمام حقوق محفوظ است.</span>
         <span>ساخته‌شده برای رشد کسب‌وکارهای ایرانی</span>
       </div>
     </footer>
