@@ -71,7 +71,9 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
       .maybeSingle()
       .then(({ data }) => {
         if (active) {
-          setArticle((data as Article) || null);
+                    const a = (data as Article) || null;
+          setArticle(a);
+          if (a) document.title = `${a.title} | کاربان`;
           setLoading(false);
         }
       });
