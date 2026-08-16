@@ -1,22 +1,29 @@
-const token = import.meta.env.VITE_TELEGRAM_BOT_TOKEN as string | undefined;
-const chatId = import.meta.env.VITE_TELEGRAM_CHAT_ID as string | undefined;
-
 export async function notifyAdmin(message: string) {
-  if (!token || !chatId) {
-    console.warn('telegram env missing');
-    return false;
-  }
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message }),
+      body: JSON.stringify({ text: message }),
     });
     const json = await res.json();
-    if (!json.ok) console.warn('telegram error', json.description);
     return !!json.ok;
   } catch (err) {
-    console.warn('telegram send failed', err);
+    console.warn('notify failed', err);
+    return false;
+  }
+}
+
+export async function sendEmail(to: string, subject: string, text: string) {
+  try {
+    const res = await fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, text }),
+    });
+    const json = await res.json();
+    return !!json.ok;
+  } catch (err) {
+    console.warn('email failed', err);
     return false;
   }
 }
