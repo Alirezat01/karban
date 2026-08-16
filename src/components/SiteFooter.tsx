@@ -19,8 +19,9 @@ export default function SiteFooter() {
     }
     const { error } = await supabase.from('newsletter').insert({ mobile: normalizeMobile(cleaned) });
     if (error) {
-      setState('dup');
+      setState(error.code === '23505' ? 'dup' : 'err');
       return;
+    }
     }
     setState('ok');
     setMobile('');
