@@ -81,6 +81,16 @@ export default function SiteFooter() {
         <span>© ۱۴۰۵ کاربان. تمام حقوق محفوظ است.</span>
         <span>ساخته‌شده برای رشد کسب‌وکارهای ایرانی</span>
       </div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '16px 0 4px' }}>
+          <a referrerPolicy="origin" target="_blank" rel="noopener" href="https://trustseal.enamad.ir/?id=7297333&Code=m8Vg4QZHpHJK5T6xbE0MeUFlG3eSJU74">
+            <img
+              referrerPolicy="origin"
+              src="https://trustseal.enamad.ir/logo.aspx?id=7297333&Code=m8Vg4QZHpHJK5T6xbE0MeUFlG3eSJU74"
+              alt="نماد اعتماد الکترونیکی"
+              style={{ cursor: 'pointer', width: '82px', height: '82px', objectFit: 'contain', background: '#fff', borderRadius: '12px', padding: '6px' }}
+            />
+          </a>
+        </div>
     </footer>
   );
 }
