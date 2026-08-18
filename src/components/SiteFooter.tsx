@@ -34,7 +34,7 @@ export default function SiteFooter() {
           <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
           <p>مرجع هوشمند مدیریت کسب‌وکار برای کارفرمایان، کارمندان و فریلنسرها؛ از قرارداد تا آرامش.</p>
           <div className="socials">
-            <a href="/تماس-با-ما" aria-label="اینستاگرام"><Instagram size={18} /></a>
+            <a href="https://www.instagram.com/karbanapp" target="_blank" rel="noopener" aria-label="اینستاگرام کاربان"><Instagram size={18} /></a>
             <a href="/تماس-با-ما" aria-label="لینکدین"><Linkedin size={18} /></a>
             <a href="/تماس-با-ما" aria-label="تلگرام"><Send size={18} /></a>
           </div>
@@ -51,7 +51,7 @@ export default function SiteFooter() {
           <a href="/درباره-ما">درباره ما</a>
           <a href="/تماس-با-ما">تماس با ما</a>
           <a href="/قوانین">قوانین و شرایط</a>
-                    <a href="/حریم-خصوصی">حریم خصوصی</a>
+          <a href="/حریم-خصوصی">حریم خصوصی</a>
         </div>
         <div>
           <h3>تماس</h3>
@@ -79,18 +79,24 @@ export default function SiteFooter() {
 
       <div className="container footer-bottom">
         <span>© ۱۴۰۵ کاربان. تمام حقوق محفوظ است.</span>
+        <a
+          referrerPolicy="origin"
+          target="_blank"
+          rel="noopener"
+          href="https://trustseal.enamad.ir/?id=7297333&Code=m8Vg4QZHpHJK5T6xbE0MeUFlG3eSJU74"
+          aria-label="نماد اعتماد الکترونیکی"
+          title="نماد اعتماد الکترونیکی"
+        >
+          <img
+            referrerPolicy="origin"
+            src="https://trustseal.enamad.ir/logo.aspx?id=7297333&Code=m8Vg4QZHpHJK5T6xbE0MeUFlG3eSJU74"
+            alt="نماد اعتماد الکترونیکی"
+            loading="lazy"
+            style={{ width: '54px', height: '54px', objectFit: 'contain', background: '#fff', borderRadius: '10px', padding: '4px', display: 'block' }}
+          />
+        </a>
         <span>ساخته‌شده برای رشد کسب‌وکارهای ایرانی</span>
       </div>
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '16px 0 4px' }}>
-          <a referrerPolicy="origin" target="_blank" rel="noopener" href="https://trustseal.enamad.ir/?id=7297333&Code=m8Vg4QZHpHJK5T6xbE0MeUFlG3eSJU74">
-            <img
-              referrerPolicy="origin"
-              src="https://trustseal.enamad.ir/logo.aspx?id=7297333&Code=m8Vg4QZHpHJK5T6xbE0MeUFlG3eSJU74"
-              alt="نماد اعتماد الکترونیکی"
-              style={{ cursor: 'pointer', width: '82px', height: '82px', objectFit: 'contain', background: '#fff', borderRadius: '12px', padding: '6px' }}
-            />
-          </a>
-        </div>
     </footer>
   );
 }
