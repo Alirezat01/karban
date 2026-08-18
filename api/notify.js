@@ -25,7 +25,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'Karban <onboarding@resend.dev>',
+          from: 'Karban <no-reply@karbanapp.ir>',
           to: [to],
           subject,
           text: text || subject,
