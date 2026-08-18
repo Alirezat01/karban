@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../src/lib/supabase';
 
 const BASE = 'https://karbanapp.ir';
 
@@ -33,26 +33,12 @@ export default async function handler(req: any, res: any) {
   ];
 
   try {
-    const url =
-      process.env.SUPABASE_URL ||
-      process.env.VITE_SUPABASE_URL ||
-      '';
-    const key =
-      process.env.SUPABASE_SERVICE_KEY ||
-      process.env.SUPABASE_SERVICE_ROLE_KEY ||
-      process.env.SUPABASE_ANON_KEY ||
-      process.env.VITE_SUPABASE_ANON_KEY ||
-      '';
-
-    if (url && key) {
-      const supabase = createClient(url, key);
-      const [a, c] = await Promise.all([
-        supabase.from('articles').select('id'),
-        supabase.from('contracts').select('id'),
-      ]);
-      (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
-      (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
-    }
+    const [a, c] = await Promise.all([
+      supabase.from('articles').select('id'),
+      supabase.from('contracts').select('id'),
+    ]);
+    (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
+    (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
   } catch {
     // اگر دیتابیس در دسترس نبود، همان لیست استاتیک کافی است
   }
