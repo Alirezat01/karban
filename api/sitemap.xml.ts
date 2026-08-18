@@ -32,23 +32,36 @@ export default async function handler(req: any, res: any) {
     { path: '/دانشنامه/5', priority: '0.7' },
   ];
 
+  let articleCount = 0;
+  let contractCount = 0;
+  let debug = '';
+
+  const supabase = createClient(
+    'https://rocjeanizzhfvhnuhnms.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
+  );
+
   try {
-    const supabase = createClient(
-      'https://rocjeanizzhfvhnuhnms.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
-    );
-    const [a, c] = await Promise.all([
-      supabase.from('articles').select('id'),
-      supabase.from('contracts').select('id'),
-    ]);
+    const a = await supabase.from('articles').select('id');
+    debug += a.error ? `articles-error:${a.error.message}` : `articles-ok:${(a.data || []).length}`;
     (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
+    articleCount = (a.data || []).length;
+  } catch (e) {
+    debug += `articles-exception:${String(e)}`;
+  }
+
+  try {
+    const c = await supabase.from('contracts').select('id');
+    debug += ` | ${c.error ? `contracts-error:${c.error.message}` : `contracts-ok:${(c.data || []).length}`}`;
     (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
-  } catch {
-    // لیست استاتیک کافی است
+    contractCount = (c.data || []).length;
+  } catch (e) {
+    debug += ` | contracts-exception:${String(e)}`;
   }
 
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<!-- debug: ${debug} | articles=${articleCount} contracts=${contractCount} -->\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     rows
       .map(
