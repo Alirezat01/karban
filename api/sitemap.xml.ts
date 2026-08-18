@@ -1,4 +1,4 @@
-import { supabase } from '../src/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 const BASE = 'https://karbanapp.ir';
 
@@ -33,6 +33,10 @@ export default async function handler(req: any, res: any) {
   ];
 
   try {
+    const supabase = createClient(
+      'https://rocjeanizzhfvhnuhnms.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
+    );
     const [a, c] = await Promise.all([
       supabase.from('articles').select('id'),
       supabase.from('contracts').select('id'),
@@ -40,7 +44,7 @@ export default async function handler(req: any, res: any) {
     (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
     (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
   } catch {
-    // اگر دیتابیس در دسترس نبود، همان لیست استاتیک کافی است
+    // لیست استاتیک کافی است
   }
 
   const xml =
