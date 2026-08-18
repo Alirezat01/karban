@@ -3,26 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 const BASE = 'https://karbanapp.ir';
 
 export default async function handler(req: any, res: any) {
-  const url = process.env.SUPABASE_URL || '';
-  const key =
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    '';
-
-  const supabase = createClient(url, key);
   const today = new Date().toISOString().slice(0, 10);
-
-  let articleIds: number[] = [];
-  let contractIds: number[] = [];
-  try {
-    const a = await supabase.from('articles').select('id');
-    articleIds = (a.data || []).map((r: any) => r.id);
-  } catch {}
-  try {
-    const c = await supabase.from('contracts').select('id');
-    contractIds = (c.data || []).map((r: any) => r.id);
-  } catch {}
 
   const rows: { path: string; priority: string; lastmod?: string }[] = [
     { path: '/', priority: '1.0', lastmod: today },
@@ -51,8 +32,30 @@ export default async function handler(req: any, res: any) {
     { path: '/دانشنامه/5', priority: '0.7' },
   ];
 
-  articleIds.forEach((id) => rows.push({ path: `/دانشنامه/مقاله/${id}`, priority: '0.7' }));
-  contractIds.forEach((id) => rows.push({ path: `/قراردادها/${id}`, priority: '0.8' }));
+  try {
+    const url =
+      process.env.SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      '';
+    const key =
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      '';
+
+    if (url && key) {
+      const supabase = createClient(url, key);
+      const [a, c] = await Promise.all([
+        supabase.from('articles').select('id'),
+        supabase.from('contracts').select('id'),
+      ]);
+      (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
+      (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
+    }
+  } catch {
+    // اگر دیتابیس در دسترس نبود، همان لیست استاتیک کافی است
+  }
 
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
