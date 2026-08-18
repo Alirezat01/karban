@@ -10,18 +10,21 @@ type Props = { title: string; category: string; contractId?: string };
 export default function ArticlePage({ title, category, contractId }: Props) {
   const [mobile, setMobile] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [contractData, setContractData] = useState<{ body?: string; pdf_url?: string } | null>(null);
+   const [contractData, setContractData] = useState<{ title?: string; summary?: string; body?: string; pdf_url?: string } | null>(null);
   const isContract = category.includes('قرارداد');
 
   useEffect(() => {
     if (!contractId) return;
     supabase
       .from('contracts')
-      .select('body, pdf_url')
+            .select('title, summary, body, pdf_url')
       .eq('id', contractId)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) setContractData(data);
+           .then(({ data }) => {
+        if (data) {
+          setContractData(data);
+          if (data.title) document.title = `${data.title} | کاربان`;
+        }
       });
   }, [contractId]);
 
@@ -67,11 +70,12 @@ export default function ArticlePage({ title, category, contractId }: Props) {
         <span className="eyebrow">
           <BookOpen size={15} /> {category}
         </span>
-        <h1>{title}</h1>
-        <p className="article-intro">
-          {isContractDetail
-            ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.'
-            : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارگران و متخصصان ایرانی.'}
+        <h1>{contractData?.title || title}</h1>
+               <p className="article-intro">
+          {contractData?.summary ||
+            (isContractDetail
+              ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.'
+              : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارگران و متخصصان ایرانی.'))}
         </p>
 
         <div className="article-body">
