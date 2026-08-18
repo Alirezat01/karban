@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /ورود
 
-Sitemap: https://karbanapp.ir/sitemap.xml
+Sitemap: https://karbanapp.ir/api/sitemap.xml
