@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 
-type Tab = 'services' | 'settings' | 'contracts' | 'orders' | 'consultations' | 'users' | 'newsletter';
+type Tab = 'services' | 'settings' | 'contracts' | 'articles' | 'orders' | 'consultations' | 'users' | 'newsletter';
 type Service = {
   id: string;
   title: string;
@@ -17,8 +17,11 @@ type Service = {
   discount_percent?: number | null;
 };
 type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body: string; pdf_url: string };
+type ArticleRow = { id: number; category: string; title: string; intro: string; body: string; author: string };
 type OrderRow = { id: string; full_name: string; mobile: string; service_title: string; amount: number; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
+
+const ARTICLE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
 
 const fmtDate = (value: string) => formatFaDate(value);
 const loginLockKey = (email: string) => `karban-login-lock:${email.trim().toLowerCase()}`;
@@ -28,7 +31,7 @@ const sessionKey = 'karban-admin-session-start';
 const safeAmount = (raw: string) => {
   const digits = raw
     .replace(/[^0-9۰-۹]/g, '')
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۴۵۶۸۹'.indexOf(d)));
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۵۶۸۹'.indexOf(d)));
    return digits;
 };
 
@@ -221,6 +224,7 @@ export default function AdminPage() {
     ['services', 'خدمات'],
     ['settings', 'تنظیمات'],
     ['contracts', 'قراردادها'],
+    ['articles', 'مقاله‌ها'],
     ['orders', 'سفارش‌ها'],
     ['consultations', 'درخواست‌های مشاوره'],
     ['users', 'مدیریت کاربران'],
@@ -253,6 +257,7 @@ export default function AdminPage() {
           {tab === 'services' && <ServicesTab />}
           {tab === 'settings' && <SettingsTab />}
           {tab === 'contracts' && <ContractsTab />}
+          {tab === 'articles' && <ArticlesTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'consultations' && <ConsultationsTab />}
           {tab === 'users' && <UsersTab />}
@@ -718,6 +723,137 @@ function ContractsTab() {
                   </button>
                 </div>
               </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ArticlesTab() {
+  const [items, setItems] = useState<ArticleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState({ category: ARTICLE_CATEGORIES[0], title: '', intro: '', author: 'تیم کاربان', body: '' });
+  const [status, setStatus] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('articles').select('id,category,title,intro,body,author').order('id');
+    setItems((data || []) as ArticleRow[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setForm({ category: ARTICLE_CATEGORIES[0], title: '', intro: '', author: 'تیم کاربان', body: '' });
+    setStatus('');
+    setShowForm(true);
+  };
+
+  const openEdit = (article: ArticleRow) => {
+    setEditingId(article.id);
+    setForm({ category: article.category, title: article.title, intro: article.intro, author: article.author, body: article.body });
+    setStatus('');
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    if (!form.title || !form.body) {
+      setStatus('عنوان و متن مقاله الزامی است.');
+      return;
+    }
+    const payload = { category: form.category, title: form.title, intro: form.intro, author: form.author, body: form.body };
+    const { error } = editingId
+      ? await supabase.from('articles').update(payload).eq('id', editingId)
+      : await supabase.from('articles').insert(payload);
+    if (error) {
+      setStatus('ذخیره نشد: ' + error.message);
+      return;
+    }
+    setStatus(editingId ? '✓ مقاله به‌روزرسانی شد.' : '✓ مقاله منتشر شد.');
+    setShowForm(false);
+    load();
+  };
+
+  const remove = async (id: number) => {
+    if (!window.confirm('این مقاله حذف شود؟')) return;
+    await supabase.from('articles').delete().eq('id', id);
+    load();
+  };
+
+  if (loading) return <p>در حال بارگذاری...</p>;
+  return (
+    <div className="admin-table-wrap">
+      <div className="admin-toolbar">
+        <h2>مدیریت مقاله‌های دانشنامه</h2>
+        <button className="button button-small" onClick={() => (showForm ? setShowForm(false) : openAdd())}>
+          <Plus size={15} /> {showForm ? 'بستن فرم' : 'افزودن مقاله'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="admin-form admin-form-block">
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} aria-label="دسته">
+            {ARTICLE_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان مقاله" />
+          <textarea value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="چکیده (۱–۲ خط)" rows={2} style={{ width: '100%', resize: 'vertical' }} />
+          <input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="نویسنده" />
+          <textarea
+            value={form.body}
+            onChange={(e) => setForm({ ...form, body: e.target.value })}
+            placeholder={'متن مقاله — پاراگراف‌ها را با یک خط خالی جدا کن؛ برای سرتیتر، اول خط بنویس: ## '}
+            rows={14}
+            style={{ width: '100%', resize: 'vertical' }}
+          />
+          <button className="button button-small" onClick={save}>
+            <Save size={15} /> {editingId ? 'به‌روزرسانی' : 'انتشار مقاله'}
+          </button>
+          {status && <small className="admin-success">{status}</small>}
+        </div>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>شناسه</th>
+            <th>عنوان</th>
+            <th>دسته</th>
+            <th>نویسنده</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((article) => (
+            <tr key={article.id}>
+              <td>{article.id}</td>
+              <td>{article.title}</td>
+              <td>{article.category}</td>
+              <td>{article.author}</td>
+              <td className="admin-actions">
+                <button className="button button-small" onClick={() => openEdit(article)}>
+                  ویرایش
+                </button>
+                <button className="admin-delete" onClick={() => remove(article.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </td>
+            </tr>
+          ))}
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={5}>هیچ مقاله‌ای ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
