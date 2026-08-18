@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
@@ -64,6 +64,11 @@ const faqJsonLd = {
 export default function App() {
   const route = useRoute();
   const segments = route.split('/').filter(Boolean);
+  
+  useEffect(() => {
+    const w = window as unknown as { gtag?: (...args: unknown[]) => void };
+    if (w.gtag) w.gtag('event', 'page_view', { page_path: route });
+  }, [route]);
 
   if (route === '/' || segments.length === 0) {
     return (
