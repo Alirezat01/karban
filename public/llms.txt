@@ -1,0 +1,12 @@
+# Karban
+
+> Karban (karbanapp.ir) is a smart assistant for Iranian labor law and employment contracts: ready-made contracts, labor-law calculators (salary, severance, overtime, tax, VAT), and a labor-law knowledge base.
+
+## Main pages
+- https://karbanapp.ir/خدمات: Services overview
+- https://karbanapp.ir/قراردادها: Employment contract templates
+- https://karbanapp.ir/ابزارهای-هوش-مصنوعی: Labor law calculators
+- https://karbanapp.ir/دانشنامه: Labor law knowledge base
+
+## Contact
+- Email: info@karbanapp.ir
