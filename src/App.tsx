@@ -3,8 +3,16 @@ import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
-import ContentPage, { ServicesPage } from '@/components/ContentPage';
-import { ArticlesListPage, ArticleViewPage } from '@/components/KnowledgePage';
+const ContentPage = React.lazy(() => import('@/components/ContentPage'));
+const ServicesPage = React.lazy(() =>
+  import('@/components/ContentPage').then((m) => ({ default: m.ServicesPage })),
+);
+const ArticlesListPage = React.lazy(() =>
+  import('@/components/KnowledgePage').then((m) => ({ default: m.ArticlesListPage })),
+);
+const ArticleViewPage = React.lazy(() =>
+  import('@/components/KnowledgePage').then((m) => ({ default: m.ArticleViewPage })),
+);
 
 const HomePage = React.lazy(() => import('@/components/HomePage'));
 const CalculatorPage = React.lazy(() => import('@/components/CalculatorPage'));
