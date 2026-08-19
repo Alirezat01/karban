@@ -70,7 +70,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="hero-media">
-              <img src="/assets/images/hero-luxury.jpg" alt="ترازوی عدالت طلایی و کتاب قانون؛ نماد اعتماد و دقت کاربان" />
+              <img src="/assets/images/hero-luxury.png" alt="ترازوی عدالت طلایی و کتاب قانون؛ نماد اعتماد و دقت کاربان" />
             </div>
           </div>
           <div className="role-grid">
