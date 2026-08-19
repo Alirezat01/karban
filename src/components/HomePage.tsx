@@ -61,25 +61,30 @@ export default function HomePage() {
     <div className={revealed ? 'home-page is-ready' : 'home-page'}>
       <section className="hero-home hero-animated">
         <div className="container hero-inner">
-          <div className="hero-copy">
-            <span className="hero-eyebrow">پلتفرم هوشمند قرارداد، حقوق و دانشنامه</span>
-            <h1>رشد مطمئن کسب‌وکار شما با کاربان</h1>
-            <p className="hero-lead">
-              کاربان بانک قرارداد تخصصی، ماشین‌حساب‌های دقیق حقوق و سنوات، و دانشنامه کاربردی حقوق کار را کنار هم آورده تا تصمیم‌های حساس، ساده و مطمئن شوند.
-            </p>
-            <div className="role-grid">
-              {roleCards.map((role) => {
-                const Icon = icons[role.icon] || Sparkles;
-                return (
-                  <a className={`role-card role-${role.accent}`} href={role.href} key={role.title}>
-                    <Icon size={22} />
-                    <h3>{role.title}</h3>
-                    <p>{role.description}</p>
-                    <span>ورود به مسیر <ArrowLeft size={14} /></span>
-                  </a>
-                );
-              })}
+          <div className="hero-grid-home">
+            <div className="hero-copy">
+              <span className="hero-eyebrow">پلتفرم هوشمند قرارداد، حقوق و دانشنامه</span>
+              <h1>رشد مطمئن کسب‌وکار شما با کاربان</h1>
+              <p className="hero-lead">
+                کاربان بانک قرارداد تخصصی، ماشین‌حساب‌های دقیق حقوق و سنوات، و دانشنامه کاربردی حقوق کار را کنار هم آورده تا تصمیم‌های حساس، ساده و مطمئن شوند.
+              </p>
             </div>
+            <div className="hero-media">
+              <img src="/assets/images/hero-luxury.jpg" alt="ترازوی عدالت طلایی و کتاب قانون؛ نماد اعتماد و دقت کاربان" />
+            </div>
+          </div>
+          <div className="role-grid">
+            {roleCards.map((role) => {
+              const Icon = icons[role.icon] || Sparkles;
+              return (
+                <a className={`role-card role-${role.accent}`} href={role.href} key={role.title}>
+                  <Icon size={22} />
+                  <h3>{role.title}</h3>
+                  <p>{role.description}</p>
+                  <span>ورود به مسیر <ArrowLeft size={14} /></span>
+                </a>
+              );
+            })}
           </div>
         </div>
       </section>
