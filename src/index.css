@@ -812,3 +812,105 @@ body {
   }
   .contract-body { border: none !important; background: #fff !important; }
 }
+/* ===== تم دارک لوکس کاربان — لایه نهایی ===== */
+@media screen {
+  :root {
+    --bg: #0a0f1c;
+    --bg-2: #0d1424;
+    --surface: #111a2c;
+    --surface-2: #16203a;
+    --line: #1f2a44;
+    --gold: #d8a53f;
+    --gold-2: #e8c476;
+    --text: #eef2f8;
+    --muted: #a7b3c9;
+  }
+
+  body:has(.site-header) { background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%) !important; color: var(--text) !important; }
+  body:has(.site-header) h1, body:has(.site-header) h2, body:has(.site-header) h3, body:has(.site-header) h4 { color: var(--text) !important; }
+  body:has(.site-header) p { color: var(--muted) !important; }
+  ::selection { background: var(--gold); color: #14100a; }
+
+  /* خط تزئینی طلایی زیر تیترها */
+  .inner-page h1::after, .section-heading h2::after, .center-heading h2::after {
+    content: ''; display: block; width: 56px; height: 3px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--gold), transparent); margin-top: 0.6rem;
+  }
+  .center-heading h2::after { margin: 0.6rem auto 0; }
+
+  /* هدر تیره‌تر */
+  .site-header { background: rgba(8, 12, 22, 0.97) !important; border-bottom-color: rgba(216, 165, 63, 0.2) !important; }
+  .mobile-nav { background: rgba(8, 12, 22, 0.98) !important; }
+
+  /* مسیر صفحه */
+  .breadcrumb { background: transparent !important; color: var(--muted) !important; }
+  .breadcrumb a { color: var(--gold-2) !important; }
+  .breadcrumb span { color: var(--muted) !important; }
+
+  /* دکمه‌ها: طلایی اصلی + دورخطی */
+  body:has(.site-header) .button { background: linear-gradient(135deg, #e7c274, #c9962e) !important; color: #14100a !important; border: none !important; }
+  body:has(.site-header) .button:hover { box-shadow: 0 10px 30px -10px rgba(216, 165, 63, 0.5) !important; }
+  body:has(.site-header) .button-outline, body:has(.site-header) .button-outline-light { background: transparent !important; border: 1.5px solid rgba(216, 165, 63, 0.5) !important; color: var(--gold-2) !important; }
+  body:has(.site-header) .button-green { background: #1f7a4d !important; color: #fff !important; }
+
+  /* ورودی‌ها */
+  body:has(.site-header) input, body:has(.site-header) select, body:has(.site-header) textarea {
+    background: var(--surface-2) !important; border: 1.5px solid var(--line) !important; color: var(--text) !important;
+  }
+  body:has(.site-header) input::placeholder { color: #6b7890; }
+
+  /* کارت‌ها و پنل‌ها */
+  .contract-card, .service-card, .service-card-home, .category-card, .plan-card, .filter-panel, .contact-card,
+  .calculator-card, .directory-row, .health-q, .faq details, .faq-section details, .education, .callout,
+  .role-benefits > div, .role-tip, .legal-box, .result-box, .salary-output, .health-result, .guarantee,
+  .related-box, .article-list-item, .contract-pre, .how-step, .timeline-step, .value-item, .specialist-card,
+  .terms-check, .order-summary, .calc-card, .tools-hero-card {
+    background: var(--surface) !important; border-color: var(--line) !important; box-shadow: none !important;
+  }
+  .article-list-item { border: 1px solid var(--line); border-radius: 16px; }
+
+  /* متن‌های کم‌رنگ داخل کارت‌ها */
+  .service-card p, .service-card-home p, .contract-card p, .category-card p, .plan-card p, .directory-row p,
+  .health-q p, .faq details p, .faq-section details p, .related-box p, .callout p, .education p, .legal-box li,
+  .terms-list li, .plan-card small, .filter-panel small, .calc-hints span, .result-box span, .result-box small,
+  .order-line span, .muted-note, .contact-card p, .how-step p, .timeline-step p, .value-item p,
+  .calculator-card label, .calc-card label, .range-field, .article-body p, .article-intro, .inner-page .lead,
+  .role-tip p, .callout strong, .brief-inner p, .footer-news p { color: var(--muted) !important; }
+
+  /* اکسنت‌های طلایی */
+  .contract-card-top small, .service-ladder small, .specialist-list b, .plan-cta, .service-card span,
+  .service-card-home > span, .text-link, .expert-link, .range-field strong, .salary-output-head strong,
+  .salary-output-foot strong, .salary-output-list b, .calc-line-strong strong, .result-box strong,
+  .health-score span, .plan-card .service-price-group strong, .service-price-group strong,
+  .guarantee strong, .guarantee svg, .role-benefits svg, .check-list span::before, .eyebrow,
+  .faq summary svg, .related-box svg, .contact-line svg { color: var(--gold-2) !important; }
+  .eyebrow { background: rgba(216, 165, 63, 0.12) !important; border: 1px solid rgba(216, 165, 63, 0.35); }
+  .service-price-group del, .old-price { color: #6b7890 !important; }
+
+  /* بخش‌های روشن قدیمی → تیره */
+  .section-services-home, .how-it-works, .how-home, .values-section, .brief-bar, .counters-home,
+  .section-services { background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%) !important; }
+  .counter strong { color: var(--gold-2) !important; }
+  .counter span { color: var(--muted) !important; }
+  .brief-inner span { color: var(--text) !important; }
+
+  /* جزئیات */
+  .faq summary, .faq-section summary { color: var(--text) !important; }
+  .pie-chart::after { background: var(--surface) !important; }
+  .result-legend { color: var(--muted) !important; }
+  .health-btns button, .switch-field button, .health-options button { background: var(--surface-2) !important; border-color: var(--line) !important; color: var(--text) !important; }
+  .health-btns .yes.on, .switch-field button.active, .health-options button.active, .health-btns .no.on { color: #fff !important; }
+  .related-links a { background: var(--surface-2) !important; border-color: var(--line) !important; color: var(--text) !important; }
+  .check-list span { color: var(--text) !important; }
+  .calc-line { color: var(--muted) !important; }
+  .salary-output-list div { background: var(--surface-2) !important; }
+  .salary-output-list span { color: var(--muted) !important; }
+  .order-line { border-color: var(--line) !important; }
+  .plan-badge { background: var(--gold) !important; color: #14100a !important; }
+  .hero-mini-card { background: rgba(216, 165, 63, 0.14) !important; border-color: rgba(216, 165, 63, 0.3) !important; }
+  .stat-card { background: rgba(255, 255, 255, 0.06) !important; border-color: var(--line) !important; }
+  .float-card { background: var(--surface-2) !important; border-color: var(--line) !important; color: var(--text) !important; }
+  .role-panel { background: var(--surface) !important; border-color: var(--line) !important; }
+  .role-panel-heading span, .role-panel-heading small { color: var(--text) !important; }
+  .role-card p { color: var(--muted) !important; }
+}
