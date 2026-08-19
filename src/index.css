@@ -44,11 +44,14 @@ input, select, textarea { font-family: inherit; }
 .text-link:hover { gap: .5rem; }
 .text-link-light { color: var(--gold2); }
 
-/* ══════════ هدر ══════════ */
+/* ══════════ هدر + لوگوی بزرگ طلایی ══════════ */
 .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(8,12,22,.97); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(216,165,63,.2); }
-.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 76px; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 128px; }
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand img { height: 56px; width: auto; object-fit: contain; }
+.brand img {
+  height: 104px; width: auto;
+  filter: brightness(0) invert(0.88) sepia(0.6) saturate(2.2) hue-rotate(-12deg) drop-shadow(0 2px 12px rgba(216,165,63,.35));
+}
 .desktop-nav { display: flex; align-items: center; gap: .25rem; }
 .desktop-nav a { padding: .5rem .8rem; font-size: .88rem; font-weight: 500; color: rgba(255,255,255,.75); border-radius: 10px; transition: all .2s; }
 .desktop-nav a:hover { color: var(--gold2); background: rgba(216,165,63,.1); }
@@ -58,17 +61,27 @@ input, select, textarea { font-family: inherit; }
 .mobile-menu-button { display: none; color: #fff; }
 .mobile-nav { display: none; flex-direction: column; padding: .75rem 1.5rem 1.25rem; background: rgba(8,12,22,.98); border-bottom: 1px solid rgba(216,165,63,.2); }
 .mobile-nav a { padding: .7rem 0; color: rgba(255,255,255,.8); font-size: .95rem; border-bottom: 1px solid rgba(255,255,255,.06); }
-@media (max-width: 900px) { .desktop-nav, .header-actions { display: none; } .mobile-menu-button { display: flex; } .mobile-nav { display: flex; } }
+@media (max-width: 900px) {
+  .desktop-nav, .header-actions { display: none; }
+  .mobile-menu-button { display: flex; }
+  .mobile-nav { display: flex; }
+  .header-inner { height: 84px; }
+  .brand img { height: 64px; }
+}
 
-.breadcrumb { padding-top: 5.5rem; display: flex; gap: .4rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+.breadcrumb { padding-top: 9rem; display: flex; gap: .4rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
 .breadcrumb a { color: var(--gold2); }
 .breadcrumb a:hover { text-decoration: underline; }
 
-/* ══════════ هیرو لوکس ══════════ */
-.hero-lux { position: relative; background: var(--bg); padding: 8rem 0 4rem; overflow: hidden; }
+/* ══════════ هیرو لوکس (تصویر تمام‌قد بدون کادر) ══════════ */
+.hero-lux { position: relative; background: var(--bg); padding: 10.5rem 0 4rem; overflow: hidden; }
 .hero-lux::before { content: ''; position: absolute; inset: 0; background: radial-gradient(900px 420px at 90% -10%, rgba(216,165,63,.14), transparent 60%); pointer-events: none; }
 .hero-lux-media { position: absolute; inset: 0; z-index: 0; }
-.hero-lux-media img { width: 100%; height: 100%; object-fit: cover; object-position: center; -webkit-mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,.55) 32%, #000 62%); mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,.55) 32%, #000 62%); }
+.hero-lux-media img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center;
+  -webkit-mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,.55) 32%, #000 62%);
+  mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,.55) 32%, #000 62%);
+}
 .hero-lux-inner { position: relative; z-index: 1; }
 .hero-copy h1 { color: #fff; font-size: clamp(2rem, 4.5vw, 3.4rem); margin: 1rem 0; letter-spacing: -.5px; }
 .hero-eyebrow { display: inline-block; background: rgba(216,165,63,.12); color: var(--gold2); border: 1px solid rgba(216,165,63,.4); border-radius: 999px; padding: 6px 16px; font-size: .85rem; }
@@ -124,12 +137,11 @@ input, select, textarea { font-family: inherit; }
 @media (max-width: 560px) { .tools-four { grid-template-columns: 1fr; } }
 
 /* ══════════ صفحات داخلی ══════════ */
-.inner-page { padding-top: 5rem; padding-bottom: 4rem; min-height: 60vh; }
+.inner-page { padding-top: 8.5rem; padding-bottom: 4rem; min-height: 60vh; }
 .inner-page h1 { margin: .75rem 0 1rem; }
 .inner-page h1::after, .section-heading h2::after, .center-heading h2::after { content: ''; display: block; width: 60px; height: 3px; border-radius: 2px; margin-top: .6rem; background: linear-gradient(90deg, var(--gold), transparent); }
 .center-heading h2::after { margin: .6rem auto 0; }
 .inner-page .lead { font-size: 1.1rem; color: var(--muted); margin-bottom: 2rem; }
-
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
 .center-heading { text-align: center; max-width: 640px; margin: 0 auto 2.5rem; }
 
@@ -165,7 +177,7 @@ input, select, textarea { font-family: inherit; }
 @media (max-width: 600px) { .contract-grid { grid-template-columns: 1fr; } }
 
 /* ابزارها (صفحه) */
-.tools-page { padding-top: 6rem; }
+.tools-page { padding-top: 9.5rem; }
 .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .tool-card { display: flex; flex-direction: column; gap: .5rem; padding: 1.5rem; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); transition: all .25s; }
 .tool-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-3px); }
@@ -184,7 +196,6 @@ input, select, textarea { font-family: inherit; }
 .faq-section details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; }
 .faq-section summary { cursor: pointer; font-weight: 700; color: var(--text); }
 .faq-section details p { margin: 10px 0 0; line-height: 2; }
-
 .simple-panels { text-align: center; padding: 2rem 0; }
 .simple-panels p { max-width: 500px; margin: 1rem auto 2rem; }
 
@@ -230,7 +241,7 @@ input, select, textarea { font-family: inherit; }
 .terms-list li { margin: 10px 0; line-height: 1.9; }
 
 /* ══════════ ماشین‌حساب ══════════ */
-.calculator-page { padding-top: 5rem; padding-bottom: 4rem; }
+.calculator-page { padding-top: 8.5rem; padding-bottom: 4rem; }
 .calc-layout { display: grid; grid-template-columns: 1fr 380px; gap: 3rem; align-items: start; }
 .calc-copy .lead { margin-bottom: 2rem; }
 .education { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
@@ -241,7 +252,7 @@ input, select, textarea { font-family: inherit; }
 .faq summary::-webkit-details-marker { display: none; }
 .faq summary svg { color: var(--gold); flex-shrink: 0; }
 .faq details[open] p { margin-top: .75rem; font-size: .88rem; }
-.calculator-card { position: sticky; top: 80px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 1.75rem; }
+.calculator-card { position: sticky; top: 150px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 1.75rem; }
 .calc-card-head { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--line); }
 .calc-card-head svg { color: var(--gold); }
 .calc-card-head span { font-weight: 700; color: var(--text); }
@@ -387,7 +398,6 @@ input, select, textarea { font-family: inherit; }
 @page { size: A4; margin: 14mm 12mm; }
 @media print {
   html, body { background: #fff !important; color: #12344d !important; }
-  body:has(.site-header) { background: #fff !important; }
   .site-header, .site-footer, .breadcrumb, .no-print, .related-box { display: none !important; }
   .print-only { display: block; }
   .inner-page { padding: 0 !important; }
@@ -400,7 +410,7 @@ input, select, textarea { font-family: inherit; }
   .contract-body, .contract-pre { background: #fff !important; border: none !important; color: #12344d !important; padding: 0 !important; }
 }
 
-/* ══════════ پنل ادمین (روشن) ══════════ */
+/* ══════════ پنل ادمین (روشن + خوانا) ══════════ */
 .admin-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; color: #12344D; }
 .admin-login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; background: linear-gradient(135deg, #0F2A44 0%, #12344D 100%); }
 .admin-login-card { background: #fff; border-radius: 20px; padding: 2.5rem; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
@@ -408,7 +418,7 @@ input, select, textarea { font-family: inherit; }
 .admin-login-card h1 { font-size: 1.35rem; color: #12344D; margin-bottom: 0.5rem; }
 .admin-login-card p { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
 .admin-login-card form { display: flex; flex-direction: column; gap: 0.75rem; }
-.admin-login-card input { padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; font-family: inherit; text-align: right; }
+.admin-login-card input { padding: 0.75rem 1rem; border: 1px solid #ddd; border-radius: 10px; font-size: 0.95rem; font-family: inherit; text-align: right; background: #fff; color: #17324a; }
 .admin-error { color: #dc2626; font-size: 0.85rem; }
 .admin-success { color: #0F5132; font-size: 0.85rem; }
 .admin-panel { min-height: 100vh; background: #f5f6f8; padding-bottom: 3rem; }
@@ -423,61 +433,39 @@ input, select, textarea { font-family: inherit; }
 .admin-tabs button { background: none; border: none; padding: 0.65rem 1rem; font-size: 0.9rem; color: #666; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-family: inherit; }
 .admin-tabs button.active { color: #12344D; border-bottom-color: #C9A227; font-weight: 700; }
 .admin-content { background: #fff; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-.admin-content h2 { font-size: 1.1rem; color: #12344D; margin-bottom: 1rem; }
-.admin-content p { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+.admin-content h2 { font-size: 1.1rem; color: #12344D !important; margin-bottom: 1rem; }
+.admin-content p { color: #5a6b7a !important; font-size: 0.9rem; margin-bottom: 1rem; }
 .admin-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
 .admin-toolbar h2 { margin: 0; }
 .admin-table-wrap { overflow-x: auto; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .admin-table th { text-align: right; padding: 0.65rem 0.75rem; background: #f0f2f5; color: #12344D; font-weight: 700; white-space: nowrap; }
-.admin-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #eee; color: #333; }
+.admin-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #eee; color: #29424e; }
 .admin-table tr:hover { background: #fafbfc; }
-.admin-table input, .admin-table select { padding: 0.4rem 0.5rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.85rem; font-family: inherit; text-align: right; max-width: 160px; }
+.admin-table input, .admin-table select { padding: 0.4rem 0.5rem; border: 1px solid #c9d2dc; border-radius: 6px; font-size: 0.85rem; font-family: inherit; text-align: right; max-width: 160px; background: #fff; color: #17324a; }
 .admin-actions { display: flex; gap: 0.4rem; align-items: center; }
 .admin-delete { background: none; border: none; color: #dc2626; cursor: pointer; padding: 0.3rem; display: inline-flex; }
+.admin-delete:hover { opacity: 0.7; }
 .admin-form { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; padding: 1rem; background: #f8f9fb; border-radius: 10px; margin-bottom: 1rem; }
-.admin-form input, .admin-form select { padding: 0.5rem 0.65rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.88rem; font-family: inherit; text-align: right; min-width: 140px; }
+.admin-form input, .admin-form select, .admin-form textarea { padding: 0.5rem 0.65rem; border: 1.5px solid #c9d2dc; border-radius: 8px; font-size: 0.88rem; font-family: inherit; text-align: right; min-width: 140px; background: #fff; color: #17324a; }
+.admin-form input::placeholder, .admin-form textarea::placeholder { color: #6b7c8c; }
 .admin-form label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; color: #555; }
 .admin-form-block { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
+.admin-empty { text-align: center; padding: 1.5rem 0; }
 .admin-settings h3 { margin: 22px 0 10px; color: #12395b; border-right: 3px solid #d9a53a; padding-right: 10px; }
 .admin-settings .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
 .settings-field { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; color: #555; }
-.settings-field input { padding: 0.5rem 0.65rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.9rem; font-family: inherit; text-align: right; }
+.settings-field input { padding: 0.5rem 0.65rem; border: 1px solid #c9d2dc; border-radius: 8px; font-size: 0.9rem; font-family: inherit; text-align: right; background: #fff; color: #17324a; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; text-align: left; }
 .admin-table .mono { word-break: break-all; }
+/* دکمه‌های پنل: جامد و خوانا (نه شیشه‌ای) */
+.admin-panel .button, .admin-login .button { background: #12344D !important; color: #fff !important; border: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; }
+.admin-panel .button:hover, .admin-login .button:hover { background: #0F2A44 !important; color: #fff !important; transform: none !important; }
+.admin-panel .button-green { background: #0F5132 !important; color: #fff !important; }
 @media (max-width: 640px) { .admin-tabs button { font-size: 0.82rem; padding: 0.5rem 0.7rem; } .admin-content { padding: 1rem; } .admin-table { font-size: 0.82rem; } .admin-form-block { grid-template-columns: 1fr; } }
 
 /* ══════════ انیمیشن ══════════ */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .hero-copy, .role-card, .section-card, .seven-card, .tool-lux-card, .contract-card, .plan-card, .tool-card, .category-card { animation: fadeUp .5s ease-out both; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; } }
-/* === لوگوی بزرگ طلایی === */
-.site-header .header-inner { height: 128px; }
-.brand img {
-  height: 104px; width: auto;
-  filter: brightness(0) invert(0.88) sepia(0.6) saturate(2.2) hue-rotate(-12deg) drop-shadow(0 2px 12px rgba(216,165,63,.35));
-}
-.hero-lux { padding-top: 10.5rem; }
-.breadcrumb { padding-top: 9rem; }
-.inner-page { padding-top: 8.5rem; }
-.tools-page { padding-top: 9.5rem; }
-.calculator-page { padding-top: 8.5rem; }
-@media (max-width: 900px) {
-  .site-header .header-inner { height: 84px; }
-  .brand img { height: 64px; }
-  .hero-lux { padding-top: 7.5rem; }
-  .breadcrumb { padding-top: 6.5rem; }
-  .inner-page { padding-top: 6rem; }
-  .tools-page { padding-top: 7rem; }
-  .calculator-page { padding-top: 6rem; }
-}
-/* === خوانایی پنل ادمین === */
-.admin-panel .button, .admin-login .button { background: #12344D !important; color: #fff !important; border: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; }
-.admin-panel .button:hover { background: #0F2A44 !important; color: #fff !important; }
-.admin-panel .button-green { background: #0F5132 !important; color: #fff !important; }
-.admin-panel .admin-form input, .admin-panel .admin-form select, .admin-panel .admin-form textarea { background: #fff !important; border: 1.5px solid #c9d2dc !important; color: #17324a !important; }
-.admin-panel .admin-form input::placeholder, .admin-panel .admin-form textarea::placeholder { color: #6b7c8c !important; }
-.admin-panel .admin-table input, .admin-panel .admin-table select { background: #fff !important; color: #17324a !important; }
-.admin-panel .admin-content h2 { color: #12344D !important; }
-.admin-panel .admin-content p { color: #5a6b7a !important; }
