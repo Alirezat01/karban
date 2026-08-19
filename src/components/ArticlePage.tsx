@@ -36,14 +36,15 @@ export default function ArticlePage({ title, category, contractId }: Props) {
     }
 
     setStatus('loading');
-    const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'contract_download' });
+    const source = contractData?.pdf_url ? 'contract_download' : 'contract_print';
+    const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source });
     if (error) {
       console.error('contract download lead failed', error);
       setStatus('error');
       return;
     }
 
-    notifyAdmin(`📥 دانلود قرارداد: ${title} | ${normalizeMobile(mobile)}`);
+    notifyAdmin(`📥 دانلود قرارداد: ${contractData?.title || title} | ${normalizeMobile(mobile)}`);
 
     if (contractData?.pdf_url) {
       const anchor = document.createElement('a');
@@ -51,6 +52,8 @@ export default function ArticlePage({ title, category, contractId }: Props) {
       anchor.target = '_blank';
       anchor.rel = 'noreferrer';
       anchor.click();
+    } else {
+      window.print();
     }
 
     setStatus('success');
@@ -66,7 +69,7 @@ export default function ArticlePage({ title, category, contractId }: Props) {
 
   return (
     <section className="inner-page">
-            <div className="container article-shell">
+      <div className="container article-shell">
         <div className="print-only print-head">
           <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
           <div>
@@ -74,9 +77,11 @@ export default function ArticlePage({ title, category, contractId }: Props) {
             <span>{contractData?.title || title}</span>
           </div>
         </div>
-                      <a className="button button-small" href="/قراردادها" style={{ marginBottom: '1rem' }}>
+
+        <a className="button button-small no-print" href="/قراردادها" style={{ marginBottom: '1rem' }}>
           <ArrowRight size={15} /> بازگشت به فهرست
         </a>
+
         <span className="eyebrow">
           <BookOpen size={15} /> {category}
         </span>
@@ -133,40 +138,35 @@ export default function ArticlePage({ title, category, contractId }: Props) {
             </>
           ) : null}
 
-          {contractData?.pdf_url && (
-            <div className="related-box">
-              <FileText />
-              <div>
-                <strong>دانلود PDF</strong>
-                <p>شماره موبایل خود را وارد کنید تا نسخه قابل دانلود قرارداد برای شما باز شود.</p>
-                <form onSubmit={submitDownload}>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    value={mobile}
-                    onChange={(event) => {
-                      setMobile(event.target.value);
-                      setStatus('idle');
-                    }}
-                    placeholder="شماره موبایل"
-                    aria-label="شماره موبایل"
-                  />
-                  <button className="button button-small" type="submit" disabled={status === 'loading'}>
-                    {status === 'loading' ? 'در حال آماده‌سازی...' : 'فعال‌سازی دانلود'} <ArrowLeft size={15} />
-                  </button>
-                </form>
-                {status === 'success' && <small className="admin-success">دانلود با موفقیت انجام شد.</small>}
-                {status === 'error' && <small className="admin-error">شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید یا خطایی در دریافت فایل رخ داد.</small>}
-              </div>
+          <div className="related-box no-print">
+            <FileText />
+            <div>
+              <strong>دانلود PDF برنددار</strong>
+              <p>شماره موبایل خود را وارد کنید تا {contractData?.pdf_url ? 'فایل رسمی قرارداد' : 'نسخه PDF برنددار (با سربرگ و واترمارک کاربان)'} برای شما باز شود.</p>
+              <form onSubmit={submitDownload} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={mobile}
+                  onChange={(event) => {
+                    setMobile(event.target.value);
+                    setStatus('idle');
+                  }}
+                  placeholder="شماره موبایل"
+                  aria-label="شماره موبایل"
+                  style={{ flex: 1, minWidth: '180px', padding: '0.65rem 1rem', border: '1.5px solid var(--line)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--text)' }}
+                />
+                <button className="button button-small" type="submit" disabled={status === 'loading'}>
+                  {status === 'loading' ? 'در حال آماده‌سازی...' : 'فعال‌سازی دانلود PDF'} <ArrowLeft size={15} />
+                </button>
+              </form>
+              {status === 'success' && <small className="admin-success">دانلود با موفقیت انجام شد.</small>}
+              {status === 'error' && <small className="admin-error">شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید یا خطایی در دریافت فایل رخ داد.</small>}
             </div>
-          )}
-          <div className="no-print" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button className="button" onClick={() => window.print()}>
-              دانلود PDF (نسخه چاپ) <ArrowLeft size={15} />
-            </button>
           </div>
           <div className="print-only print-watermark">کاربان</div>
-          <div className="related-box">
+
+          <div className="related-box no-print">
             <FileText />
             <div>
               <strong>برای تصمیم عملی آماده‌اید؟</strong>
