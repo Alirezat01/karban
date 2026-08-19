@@ -1022,7 +1022,14 @@ function LeadsTab() {
       active = false;
     };
   }, []);
-
+  const remove = async (id: number) => {
+    if (!window.confirm('این شماره حذف شود؟')) return;
+    await supabase.from('leads').delete().eq('id', id);
+    setLoading(true);
+    const { data } = await supabase.from('leads').select('id,mobile,source,created_at').order('created_at', { ascending: false });
+    setLeads((data || []) as LeadRow[]);
+    setLoading(false);
+  };
   const sourceLabel = (source: string) => (source === 'contract_download' ? 'دانلود قرارداد' : source);
 
   if (loading) return <p>در حال بارگذاری...</p>;
@@ -1038,6 +1045,7 @@ function LeadsTab() {
             <th>محل ثبت</th>
             <th>تاریخ</th>
             <th>وضعیت</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -1048,11 +1056,17 @@ function LeadsTab() {
               <td>{sourceLabel(lead.source)}</td>
               <td>{fmtDate(lead.created_at)}</td>
               <td>{ordered.has(lead.mobile) ? <small className="admin-success">سفارش داده ✓</small> : <small className="admin-error">هنوز سفارش نداده</small>}</td>
+              <td>
+                <button className="admin-delete" onClick={() => remove(lead.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </td>
+            </tr>
             </tr>
           ))}
           {leads.length === 0 && (
             <tr>
-              <td colSpan={5}>هنوز شماره‌ای ثبت نشده است.</td>
+              <td colSpan={6}>هنوز شماره‌ای ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
@@ -1080,7 +1094,11 @@ function OrdersTab() {
     await supabase.from('orders').update({ status }).eq('id', id);
     load();
   };
-
+  const remove = async (id: string) => {
+    if (!window.confirm('این سفارش حذف شود؟')) return;
+    await supabase.from('orders').delete().eq('id', id);
+    load();
+  };
   const statusLabels: Record<string, string> = { pending: 'در انتظار', processing: 'در حال انجام', completed: 'تکمیل شد', cancelled: 'لغو شد' };
 
   if (loading) return <p>در حال بارگذاری...</p>;
@@ -1095,8 +1113,9 @@ function OrdersTab() {
             <th>موبایل</th>
             <th>خدمت</th>
             <th>مبلغ</th>
-            <th>وضعیت</th>
+                       <th>وضعیت</th>
             <th>تاریخ</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -1117,11 +1136,16 @@ function OrdersTab() {
                 </select>
               </td>
               <td>{fmtDate(order.created_at)}</td>
+              <td>
+                <button className="admin-delete" onClick={() => remove(order.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </td>
             </tr>
           ))}
           {orders.length === 0 && (
             <tr>
-              <td colSpan={7}>هیچ سفارشی ثبت نشده است.</td>
+              <td colSpan={8}>هیچ سفارشی ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
