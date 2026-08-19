@@ -24,6 +24,12 @@ const OrderPage = React.lazy(() => import('@/components/OrderPage'));
 const TermsPage = React.lazy(() => import('@/components/ContractBuilderPage').then(() => import('@/components/TermsPage')));
 const ContractBuilderPage = React.lazy(() => import('@/components/ContractBuilderPage'));
 const PrivacyPage = React.lazy(() => import('@/components/PrivacyPage'));
+const RequestsListPage = React.lazy(() =>
+  import('@/components/RequestsPage').then((m) => ({ default: m.RequestsListPage })),
+);
+const RequestViewPage = React.lazy(() =>
+  import('@/components/RequestsPage').then((m) => ({ default: m.RequestViewPage })),
+);
 
 function Page({ title, description, breadcrumb, children }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode }) {
   return (
@@ -85,10 +91,26 @@ export default function App() {
       </Page>
     );
   }
+  if (segments[0] === 'درخواست‌های-اداری') {
+    if (segments.length === 1) {
+      return (
+        <Page title="درخواست‌های اداری آماده — استعفا، وام، مرخصی و…" description="متن رسمی و آماده برای درخواست‌های پرتکرار؛ کپی کن، جاهای خالی را پر کن و امضا کن." breadcrumb={['درخواست‌های اداری']}>
+          <RequestsListPage />
+        </Page>
+      );
+    }
+    if (segments[1]) {
+      return (
+        <Page title="درخواست اداری" description="متن کامل درخواست اداری." breadcrumb={['درخواست‌های اداری']}>
+          <RequestViewPage requestId={segments[1]} />
+        </Page>
+      );
+    }
+  }
 
     if (segments[0] === 'حریم-خصوصی') {
     return (
-      <Page title="حریم خصوصی کاربان" description="سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود." breadcrumb={['حریم خصوصی']}>
+           <Page title="حریم خصوصی کاربان" description="سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود." breadcrumb={['حریم خصوصی']}>
         <PrivacyPage />
       </Page>
     );
