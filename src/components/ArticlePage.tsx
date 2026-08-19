@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
@@ -74,6 +74,9 @@ export default function ArticlePage({ title, category, contractId }: Props) {
             <span>{contractData?.title || title}</span>
           </div>
         </div>
+                      <a className="button button-small" href="/قراردادها" style={{ marginBottom: '1rem' }}>
+          <ArrowRight size={15} /> بازگشت به فهرست
+        </a>
         <span className="eyebrow">
           <BookOpen size={15} /> {category}
         </span>
