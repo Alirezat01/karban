@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Copy, FileText, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { isIranianMobile } from '@/lib/validation';
+import { normalizeMobile } from '@/lib/normalize';
 
 export const REQUEST_CATEGORIES = ['روابط کار', 'مالی و بانکی', 'اداری و عمومی'];
 
@@ -94,6 +96,9 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
   const [item, setItem] = useState<Req | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [gateOpen, setGateOpen] = useState(false);
+  const [mobile, setMobile] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   useEffect(() => {
     let active = true;
@@ -122,6 +127,24 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
     } catch {
       setCopied(false);
     }
+  };
+
+  const submitPdf = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isIranianMobile(mobile)) {
+      setStatus('error');
+      return;
+    }
+    setStatus('loading');
+    const { error } = await supabase.from('leads').insert({ mobile: normalizeMobile(mobile), source: 'request_print' });
+    if (error) {
+      setStatus('error');
+      return;
+    }
+    setStatus('idle');
+    setGateOpen(false);
+    setMobile('');
+    window.print();
   };
 
   if (loading) {
@@ -159,7 +182,7 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
         <span className="eyebrow">{item.category}</span>
         <h1>{item.title}</h1>
         <p className="article-intro">{item.intro}</p>
-        <div className="contract-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '2', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '1.5rem' }}>
+        <div className="contract-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '2', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', color: 'var(--text)' }}>
           {item.body}
         </div>
         <div className="print-only print-watermark">کاربان</div>
@@ -168,11 +191,39 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
           <button className="button" onClick={copy}>
             <Copy size={16} /> {copied ? 'کپی شد ✓' : 'کپی متن'}
           </button>
-          <button className="button" onClick={() => window.print()}>
+          <button className="button" onClick={() => setGateOpen((v) => !v)}>
             <Printer size={16} /> دانلود PDF
           </button>
           <a className="button" href="/درخواست‌های-اداری">بازگشت به فهرست</a>
         </div>
+
+        {gateOpen && (
+          <div className="related-box no-print" style={{ marginTop: '1rem' }}>
+            <FileText />
+            <div>
+              <strong>فعال‌سازی دانلود PDF</strong>
+              <p>شماره موبایل خود را وارد کنید تا نسخه PDF برنددار باز شود.</p>
+              <form onSubmit={submitPdf} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={mobile}
+                  onChange={(event) => {
+                    setMobile(event.target.value);
+                    setStatus('idle');
+                  }}
+                  placeholder="شماره موبایل"
+                  aria-label="شماره موبایل"
+                  style={{ flex: 1, minWidth: '180px', padding: '0.65rem 1rem', border: '1.5px solid var(--line)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--text)' }}
+                />
+                <button className="button button-small" type="submit" disabled={status === 'loading'}>
+                  {status === 'loading' ? 'در حال آماده‌سازی...' : 'دریافت PDF'} <ArrowLeft size={15} />
+                </button>
+              </form>
+              {status === 'error' && <small className="admin-error">شماره موبایل را به‌صورت ۱۱ رقم و با ۰۹ وارد کنید.</small>}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
