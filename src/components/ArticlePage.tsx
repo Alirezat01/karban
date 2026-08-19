@@ -66,7 +66,14 @@ export default function ArticlePage({ title, category, contractId }: Props) {
 
   return (
     <section className="inner-page">
-      <div className="container article-shell">
+            <div className="container article-shell">
+        <div className="print-only print-head">
+          <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
+          <div>
+            <strong>کاربان | karbanapp.ir</strong>
+            <span>{contractData?.title || title}</span>
+          </div>
+        </div>
         <span className="eyebrow">
           <BookOpen size={15} /> {category}
         </span>
