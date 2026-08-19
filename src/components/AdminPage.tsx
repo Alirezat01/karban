@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 
-type Tab = 'services' | 'settings' | 'contracts' | 'articles' | 'orders' | 'consultations' | 'users' | 'newsletter';
+type Tab = 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter';
 type Service = {
   id: string;
   title: string;
@@ -18,10 +18,13 @@ type Service = {
 };
 type ContractRow = { id: string; title: string; type: string; industry: string; summary: string; body: string; pdf_url: string };
 type ArticleRow = { id: number; category: string; title: string; intro: string; body: string; author: string };
+type RequestRow = { id: number; category: string; title: string; intro: string; body: string };
+type LeadRow = { id: number; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; full_name: string; mobile: string; service_title: string; amount: number; status: string; created_at: string };
 type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
 
 const ARTICLE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
+const REQUEST_CATEGORIES = ['روابط کار', 'مالی و بانکی', 'اداری و عمومی'];
 
 const fmtDate = (value: string) => formatFaDate(value);
 const loginLockKey = (email: string) => `karban-login-lock:${email.trim().toLowerCase()}`;
@@ -31,8 +34,8 @@ const sessionKey = 'karban-admin-session-start';
 const safeAmount = (raw: string) => {
   const digits = raw
     .replace(/[^0-9۰-۹]/g, '')
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۵۶۸۹'.indexOf(d)));
-   return digits;
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+  return digits;
 };
 
 async function sha256(value: string) {
@@ -225,6 +228,8 @@ export default function AdminPage() {
     ['settings', 'تنظیمات'],
     ['contracts', 'قراردادها'],
     ['articles', 'مقاله‌ها'],
+    ['requests', 'درخواست‌های اداری'],
+    ['leads', 'شماره‌های دانلود'],
     ['orders', 'سفارش‌ها'],
     ['consultations', 'درخواست‌های مشاوره'],
     ['users', 'مدیریت کاربران'],
@@ -258,6 +263,8 @@ export default function AdminPage() {
           {tab === 'settings' && <SettingsTab />}
           {tab === 'contracts' && <ContractsTab />}
           {tab === 'articles' && <ArticlesTab />}
+          {tab === 'requests' && <RequestsTab />}
+          {tab === 'leads' && <LeadsTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'consultations' && <ConsultationsTab />}
           {tab === 'users' && <UsersTab />}
@@ -286,7 +293,7 @@ function ServicesTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind,discount_percent').order('id');
+    const { data } = await supabase.from('services').select('id,title,price,description,domain,unit,featured,kind,discount_percent').order('id', { ascending: false });
     setServices((data || []) as Service[]);
     setLoading(false);
   };
@@ -368,6 +375,7 @@ function ServicesTab() {
       <table className="admin-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>عنوان</th>
             <th>قیمت</th>
             <th>تخفیف</th>
@@ -378,8 +386,9 @@ function ServicesTab() {
           </tr>
         </thead>
         <tbody>
-          {services.map((service) => (
+          {services.map((service, index) => (
             <tr key={service.id}>
+              <td>{index + 1}</td>
               <td>
                 {editing === service.id ? (
                   <input value={service.title} onChange={(e) => updateField(service.id, 'title', e.target.value)} />
@@ -534,7 +543,7 @@ function SettingsTab() {
         <NumField label="معافیت سالانه مشاغل (ریال)" value={p.business_exempt} onChange={(n) => setP({ ...p, business_exempt: n })} />
         <label className="settings-field">
           پله‌های مالیات مشاغل (٪، با ویرگول)
-          <input value={p.tax_brackets.join(',')} onChange={(e) => setP({ ...p, tax_brackets: e.target.value.split(',').map((x) => Number(x.trim()) || 0).filter((x) => x > 0) })} />
+          <input value={p.tax_brackets.join(',')} onChange={(e) => setP({ ...p, tax_brackets: e.value.split(',').map((x) => Number(x.trim()) || 0).filter((x) => x > 0) })} />
         </label>
         <label className="settings-field">
           سقف پله‌ها (ریال، با ویرگول)
@@ -570,7 +579,7 @@ function ContractsTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('contracts').select('id,title,type,industry,summary,body,pdf_url').order('id');
+    const { data } = await supabase.from('contracts').select('id,title,type,industry,summary,body,pdf_url').order('id', { ascending: false });
     setContracts((data || []) as ContractRow[]);
     setLoading(false);
   };
@@ -656,6 +665,7 @@ function ContractsTab() {
       <table className="admin-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>عنوان</th>
             <th>نوع</th>
             <th>صنف</th>
@@ -664,9 +674,10 @@ function ContractsTab() {
           </tr>
         </thead>
         <tbody>
-          {contracts.map((contract) => (
+          {contracts.map((contract, index) => (
             <React.Fragment key={contract.id}>
               <tr>
+                <td>{index + 1}</td>
                 <td>{contract.title}</td>
                 <td>{contract.type || '—'}</td>
                 <td>{contract.industry || '—'}</td>
@@ -682,7 +693,7 @@ function ContractsTab() {
               </tr>
               {editing === contract.id && (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <div className="admin-form admin-form-block">
                       <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}>
                         <option value="">انتخاب نوع</option>
@@ -715,7 +726,7 @@ function ContractsTab() {
           ))}
           {contracts.length === 0 && (
             <tr>
-              <td colSpan={5}>
+              <td colSpan={6}>
                 <div className="admin-empty">
                   <p>هیچ قراردادی ثبت نشده است.</p>
                   <button className="button button-small" onClick={migrateLegacy} disabled={migrating}>
@@ -741,7 +752,7 @@ function ArticlesTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('articles').select('id,category,title,intro,body,author').order('id');
+    const { data } = await supabase.from('articles').select('id,category,title,intro,body,author').order('id', { ascending: false });
     setItems((data || []) as ArticleRow[]);
     setLoading(false);
   };
@@ -827,7 +838,7 @@ function ArticlesTab() {
       <table className="admin-table">
         <thead>
           <tr>
-            <th>شناسه</th>
+            <th>#</th>
             <th>عنوان</th>
             <th>دسته</th>
             <th>نویسنده</th>
@@ -835,9 +846,9 @@ function ArticlesTab() {
           </tr>
         </thead>
         <tbody>
-          {items.map((article) => (
+          {items.map((article, index) => (
             <tr key={article.id}>
-              <td>{article.id}</td>
+              <td>{index + 1}</td>
               <td>{article.title}</td>
               <td>{article.category}</td>
               <td>{article.author}</td>
@@ -854,6 +865,194 @@ function ArticlesTab() {
           {items.length === 0 && (
             <tr>
               <td colSpan={5}>هیچ مقاله‌ای ثبت نشده است.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RequestsTab() {
+  const [items, setItems] = useState<RequestRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState({ category: REQUEST_CATEGORIES[0], title: '', intro: '', body: '' });
+  const [status, setStatus] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('admin_requests').select('id,category,title,intro,body').order('id', { ascending: false });
+    setItems((data || []) as RequestRow[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setForm({ category: REQUEST_CATEGORIES[0], title: '', intro: '', body: '' });
+    setStatus('');
+    setShowForm(true);
+  };
+
+  const openEdit = (item: RequestRow) => {
+    setEditingId(item.id);
+    setForm({ category: item.category, title: item.title, intro: item.intro, body: item.body });
+    setStatus('');
+    setShowForm(true);
+  };
+
+  const save = async () => {
+    if (!form.title || !form.body) {
+      setStatus('عنوان و متن درخواست الزامی است.');
+      return;
+    }
+    const { error } = editingId
+      ? await supabase.from('admin_requests').update(form).eq('id', editingId)
+      : await supabase.from('admin_requests').insert(form);
+    if (error) {
+      setStatus('ذخیره نشد: ' + error.message);
+      return;
+    }
+    setStatus('✓ ذخیره شد و در سایت نمایش داده می‌شود.');
+    setShowForm(false);
+    load();
+  };
+
+  const remove = async (id: number) => {
+    if (!window.confirm('این درخواست حذف شود؟')) return;
+    await supabase.from('admin_requests').delete().eq('id', id);
+    load();
+  };
+
+  if (loading) return <p>در حال بارگذاری...</p>;
+  return (
+    <div className="admin-table-wrap">
+      <div className="admin-toolbar">
+        <h2>مدیریت درخواست‌های اداری</h2>
+        <button className="button button-small" onClick={() => (showForm ? setShowForm(false) : openAdd())}>
+          <Plus size={15} /> {showForm ? 'بستن فرم' : 'افزودن درخواست'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="admin-form admin-form-block">
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} aria-label="دسته">
+            {REQUEST_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان درخواست (مثلاً استعفانامه)" />
+          <textarea value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="توضیح کوتاه برای کارت" rows={2} style={{ width: '100%', resize: 'vertical' }} />
+          <textarea
+            value={form.body}
+            onChange={(e) => setForm({ ...form, body: e.target.value })}
+            placeholder={'متن کامل درخواست — جاهای خالی را با ……… بگذار'}
+            rows={12}
+            style={{ width: '100%', resize: 'vertical' }}
+          />
+          <button className="button button-small" onClick={save}>
+            <Save size={15} /> {editingId ? 'به‌روزرسانی' : 'انتشار درخواست'}
+          </button>
+          {status && <small className="admin-success">{status}</small>}
+        </div>
+      )}
+
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>عنوان</th>
+            <th>دسته</th>
+            <th>توضیح</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={item.id}>
+              <td>{index + 1}</td>
+              <td>{item.title}</td>
+              <td>{item.category}</td>
+              <td>{item.intro || '—'}</td>
+              <td className="admin-actions">
+                <button className="button button-small" onClick={() => openEdit(item)}>
+                  ویرایش
+                </button>
+                <button className="admin-delete" onClick={() => remove(item.id)}>
+                  <Trash2 size={14} />
+                </button>
+              </td>
+            </tr>
+          ))}
+          {items.length === 0 && (
+            <tr>
+              <td colSpan={5}>هیچ درخواستی ثبت نشده است.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LeadsTab() {
+  const [leads, setLeads] = useState<LeadRow[]>([]);
+  const [ordered, setOrdered] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      supabase.from('leads').select('id,mobile,source,created_at').order('created_at', { ascending: false }),
+      supabase.from('orders').select('mobile'),
+    ]).then(([leadsRes, ordersRes]) => {
+      if (!active) return;
+      setLeads((leadsRes.data || []) as LeadRow[]);
+      setOrdered(new Set(((ordersRes.data || []) as { mobile: string }[]).map((o) => o.mobile)));
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const sourceLabel = (source: string) => (source === 'contract_download' ? 'دانلود قرارداد' : source);
+
+  if (loading) return <p>در حال بارگذاری...</p>;
+  return (
+    <div className="admin-table-wrap">
+      <h2>شماره‌های دانلود (کسانی که قرارداد/درخواست دانلود کرده‌اند)</h2>
+      <p>این شماره‌ها هنگام دانلود ثبت شده‌اند؛ ستون «وضعیت» نشان می‌دهد کدام‌ها بعداً سفارش داده‌اند — فرصت‌های فروش تو این‌ها هستند.</p>
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>شماره موبایل</th>
+            <th>محل ثبت</th>
+            <th>تاریخ</th>
+            <th>وضعیت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leads.map((lead, index) => (
+            <tr key={lead.id}>
+              <td>{index + 1}</td>
+              <td className="mono">{lead.mobile}</td>
+              <td>{sourceLabel(lead.source)}</td>
+              <td>{fmtDate(lead.created_at)}</td>
+              <td>{ordered.has(lead.mobile) ? <small className="admin-success">سفارش داده ✓</small> : <small className="admin-error">هنوز سفارش نداده</small>}</td>
+            </tr>
+          ))}
+          {leads.length === 0 && (
+            <tr>
+              <td colSpan={5}>هنوز شماره‌ای ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
@@ -891,6 +1090,7 @@ function OrdersTab() {
       <table className="admin-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>نام</th>
             <th>موبایل</th>
             <th>خدمت</th>
@@ -900,8 +1100,9 @@ function OrdersTab() {
           </tr>
         </thead>
         <tbody>
-          {orders.map((order) => (
+          {orders.map((order, index) => (
             <tr key={order.id}>
+              <td>{index + 1}</td>
               <td>{order.full_name || '—'}</td>
               <td>{order.mobile || '—'}</td>
               <td>{order.service_title || '—'}</td>
@@ -920,7 +1121,7 @@ function OrdersTab() {
           ))}
           {orders.length === 0 && (
             <tr>
-              <td colSpan={6}>هیچ سفارشی ثبت نشده است.</td>
+              <td colSpan={7}>هیچ سفارشی ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
@@ -957,6 +1158,7 @@ function ConsultationsTab() {
       <table className="admin-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>موبایل</th>
             <th>حوزه</th>
             <th>خدمت</th>
@@ -964,8 +1166,9 @@ function ConsultationsTab() {
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
+          {items.map((item, index) => (
             <tr key={item.id}>
+              <td>{index + 1}</td>
               <td>{item.mobile}</td>
               <td>{item.domain === 'financial' ? 'مالی' : 'روابط کار'}</td>
               <td>{item.service}</td>
@@ -974,7 +1177,7 @@ function ConsultationsTab() {
           ))}
           {items.length === 0 && (
             <tr>
-              <td colSpan={4}>هیچ درخواستی ثبت نشده است.</td>
+              <td colSpan={5}>هیچ درخواستی ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
@@ -1078,6 +1281,7 @@ function UsersTab() {
       <table className="admin-table" style={{ marginTop: '1rem' }}>
         <thead>
           <tr>
+            <th>#</th>
             <th>شناسه</th>
             <th>نقش</th>
             <th>SHA-256</th>
@@ -1085,8 +1289,9 @@ function UsersTab() {
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
+          {users.map((user, index) => (
             <tr key={user.id}>
+              <td>{index + 1}</td>
               <td>{user.id}</td>
               <td>{user.role}</td>
               <td className="mono">{user.password_sha256 || '—'}</td>
@@ -1133,20 +1338,22 @@ function NewsletterTab() {
       <table className="admin-table">
         <thead>
           <tr>
+            <th>#</th>
             <th>موبایل</th>
             <th>تاریخ</th>
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
+          {items.map((item, index) => (
             <tr key={item.id}>
+              <td>{index + 1}</td>
               <td>{item.mobile}</td>
               <td>{fmtDate(item.created_at)}</td>
             </tr>
           ))}
           {items.length === 0 && (
             <tr>
-              <td colSpan={2}>هنوز عضوی ثبت نشده است.</td>
+              <td colSpan={3}>هنوز عضوی ثبت نشده است.</td>
             </tr>
           )}
         </tbody>
