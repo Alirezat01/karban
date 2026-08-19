@@ -543,7 +543,7 @@ function SettingsTab() {
         <NumField label="معافیت سالانه مشاغل (ریال)" value={p.business_exempt} onChange={(n) => setP({ ...p, business_exempt: n })} />
         <label className="settings-field">
           پله‌های مالیات مشاغل (٪، با ویرگول)
-          <input value={p.tax_brackets.join(',')} onChange={(e) => setP({ ...p, tax_brackets: e.value.split(',').map((x) => Number(x.trim()) || 0).filter((x) => x > 0) })} />
+          <input value={p.tax_brackets.join(',')} onChange={(e) => setP({ ...p, tax_brackets: e.target.value.split(',').map((x) => Number(x.trim()) || 0).filter((x) => x > 0) })} />
         </label>
         <label className="settings-field">
           سقف پله‌ها (ریال، با ویرگول)
@@ -1022,14 +1022,14 @@ function LeadsTab() {
       active = false;
     };
   }, []);
+
   const remove = async (id: number) => {
     if (!window.confirm('این شماره حذف شود؟')) return;
     await supabase.from('leads').delete().eq('id', id);
-    setLoading(true);
     const { data } = await supabase.from('leads').select('id,mobile,source,created_at').order('created_at', { ascending: false });
     setLeads((data || []) as LeadRow[]);
-    setLoading(false);
   };
+
   const sourceLabel = (source: string) => (source === 'contract_download' ? 'دانلود قرارداد' : source);
 
   if (loading) return <p>در حال بارگذاری...</p>;
@@ -1062,7 +1062,6 @@ function LeadsTab() {
                 </button>
               </td>
             </tr>
-            </tr>
           ))}
           {leads.length === 0 && (
             <tr>
@@ -1094,11 +1093,13 @@ function OrdersTab() {
     await supabase.from('orders').update({ status }).eq('id', id);
     load();
   };
+
   const remove = async (id: string) => {
     if (!window.confirm('این سفارش حذف شود؟')) return;
     await supabase.from('orders').delete().eq('id', id);
     load();
   };
+
   const statusLabels: Record<string, string> = { pending: 'در انتظار', processing: 'در حال انجام', completed: 'تکمیل شد', cancelled: 'لغو شد' };
 
   if (loading) return <p>در حال بارگذاری...</p>;
@@ -1113,7 +1114,7 @@ function OrdersTab() {
             <th>موبایل</th>
             <th>خدمت</th>
             <th>مبلغ</th>
-                       <th>وضعیت</th>
+            <th>وضعیت</th>
             <th>تاریخ</th>
             <th></th>
           </tr>
