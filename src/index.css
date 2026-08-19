@@ -987,3 +987,54 @@ body {
   .how-step h3 { color: var(--text) !important; }
   .how-step p { color: var(--muted) !important; }
 }
+/* ===== v3: کنتراست، حذف سبز، شیشه‌ای، A4 ===== */
+@page { size: A4; margin: 14mm 12mm; }
+
+@media screen {
+  /* حذف کامل سبز → طلایی */
+  .contract-tiers b, .service-price-group strong, .plan-card .service-price-group strong, .plan-card strong,
+  .specialist-list b, .service-ladder b, .calc-line-strong strong, .salary-output-head strong,
+  .salary-output-foot strong, .salary-output-list b, .result-box strong, .health-score span, .plan-cta,
+  .text-link, .expert-link, .service-card span, .guarantee strong, .guarantee svg, .ok-tick, .news-ok,
+  .check-list span::before, .role-benefits svg, .input-with-check .green-check { color: var(--gold-2) !important; }
+
+  .button-green { background: linear-gradient(135deg, rgba(231,194,116,0.9), rgba(201,150,46,0.85)) !important; color: #14100a !important; border: none !important; }
+  .health-btns .yes.on, .switch-field button.active, .health-options button.active { background: rgba(216,165,63,0.18) !important; border-color: var(--gold) !important; color: var(--gold-2) !important; }
+  .health-btns .no.on { background: rgba(179,38,30,0.2) !important; border-color: #b3261e !important; color: #f2b8b5 !important; }
+  .order-ribbon { background: rgba(216,165,63,0.12) !important; color: var(--gold-2) !important; border-color: rgba(216,165,63,0.35) !important; }
+  .result-box, .result-box-green, .salary-output, .health-result { background: linear-gradient(135deg, rgba(216,165,63,0.1), rgba(255,255,255,0.03)) !important; border-color: rgba(216,165,63,0.25) !important; }
+
+  /* کنتراست کارت‌های قرارداد */
+  .contract-tiers span { background: rgba(255,255,255,0.06) !important; color: var(--muted) !important; }
+  .contract-card h2, .contract-card-top h2 { color: var(--text) !important; }
+  .contract-card p, .contract-card-top p { color: var(--muted) !important; }
+
+  /* بدنه متن درخواست‌ها/قراردادها: کارت تیره + متن روشن */
+  .contract-body { background: var(--surface) !important; border: 1px solid var(--line) !important; color: var(--text) !important; }
+
+  /* دکمه شیشه‌ای به سبک iOS */
+  body:has(.site-header) .button {
+    background: linear-gradient(135deg, rgba(231,194,116,0.3), rgba(201,150,46,0.18)) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid rgba(216,165,63,0.45) !important;
+    color: var(--gold-2) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 10px 30px -14px rgba(216,165,63,0.45) !important;
+  }
+  body:has(.site-header) .button:hover {
+    background: linear-gradient(135deg, rgba(231,194,116,0.42), rgba(201,150,46,0.3)) !important;
+    color: #f7e8a4 !important;
+  }
+  body:has(.site-header) .button-outline, body:has(.site-header) .button-outline-light {
+    background: rgba(255,255,255,0.06) !important;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.18) !important;
+    color: var(--text) !important;
+  }
+}
+
+@media print {
+  html, body { background: #fff !important; }
+  .contract-body { background: #fff !important; border: none !important; color: #12344d !important; }
+}
