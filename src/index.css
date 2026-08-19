@@ -472,3 +472,12 @@ input, select, textarea { font-family: inherit; }
   .tools-page { padding-top: 7rem; }
   .calculator-page { padding-top: 6rem; }
 }
+/* === خوانایی پنل ادمین === */
+.admin-panel .button, .admin-login .button { background: #12344D !important; color: #fff !important; border: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; }
+.admin-panel .button:hover { background: #0F2A44 !important; color: #fff !important; }
+.admin-panel .button-green { background: #0F5132 !important; color: #fff !important; }
+.admin-panel .admin-form input, .admin-panel .admin-form select, .admin-panel .admin-form textarea { background: #fff !important; border: 1.5px solid #c9d2dc !important; color: #17324a !important; }
+.admin-panel .admin-form input::placeholder, .admin-panel .admin-form textarea::placeholder { color: #6b7c8c !important; }
+.admin-panel .admin-table input, .admin-panel .admin-table select { background: #fff !important; color: #17324a !important; }
+.admin-panel .admin-content h2 { color: #12344D !important; }
+.admin-panel .admin-content p { color: #5a6b7a !important; }
