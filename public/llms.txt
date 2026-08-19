@@ -1,12 +1,13 @@
 # Karban
 
-> Karban (karbanapp.ir) is a smart assistant for Iranian labor law and employment contracts: ready-made contracts, labor-law calculators (salary, severance, overtime, tax, VAT), and a labor-law knowledge base.
+Karban (karbanapp.ir) is a Persian smart assistant for Iranian labor law and employment contracts: ready-made contract templates, labor-law calculators (salary, severance, overtime, tax, VAT, retirement), and a labor-law knowledge base for employers, employees, and freelancers in Iran.
 
-## Main pages
-- https://karbanapp.ir/خدمات: Services overview
-- https://karbanapp.ir/قراردادها: Employment contract templates
-- https://karbanapp.ir/ابزارهای-هوش-مصنوعی: Labor law calculators
-- https://karbanapp.ir/دانشنامه: Labor law knowledge base
+## Main sections
+- [Contracts bank](https://karbanapp.ir/%D9%82%D8%B1%D8%A7%D8%B1%D8%AF%D8%A7%D8%AF%D9%87%D8%A7): Employment and civil contract templates with free download
+- [AI calculators](https://karbanapp.ir/%D8%A7%D8%A8%D8%B2%D8%A7%D8%B1%D9%87%D8%A7%DB%8C-%D9%87%D9%88%D8%B4-%D9%85%D8%B5%D9%86%D9%88%D8%B9%DB%8C): Salary, severance, overtime, tax, VAT and retirement calculators
+- [Knowledge base](https://karbanapp.ir/%D8%AF%D8%A7%D9%86%D8%B4%D9%86%D8%A7%D9%85%D9%87): Labor-law and tax articles with legal citations
+- [Services](https://karbanapp.ir/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA): Text/phone consulting and custom contract drafting
 
 ## Contact
-- Email: info@karbanapp.ir
+- Email: hello@karbanapp.ir
+- Instagram: https://www.instagram.com/karbanapp
