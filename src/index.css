@@ -925,3 +925,65 @@ body {
   .hero-grid-home { grid-template-columns: 1fr; }
   .hero-media img { max-height: 320px; }
 }
+/* ===== لوکس نهایی v2 — هیرو و کارت‌ها ===== */
+@media screen {
+  /* هیرو: مشکیِ مخملی + هاله طلایی */
+  .hero-home {
+    background:
+      radial-gradient(1100px 480px at 85% -10%, rgba(216, 165, 63, 0.16), transparent 60%),
+      linear-gradient(180deg, #0a0f1c 0%, #0d1424 100%) !important;
+  }
+  .hero-home::before {
+    opacity: 0.05 !important;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(216, 165, 63, 0.6) 0 1px, transparent 1px 34px),
+      repeating-linear-gradient(-45deg, rgba(216, 165, 63, 0.6) 0 1px, transparent 1px 34px) !important;
+  }
+  .hero-eyebrow { background: rgba(216, 165, 63, 0.12) !important; color: var(--gold-2) !important; border: 1px solid rgba(216, 165, 63, 0.4) !important; }
+  .hero-copy h1 { color: #fff !important; font-size: clamp(2rem, 4.5vw, 3.4rem) !important; letter-spacing: -0.5px; }
+  .hero-lead { color: var(--muted) !important; }
+
+  /* کارت‌های شخصیت: تیرهِ ظریف با آیکن طلایی */
+  .role-grid { margin-top: 2.5rem; }
+  .role-card {
+    background: var(--surface) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 16px !important;
+  }
+  .role-card svg { color: var(--gold) !important; }
+  .role-card h3 { color: var(--text) !important; }
+  .role-card p { color: var(--muted) !important; }
+  .role-card span { color: var(--gold-2) !important; }
+  .role-card:hover { border-color: rgba(216, 165, 63, 0.5) !important; transform: translateY(-4px); }
+
+  /* نوار اصناف: تیره‌تر و ظریف‌تر */
+  .ticker-home { background: #070b14 !important; border-top: 1px solid rgba(216, 165, 63, 0.25) !important; border-bottom: 1px solid rgba(216, 165, 63, 0.25) !important; }
+  .ticker-track span { color: #8fa0b8 !important; }
+
+  /* سرتیترها با خط طلایی */
+  .section-heading h2, .center-heading h2 { color: var(--text) !important; }
+  .section-heading h2::after, .center-heading h2::after {
+    content: ''; display: block; width: 64px; height: 3px; border-radius: 2px; margin-top: 10px;
+    background: linear-gradient(90deg, var(--gold), transparent);
+  }
+
+  /* کارت‌های خدمات: تیره + آیکن طلایی */
+  .service-card-home { background: var(--surface) !important; border: 1px solid var(--line) !important; }
+  .service-card-home h3 { color: var(--text) !important; }
+  .service-card-home p { color: var(--muted) !important; }
+  .service-icon { background: rgba(216, 165, 63, 0.14) !important; color: var(--gold) !important; }
+  .service-card-home > span { color: var(--gold-2) !important; }
+  .service-card-home:hover { border-color: rgba(216, 165, 63, 0.4) !important; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4) !important; }
+
+  /* بخش ابزارها */
+  .tools-panel-home { background: linear-gradient(180deg, #0a0f1c, #0d1424) !important; }
+  .tool-card-gold { background: var(--surface) !important; border: 1px solid var(--line) !important; }
+  .tool-icon { background: rgba(216, 165, 63, 0.16) !important; color: var(--gold) !important; border-radius: 12px !important; }
+
+  /* سه قدم */
+  .how-home { background: linear-gradient(180deg, #0d1424, #0a0f1c) !important; }
+  .how-step { background: var(--surface) !important; border: 1px solid var(--line) !important; }
+  .how-step strong { background: var(--gold) !important; color: #14100a !important; }
+  .how-step h3 { color: var(--text) !important; }
+  .how-step p { color: var(--muted) !important; }
+}
