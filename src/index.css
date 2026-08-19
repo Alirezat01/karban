@@ -914,3 +914,14 @@ body {
   .role-panel-heading span, .role-panel-heading small { color: var(--text) !important; }
   .role-card p { color: var(--muted) !important; }
 }
+/* === هیرو: عکس کنار متن === */
+.hero-grid-home { display: grid; grid-template-columns: 1.1fr 1fr; gap: 2.5rem; align-items: center; }
+.hero-media img {
+  width: 100%; max-height: 440px; object-fit: cover; border-radius: 24px;
+  border: 1px solid rgba(216, 165, 63, 0.35);
+  box-shadow: 0 30px 80px -30px rgba(216, 165, 63, 0.25), 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+@media (max-width: 900px) {
+  .hero-grid-home { grid-template-columns: 1fr; }
+  .hero-media img { max-height: 320px; }
+}
