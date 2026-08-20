@@ -44,13 +44,16 @@ input, select, textarea { font-family: inherit; }
 .text-link:hover { gap: .5rem; }
 .text-link-light { color: var(--gold2); }
 
-/* ══════════ هدر + لوگوی بزرگ طلایی ══════════ */
+/* ══════════ هدر + لوگوی جدید (کارت روشن) ══════════ */
 .site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(8,12,22,.97); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(216,165,63,.2); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 128px; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand img {
-  height: 104px; width: auto;
-  filter: brightness(0) invert(0.88) sepia(0.6) saturate(2.2) hue-rotate(-12deg) drop-shadow(0 2px 12px rgba(216,165,63,.35));
+  height: 76px; width: auto;
+  background: #f5f6f8;
+  border-radius: 16px;
+  padding: 8px 18px;
+  box-shadow: 0 4px 18px rgba(216,165,63,.25), inset 0 0 0 1px rgba(216,165,63,.35);
 }
 .desktop-nav { display: flex; align-items: center; gap: .25rem; }
 .desktop-nav a { padding: .5rem .8rem; font-size: .88rem; font-weight: 500; color: rgba(255,255,255,.75); border-radius: 10px; transition: all .2s; }
@@ -66,7 +69,7 @@ input, select, textarea { font-family: inherit; }
   .mobile-menu-button { display: flex; }
   .mobile-nav { display: flex; }
   .header-inner { height: 84px; }
-  .brand img { height: 64px; }
+  .brand img { height: 56px; padding: 6px 12px; border-radius: 12px; }
 }
 
 .breadcrumb { padding-top: 9rem; display: flex; gap: .4rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
@@ -368,7 +371,7 @@ input, select, textarea { font-family: inherit; }
 .footer-pattern { position: absolute; inset: 0; opacity: .05; pointer-events: none; }
 .site-footer > .container { position: relative; z-index: 1; }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 2.5rem; padding-bottom: 2.5rem; }
-.footer-brand img { height: 56px; width: auto; margin-bottom: 1rem; }
+.footer-brand img { height: 52px; width: auto; margin-bottom: 1rem; background: #f5f6f8; border-radius: 12px; padding: 6px 14px; }
 .footer-brand p { font-size: .88rem; line-height: 1.7; margin-bottom: 1.25rem; max-width: 280px; }
 .socials { display: flex; gap: .5rem; }
 .socials a { width: 38px; height: 38px; border-radius: 10px; background: rgba(255,255,255,.06); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.6); transition: all .2s; }
@@ -403,7 +406,7 @@ input, select, textarea { font-family: inherit; }
   .inner-page { padding: 0 !important; }
   h1, h2, h3, h4, p { color: #12344d !important; }
   .print-head { display: flex !important; align-items: center; gap: 12px; border-bottom: 2px solid #12395b; padding-bottom: 12px; margin-bottom: 18px; }
-  .print-head img { width: 44px; height: 44px; object-fit: contain; }
+  .print-head img { width: 120px; height: 44px; object-fit: contain; background: transparent; padding: 0; border-radius: 0; }
   .print-head strong { display: block; color: #12395b; }
   .print-head span { font-size: 13px; color: #555; }
   .print-watermark { position: fixed; inset: 0; display: flex !important; align-items: center; justify-content: center; font-size: 110px; color: #12395b; opacity: .07; transform: rotate(-35deg); pointer-events: none; z-index: 0; }
@@ -459,7 +462,6 @@ input, select, textarea { font-family: inherit; }
 .settings-field input { padding: 0.5rem 0.65rem; border: 1px solid #c9d2dc; border-radius: 8px; font-size: 0.9rem; font-family: inherit; text-align: right; background: #fff; color: #17324a; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; text-align: left; }
 .admin-table .mono { word-break: break-all; }
-/* دکمه‌های پنل: جامد و خوانا (نه شیشه‌ای) */
 .admin-panel .button, .admin-login .button { background: #12344D !important; color: #fff !important; border: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: none !important; }
 .admin-panel .button:hover, .admin-login .button:hover { background: #0F2A44 !important; color: #fff !important; transform: none !important; }
 .admin-panel .button-green { background: #0F5132 !important; color: #fff !important; }
