@@ -80,7 +80,7 @@ input, select, textarea { font-family: inherit; }
 .breadcrumb a { color: var(--gold2); }
 .breadcrumb a:hover { text-decoration: underline; }
 
-/* ══════════ هیرو لوکس (تصویر تمام‌قد بدون کادر) ══════════ */
+/* ══════════ هیرو لوکس ══════════ */
 .hero-lux { position: relative; background: var(--bg); padding: 7rem 0 4rem; overflow: hidden; }
 .hero-lux::before { content: ''; position: absolute; inset: 0; background: radial-gradient(900px 420px at 90% -10%, rgba(216,165,63,.14), transparent 60%); pointer-events: none; }
 .hero-lux-media { position: absolute; inset: 0; z-index: 0; }
@@ -100,9 +100,18 @@ input, select, textarea { font-family: inherit; }
 .role-card h3 { margin: 0 0 6px; font-size: 1.05rem; }
 .role-card p { margin: 0 0 12px; color: var(--muted); font-size: .88rem; line-height: 1.9; }
 .role-card span { color: var(--gold2); font-size: .85rem; display: inline-flex; align-items: center; gap: 6px; }
-@media (max-width: 900px) { .role-grid { grid-template-columns: 1fr; } }
+/* هیروی موبایل: تصویر بالای متن، با محوشدگی به زمینه */
+@media (max-width: 900px) {
+  .hero-lux { padding: 5.5rem 0 3rem; }
+  .hero-lux-media { position: relative; inset: auto; height: 230px; margin-bottom: 1.25rem; }
+  .hero-lux-media img {
+    -webkit-mask-image: linear-gradient(to bottom, #000 45%, transparent 98%);
+    mask-image: linear-gradient(to bottom, #000 45%, transparent 98%);
+  }
+  .role-grid { grid-template-columns: 1fr; }
+}
 
-/* ══════════ نوار ۴ بخش ══════════ */
+/* ══════════ نوار ۴ بخش ═════════ */
 .sections-strip { padding: 3.5rem 0; background: var(--bg2); }
 .section-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .section-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; transition: all .25s; display: block; }
