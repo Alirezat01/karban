@@ -182,7 +182,7 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
         <span className="eyebrow">{item.category}</span>
         <h1>{item.title}</h1>
         <p className="article-intro">{item.intro}</p>
-        <div className="contract-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '2', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', color: 'var(--text)' }}>
+        <div className="contract-body" style={{ whiteSpace: 'pre-wrap', lineHeight: '2' }}>
           {item.body}
         </div>
         <div className="print-only print-watermark">کاربان</div>
