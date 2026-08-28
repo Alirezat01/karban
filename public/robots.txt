@@ -5,4 +5,4 @@ Disallow: /admin
 Disallow: /ورود
 Disallow: /سفارش/
 
-Sitemap: https://karbanapp.ir/sitemap.xml
+Sitemap: https://karbanapp.ir/api/sitemap.xml
