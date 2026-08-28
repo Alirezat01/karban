@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /ادمین
 Disallow: /admin
 Disallow: /ورود
+Disallow: /سفارش/
 
-Sitemap: https://karbanapp.ir/api/sitemap.xml
+Sitemap: https://karbanapp.ir/sitemap.xml
