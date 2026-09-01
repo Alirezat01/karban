@@ -145,6 +145,13 @@ export default function App() {
           title="دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان"
           description="مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده."
           breadcrumb={['دانشنامه']}
+          jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: 'دانشنامه حقوقی و مالیاتی کسب‌وکار',
+            description: 'مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده.',
+            url: 'https://karban.ir/دانشنامه',
+          }}
         >
           <ContentPage kind="knowledge" title="راهنمای قانون کار و تأمین اجتماعی، به زبان ساده اما مستند" description="راهنمای مستند قانون کار، تأمین اجتماعی و مالیات به زبان ساده با ذکر ماده قانون؛ همیشه به‌روز." eyebrow="دانشنامه" />
         </Page>
@@ -152,7 +159,24 @@ export default function App() {
     }
 
     return (
-      <Page title={`مقاله ${segments[1]}`} description="مقاله‌ای از دانشنامه کاربان." breadcrumb={['دانشنامه', `مقاله ${segments[1]}`]}>
+      <Page 
+        title={`مقاله ${segments[1]} | کاربان`} 
+        description={`مقاله‌ای از دانشنامه کاربان درباره ${segments[1]}.`} 
+        breadcrumb={['دانشنامه', `مقاله ${segments[1]}`]}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: `مقاله ${segments[1]}`,
+          description: `مقاله‌ای از دانشنامه کاربان درباره ${segments[1]}.`,
+          url: `https://karban.ir/دانشنامه/${segments[1]}`,
+          inLanguage: 'fa',
+          publisher: {
+            '@type': 'Organization',
+            name: 'کاربان',
+            url: 'https://karban.ir',
+          },
+        }}
+      >
         <ArticlePage title={`مقاله ${segments[1]}`} category="دانشنامه کاربان" />
       </Page>
     );
@@ -165,6 +189,13 @@ export default function App() {
           title="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF."
           description="بیش از ۶۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF."
           breadcrumb={['قراردادها']}
+          jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'CollectionPage',
+            name: 'بانک قراردادهای کاربان',
+            description: 'بیش از ۶۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی.',
+            url: 'https://karban.ir/قراردادها',
+          }}
         >
           <ContentPage
             kind="contracts"
@@ -177,7 +208,24 @@ export default function App() {
     }
 
     return (
-      <Page title={`قرارداد ${segments.slice(1).join(' ')}`} description="متن کامل قرارداد و فایل PDF." breadcrumb={['قراردادها', segments.slice(1).join(' ')]}>
+      <Page 
+        title={`قرارداد ${segments.slice(1).join(' ')} | کاربان`} 
+        description="متن کامل قرارداد و فایل PDF." 
+        breadcrumb={['قراردادها', segments.slice(1).join(' ')]}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: `قرارداد ${segments.slice(1).join(' ')}`,
+          description: 'متن کامل قرارداد و فایل PDF.',
+          url: `https://karban.ir/قراردادها/${segments.slice(1).join('-')}`,
+          inLanguage: 'fa',
+          publisher: {
+            '@type': 'Organization',
+            name: 'کاربان',
+            url: 'https://karban.ir',
+          },
+        }}
+      >
         <ArticlePage title={`جزئیات قرارداد ${segments.slice(1).join(' ')}`} category="قراردادهای کاربان" contractId={segments[1]} />
       </Page>
     );
@@ -202,6 +250,15 @@ export default function App() {
           title="تست سلامت کسب‌وکار"
           description="نقاط قوت و ریسک‌های کسب‌وکار را بشناسید."
           breadcrumb={['ابزارهای هوش مصنوعی', 'تست سلامت']}
+          jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'تست سلامت کسب‌وکار کاربان',
+            description: 'نقاط قوت و ریسک‌های کسب‌وکار را بشناسید.',
+            url: 'https://karban.ir/ابزارهای-هوش-مصنوعی/تست-سلامت',
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+          }}
         >
           <BusinessHealthPage />
         </Page>
@@ -211,7 +268,20 @@ export default function App() {
     const calc = segments[1] ? calcMap[segments[1]] : undefined;
     if (calc) {
       return (
-        <Page title={calc.title} description={calc.desc} breadcrumb={['ابزارهای هوش مصنوعی', calc.title]}>
+        <Page 
+          title={`${calc.title} | کاربان`} 
+          description={calc.desc} 
+          breadcrumb={['ابزارهای هوش مصنوعی', calc.title]}
+          jsonLd={{
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: calc.title,
+            description: calc.desc,
+            url: `https://karban.ir/ابزارهای-هوش-مصنوعی/${segments[1]}`,
+            applicationCategory: 'FinanceApplication',
+            operatingSystem: 'Web',
+          }}
+        >
           <CalculatorPage type={calc.type} title={calc.title} description={calc.desc} />
         </Page>
       );
@@ -222,6 +292,13 @@ export default function App() {
         title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵."
         description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵."
         breadcrumb={['ابزارهای هوش مصنوعی']}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: 'ابزارهای هوش مصنوعی کاربان',
+          description: 'ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام و اضافه‌کاری مطابق پارامترهای رسمی ۱۴۰۵.',
+          url: 'https://karban.ir/ابزارهای-هوش-مصنوعی',
+        }}
       >
         <ContentPage
           kind="tools"
