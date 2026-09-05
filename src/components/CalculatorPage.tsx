@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Scale, ShieldCheck, Table2 } from 'lucide-react';
 import { legalConfig, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
-import { formatRial } from '@/lib/format';
+import { formatRial, formatFaNumber } from '@/lib/format';
 
 export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax';
 
@@ -260,8 +260,8 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <TRow label="بن کارگری" value={formatRial(params.salary.bon)} />
                 <TRow label="کمک مسکن" value={formatRial(params.salary.housing)} />
                 {married && <TRow label="عائله‌مندی" value={formatRial(salaryResult.familyPay)} />}
-                {childrenCount > 0 && <TRow label={`اولاد (${childrenCount} فرزند)`} value={formatRial(salaryResult.childPay)} />}
-                {overtimeHours > 0 && <TRow label={`اضافه‌کاری (${overtimeHours} ساعت)`} value={formatRial(salaryResult.overtimePay)} />}
+                {childrenCount > 0 && <TRow label={`اولاد (${formatFaNumber(childrenCount)} فرزند)`} value={formatRial(salaryResult.childPay)} />}
+                {overtimeHours > 0 && <TRow label={`اضافه‌کاری (${formatFaNumber(overtimeHours)} ساعت)`} value={formatRial(salaryResult.overtimePay)} />}
                 {bonus > 0 && <TRow label="پاداش و مزایا" value={formatRial(bonus)} />}
                 <TRow label="جمع ناخالص" value={formatRial(salaryResult.gross)} strong />
                 <TRow label="بیمه سهم کارگر (۷٪)" value={formatRial(salaryResult.insurance)} minus />
@@ -277,7 +277,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <TRow label="کمک‌هزینه مسکن" value={formatRial(params.salary.housing)} />
                 <TRow label="حق اولاد (هر فرزند)" value={formatRial(params.salary.child_per)} />
                 <TRow label="معافیت مالیاتی ماهانه" value={formatRial(params.salary.tax_exempt_monthly)} />
-                <TRow label="ضریب اضافه‌کاری (ساعت عادی ۲۲۰ ساعت)" value={`× ${params.salary.overtime_coef}`} />
+                <TRow label="ضریب اضافه‌کاری (ساعت عادی ۲۲۰ ساعت)" value={`× ${formatFaNumber(params.salary.overtime_coef)}`} />
               </CalcTable>
             </>
           )}
@@ -311,7 +311,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
               </label>
               <CalcTable>
                 <TRow label="سنوات هر سال کار" value={formatRial(severanceResult.perYear)} />
-                <TRow label={`جمع سنوات (${years} سال)`} value={formatRial(severanceResult.total)} strong />
+                <TRow label={`جمع سنوات (${formatFaNumber(years)} سال)`} value={formatRial(severanceResult.total)} strong />
               </CalcTable>
             </>
           )}
@@ -347,8 +347,8 @@ export default function CalculatorPage({ type, title, description }: Props) {
               </label>
               <CalcTable>
                 <TRow label="نرخ هر ساعت عادی (تقسیم بر ۲۲۰ ساعت)" value={formatRial(Math.round(overtimeResult.hourly))} />
-                <TRow label={`نرخ هر ساعت اضافه‌کاری (×${params.salary.overtime_coef})`} value={formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} />
-                <TRow label={`جمع ${overtimeHours} ساعت اضافه‌کاری`} value={formatRial(overtimeResult.pay)} strong />
+                <TRow label={`نرخ هر ساعت اضافه‌کاری (×${formatFaNumber(params.salary.overtime_coef)})`} value={formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} />
+                <TRow label={`جمع ${formatFaNumber(overtimeHours)} ساعت اضافه‌کاری`} value={formatRial(overtimeResult.pay)} strong />
               </CalcTable>
             </>
           )}
@@ -369,7 +369,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
                   <TRow key={r.label} label={r.label} value={formatRial(r.amount)} />
                 ))}
                 <TRow label="جمع مالیات سالانه" value={formatRial(businessTaxResult.total)} strong />
-                <TRow label="نرخ مؤثر مالیات" value={`${businessTaxResult.effective}٪`} />
+                <TRow label="نرخ مؤثر مالیات" value={`${formatFaNumber(businessTaxResult.effective)}٪`} />
               </CalcTable>
             </>
           )}
