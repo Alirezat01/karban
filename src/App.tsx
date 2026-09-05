@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
+import { KNOWLEDGE_CATEGORIES } from '@/components/KnowledgePage';
+import type { JsonLd } from '@/lib/seo';
 const ContentPage = React.lazy(() => import('@/components/ContentPage'));
 const ServicesPage = React.lazy(() =>
   import('@/components/ContentPage').then((m) => ({ default: m.ServicesPage })),
@@ -31,9 +33,9 @@ const RequestViewPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestViewPage })),
 );
 
-function Page({ title, description, breadcrumb, children }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode }) {
+function Page({ title, description, breadcrumb, children, jsonLd, noindex }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode; jsonLd?: JsonLd; noindex?: boolean }) {
   return (
-    <Layout title={title} description={description} breadcrumb={breadcrumb}>
+    <Layout title={title} description={description} breadcrumb={breadcrumb} jsonLd={jsonLd} noindex={noindex}>
       <Suspense fallback={<div style={{ textAlign: 'center', padding: '3rem' }}>در حال بارگذاری...</div>}>
         {children}
       </Suspense>
@@ -45,7 +47,7 @@ function NotFound() {
   return (
     <section className="inner-page">
       <div className="container narrow-content">
-        <span className="eyebrow">خطا ۴۰</span>
+        <span className="eyebrow">خطا ۴۰۴</span>
         <h1>این صفحه پیدا نشد</h1>
         <p className="lead">صفحه‌ای که دنبال آن بودید وجود ندارد یا جابه‌جا شده است.</p>
         <a className="button" href="/">بازگشت به خانه <ArrowLeft size={17} /></a>
@@ -54,24 +56,24 @@ function NotFound() {
   );
 }
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax'; title: string; desc: string }> = {
-  'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
+  'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
   'هزینه-استخدام': { type: 'hire', title: 'ماشین‌حساب هزینه استخدام', desc: 'بهای تمام‌شدن واقعی یک کارمند، قلم‌به‌قلم.' },
   'سنوات': { type: 'severance', title: 'ماشین‌حساب سنوات پایان خدمت', desc: 'مبلغ سنوات پایان کار را محاسبه کنید.' },
   'بازنشستگی': { type: 'retirement', title: 'ماشین‌حساب بازنشستگی تأمین اجتماعی', desc: 'وضعیت بازنشستگی و برآورد مستمری را ببینید.' },
   'اضافه-کاری': { type: 'overtime', title: 'ماشین‌حساب اضافه‌کاری', desc: 'مبلغ اضافه‌کاری را بر اساس نرخ قانونی محاسبه کنید.' },
   'مالیات-مشاغل': { type: 'business-tax', title: 'ماشین‌حساب مالیات مشاغل و مغازه', desc: 'محاسبه پلکانی ماده ۱۳۱ با معافیت سالانه.' },
   'ارزش-افزوده': { type: 'vat', title: 'ماشین‌حساب ارزش افزوده', desc: 'محاسبه ۱۰٪ — از پایه یا از داخل فاکتور.' },
-  'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق', desc: 'پلکانی مالیات حقوق با معافیت ماهانه ۱۴۵.' },
+  'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', desc: 'محاسبه پلکانی مالیات حقوق بر اساس معافیت سال ۱۴۰۵.' },
 };
 
 const faqJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
   mainEntity: [
-    { '@type': 'Question', name: 'آیا نتایج ماشین‌حساب‌ها مبنای قانونی دارد؟', acceptedAnswer: { '@type': 'Answer', text: 'محاسبات بر اساس قانون کار، قانون تأمین اجتماعی و قانون مالیات‌های مستقیم و مصوبات ۱۴۵ است؛ ملاک نهایی، فیش رسمی سازمان‌هاست.' } },
+    { '@type': 'Question', name: 'آیا نتایج ماشین‌حساب‌ها مبنای قانونی دارد؟', acceptedAnswer: { '@type': 'Answer', text: 'محاسبات بر اساس قانون کار، قانون تأمین اجتماعی و قانون مالیات‌های مستقیم و مصوبات ۱۴۰۵ است؛ ملاک نهایی، فیش رسمی سازمان‌هاست.' } },
     { '@type': 'Question', name: 'پارامترهای حقوق ۱۴۰۵ از کجا می‌آید؟', acceptedAnswer: { '@type': 'Answer', text: 'مطابق بخشنامه سالانه شورای عالی کار؛ و از پنل مدیریت کاربان قابل به‌روزرسانی است.' } },
     { '@type': 'Question', name: 'سنوات پایان خدمت چگونه محاسبه می‌شود؟', acceptedAnswer: { '@type': 'Answer', text: 'به ازای هر سال سابقه معادل یک ماه آخرین حقوق، مطابق ماده ۲۴ قانون کار.' } },
-    { '@type': 'Question', name: 'نرخ ارزش افزوده سال ۱۴۰ چقدر است؟', acceptedAnswer: { '@type': 'Answer', text: '۱۰٪؛ هر دو حالت افزودن به پایه و استخراج از داخل فاکتور محاسبه می‌شود.' } },
+    { '@type': 'Question', name: 'نرخ ارزش افزوده سال ۱۴۰۵ چقدر است؟', acceptedAnswer: { '@type': 'Answer', text: '۱۰٪؛ هر دو حالت افزودن به پایه و استخراج از داخل فاکتور محاسبه می‌شود.' } },
     { '@type': 'Question', name: 'مالیات مشاغل چند درصد است؟', acceptedAnswer: { '@type': 'Answer', text: 'پلکانی ۱۵ تا ۳۵ درصد مطابق ماده ۱۳۱، پس از کسر معافیت سالانه.' } },
   ],
 };
@@ -86,7 +88,7 @@ export default function App() {
 
   if (route === '/' || segments.length === 0) {
     return (
-      <Page title="کاربان؛ بانک قرارداد تخصصی، ماشین‌حساب حقوق ۱۴۰۵ و دانشنامه حقوق کار برای کارفرمایان و فریلنسرها" description="بیش از ۸۰ قرارداد تخصصی، ۸ ماشین‌حساب دقیق حقوق و مالیات، و ۲۵ مقاله حقوقی با استناد قانون کار و قانون مدنی.">
+      <Page title="کاربان | بانک قرارداد تخصصی و ماشین‌حساب حقوق ۱۴۰۵" description="بیش از ۹۰ قرارداد تخصصی کارفرمایی و فریلنسر، ۱۰ ماشین‌حساب دقیق حقوق، سنوات و مالیات ۱۴۰۵، و دانشنامه حقوق کار با استناد قانون کار.">
         <HomePage />
       </Page>
     );
@@ -144,7 +146,7 @@ export default function App() {
   if (segments[0] === 'دانشنامه') {
     if (segments.length === 1) {
       return (
-        <Page title="دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان" description="مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده." breadcrumb={['دانشنامه']}>
+        <Page title="دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان" description="مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده و با استناد به مواد قانونی." breadcrumb={['دانشنامه']}>
           <ContentPage kind="knowledge" title="راهنمای قانون کار و تأمین اجتماعی، به زبان ساده اما مستند" description="راهنمای مستند قانون کار، تأمین اجتماعی و مالیات به زبان ساده با ذکر ماده قانون؛ همیشه به‌روز." eyebrow="دانشنامه" />
         </Page>
       );
@@ -158,9 +160,11 @@ export default function App() {
       );
     }
 
+    const categoryIndex = Number(segments[1]) || 1;
+    const categoryName = KNOWLEDGE_CATEGORIES[categoryIndex - 1] || 'دانشنامه';
     return (
-      <Page title="دانشنامه کاربان" description="مقاله‌های تخصصی کسب‌وکار با استناد قانونی." breadcrumb={['دانشنامه']}>
-        <ArticlesListPage categoryIndex={Number(segments[1]) || 1} />
+      <Page title={`مقالات ${categoryName} | دانشنامه کاربان`} description={`مقاله‌های تخصصی ${categoryName} برای کسب‌وکارها، با استناد به مواد قانونی.`} breadcrumb={['دانشنامه', categoryName]}>
+        <ArticlesListPage categoryIndex={categoryIndex} />
       </Page>
     );
   }
@@ -216,7 +220,7 @@ export default function App() {
     }
 
     return (
-           <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۵" description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." breadcrumb={['ابزارهای هوش مصنوعی']} jsonLd={faqJsonLd}>
+           <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵" description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." breadcrumb={['ابزارهای هوش مصنوعی']} jsonLd={faqJsonLd}>
         <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." eyebrow="ابزارهای هوش مصنوعی" />
       </Page>
     );
@@ -229,7 +233,7 @@ export default function App() {
           <div className="container narrow-content">
             <span className="eyebrow">درباره ما</span>
             <h1>درباره کاربان</h1>
-            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۰، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
+            <p className="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۰۵، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>
           </div>
         </section>
       </Page>
@@ -264,7 +268,7 @@ export default function App() {
   }
 
   return (
-    <Page title="پیدا نشد" description="صفحه پیدا نشد." breadcrumb={['خطا ۴۰۴']}>
+    <Page title="صفحه پیدا نشد | کاربان" description="صفحه‌ای که دنبال آن بودید وجود ندارد." breadcrumb={['خطا ۴۰۴']} noindex>
       <NotFound />
     </Page>
   );

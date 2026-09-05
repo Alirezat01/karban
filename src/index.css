@@ -27,6 +27,7 @@ a { text-decoration: none; color: inherit; }
 img { max-width: 100%; display: block; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 input, select, textarea { font-family: inherit; }
+input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-color: var(--gold); cursor: pointer; }
 ::selection { background: var(--gold); color: #14100a; }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
@@ -484,3 +485,6 @@ input, select, textarea { font-family: inherit; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 .hero-copy, .role-card, .section-card, .seven-card, .tool-lux-card, .contract-card, .plan-card, .tool-card, .category-card { animation: fadeUp .5s ease-out both; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; } }
+
+/* ══════════ اصلاح چک‌باکس در ماشین‌حساب‌ها (بعد از قوانین calc) ══════════ */
+.calc-card input[type="checkbox"], .calculator-card input[type="checkbox"], .calc-card label input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; padding: 0; margin-top: 2px; }

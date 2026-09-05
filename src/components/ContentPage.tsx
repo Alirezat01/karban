@@ -52,13 +52,13 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
           setDbContracts(contractCatalog as ContractItem[]);
         } else {
           setDbContracts(
-            data.map((item, index) => ({
-              id: item.id,
-              title: item.title,
-              type: item.type || '',
-              industry: item.industry || '',
-              description: item.summary || item.description || '',
-              body: item.body || '',
+            data.map((item: Record<string, unknown>, index: number) => ({
+              id: item.id as string,
+              title: item.title as string,
+              type: (item.type as string) || '',
+              industry: (item.industry as string) || '',
+              description: (item.summary as string) || (item.description as string) || '',
+              body: (item.body as string) || '',
               icon: index % icons.length,
             })),
           );
@@ -184,7 +184,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
             <div className="faq-section">
               <h2>پرسش‌های پرتکرار</h2>
               <details><summary>آیا نتایج ماشین‌حساب‌ها مبنای قانونی دارد؟</summary><p>محاسبات بر اساس قانون کار، قانون تأمین اجتماعی و قانون مالیات‌های مستقیم و مصوبات ۱۴۰۵ است؛ برای موارد اختلافی، ملاک نهایی فیش رسمی سازمان‌هاست.</p></details>
-              <details><summary>پارامترهای حقوق ۱۴۵ از کجا می‌آید؟</summary><p>اعداد پایه، بن و مسکن مطابق بخشنامه سالانه شورای عالی کار است و از پنل مدیریت کاربان قابل به‌روزرسانی است.</p></details>
+              <details><summary>پارامترهای حقوق ۱۴۰۵ از کجا می‌آید؟</summary><p>اعداد پایه، بن و مسکن مطابق بخشنامه سالانه شورای عالی کار است و از پنل مدیریت کاربان قابل به‌روزرسانی است.</p></details>
               <details><summary>سنوات پایان خدمت چگونه محاسبه می‌شود؟</summary><p>به ازای هر سال سابقه، معادل یک ماه آخرین حقوق، مطابق ماده ۲۴ قانون کار؛ برای کمتر از سال، به نسبت ماه‌ها.</p></details>
               <details><summary>نرخ ارزش افزوده سال ۱۴۰۵ چقدر است؟</summary><p>۱۰٪؛ ماشین‌حساب کاربان هر دو حالت «افزودن به پایه» و «استخراج از داخل فاکتور» را محاسبه می‌کند.</p></details>
               <details><summary>مالیات مشاغل چند درصد است؟</summary><p>پلکانی از ۱۵٪ تا ۳۵٪ مطابق ماده ۱۳۱، پس از کسر معافیت سالانه که هر سال در قانون بودجه اعلام می‌شود.</p></details>

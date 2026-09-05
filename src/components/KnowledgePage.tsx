@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { applySEO } from '@/lib/seo';
+import { renderRichText } from '@/lib/rich-text';
 
 export const KNOWLEDGE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
 
@@ -31,7 +33,7 @@ const relatedLinks: Record<string, { href: string; label: string }[]> = {
   ],
 };
 
-type Article = { id: number; category: string; title: string; intro: string; body: string; author: string };
+type Article = { id: number; category: string; title: string; intro: string; body: string; author: string; meta_title?: string | null; meta_description?: string | null; created_at?: string | null };
 
 export function ArticlesListPage({ categoryIndex }: { categoryIndex: number }) {
   const category = KNOWLEDGE_CATEGORIES[categoryIndex - 1] || KNOWLEDGE_CATEGORIES[0];
@@ -100,7 +102,24 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
         if (active) {
           const a = (data as Article) || null;
           setArticle(a);
-          if (a) document.title = `${a.title} | کاربان`;
+          if (a) {
+            applySEO({
+              title: a.meta_title || `${a.title} | کاربان`,
+              description: a.meta_description || a.intro,
+              path: `/دانشنامه/مقاله/${a.id}`,
+              jsonLd: {
+                '@context': 'https://schema.org',
+                '@type': 'Article',
+                headline: a.title,
+                description: a.meta_description || a.intro,
+                author: { '@type': 'Organization', name: a.author || 'کاربان' },
+                publisher: { '@type': 'Organization', name: 'کاربان', url: 'https://karbanapp.ir/' },
+                mainEntityOfPage: `https://karbanapp.ir/دانشنامه/مقاله/${a.id}`,
+                inLanguage: 'fa-IR',
+                ...(a.created_at ? { datePublished: a.created_at } : {}),
+              },
+            });
+          }
           setLoading(false);
         }
       });
@@ -144,9 +163,7 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
         <p className="article-intro">{article.intro}</p>
         <small className="article-author">{article.author}</small>
         <div className="article-body">
-          {article.body.split('\n\n').map((p, i) =>
-            p.startsWith('## ') ? <h2 key={i}>{p.replace('## ', '')}</h2> : <p key={i}>{p}</p>,
-          )}
+          {renderRichText(article.body)}
         </div>
 
         {links.length > 0 && (

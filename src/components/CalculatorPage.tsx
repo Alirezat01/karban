@@ -206,7 +206,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
   return (
     <section className="inner-page">
       <div className="container narrow-content">
-        <span className="eyebrow">ابزارهای هوش مصنوعی · قانون کار ۱۴</span>
+        <span className="eyebrow">ابزارهای هوش مصنوعی · قانون کار ۱۴۰۵</span>
         <h1>{title}</h1>
         <p className="lead">{description}</p>
 
@@ -365,7 +365,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
               </label>
               <div className="feedback-success result-box">
                 <Line label="بیمه سهم کارگر" value={formatRial(salaryTaxResult.insurance)} minus />
-                <Line label="معافیت ماهانه ۱۴۵" value={formatRial(params.salary.tax_exempt_monthly)} minus />
+                <Line label="معافیت ماهانه مالیات" value={formatRial(params.salary.tax_exempt_monthly)} minus />
                 <Line label="مازاد مشمول ماهانه" value={formatRial(salaryTaxResult.monthlyTaxable)} />
                 {salaryTaxResult.rows.map((r) => (
                   <Line key={r.label} label={r.label} value={formatRial(r.amount)} />
@@ -384,7 +384,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <li key={i}>{n}</li>
             ))}
           </ul>
-          <p className="muted-note"><ShieldCheck size={14} /> پارامترها مطابق مقررات ۱۴۵ است و از تب «تنظیمات» پنل ادمین قابل به‌روزرسانی است.</p>
+          <p className="muted-note"><ShieldCheck size={14} /> پارامترها مطابق مقررات ۱۴۰۵ است و از تب «تنظیمات» پنل ادمین قابل به‌روزرسانی است.</p>
         </div>
       </div>
     </section>

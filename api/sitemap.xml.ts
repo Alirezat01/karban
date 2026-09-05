@@ -32,36 +32,27 @@ export default async function handler(req: any, res: any) {
     { path: '/دانشنامه/5', priority: '0.7' },
   ];
 
-  let articleCount = 0;
-  let contractCount = 0;
-  let debug = '';
-
   const supabase = createClient(
     'https://rocjeanizzhfvhnuhnms.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
   );
 
   try {
-    const a = await supabase.from('articles').select('id');
-    debug += a.error ? `articles-error:${a.error.message}` : `articles-ok:${(a.data || []).length}`;
+    const a = await supabase.from('articles').select('id').order('id');
     (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
-    articleCount = (a.data || []).length;
-  } catch (e) {
-    debug += `articles-exception:${String(e)}`;
+  } catch {
+    // If Supabase is unreachable, the sitemap still lists static routes.
   }
 
   try {
-    const c = await supabase.from('contracts').select('id');
-    debug += ` | ${c.error ? `contracts-error:${c.error.message}` : `contracts-ok:${(c.data || []).length}`}`;
+    const c = await supabase.from('contracts').select('id').order('id');
     (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
-    contractCount = (c.data || []).length;
-  } catch (e) {
-    debug += ` | contracts-exception:${String(e)}`;
+  } catch {
+    // Same graceful fallback for contracts.
   }
 
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<!-- debug: ${debug} | articles=${articleCount} contracts=${contractCount} -->\n` +
     `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     rows
       .map(
@@ -71,7 +62,7 @@ export default async function handler(req: any, res: any) {
       .join('\n') +
     `\n</urlset>`;
 
-  res.setHeader('Content-Type', 'application/xml');
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600');
   res.status(200).send(xml);
 }

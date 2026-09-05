@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { applySEO } from '@/lib/seo';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin } from '@/lib/notify';
@@ -23,10 +24,26 @@ export default function ArticlePage({ title, category, contractId }: Props) {
       .then(({ data }) => {
         if (data) {
           setContractData(data);
-          if (data.title) document.title = `${data.title} | کاربان`;
+          const contractTitle = data.title || title;
+          applySEO({
+            title: `${contractTitle} | کاربان`,
+            description: data.summary || `متن کامل و دانلود PDF «${contractTitle}» — نسخه استاندارد کاربان با استناد قانونی.`,
+            path: `/قراردادها/${contractId}`,
+            jsonLd: [
+              {
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'خانه', item: 'https://karbanapp.ir/' },
+                  { '@type': 'ListItem', position: 2, name: 'قراردادها', item: 'https://karbanapp.ir/قراردادها' },
+                  { '@type': 'ListItem', position: 3, name: contractTitle, item: `https://karbanapp.ir/قراردادها/${contractId}` },
+                ],
+              },
+            ],
+          });
         }
       });
-  }, [contractId]);
+  }, [contractId, title]);
 
   const submitDownload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
