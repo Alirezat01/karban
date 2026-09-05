@@ -488,3 +488,26 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 
 /* ══════════ اصلاح چک‌باکس در ماشین‌حساب‌ها (بعد از قوانین calc) ══════════ */
 .calc-card input[type="checkbox"], .calculator-card input[type="checkbox"], .calc-card label input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; padding: 0; margin-top: 2px; }
+
+/* ══════════ جداول حرفه‌ای ماشین‌حساب‌ها + یکسان‌سازی سایزها ══════════ */
+.calc-subtitle { display: flex; align-items: center; gap: .45rem; font-size: .98rem; font-weight: 700; color: var(--text); margin: 1.5rem 0 .2rem; }
+.calc-subtitle svg { color: var(--gold); flex-shrink: 0; }
+.calc-table-wrap { margin-top: 1rem; border: 1px solid rgba(216,165,63,.28); border-radius: 14px; overflow: hidden; background: var(--surface2); box-shadow: 0 4px 20px rgba(0,0,0,.18); }
+.calc-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.calc-table thead th { background: rgba(216,165,63,.14); color: var(--gold2); font-size: .8rem; font-weight: 700; padding: .8rem 1.1rem; text-align: right; }
+.calc-table thead th:last-child { text-align: left; }
+.calc-table tbody td { padding: .72rem 1.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .92rem; }
+.calc-table tbody tr:first-child td { border-top: 0; }
+.calc-table tbody tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+.calc-table td:last-child { text-align: left; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; direction: rtl; }
+.calc-table tr.is-minus td:last-child { color: #ff9d94; font-weight: 600; }
+.calc-table tr.is-total td { background: linear-gradient(135deg, rgba(216,165,63,.16), rgba(216,165,63,.05)); border-top: 2px solid rgba(216,165,63,.45); }
+.calc-table tr.is-total td, .calc-table tr.is-total td:last-child { color: var(--gold2); font-weight: 800; font-size: 1rem; }
+.calc-table tr.is-ok td:last-child { color: #7ddb9a; }
+.calc-table tr.is-no td:last-child { color: #ff9d94; }
+.calc-card input[type="number"], .calculator-card input[type="number"] { height: 48px; padding: 0 14px; font-size: .95rem; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .calc-table { font-size: .86rem; }
+  .calc-table thead th, .calc-table tbody td { padding: .6rem .8rem; }
+  .calc-table tr.is-total td { font-size: .92rem; }
+}
