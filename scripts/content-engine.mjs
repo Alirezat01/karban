@@ -74,11 +74,20 @@ const TOPICS = [
 ];
 
 const CONTRACT_QUEUE = [
-  { title: 'قرارداد مبایعنامه خودرو (نمایشگاه‌های خودرو)', type: 'مبایعنامه', industry: 'نمایشگاه‌های خودرو' },
+  { title: 'قرارداد مبایع‌نامه خودرو (نمایشگاه‌های خودرو)', type: 'مبایع‌نامه', industry: 'نمایشگاه‌های خودرو' },
   { title: 'قرارداد اجاره دفتر کار (مشاوران املاک)', type: 'اجاره', industry: 'مشاوران املاک' },
   { title: 'قرارداد مشارکت مدنی (رستوران‌ها)', type: 'مشارکت مدنی', industry: 'رستوران‌ها' },
   { title: 'قرارداد جعاله (بازاریابی دیجیتال)', type: 'جعاله', industry: 'بازاریابی دیجیتال' },
+  { title: 'قرارداد اجاره ماشین‌آلات و تجهیزات (شرکت‌های عمرانی)', type: 'اجاره', industry: 'شرکت‌های عمرانی' },
+  { title: 'قرارداد پیمانکاری نصب و نگهداری آسانسور', type: 'پیمانکاری', industry: 'آسانسور و بالابر' },
+  { title: 'قرارداد خدمات نظافت ساختمان‌های اداری', type: 'خدمات', industry: 'خدمات نظافتی' },
+  { title: 'قرارداد تأمین و پخش مواد غذایی (فروشگاه‌های زنجیره‌ای)', type: 'تأمین کالا', industry: 'پخش مواد غذایی' },
+  { title: 'قرارداد طراحی و مدیریت شبکه‌های اجتماعی', type: 'خدمات', industry: 'دیجیتال مارکتینگ' },
+  { title: 'قرارداد نماینده بیمه (شعب و نمایندگی‌ها)', type: 'نمایندگی', industry: 'بیمه' },
+  { title: 'قرارداد پشتیبانی فنی و نگهداری سرور', type: 'پشتیبانی و نگهداری', industry: 'فناوری اطلاعات' },
+  { title: 'قرارداد آموزشگاه آزاد با هنرجو', type: 'آموزش', industry: 'آموزشگاه‌های آزاد' },
 ];
+
 
 function validArticle(a) {
   if (!a || !a.title || !a.body || a.body.length < 800) return 'too short';
@@ -145,18 +154,19 @@ async function runContracts() {
     }
   }
 
-  // ۲) یک قرارداد جدید در هفته
+  // ۲) دو قرارداد جدید در هفته
   const { data: all } = await supabase.from('contracts').select('title');
   const have = (all || []).map((c) => c.title);
-  const next = CONTRACT_QUEUE.find((q) => !have.includes(q.title));
-  if (!next) return;
-  const user = `متن کامل «${next.title}» را مانند یک وکیل بنویس (بندهای استاندارد + تبصره). خروجی JSON: {"body":"...","summary":"خلاصه یک خطی"}`;
-  const { text, provider } = await callAI(LAWYER, user);
-  const r = parseJSON(text);
-  if (r?.body?.length > 500) {
-    await supabase.from('contracts').insert({ title: next.title, type: next.type, industry: next.industry, summary: r.summary || next.title, body: r.body });
-    await tg(`✅ قرارداد جدید منتشر شد: «${next.title}» (${provider})`);
-    await logJob('contracts', next.title, 'success', provider, null, null);
+  const pending = CONTRACT_QUEUE.filter((q) => !have.includes(q.title)).slice(0, 2);
+  for (const next of pending) {
+    const user = `متن کامل «${next.title}» را مانند یک وکیل بنویس (بندهای استاندارد + تبصره). خروجی JSON: {"body":"...","summary":"خلاصه یک خطی"}`;
+    const { text, provider } = await callAI(LAWYER, user);
+    const r = parseJSON(text);
+    if (r?.body?.length > 500) {
+      await supabase.from('contracts').insert({ title: next.title, type: next.type, industry: next.industry, summary: r.summary || next.title, body: r.body });
+      await tg(`✅ قرارداد جدید منتشر شد: «${next.title}» (${provider})`);
+      await logJob('contracts', next.title, 'success', provider, null, null);
+    }
   }
 }
 
