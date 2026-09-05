@@ -1,7 +1,21 @@
 // Karban Content Engine — weekly AI legal content with provider fallback
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+/* ── اعتبارسنجی شروع به کار: اگر secretای کم باشد، پیام واضح فارسی بده
+   (قبلاً اینجا بی‌صدا کرش می‌کرد و لاگ گیت‌هاب فقط exit 1 نشان می‌داد) ── */
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const problems = [];
+if (!SUPABASE_URL) problems.push('secret «SUPABASE_URL» تنظیم نشده است');
+else if (!/^https:\/\/[a-z0-9]+\.supabase\.co\/?$/.test(SUPABASE_URL)) problems.push('secret «SUPABASE_URL» فرمت درست ندارد (باید مثل https://xxxx.supabase.co باشد)');
+if (!SUPABASE_SERVICE_ROLE_KEY) problems.push('secret «SUPABASE_SERVICE_ROLE_KEY» تنظیم نشده است (کلید service_role از: Supabase → Project Settings → API)');
+if (problems.length) {
+  console.error('❌ خطای پیکربندی ورک‌فلو:');
+  problems.forEach((p) => console.error('   - ' + p));
+  console.error('   مسیر رفع: GitHub → Settings → Secrets and variables → Actions → New repository secret');
+  process.exit(1);
+}
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const tg = (text) =>
   fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -103,7 +117,8 @@ function parseJSON(text) {
 }
 
 async function logJob(job, topic, status, provider, error, meta) {
-  await supabase.from('content_jobs').insert({ job, topic, status, provider, error, meta });
+  const { error: dbErr } = await supabase.from('content_jobs').insert({ job, topic, status, provider, error, meta });
+  if (dbErr) console.error('[logJob]', dbErr.message); // لاگ نباید هرگز خودِ ورک‌فلو را بیندازد
 }
 
 async function runArticle() {
@@ -171,9 +186,17 @@ async function runContracts() {
 }
 
 async function runRetry() {
-  const { data: failed } = await supabase.from('content_jobs').select('*').eq('status', 'failed').lt('attempts', 4).order('id').limit(2);
+  // ستون attempts ممکن است در جدول نباشد؛ دفاعی کوئری می‌زنیم
+  let q = supabase.from('content_jobs').select('*').eq('status', 'failed').order('id').limit(2);
+  const withAttempts = await q.lt('attempts', 4);
+  let failed = withAttempts.data;
+  if (withAttempts.error) {
+    const fallback = await supabase.from('content_jobs').select('*').eq('status', 'failed').order('id').limit(2);
+    failed = fallback.data;
+    if (fallback.error) throw new Error(fallback.error.message);
+  }
   for (const f of failed || []) {
-    await supabase.from('content_jobs').update({ attempts: f.attempts + 1 }).eq('id', f.id);
+    await supabase.from('content_jobs').update({ attempts: (f.attempts || 0) + 1 }).eq('id', f.id).then(({ error }) => { if (error) console.error('[attempts]', error.message); });
     try {
       if (f.job === 'article') await runArticle();
       else await runContracts();
@@ -190,6 +213,7 @@ try {
   else if (mode === 'contracts') await runContracts();
   else if (mode === 'retry') await runRetry();
 } catch (e) {
+  console.error(`❌ خطای ورک‌فلوی ${mode}:`, e);
   await logJob(mode, null, 'failed', null, String(e).slice(0, 500), null);
   await tg(`❌ ورک‌فلوی ${mode} شکست خورد؛ retry خودکار هر ۳ ساعت فعال است.\nخطا: ${String(e).slice(0, 300)}`);
   process.exit(1);
