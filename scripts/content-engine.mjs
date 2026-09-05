@@ -28,7 +28,7 @@ const tg = (text) =>
    نام‌های جایگزین جمینای هم پذیرفته می‌شود تا اشتباه اسم secret بلاک‌مان نکند */
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const providers = [
-  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', key: GEMINI_KEY },
+  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: process.env.GEMINI_MODEL || 'gemini-3.6-flash', key: GEMINI_KEY },
   { name: 'groq', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', key: process.env.GROQ_API_KEY },
   { name: 'openrouter', base: 'https://openrouter.ai/api/v1', model: 'meta-llama/llama-3.3-70b-instruct:free', key: process.env.OPENROUTER_API_KEY },
 ].filter((p) => p.key);
@@ -157,13 +157,20 @@ function parseJSON(text) {
 }
 
 async function logJob(job, topic, status, provider, error, meta) {
-  const base = { job, topic, status, provider };
-  let { error: dbErr } = await supabase.from('content_jobs').insert({ ...base, error, meta });
-  if (dbErr) {
-    // شاید ستون error/meta کوچک‌تر از متن باشد؛ با نسخهٔ کوتاه دوباره تلاش می‌کنیم تا لاگ هرگز گم نشود
-    ({ error: dbErr } = await supabase.from('content_jobs').insert({ ...base, error: String(error ?? '').slice(0, 180), meta: null }));
+  // سه لایه تلاش تا ردیف لاگ هرگز گم نشود (ستون error ممکن است varchar کوچک باشد یا topic NOT NULL)
+  const safeTopic = topic || job;
+  const tries = [
+    { job, topic, status, provider, error, meta },
+    { job, topic: safeTopic, status, provider, error: String(error ?? '').slice(0, 180), meta: null },
+    { job, topic: safeTopic, status },
+  ];
+  let dbErr = null;
+  for (const payload of tries) {
+    const r = await supabase.from('content_jobs').insert(payload);
+    if (!r.error) return;
+    dbErr = r.error;
   }
-  if (dbErr) console.error('[logJob]', dbErr.message); // لاگ نباید هرگز خودِ ورک‌فلو را بیندازد
+  console.error('[logJob]', dbErr.message); // لاگ نباید هرگز خودِ ورک‌فلو را بیندازد
 }
 
 async function runArticle() {
@@ -260,6 +267,6 @@ try {
 } catch (e) {
   console.error(`❌ خطای ورک‌فلوی ${mode}:`, e);
   await logJob(mode, null, 'failed', null, String(e).slice(0, 500), null);
-  await tg(`❌ ورک‌فلوی ${mode} شکست خورد؛ retry خودکار هر ۳ ساعت فعال است.\nخطا: ${String(e).slice(0, 300)}`);
+  await tg(`❌ ورک‌فلوی ${mode} شکست خورد؛ retry خودکار هر ۳ ساعت فعال است.\nخطا: ${String(e).slice(0, 500)}`);
   process.exit(1);
 }
