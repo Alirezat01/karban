@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Scale, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Scale, ShieldCheck, Table2 } from 'lucide-react';
 import { legalConfig, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { formatRial } from '@/lib/format';
@@ -48,12 +48,35 @@ const noteKey: Record<CalcType, string> = {
   'salary-tax': 'مالیات-حقوق',
 };
 
-function Line({ label, value, strong, minus }: { label: string; value: string; strong?: boolean; minus?: boolean }) {
+function CalcTable({ valueHeader = 'مبلغ (ریال)', children }: { valueHeader?: string; children: ReactNode }) {
   return (
-    <div className={`calc-line ${strong ? 'calc-line-strong' : ''}`}>
-      <span>{label}</span>
-      <strong>{minus ? '− ' : ''}{value}</strong>
+    <div className="calc-table-wrap">
+      <table className="calc-table">
+        <thead>
+          <tr>
+            <th>شرح</th>
+            <th>{valueHeader}</th>
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
     </div>
+  );
+}
+
+function TRow({ label, value, strong, minus, ok, no }: { label: string; value: string; strong?: boolean; minus?: boolean; ok?: boolean; no?: boolean }) {
+  const cls = [strong ? 'is-total' : '', minus ? 'is-minus' : '', ok ? 'is-ok' : '', no ? 'is-no' : ''].filter(Boolean).join(' ');
+  return (
+    <tr className={cls || undefined}>
+      <td>{minus ? '− ' : ''}{label}</td>
+      <td>{value}</td>
+    </tr>
+  );
+}
+
+function ParamsTitle() {
+  return (
+    <h3 className="calc-subtitle"><Table2 size={16} /> پارامترهای قانونی ۱۴۰۵ اعمال‌شده</h3>
   );
 }
 
@@ -232,20 +255,30 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>کسورات دیگر (ریال)
                 <input type="number" value={deduction} onChange={(e) => setDeduction(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="حقوق پایه" value={formatRial(base)} />
-                <Line label="بن کارگری" value={formatRial(params.salary.bon)} />
-                <Line label="کمک مسکن" value={formatRial(params.salary.housing)} />
-                {married && <Line label="عائله‌مندی" value={formatRial(salaryResult.familyPay)} />}
-                {childrenCount > 0 && <Line label={`اولاد (${childrenCount} فرزند)`} value={formatRial(salaryResult.childPay)} />}
-                {overtimeHours > 0 && <Line label={`اضافه‌کاری (${overtimeHours} ساعت)`} value={formatRial(salaryResult.overtimePay)} />}
-                {bonus > 0 && <Line label="پاداش و مزایا" value={formatRial(bonus)} />}
-                <Line label="ناخالص" value={formatRial(salaryResult.gross)} strong />
-                <Line label="بیمه سهم کارگر (۷٪)" value={formatRial(salaryResult.insurance)} minus />
-                <Line label="مالیات حقوق" value={formatRial(salaryResult.tax)} minus />
-                {deduction > 0 && <Line label="کسورات دیگر" value={formatRial(deduction)} minus />}
-                <Line label="خالص دریافتی" value={formatRial(salaryResult.net)} strong />
-              </div>
+              <CalcTable>
+                <TRow label="حقوق پایه" value={formatRial(base)} />
+                <TRow label="بن کارگری" value={formatRial(params.salary.bon)} />
+                <TRow label="کمک مسکن" value={formatRial(params.salary.housing)} />
+                {married && <TRow label="عائله‌مندی" value={formatRial(salaryResult.familyPay)} />}
+                {childrenCount > 0 && <TRow label={`اولاد (${childrenCount} فرزند)`} value={formatRial(salaryResult.childPay)} />}
+                {overtimeHours > 0 && <TRow label={`اضافه‌کاری (${overtimeHours} ساعت)`} value={formatRial(salaryResult.overtimePay)} />}
+                {bonus > 0 && <TRow label="پاداش و مزایا" value={formatRial(bonus)} />}
+                <TRow label="جمع ناخالص" value={formatRial(salaryResult.gross)} strong />
+                <TRow label="بیمه سهم کارگر (۷٪)" value={formatRial(salaryResult.insurance)} minus />
+                <TRow label="مالیات حقوق" value={formatRial(salaryResult.tax)} minus />
+                {deduction > 0 && <TRow label="کسورات دیگر" value={formatRial(deduction)} minus />}
+                <TRow label="خالص دریافتی" value={formatRial(salaryResult.net)} strong />
+              </CalcTable>
+
+              <ParamsTitle />
+              <CalcTable valueHeader="مبلغ ماهانه (ریال)">
+                <TRow label="حقوق پایه روزانه × ۳۰" value={formatRial(params.salary.base)} />
+                <TRow label="بن کارگری" value={formatRial(params.salary.bon)} />
+                <TRow label="کمک‌هزینه مسکن" value={formatRial(params.salary.housing)} />
+                <TRow label="حق اولاد (هر فرزند)" value={formatRial(params.salary.child_per)} />
+                <TRow label="معافیت مالیاتی ماهانه" value={formatRial(params.salary.tax_exempt_monthly)} />
+                <TRow label="ضریب اضافه‌کاری (ساعت عادی ۲۲۰ ساعت)" value={`× ${params.salary.overtime_coef}`} />
+              </CalcTable>
             </>
           )}
 
@@ -254,16 +287,16 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>حقوق پایه ماهانه کارمند (ریال)
                 <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="حقوق پایه" value={formatRial(base)} />
-                <Line label="بن کارگری" value={formatRial(params.salary.bon)} />
-                <Line label="کمک مسکن" value={formatRial(params.salary.housing)} />
-                <Line label={`بیمه سهم کارفرما (${Math.round(params.hiring.insurance_employer * 100)}٪)`} value={formatRial(hireResult.insurance)} />
-                <Line label="ذخیره سنوات (ماهانه)" value={formatRial(hireResult.severance)} />
-                <Line label="ذخیره عیدی (ماهانه)" value={formatRial(hireResult.eydi)} />
-                <Line label="بهای تمام‌شدن ماهانه" value={formatRial(hireResult.total)} strong />
-                <Line label="بهای تمام‌شدن سالانه" value={formatRial(hireResult.yearly)} strong />
-              </div>
+              <CalcTable>
+                <TRow label="حقوق پایه" value={formatRial(base)} />
+                <TRow label="بن کارگری" value={formatRial(params.salary.bon)} />
+                <TRow label="کمک مسکن" value={formatRial(params.salary.housing)} />
+                <TRow label={`بیمه سهم کارفرما (${Math.round(params.hiring.insurance_employer * 100)}٪)`} value={formatRial(hireResult.insurance)} minus />
+                <TRow label="ذخیره سنوات (ماهانه)" value={formatRial(hireResult.severance)} />
+                <TRow label="ذخیره عیدی (ماهانه)" value={formatRial(hireResult.eydi)} />
+                <TRow label="بهای تمام‌شدن ماهانه" value={formatRial(hireResult.total)} strong />
+                <TRow label="بهای تمام‌شدن سالانه" value={formatRial(hireResult.yearly)} strong />
+              </CalcTable>
               <p className="muted-note">هزینه استخدام فقط حقوق نیست؛ بیمه، عیدی و سنوات را هم باید از روز اول کنار بگذارید.</p>
             </>
           )}
@@ -276,10 +309,10 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>سابقه کار (سال)
                 <input type="number" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="سنوات هر سال" value={formatRial(severanceResult.perYear)} />
-                <Line label={`جمع سنوات (${years} سال)`} value={formatRial(severanceResult.total)} strong />
-              </div>
+              <CalcTable>
+                <TRow label="سنوات هر سال کار" value={formatRial(severanceResult.perYear)} />
+                <TRow label={`جمع سنوات (${years} سال)`} value={formatRial(severanceResult.total)} strong />
+              </CalcTable>
             </>
           )}
 
@@ -294,12 +327,12 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>میانگین حقوق دو سال آخر (ریال)
                 <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="شرایط عادی (۶۰ سال + ۲۰ سال سابقه)" value={retirementResult.normal ? '✓ برقرار' : '✗ برقرار نیست'} />
-                <Line label="شرایط جایگزین (۵۰ سال + ۳۰ سال سابقه)" value={retirementResult.early ? '✓ برقرار' : '✗ برقرار نیست'} />
-                <Line label="بدون شرط سن (۴۲ سال سابقه)" value={retirementResult.full ? '✓ برقرار' : '✗ برقرار نیست'} />
-                <Line label="برآورد مستمری ماهانه" value={formatRial(retirementResult.pension)} strong />
-              </div>
+              <CalcTable valueHeader="نتیجه">
+                <TRow label="شرایط عادی (۶۰ سال + ۲۰ سال سابقه)" value={retirementResult.normal ? '✓ برقرار' : '✗ برقرار نیست'} ok={retirementResult.normal} no={!retirementResult.normal} />
+                <TRow label="شرایط جایگزین (۵۰ سال + ۳۰ سال سابقه)" value={retirementResult.early ? '✓ برقرار' : '✗ برقرار نیست'} ok={retirementResult.early} no={!retirementResult.early} />
+                <TRow label="بدون شرط سن (۴۲ سال سابقه)" value={retirementResult.full ? '✓ برقرار' : '✗ برقرار نیست'} ok={retirementResult.full} no={!retirementResult.full} />
+                <TRow label="برآورد مستمری ماهانه" value={formatRial(retirementResult.pension)} strong />
+              </CalcTable>
               {!retirementResult.status && <p className="muted-note">هنوز شرایط بازنشستگی برقرار نیست؛ با افزایش سن یا سابقه دوباره بررسی کنید.</p>}
             </>
           )}
@@ -312,11 +345,11 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>ساعت اضافه‌کاری
                 <input type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="نرخ هر ساعت عادی" value={formatRial(Math.round(overtimeResult.hourly))} />
-                <Line label="نرخ هر ساعت اضافه‌کاری (×۱٫۴)" value={formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} />
-                <Line label={`جمع (${overtimeHours} ساعت)`} value={formatRial(overtimeResult.pay)} strong />
-              </div>
+              <CalcTable>
+                <TRow label="نرخ هر ساعت عادی (تقسیم بر ۲۲۰ ساعت)" value={formatRial(Math.round(overtimeResult.hourly))} />
+                <TRow label={`نرخ هر ساعت اضافه‌کاری (×${params.salary.overtime_coef})`} value={formatRial(Math.round(overtimeResult.hourly * params.salary.overtime_coef))} />
+                <TRow label={`جمع ${overtimeHours} ساعت اضافه‌کاری`} value={formatRial(overtimeResult.pay)} strong />
+              </CalcTable>
             </>
           )}
 
@@ -328,16 +361,16 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>هزینه‌های سالانه قابل‌قبول (ریال)
                 <input type="number" value={expenses} onChange={(e) => setExpenses(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="سود سالانه" value={formatRial(businessTaxResult.profit)} />
-                <Line label="معافیت سالانه مشاغل" value={formatRial(params.business_exempt)} minus />
-                <Line label="سود مشمول مالیات" value={formatRial(businessTaxResult.taxable)} />
+              <CalcTable>
+                <TRow label="سود سالانه" value={formatRial(businessTaxResult.profit)} />
+                <TRow label="معافیت سالانه مشاغل" value={formatRial(params.business_exempt)} minus />
+                <TRow label="سود مشمول مالیات" value={formatRial(businessTaxResult.taxable)} />
                 {businessTaxResult.rows.map((r) => (
-                  <Line key={r.label} label={r.label} value={formatRial(r.amount)} />
+                  <TRow key={r.label} label={r.label} value={formatRial(r.amount)} />
                 ))}
-                <Line label="جمع مالیات سالانه" value={formatRial(businessTaxResult.total)} strong />
-                <Line label="نرخ مؤثر" value={`${businessTaxResult.effective}٪`} />
-              </div>
+                <TRow label="جمع مالیات سالانه" value={formatRial(businessTaxResult.total)} strong />
+                <TRow label="نرخ مؤثر مالیات" value={`${businessTaxResult.effective}٪`} />
+              </CalcTable>
             </>
           )}
 
@@ -350,11 +383,11 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <input type="checkbox" checked={vatMode === 'inside'} onChange={(e) => setVatMode(e.target.checked ? 'inside' : 'add')} />
                 <span>مبلغ واردشده شامل ارزش افزوده است (استخراج از داخل فاکتور)</span>
               </label>
-              <div className="feedback-success result-box">
-                <Line label="مبلغ بدون ارزش افزوده" value={formatRial(vatResult.net)} />
-                <Line label={`ارزش افزوده (${params.vat_rate}٪)`} value={formatRial(vatResult.vat)} />
-                <Line label="مبلغ با ارزش افزوده" value={formatRial(vatResult.gross)} strong />
-              </div>
+              <CalcTable>
+                <TRow label="مبلغ بدون ارزش افزوده" value={formatRial(vatResult.net)} />
+                <TRow label={`ارزش افزوده (${params.vat_rate}٪)`} value={formatRial(vatResult.vat)} />
+                <TRow label="مبلغ با ارزش افزوده" value={formatRial(vatResult.gross)} strong />
+              </CalcTable>
             </>
           )}
 
@@ -363,16 +396,16 @@ export default function CalculatorPage({ type, title, description }: Props) {
               <label>حقوق ماهانه مشمول (ریال)
                 <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
               </label>
-              <div className="feedback-success result-box">
-                <Line label="بیمه سهم کارگر" value={formatRial(salaryTaxResult.insurance)} minus />
-                <Line label="معافیت ماهانه مالیات" value={formatRial(params.salary.tax_exempt_monthly)} minus />
-                <Line label="مازاد مشمول ماهانه" value={formatRial(salaryTaxResult.monthlyTaxable)} />
+              <CalcTable>
+                <TRow label="بیمه سهم کارگر (۷٪)" value={formatRial(salaryTaxResult.insurance)} minus />
+                <TRow label="معافیت ماهانه مالیات" value={formatRial(params.salary.tax_exempt_monthly)} minus />
+                <TRow label="مازاد مشمول ماهانه" value={formatRial(salaryTaxResult.monthlyTaxable)} />
                 {salaryTaxResult.rows.map((r) => (
-                  <Line key={r.label} label={r.label} value={formatRial(r.amount)} />
+                  <TRow key={r.label} label={r.label} value={formatRial(r.amount)} />
                 ))}
-                <Line label="مالیات سالانه" value={formatRial(salaryTaxResult.total)} strong />
-                <Line label="مالیات ماهانه تقریبی" value={formatRial(salaryTaxResult.monthly)} strong />
-              </div>
+                <TRow label="جمع مالیات سالانه" value={formatRial(salaryTaxResult.total)} strong />
+                <TRow label="مالیات ماهانه تقریبی" value={formatRial(salaryTaxResult.monthly)} strong />
+              </CalcTable>
             </>
           )}
         </div>
