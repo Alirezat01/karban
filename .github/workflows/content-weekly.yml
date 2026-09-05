@@ -7,11 +7,43 @@ jobs:
   content:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - run: npm install --omit=dev
+
+      # ── پیش‌چک: اگر secretای کم باشد، همین‌جا با پیام واضح متوقف می‌شویم
+      # (اسم‌ها چاپ می‌شوند، هرگز مقدارشان نه)
+      - name: Preflight — check secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          missing=0
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "::error::secret «$v» تنظیم نشده است — در Settings → Secrets and variables → Actions اضافه کن"
+              missing=1
+            else
+              echo "✓ $v تنظیم است"
+            fi
+          done
+          providers=0
+          for v in GEMINI_API_KEY GITHUB_TOKEN GROQ_API_KEY OPENROUTER_API_KEY; do
+            [ -n "${!v}" ] && providers=$((providers+1)) && echo "✓ $v تنظیم است"
+          done
+          if [ "$providers" -eq 0 ]; then
+            echo "::error::هیچ کلیدی از ارائه‌دهنده‌های هوش مصنوعی تنظیم نشده (حداقل یکی از GEMINI_API_KEY یا GITHUB_TOKEN یا GROQ_API_KEY یا OPENROUTER_API_KEY لازم است)"
+            missing=1
+          fi
+          exit $missing
+
+      - run: npm install --omit=dev --no-audit --no-fund
+
       - name: article
         run: node scripts/content-engine.mjs article
         env:
@@ -23,6 +55,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
       - name: contracts
         run: node scripts/content-engine.mjs contracts
         env:

@@ -2,15 +2,33 @@ name: content-retry
 on:
   schedule:
     - cron: '0 */3 * * *'
+  workflow_dispatch: {}
 jobs:
   retry:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - run: npm install --omit=dev
+
+      - name: Preflight — check secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          missing=0
+          for v in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "::error::secret «$v» تنظیم نشده است — در Settings → Secrets and variables → Actions اضافه کن"
+              missing=1
+            else
+              echo "✓ $v تنظیم است"
+            fi
+          done
+          exit $missing
+
+      - run: npm install --omit=dev --no-audit --no-fund
       - run: node scripts/content-engine.mjs retry
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
