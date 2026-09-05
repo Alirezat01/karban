@@ -17,24 +17,6 @@ if (problems.length) {
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-/* ── health-check کلید سرویس: با یک تست نوشتن+پاک‌کردن، مطمئن می‌شویم کلید واقعاً
-   service_role است (کلید anon چون SELECT عمومی دارد، با تستِ فقط-خواندن گول می‌زد) ── */
-{
-  const probe = { job: '__health__', topic: 'write-probe', status: 'failed' };
-  const { error: insErr } = await supabase.from('content_jobs').insert(probe);
-  if (insErr) {
-    console.error(`❌ کلید SUPABASE_SERVICE_ROLE_KEY اجازهٔ نوشتن در دیتابیس ندارد: ${insErr.message}`);
-    if (/row-level security|42501|permission/i.test(insErr.message))
-      console.error('   این یعنی مقدار این secret به‌جای service_role، کلید anon/public گذاشته شده! کلید درست: Supabase → Project Settings → API Keys → سربرگ service_role (کلید sk_live-... یا قدیمی‌ها eyJ... با نقش service_role). بعد از اصلاح، دوباره Run کن.');
-    else
-      console.error('   جدول content_jobs مشکل دارد؛ اسکیمای دیتابیس را چک کن.');
-    process.exit(1);
-  }
-  const { error: delErr } = await supabase.from('content_jobs').delete().eq('job', '__health__');
-  if (delErr) console.error(`⚠️ ردیف تست پاک نشد (${delErr.message}) — در SQL Editor این را بزن: delete from content_jobs where job = '__health__';`);
-  console.log('✅ اتصال Supabase (service_role) سالم است — نوشتن و پاک‌کردن تست شد.');
-}
-
 const tg = (text) =>
   fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -52,6 +34,39 @@ const providers = [
 ].filter((p) => p.key);
 
 console.log(`🤖 ارائه‌دهنده‌های فعال (به همین ترتیب امتحان می‌شوند): ${providers.map((p) => p.name).join(' → ') || 'هیچ!'}`);
+
+/* ── تشخیص نوع کلید بدون افشای خود کلید: فقط نقش/نوع/طول را می‌گوییم ── */
+function describeKey(k) {
+  if (!k) return 'خالی';
+  if (k.startsWith('sb_secret_')) return 'کلید secret جدید (sb_secret_…) — نوع درست';
+  if (k.startsWith('sb_pub_') || k.startsWith('sb_anon_')) return 'کلید publishable/anon (sb_pub_…) — نوع اشتباه!';
+  try {
+    const payload = JSON.parse(Buffer.from(k.split('.')[1], 'base64').toString('utf8'));
+    return payload.role ? `کلید JWT با نقش «${payload.role}»` : 'کلید JWT بدون نقش';
+  } catch {
+    return `رشتهٔ ${k.length} کاراکتری (نه کلید JWT و نه sb_...)`;
+  }
+}
+
+/* ── health-check کلید سرویس: با یک تست نوشتن+پاک‌کردن مطمئن می‌شویم کلید واقعاً
+   service_role است (کلید anon چون SELECT عمومی دارد با تستِ فقط-خواندن گول می‌زد) ── */
+{
+  const probe = { job: '__health__', topic: 'write-probe', status: 'failed' };
+  const { error: insErr } = await supabase.from('content_jobs').insert(probe);
+  if (insErr) {
+    const why = `کلید «SUPABASE_SERVICE_ROLE_KEY» کار نمی‌کند | نوع کلید دریافتی: ${describeKey(SUPABASE_SERVICE_ROLE_KEY)} | خطا: ${insErr.message}`;
+    console.error('❌ ' + why);
+    if (/row-level security|42501|permission/i.test(insErr.message))
+      console.error('   یعنی مقدار این secret کلید service_role نیست (انگار anon/public گذاشته‌ای). کلید درست: Supabase → Project Settings → API Keys → سربرگ service_role → کپی کامل → GitHub → Settings → Secrets and variables → Actions → روی SUPABASE_SERVICE_ROLE_KEY گزینهٔ Update (نه secret جدید).');
+    else
+      console.error('   جدول content_jobs مشکل دارد؛ اسکیمای دیتابیس را چک کن.');
+    await tg(`❌ ورک‌فلوی کاربان نتوانست به دیتابیس بنویسد.\n${why}\nبرای دیدن جزئیات: لاگ ران در Actions → استپ article`);
+    process.exit(1);
+  }
+  const { error: delErr } = await supabase.from('content_jobs').delete().eq('job', '__health__');
+  if (delErr) console.error(`⚠️ ردیف تست پاک نشد (${delErr.message}) — در SQL Editor این را بزن: delete from content_jobs where job = '__health__';`);
+  console.log('✅ اتصال Supabase (service_role) سالم است — نوشتن و پاک‌کردن تست شد.');
+}
 
 async function callAI(system, user) {
   const errs = [];
@@ -142,7 +157,12 @@ function parseJSON(text) {
 }
 
 async function logJob(job, topic, status, provider, error, meta) {
-  const { error: dbErr } = await supabase.from('content_jobs').insert({ job, topic, status, provider, error, meta });
+  const base = { job, topic, status, provider };
+  let { error: dbErr } = await supabase.from('content_jobs').insert({ ...base, error, meta });
+  if (dbErr) {
+    // شاید ستون error/meta کوچک‌تر از متن باشد؛ با نسخهٔ کوتاه دوباره تلاش می‌کنیم تا لاگ هرگز گم نشود
+    ({ error: dbErr } = await supabase.from('content_jobs').insert({ ...base, error: String(error ?? '').slice(0, 180), meta: null }));
+  }
   if (dbErr) console.error('[logJob]', dbErr.message); // لاگ نباید هرگز خودِ ورک‌فلو را بیندازد
 }
 
