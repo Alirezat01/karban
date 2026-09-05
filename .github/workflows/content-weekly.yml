@@ -1,7 +1,7 @@
 name: content-weekly
 on:
   schedule:
-    - cron: '0 6 * * 4'   # پنجشنبه ۹:۳۰ تهران
+    - cron: '0 6 * * 4'
   workflow_dispatch: {}
 jobs:
   content:
@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: npm install --omit=dev
       - name: article
         run: node scripts/content-engine.mjs article
