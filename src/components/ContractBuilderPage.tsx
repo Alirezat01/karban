@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
-import { Copy, FileText, Printer, Wand2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Copy, FileText, Printer, Save, Wand2 } from 'lucide-react';
 import { CONTRACT_TYPES, INDUSTRIES, legalNotes } from '@/data/config';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 
 const laborTypes = ['کار', 'کارآموزی'];
 
 export default function ContractBuilderPage() {
+  const { userId } = useAuth();
   const [type, setType] = useState<string>('کار');
   const [industry, setIndustry] = useState<string>('برنامه‌نویسان');
   const [partyA, setPartyA] = useState('');
@@ -14,8 +17,30 @@ export default function ContractBuilderPage() {
   const [extra, setExtra] = useState('');
   const [built, setBuilt] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [rootId, setRootId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const isLabor = laborTypes.includes(type);
+
+  /* بازگرداندن قرارداد ذخیره‌شده از داشبورد (?restore=) */
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('karban-builder-restore');
+      if (raw) {
+        const c = JSON.parse(raw) as Record<string, string>;
+        if (c.type) setType(c.type);
+        if (c.industry) setIndustry(c.industry);
+        if (c.partyA) setPartyA(c.partyA);
+        if (c.partyB) setPartyB(c.partyB);
+        if (c.duration) setDuration(c.duration);
+        if (c.amount) setAmount(c.amount);
+        if (c.extra) setExtra(c.extra);
+        if (c.__root) setRootId(c.__root);
+        setBuilt(true);
+        localStorage.removeItem('karban-builder-restore');
+      }
+    } catch { /* noop */ }
+  }, []);
 
   const text = useMemo(() => {
     const a = partyA.trim() || '…………………………';
@@ -43,6 +68,36 @@ export default function ContractBuilderPage() {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const save = async () => {
+    if (!userId) return;
+    setSaveState('saving');
+    try {
+      const root = rootId || crypto.randomUUID();
+      const { data: prev } = await supabase
+        .from('saved_contracts')
+        .select('version')
+        .eq('root_id', root)
+        .eq('user_id', userId)
+        .order('version', { ascending: false })
+        .limit(1);
+      const version = ((prev?.[0]?.version as number) || 0) + 1;
+      const { error } = await supabase.from('saved_contracts').insert({
+        user_id: userId,
+        root_id: root,
+        title: `قرارداد ${type} — ${industry}`,
+        type,
+        industry,
+        version,
+        content: { type, industry, partyA, partyB, duration, amount, extra, __root: root },
+      });
+      setSaveState(error ? 'error' : 'saved');
+      if (!error) setRootId(root);
+      setTimeout(() => setSaveState('idle'), 2500);
+    } catch {
+      setSaveState('error');
+    }
   };
 
   return (
@@ -94,6 +149,14 @@ export default function ContractBuilderPage() {
             <div className="health-cta">
               <button className="button" onClick={copy}>{copied ? '✓ کپی شد' : 'کپی متن'} <Copy size={15} /></button>
               <button className="button button-outline" onClick={() => window.print()}><Printer size={15} /> چاپ / PDF</button>
+              {userId ? (
+                <button className="button button-outline" onClick={save}>
+                  <Save size={15} />
+                  {saveState === 'saving' ? 'در حال ذخیره…' : saveState === 'saved' ? '✓ ذخیره شد (نسخه جدید)' : saveState === 'error' ? 'ذخیره نشد — دوباره' : rootId ? 'ذخیره نسخه جدید' : 'ذخیره در حساب من'}
+                </button>
+              ) : (
+                <a className="button button-outline" href="/ورود"><Save size={15} /> برای ذخیره، وارد شو</a>
+              )}
             </div>
             <p className="muted-note">این متن، پیش‌نویس استاندارد است؛ برای نسخه نهایی و اختصاصی، از صفحه خدمات «تنظیم قرارداد اختصاصی» سفارش بدهید.</p>
           </div>

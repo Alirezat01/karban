@@ -27,6 +27,17 @@ const OrderPage = React.lazy(() => import('@/components/OrderPage'));
 const TermsPage = React.lazy(() => import('@/components/ContractBuilderPage').then(() => import('@/components/TermsPage')));
 const ContractBuilderPage = React.lazy(() => import('@/components/ContractBuilderPage'));
 const PrivacyPage = React.lazy(() => import('@/components/PrivacyPage'));
+const ChecklistsListPage = React.lazy(() =>
+  import('@/components/ChecklistsPage').then((m) => ({ default: m.ChecklistsListPage })),
+);
+const ChecklistViewPage = React.lazy(() =>
+  import('@/components/ChecklistsPage').then((m) => ({ default: m.ChecklistViewPage })),
+);
+const LawLibraryPage = React.lazy(() =>
+  import('@/components/LawLibraryPage').then((m) => ({ default: m.LawLibraryPage })),
+);
+const LoginPage = React.lazy(() => import('@/components/LoginPage'));
+const DashboardPage = React.lazy(() => import('@/components/DashboardPage'));
 const RequestsListPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestsListPage })),
 );
@@ -56,7 +67,7 @@ function NotFound() {
     </section>
   );
 }
-const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax'; title: string; desc: string }> = {
+const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination'; title: string; desc: string }> = {
   'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
   'هزینه-استخدام': { type: 'hire', title: 'ماشین‌حساب هزینه استخدام', desc: 'بهای تمام‌شدن واقعی یک کارمند، قلم‌به‌قلم.' },
   'سنوات': { type: 'severance', title: 'ماشین‌حساب سنوات پایان خدمت', desc: 'مبلغ سنوات پایان کار را محاسبه کنید.' },
@@ -65,6 +76,10 @@ const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirem
   'مالیات-مشاغل': { type: 'business-tax', title: 'ماشین‌حساب مالیات مشاغل و مغازه', desc: 'محاسبه پلکانی ماده ۱۳۱ با معافیت سالانه.' },
   'ارزش-افزوده': { type: 'vat', title: 'ماشین‌حساب ارزش افزوده', desc: 'محاسبه ۱۰٪ — از پایه یا از داخل فاکتور.' },
   'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', desc: 'محاسبه پلکانی مالیات حقوق ۱۴۰۵ بر اساس معافیت سالانه و نرخ‌های ماده ۸۴؛ برآورد دقیق مالیات ماهانه و سالانه هر کارمند.' },
+  'عیدی-و-پاداش': { type: 'eydi', title: 'ماشین‌حساب عیدی و پاداش ۱۴۰۵', desc: 'مبلغ عیدی به نسبت ماه‌های کارکرد و پس‌انداز ماهانه آن — مطابق ماده ۱۱۷ قانون کار.' },
+  'بیمه-تامین-اجتماعی': { type: 'insurance', title: 'ماشین‌حساب بیمه تأمین اجتماعی', desc: 'تفکیک دقیق سهم ۷٪ کارگر و ۲۳٪ کارفرما (بیمه + بیکاری) از حقوق مشمول.' },
+  'مرخصی': { type: 'leave', title: 'ماشین‌حساب مرخصی و ارزش آن', desc: 'مانده مرخصی استحقاقی و ارزش ریالی آن — مطابق مواد ۶۴ و ۶۶ قانون کار.' },
+  'مزایای-پایان-همکاری': { type: 'termination', title: 'ماشین‌حساب تسویه حساب و مزایای پایان همکاری', desc: 'سنوات + عیدی پرو‌راتا + مانده مرخصی = خسارت اخراج (ماده ۲۷) یکجا محاسبه می‌شود.' },
 };
 
 const faqJsonLd = {
@@ -80,6 +95,32 @@ const faqJsonLd = {
 };
 type CalcSeoEntry = { about: string[]; how: string[]; example: string[]; laws: string[]; faqs: [string, string][]; links: { href: string; label: string }[] };
 const calcSeoMap = calcSeo as unknown as Record<string, CalcSeoEntry>;
+
+/** ItemList JSON-LD for list/hub pages */
+function listJsonLd(path: string, items: { name: string; href: string }[]): JsonLd {
+  const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'کاربان',
+      itemListElement: items.map((it, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: it.name,
+        url: u(it.href),
+      })),
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'خانه', item: 'https://karbanapp.ir/' },
+        { '@type': 'ListItem', position: 2, name: items.length ? path.replace('/', '') : 'فهرست', item: u(path) },
+      ],
+    },
+  ];
+}
 
 /** JSON-LD for calculator pages — mirrors the bundle written by prerender-meta.mjs */
 function calcJsonLd(slug: string, title: string, description: string): JsonLd {
@@ -150,7 +191,64 @@ export default function App() {
     }
   }
 
-    if (segments[0] === 'حریم-خصوصی') {
+    if (segments[0] === 'چک-لیست‌ها') {
+    if (segments.length === 1) {
+      return (
+        <Page title="چک‌لیست‌های آماده مدیریت کسب‌وکار | کاربان" description="چک‌لیست استخدام، اخراج، تنظیم قرارداد، پایان همکاری و مالیاتی کسب‌وکار — با ذخیره پیشرفت و خروجی PDF." breadcrumb={['چک‌لیست‌ها']} jsonLd={listJsonLd('/چک-لیست‌ها', [
+          { name: 'چک‌لیست استخدام نیروی جدید', href: '/چک-لیست‌ها/چک-لیست-استخدام' },
+          { name: 'چک‌لیست اخراج و فسخ', href: '/چک-لیست‌ها/چک-لیست-اخراج-و-فسخ' },
+          { name: 'چک‌لیست تنظیم قرارداد', href: '/چک-لیست‌ها/چک-لیست-تنظیم-قرارداد' },
+          { name: 'چک‌لیست پایان همکاری', href: '/چک-لیست‌ها/چک-لیست-پایان-همکاری' },
+          { name: 'چک‌لیست مالیاتی کسب‌وکار', href: '/چک-لیست‌ها/چک-لیست-مالیاتی-کسب-و-کار' },
+        ])}>
+          <ChecklistsListPage />
+        </Page>
+      );
+    }
+    return (
+      <Page title={`چک‌لیست ${segments[1]} | کاربان`} description="چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت." breadcrumb={['چک‌لیست‌ها', segments[1]]}>
+        <ChecklistViewPage slug={segments[1]} />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'کتابخانه-قوانین') {
+    if (segments.length === 1) {
+      return (
+        <Page title="کتابخانه قوانین — قانون کار، تأمین اجتماعی و مالیات به زبان ساده | کاربان" description="جست‌وجوی سریع بین مواد قانون کار، تأمین اجتماعی، مالیات‌های مستقیم و آیین‌نامه‌ها؛ خلاصه کاربردی هر ماده با برچسب موضوعی." breadcrumb={['کتابخانه قوانین']} jsonLd={listJsonLd('/کتابخانه-قوانین', [
+          { name: 'قانون کار', href: '/کتابخانه-قوانین/قانون-کار' },
+          { name: 'تأمین اجتماعی', href: '/کتابخانه-قوانین/تأمین-اجتماعی' },
+          { name: 'مالیات‌های مستقیم', href: '/کتابخانه-قوانین/مالیات‌های-مستقیم' },
+          { name: 'آیین‌نامه‌ها', href: '/کتابخانه-قوانین/آیین‌نامه‌ها' },
+        ])}>
+          <LawLibraryPage />
+        </Page>
+      );
+    }
+    return (
+      <Page title={`${segments[1]} — کتابخانه قوانین کاربان`} description="گزیده مواد پرکاربرد این قانون با زبان ساده و جست‌وجوی سریع." breadcrumb={['کتابخانه قوانین', segments[1]]}>
+        <LawLibraryPage category={segments[1]} />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'ورود') {
+    return (
+      <Page title="ورود به حساب کاربری کاربان" description="با حساب گوگل وارد کاربان شو؛ قراردادها، درخواست‌ها و اعلان‌هایت در داشبورد می‌ماند." breadcrumb={['ورود']} noindex>
+        <LoginPage />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'داشبورد') {
+    return (
+      <Page title="داشبورد کاربر | کاربان" description="قراردادهای ذخیره‌شده، درخواست‌های مشاوره، تیکت پشتیبانی و اعلان‌های تو." breadcrumb={['داشبورد']} noindex>
+        <DashboardPage />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'حریم-خصوصی') {
     return (
            <Page title="حریم خصوصی کاربان" description="سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود." breadcrumb={['حریم خصوصی']}>
         <PrivacyPage />

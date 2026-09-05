@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 
-type Tab = 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter';
+type Tab = 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -232,6 +232,9 @@ export default function AdminPage() {
     ['leads', 'شماره‌های دانلود'],
     ['orders', 'سفارش‌ها'],
     ['consultations', 'درخواست‌های مشاوره'],
+    ['tickets', 'تیکت‌ها'],
+    ['feedback', 'بازخوردها'],
+    ['notifs', 'اعلان‌ها'],
     ['users', 'مدیریت کاربران'],
     ['newsletter', 'خبرنامه'],
   ];
@@ -267,6 +270,9 @@ export default function AdminPage() {
           {tab === 'leads' && <LeadsTab />}
           {tab === 'orders' && <OrdersTab />}
           {tab === 'consultations' && <ConsultationsTab />}
+          {tab === 'tickets' && <TicketsTab />}
+          {tab === 'feedback' && <FeedbackTab />}
+          {tab === 'notifs' && <NotifsTab />}
           {tab === 'users' && <UsersTab />}
           {tab === 'newsletter' && <NewsletterTab />}
         </div>
@@ -1156,57 +1162,298 @@ function OrdersTab() {
 }
 
 function ConsultationsTab() {
-  const [items, setItems] = useState<ConsultRow[]>([]);
+  const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+  const [note, setNote] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    let active = true;
-    supabase
-      .from('consultation_requests')
-      .select('id,mobile,domain,service,created_at')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (active) {
-          setItems((data || []) as ConsultRow[]);
-          setLoading(false);
-        }
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('consultation_requests').select('*').order('created_at', { ascending: false }).limit(100);
+    setItems(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const setStatus = async (id: string, status: string) => {
+    await supabase.from('consultation_requests').update({ status }).eq('id', id);
+    load();
+  };
+
+  const reply = async (item: Record<string, unknown>) => {
+    const text = (note[item.id as string] || '').trim();
+    if (!text) return;
+    await supabase.from('consultation_requests').update({ status: 'in_progress', admin_note: text }).eq('id', item.id as string);
+    if (item.user_id) {
+      await supabase.from('notifications').insert({
+        user_id: item.user_id,
+        title: 'پاسخ مشاور کاربان',
+        body: text.slice(0, 300),
+        href: '/داشبورد',
       });
-    return () => {
-      active = false;
-    };
-  }, []);
+    }
+    setNote({ ...note, [item.id as string]: '' });
+    load();
+  };
 
   if (loading) return <p>در حال بارگذاری...</p>;
+  const hasDetail = items.some((i) => 'topic' in i || 'description' in i);
   return (
     <div className="admin-table-wrap">
       <h2>درخواست‌های مشاوره</h2>
+      {!hasDetail && (
+        <p className="muted-note">
+          برای نمایش کامل (موضوع، توضیح، اولویت و پاسخ‌دهی)، ابتدا اسکریپت «phase12.sql» را در SQL Editor اجرا کن.
+        </p>
+      )}
       <table className="admin-table">
         <thead>
           <tr>
             <th>#</th>
             <th>موبایل</th>
-            <th>حوزه</th>
-            <th>خدمت</th>
+            <th>موضوع / خدمت</th>
+            {hasDetail && <th>توضیح</th>}
+            {hasDetail && <th>اولویت</th>}
+            {hasDetail && <th>وضعیت</th>}
             <th>تاریخ</th>
+            {hasDetail && <th>پاسخ</th>}
           </tr>
         </thead>
         <tbody>
-          {items.map((item, index) => (
-            <tr key={item.id}>
-              <td>{index + 1}</td>
-              <td>{item.mobile}</td>
-              <td>{item.domain === 'financial' ? 'مالی' : 'روابط کار'}</td>
-              <td>{item.service}</td>
-              <td>{fmtDate(item.created_at)}</td>
-            </tr>
-          ))}
+          {items.map((item, index) => {
+            const id = String(item.id);
+            return (
+              <tr key={id}>
+                <td>{index + 1}</td>
+                <td>{String(item.mobile || '—')}</td>
+                <td>{String(item.topic || item.service || '—')}</td>
+                {hasDetail && <td style={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}>{String(item.description || '—')}</td>}
+                {hasDetail && <td>{String(item.priority || 'معمولی')}</td>}
+                {hasDetail && (
+                  <td>
+                    <select value={String(item.status || 'new')} onChange={(e) => setStatus(id, e.target.value)}>
+                      <option value="new">جدید</option>
+                      <option value="in_progress">در حال انجام</option>
+                      <option value="done">انجام شد</option>
+                      <option value="rejected">رد شد</option>
+                    </select>
+                  </td>
+                )}
+                <td>{fmtDate(String(item.created_at || ''))}</td>
+                {hasDetail && (
+                  <td>
+                    <div style={{ display: 'flex', gap: '.3rem' }}>
+                      <input
+                        value={note[id] || ''}
+                        onChange={(e) => setNote({ ...note, [id]: e.target.value })}
+                        placeholder="پاسخ به کاربر…"
+                        style={{ minWidth: 140 }}
+                      />
+                      <button className="button button-small" onClick={() => reply(item)}>ارسال</button>
+                    </div>
+                    {item.admin_note ? <small style={{ display: 'block', marginTop: '.3rem' }}>قبلی: {String(item.admin_note)}</small> : null}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
           {items.length === 0 && (
-            <tr>
-              <td colSpan={5}>هیچ درخواستی ثبت نشده است.</td>
-            </tr>
+            <tr><td colSpan={8}>هیچ درخواستی ثبت نشده است.</td></tr>
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/* ── تیکت‌ها ───────────────────────────────────────────────── */
+type AdminTicket = { id: string; user_id: string; subject: string; status: string; priority: string; created_at: string };
+type AdminTicketMsg = { id: string; ticket_id: string; sender: 'user' | 'admin'; body: string; attachment_path: string | null; created_at: string };
+
+function TicketsTab() {
+  const [tickets, setTickets] = useState<AdminTicket[]>([]);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<AdminTicketMsg[]>([]);
+  const [reply, setReply] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('tickets').select('id,user_id,subject,status,priority,created_at').order('created_at', { ascending: false }).limit(100);
+    setTickets((data || []) as AdminTicket[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const openTicket = async (id: string) => {
+    setOpenId(id);
+    const { data } = await supabase.from('ticket_messages').select('id,ticket_id,sender,body,attachment_path,created_at').eq('ticket_id', id).order('created_at', { ascending: true });
+    setMessages((data || []) as AdminTicketMsg[]);
+  };
+
+  const send = async () => {
+    if (!openId || !reply.trim()) return;
+    await supabase.from('ticket_messages').insert({ ticket_id: openId, sender: 'admin', body: reply.trim() });
+    const ticket = tickets.find((t) => t.id === openId);
+    await supabase.from('tickets').update({ status: 'answered' }).eq('id', openId);
+    if (ticket?.user_id) {
+      await supabase.from('notifications').insert({
+        user_id: ticket.user_id,
+        title: 'پاسخ پشتیبانی کاربان',
+        body: reply.trim().slice(0, 300),
+        href: '/داشبورد',
+      });
+    }
+    setReply('');
+    openTicket(openId);
+    load();
+  };
+
+  const setStatus = async (id: string, status: string) => {
+    await supabase.from('tickets').update({ status }).eq('id', id);
+    load();
+  };
+
+  const openFile = async (path: string) => {
+    const { data } = await supabase.storage.from('ticket-files').createSignedUrl(path, 120);
+    if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
+  };
+
+  if (loading) return <p>در حال بارگذاری...</p>;
+  return (
+    <div>
+      <h2>تیکت‌های پشتیبانی</h2>
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr><th>موضوع</th><th>اولویت</th><th>وضعیت</th><th>تاریخ</th><th>گفت‌وگو</th></tr>
+          </thead>
+          <tbody>
+            {tickets.map((t) => (
+              <tr key={t.id}>
+                <td>{t.subject}</td>
+                <td>{t.priority}</td>
+                <td>
+                  <select value={t.status} onChange={(e) => setStatus(t.id, e.target.value)}>
+                    <option value="open">باز</option>
+                    <option value="answered">پاسخ داده شد</option>
+                    <option value="closed">بسته شد</option>
+                  </select>
+                </td>
+                <td>{fmtDate(t.created_at)}</td>
+                <td><button className="button button-small" onClick={() => openTicket(t.id)}>{openId === t.id ? 'باز است' : 'نمایش'}</button></td>
+              </tr>
+            ))}
+            {tickets.length === 0 && <tr><td colSpan={5}>تیکتی ثبت نشده است.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {openId && (
+        <div className="contact-card calc-card" style={{ marginTop: '1rem' }}>
+          <h3>گفت‌وگوی تیکت</h3>
+          {messages.map((m) => (
+            <div key={m.id} className={`dash-msg ${m.sender === 'admin' ? 'is-admin' : ''}`}>
+              <header><strong>{m.sender === 'admin' ? 'پشتیبانی' : 'کاربر'}</strong> <small>{fmtDate(m.created_at)}</small></header>
+              <p>{m.body}</p>
+              {m.attachment_path && (
+                <button className="text-link" onClick={() => openFile(m.attachment_path!)}>فایل پیوست</button>
+              )}
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.8rem', flexWrap: 'wrap' }}>
+            <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="پاسخ پشتیبانی…" style={{ flex: 1, minWidth: 200 }} />
+            <button className="button button-small" onClick={send}>ارسال پاسخ + اعلان</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── بازخوردها ─────────────────────────────────────────────── */
+function FeedbackTab() {
+  const [items, setItems] = useState<{ id: string; target_type: string; target_id: string; rating: number; comment: string | null; created_at: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('feedback').select('id,target_type,target_id,rating,comment,created_at').order('created_at', { ascending: false }).limit(200);
+    setItems((data || []) as typeof items);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const remove = async (id: string) => {
+    await supabase.from('feedback').delete().eq('id', id);
+    load();
+  };
+
+  if (loading) return <p>در حال بارگذاری...</p>;
+  const avg = items.length ? (items.reduce((s, i) => s + i.rating, 0) / items.length).toFixed(1) : '—';
+  return (
+    <div className="admin-table-wrap">
+      <h2>بازخورد کاربران — میانگین {avg} از ۵ ({items.length} نظر)</h2>
+      <table className="admin-table">
+        <thead><tr><th>نوع</th><th>مقصد</th><th>امتیاز</th><th>نظر</th><th>تاریخ</th><th></th></tr></thead>
+        <tbody>
+          {items.map((f) => (
+            <tr key={f.id}>
+              <td>{f.target_type}</td>
+              <td style={{ maxWidth: 240, overflowWrap: 'anywhere' }}>{f.target_id}</td>
+              <td>{'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)}</td>
+              <td style={{ maxWidth: 300 }}>{f.comment || '—'}</td>
+              <td>{fmtDate(f.created_at)}</td>
+              <td><button className="button button-small button-outline" onClick={() => remove(f.id)}>حذف</button></td>
+            </tr>
+          ))}
+          {items.length === 0 && <tr><td colSpan={6}>بازخوردی ثبت نشده است.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ── اعلان‌ها ───────────────────────────────────────────────── */
+function NotifsTab() {
+  const [form, setForm] = useState({ title: '', body: '', href: '/داشبورد' });
+  const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+
+  const broadcast = async () => {
+    if (!form.title.trim()) { setState('error'); return; }
+    setState('sending');
+    const { data: profiles } = await supabase.from('profiles').select('id');
+    const rows = (profiles || []).map((p) => ({
+      user_id: p.id,
+      title: form.title.trim(),
+      body: form.body.trim() || null,
+      href: form.href || '/داشبورد',
+    }));
+    if (rows.length) await supabase.from('notifications').insert(rows);
+    setState('done');
+    setForm({ title: '', body: '', href: '/داشبورد' });
+    setTimeout(() => setState('idle'), 2500);
+  };
+
+  return (
+    <div className="contact-card calc-card" style={{ maxWidth: 560 }}>
+      <h2>ارسال اعلان به همه کاربران</h2>
+      <label>عنوان
+        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="مثلاً: تغییر قوانین بیمه ۱۴۰۵" />
+      </label>
+      <label>متن اعلان
+        <textarea rows={3} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} placeholder="خلاصه خبر…" />
+      </label>
+      <label>لینک (اختیاری)
+        <input value={form.href} onChange={(e) => setForm({ ...form, href: e.target.value })} placeholder="/داشبورد" />
+      </label>
+      <button className="button" onClick={broadcast} disabled={state === 'sending'}>
+        {state === 'sending' ? 'در حال ارسال…' : 'ارسال به همه'}
+      </button>
+      {state === 'done' && <small className="admin-success">اعلان برای همه کاربران ثبت شد.</small>}
+      {state === 'error' && <small className="admin-error">عنوان را بنویس.</small>}
     </div>
   );
 }

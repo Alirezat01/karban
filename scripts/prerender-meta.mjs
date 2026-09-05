@@ -22,6 +22,8 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import calcSeo from '../src/data/calc-seo.json' with { type: 'json' };
+import checklists from '../src/data/checklists.json' with { type: 'json' };
+import lawsData from '../src/data/laws.json' with { type: 'json' };
 
 const ORIGIN = 'https://karbanapp.ir';
 const SUPABASE_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
@@ -92,11 +94,11 @@ function breadcrumbHtml(pairs) {
 
 const NAV_LINKS = [
   ['/', 'خانه'], ['/قراردادها', 'قراردادها'], ['/ابزارهای-هوش-مصنوعی', 'ابزارهای هوش مصنوعی'],
-  ['/دانشنامه', 'دانشنامه'], ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/خدمات', 'خدمات'], ['/تماس-با-ما', 'تماس با ما'],
+  ['/دانشنامه', 'دانشنامه'], ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/چک-لیست‌ها', 'چک‌لیست‌ها'], ['/خدمات', 'خدمات'], ['/تماس-با-ما', 'تماس با ما'],
 ];
 const FOOTER_LINKS = [
   ['/دانشنامه', 'دانشنامه'], ['/قراردادها', 'قراردادها'], ['/خدمات', 'خدمات'], ['/ابزارهای-هوش-مصنوعی', 'ابزارهای هوش مصنوعی'],
-  ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/درباره-ما', 'درباره ما'], ['/تماس-با-ما', 'تماس با ما'],
+  ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/چک-لیست‌ها', 'چک‌لیست‌ها'], ['/کتابخانه-قوانین', 'کتابخانه قوانین'], ['/درباره-ما', 'درباره ما'], ['/تماس-با-ما', 'تماس با ما'],
   ['/قوانین', 'قوانین و شرایط'], ['/حریم-خصوصی', 'حریم خصوصی'],
 ];
 
@@ -216,6 +218,10 @@ const CALCULATORS = [
   { path: '/ابزارهای-هوش-مصنوعی/مالیات-مشاغل', title: 'ماشین‌حساب مالیات مشاغل و مغازه', description: 'محاسبه پلکانی مالیات مشاغل مطابق ماده ۱۳۱ با کسر معافیت سالانه.' },
   { path: '/ابزارهای-هوش-مصنوعی/ارزش-افزوده', title: 'ماشین‌حساب ارزش افزوده', description: 'محاسبه مالیات بر ارزش افزوده با نرخ ۱۰٪ — هم افزودن به پایه و هم استخراج از داخل فاکتور.' },
   { path: '/ابزارهای-هوش-مصنوعی/مالیات-حقوق', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', description: 'محاسبه پلکانی مالیات حقوق ۱۴۰۵ بر اساس معافیت سالانه و نرخ‌های ماده ۸۴؛ برآورد دقیق مالیات ماهانه و سالانه هر کارمند.' },
+  { path: '/ابزارهای-هوش-مصنوعی/عیدی-و-پاداش', title: 'ماشین‌حساب عیدی و پاداش ۱۴۰۵', description: 'محاسبه عیدی به نسبت ماه‌های کارکرد مطابق ماده ۱۱۷ قانون کار، به همراه پس‌انداز ماهانه پیشنهادی.' },
+  { path: '/ابزارهای-هوش-مصنوعی/بیمه-تامین-اجتماعی', title: 'ماشین‌حساب بیمه تأمین اجتماعی', description: 'تفکیک دقیق سهم ۷ درصدی کارگر و ۲۳ درصدی کارفرما (بیمه و بیمه بیکاری) از حقوق مشمول، مطابق ماده ۲۸.' },
+  { path: '/ابزارهای-هوش-مصنوعی/مرخصی', title: 'ماشین‌حساب مرخصی و ارزش آن', description: 'محاسبه مانده مرخصی استحقاقی و ارزش ریالی آن مطابق مواد ۶۴ و ۶۶ قانون کار.' },
+  { path: '/ابزارهای-هوش-مصنوعی/مزایای-پایان-همکاری', title: 'ماشین‌حساب تسویه حساب و مزایای پایان همکاری', description: 'محاسبه یکجای سنوات، عیدی پرو‌راتا و مانده مرخصی (خسارت اخراج ماده ۲۷).' },
 ];
 const EXTRA_TOOLS = [
   { path: '/ابزارهای-هوش-مصنوعی/تست-سلامت', title: 'تست سلامت کسب‌وکار', description: 'نقاط قوت و ریسک‌های حقوقی، مالی و عملیاتی کسب‌وکار خود را بشناسید.' },
@@ -590,6 +596,120 @@ async function main() {
     console.log(`prerender: requests done (${requests.length}, ${count} total).`);
   } catch (e) {
     console.warn(`prerender: requests skipped (${String(e).slice(0, 120)})`);
+  }
+
+  /* 8) چک‌لیست‌ها — هاب + ۵ صفحه کامل */
+  {
+    const cl = checklists;
+    const crumb = [{ name: 'خانه', href: '/' }, { name: 'چک‌لیست‌ها', path: '/چک-لیست‌ها' }];
+    const inner =
+      `${shell('/چک-لیست‌ها', crumb)}` +
+      `${pageOpen('ابزارهای آماده کاربان', false)}` +
+      `<h1>چک‌لیست‌های آماده مدیریت کسب‌وکار</h1>` +
+      `<p class="lead">پنج چک‌لیست کاربردی برای لحظه‌های حساس مدیریت: استخدام، اخراج، تنظیم قرارداد، تسویه و مالیات؛ هر مورد را تیک بزن و پیشرفتت را دنبال کن.</p>` +
+      `<div class="contract-grid">` +
+      cl.map((c) => `<article class="contract-card"><div class="contract-card-top"><div><small>چک‌لیست</small><h2>${esc(c.title)}</h2><p>${esc(c.description)}</p></div></div><a class="button button-small" href="${url(`/چک-لیست‌ها/${c.slug}`)}">شروع چک‌لیست ←</a></article>`).join('') +
+      `</div>` +
+      relatedBox('ابزارهای مرتبط کاربان', [
+        { href: '/قراردادها', label: 'بانک قراردادها' },
+        { href: '/ابزارهای-هوش-مصنوعی', label: 'ماشین‌حساب‌ها' },
+        { href: '/کتابخانه-قوانین', label: 'کتابخانه قوانین' },
+      ]) +
+      `${pageClose()}`;
+    await write('/چک-لیست‌ها', transformHtml(template, {
+      title: 'چک‌لیست‌های آماده مدیریت کسب‌وکار | کاربان',
+      description: 'چک‌لیست استخدام، اخراج، تنظیم قرارداد، پایان همکاری و مالیاتی کسب‌وکار — با ذخیره پیشرفت و خروجی PDF.',
+      path: '/چک-لیست‌ها',
+      jsonLd: [
+        itemListLd(cl.map((c) => ({ name: c.title, href: `/چک-لیست‌ها/${c.slug}` }))),
+        breadcrumbLd(crumb),
+      ],
+      inner,
+    }));
+
+    for (const c of cl) {
+      const path = `/چک-لیست‌ها/${c.slug}`;
+      const body =
+        `${shell(path, [{ name: 'چک‌لیست‌ها', href: '/چک-لیست‌ها' }, { name: c.title, path }])}` +
+        `${pageOpen('چک‌لیست کاربردی')}` +
+        `<h1>${esc(c.title)}</h1>` +
+        `<p class="lead">${esc(c.description)}</p>` +
+        `<div class="contact-card calc-card checklist-box">` +
+        c.items.map((i) => `<div class="checklist-item"><span>${esc(i)}</span></div>`).join('') +
+        `</div>` +
+        relatedBox('چک‌لیست‌های دیگر', cl.filter((x) => x.slug !== c.slug).map((x) => ({ href: `/چک-لیست‌ها/${x.slug}`, label: x.title }))) +
+        `${pageClose()}`;
+      await write(path, transformHtml(template, {
+        title: `${c.title} | کاربان`,
+        description: `${c.description} — ${c.items.length} گام عملی با ذخیره پیشرفت و خروجی PDF.`,
+        path,
+        jsonLd: [
+          breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'چک‌لیست‌ها', href: '/چک-لیست‌ها' }, { name: c.title, path }]),
+          faqLd(c.items.slice(0, 4).map((i) => [i.split('؛')[0].split(' (')[0], i])),
+        ],
+        inner: body,
+      }));
+    }
+    console.log(`prerender: checklists done (${cl.length + 1}, ${count} total).`);
+  }
+
+  /* 9) کتابخانه قوانین — هاب + ۴ دسته */
+  {
+    const LAWS = lawsData.laws;
+    const CATS = ['همه', ...lawsData.categories];
+    const catCrumb = [{ name: 'خانه', href: '/' }, { name: 'کتابخانه قوانین', path: '/کتابخانه-قوانین' }];
+    const lawCard = (l) =>
+      `<article class="law-card"><header><span class="law-badge">${esc(l.law)}</span><strong>${esc(l.num)} — ${esc(l.title)}</strong></header><p>${esc(l.text)}</p><footer>${l.tags.map((t) => `<span class="law-tag">#${esc(t)}</span>`).join('')}</footer></article>`;
+    const related = [
+      { href: '/دانشنامه', label: 'دانشنامه حقوقی' },
+      { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق' },
+      { href: '/درخواست‌های-اداری', label: 'درخواست‌های اداری آماده' },
+    ];
+    const lawSlug = (name) => name.replace(/ /g, '-');
+    const tabsHtml = (active) => `<nav class="law-tabs" aria-label="دسته‌بندی قوانین">` + CATS.map((c) => `<a href="${url(c === 'همه' ? '/کتابخانه-قوانین' : `/کتابخانه-قوانین/${lawSlug(c)}`)}"${c === active ? ' class="active"' : ''}>${esc(c)}</a>`).join('') + `</nav>`;
+
+    const hubInner =
+      `${shell('/کتابخانه-قوانین', catCrumb)}` +
+      `${pageOpen('کتابخانه قوانین کاربان')}` +
+      `<h1>کتابخانه قوانین — به زبان ساده</h1>` +
+      `<p class="lead">گزیده مواد پرکاربرد قانون کار، تأمین اجتماعی، مالیات‌های مستقیم و آیین‌نامه‌های اجرایی — با زبان ساده و برچسب‌های کاربردی.</p>` +
+      tabsHtml('همه') +
+      LAWS.map(lawCard).join('') +
+      `<p class="muted-note">متن‌ها خلاصه کاربردی مواد قانونی است و جایگزین مشاوره حقوقی موردی نیست؛ در پرونده‌های حساس به متن رسمی قانون مراجعه کنید.</p>` +
+      relatedBox('راهنماها و ابزارهای مرتبط', related) +
+      `${pageClose()}`;
+    await write('/کتابخانه-قوانین', transformHtml(template, {
+      title: 'کتابخانه قوانین — قانون کار، تأمین اجتماعی و مالیات به زبان ساده | کاربان',
+      description: 'جست‌وجوی سریع بین مواد قانون کار، تأمین اجتماعی، مالیات‌های مستقیم و آیین‌نامه‌ها؛ خلاصه کاربردی هر ماده با برچسب موضوعی.',
+      path: '/کتابخانه-قوانین',
+      jsonLd: [
+        itemListLd(lawsData.categories.map((c) => ({ name: c, href: `/کتابخانه-قوانین/${lawSlug(c)}` }))),
+        breadcrumbLd(catCrumb),
+      ],
+      inner: hubInner,
+    }));
+
+    for (const cat of lawsData.categories) {
+      const path = `/کتابخانه-قوانین/${lawSlug(cat)}`;
+      const items = LAWS.filter((l) => l.law === cat);
+      const inner =
+        `${shell(path, [{ name: 'کتابخانه قوانین', href: '/کتابخانه-قوانین' }, { name: cat, path }])}` +
+        `${pageOpen('کتابخانه قوانین کاربان')}` +
+        `<h1>${esc(cat)} — کتابخانه قوانین کاربان</h1>` +
+        `<p class="lead">گزیده ${esc(items.length.toString())} ماده پرکاربرد با زبان ساده؛ برای جست‌وجوی سریع بین همه مواد، صفحه اصلی کتابخانه را ببین.</p>` +
+        tabsHtml(cat) +
+        items.map(lawCard).join('') +
+        relatedBox('راهنماها و ابزارهای مرتبط', related) +
+        `${pageClose()}`;
+      await write(path, transformHtml(template, {
+        title: `${cat} — گزیده مواد پرکاربرد به زبان ساده | کاربان`,
+        description: `گزیده مواد پرکاربرد ${cat} با زبان ساده و برچسب موضوعی؛ بخشی از کتابخانه قوانین کاربان.`,
+        path,
+        jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'کتابخانه قوانین', href: '/کتابخانه-قوانین' }, { name: cat, path }])],
+        inner,
+      }));
+    }
+    console.log(`prerender: law library done (${CATS.length}, ${count} total).`);
   }
 
   console.log(`prerender: ${count} route HTML files written (full-content mode).`);

@@ -5,6 +5,7 @@ import { applySEO } from '@/lib/seo';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin } from '@/lib/notify';
+import RatingWidget from '@/components/RatingWidget';
 
 type Props = { title: string; category: string; contractId?: string };
 
@@ -212,6 +213,10 @@ export default function ArticlePage({ title, category, contractId }: Props) {
               </a>
             </div>
           </div>
+
+          {isContract && (
+            <RatingWidget targetType="contract" targetId={contractId || title} title="این قرارداد چقدر برایت مفید بود؟" />
+          )}
         </div>
       </div>
     </section>

@@ -15,7 +15,7 @@ type CalcSeoEntry = {
 };
 const calcSeoMap = calcSeo as unknown as Record<string, CalcSeoEntry>;
 
-export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax';
+export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination';
 
 type Props = { type: CalcType; title: string; description: string };
 
@@ -57,6 +57,10 @@ const noteKey: Record<CalcType, string> = {
   'business-tax': 'مالیات-مشاغل',
   vat: 'ارزش-افزوده',
   'salary-tax': 'مالیات-حقوق',
+  eydi: 'عیدی-و-پاداش',
+  insurance: 'بیمه-تامین-اجتماعی',
+  leave: 'مرخصی',
+  termination: 'مزایای-پایان-همکاری',
 };
 
 function CalcTable({ valueHeader = 'مبلغ (ریال)', children }: { valueHeader?: string; children: ReactNode }) {
@@ -110,6 +114,13 @@ export default function CalculatorPage({ type, title, description }: Props) {
 
   const [vatAmount, setVatAmount] = useState(100000000);
   const [vatMode, setVatMode] = useState<'add' | 'inside'>('add');
+
+  const [eydiMonths, setEydiMonths] = useState(12);
+  const [insuredBase, setInsuredBase] = useState(defaultParams.salary.base + defaultParams.salary.bon + defaultParams.salary.housing);
+  const [earnedDays, setEarnedDays] = useState(26);
+  const [usedDays, setUsedDays] = useState(14);
+  const [termMonths, setTermMonths] = useState(12);
+  const [remainingLeave, setRemainingLeave] = useState(6);
 
   useEffect(() => {
     let active = true;
@@ -234,6 +245,34 @@ export default function CalculatorPage({ type, title, description }: Props) {
     const total = rows.reduce((s, r) => s + r.amount, 0);
     return { insurance, monthlyTaxable, rows, total, monthly: Math.round(total / 12) };
   }, [base, params.salary]);
+
+  const eydiResult = useMemo(() => {
+    const months = Math.min(12, Math.max(0, eydiMonths));
+    const yearly = Math.round(base * 2);
+    const total = Math.round((yearly * months) / 12);
+    const monthlySaving = Math.round(yearly / 12);
+    return { yearly, months, total, monthlySaving };
+  }, [base, eydiMonths]);
+
+  const insuranceResult = useMemo(() => {
+    const worker = Math.round(insuredBase * 0.07);
+    const employer = Math.round(insuredBase * 0.2);
+    const unemployment = Math.round(insuredBase * 0.03);
+    return { worker, employer, unemployment, employerTotal: employer + unemployment, grand: worker + employer + unemployment };
+  }, [insuredBase]);
+
+  const leaveResult = useMemo(() => {
+    const perDay = Math.round(base / 30);
+    const remaining = Math.max(0, earnedDays - usedDays);
+    return { perDay, remaining, value: remaining * perDay };
+  }, [base, earnedDays, usedDays]);
+
+  const terminationResult = useMemo(() => {
+    const severance = Math.round(base * years);
+    const eydi = Math.round((base * 2 * Math.min(12, Math.max(0, termMonths))) / 12);
+    const leaveValue = remainingLeave * Math.round(base / 30);
+    return { severance, eydi, leaveValue, total: severance + eydi + leaveValue };
+  }, [base, years, termMonths, remainingLeave]);
 
   const notes = legalNotes[noteKey[type]] || [];
   const seo = calcSeoMap[noteKey[type]];
@@ -418,6 +457,84 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <TRow label="جمع مالیات سالانه" value={formatRial(salaryTaxResult.total)} strong />
                 <TRow label="مالیات ماهانه تقریبی" value={formatRial(salaryTaxResult.monthly)} strong />
               </CalcTable>
+            </>
+          )}
+
+          {type === 'eydi' && (
+            <>
+              <label>حقوق پایه ماهانه (پایه سنوات — ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <label>ماه‌های کارکرد در سال جاری (حداکثر ۱۲)
+                <input type="number" value={eydiMonths} onChange={(e) => setEydiMonths(Number(e.target.value) || 0)} />
+              </label>
+              <CalcTable>
+                <TRow label="عیدی سالانه تمام‌وقت (۲ × پایه سنوات)" value={formatRial(eydiResult.yearly)} />
+                <TRow label={`عیدی به نسبت ${formatFaNumber(eydiResult.months)} ماه کارکرد`} value={formatRial(eydiResult.total)} strong />
+                <TRow label="پس‌انداز ماهانه پیشنهادی (ذخیره عیدی)" value={formatRial(eydiResult.monthlySaving)} />
+              </CalcTable>
+              <p className="muted-note">مبنای قانونی عیدی، حقوق پایه (پایه سنوات) است؛ بن، مسکن و اضافه‌کاری در محاسبه دخالت ندارند.</p>
+            </>
+          )}
+
+          {type === 'insurance' && (
+            <>
+              <label>حقوق و مزایای مشمول بیمه (ریال)
+                <input type="number" value={insuredBase} onChange={(e) => setInsuredBase(Number(e.target.value) || 0)} />
+              </label>
+              <CalcTable>
+                <TRow label="سهم کارگر (۷٪) — از حقوق کسر می‌شود" value={formatRial(insuranceResult.worker)} minus />
+                <TRow label="بیمه سهم کارفرما (۲۰٪)" value={formatRial(insuranceResult.employer)} />
+                <TRow label="بیمه بیکاری سهم کارفرما (۳٪)" value={formatRial(insuranceResult.unemployment)} />
+                <TRow label="جمع سهم کارفرما (۲۳٪)" value={formatRial(insuranceResult.employerTotal)} />
+                <TRow label="جمع پرداختی ماهانه به تأمین اجتماعی (۳۰٪)" value={formatRial(insuranceResult.grand)} strong />
+                <TRow label="جمع سالانه (ماهانه × ۱۲)" value={formatRial(insuranceResult.grand * 12)} strong />
+              </CalcTable>
+              <p className="muted-note">خالص دریافتی کارگر پیش از مالیات = حقوق مشمول − سهم ۷ درصدی کارگر.</p>
+            </>
+          )}
+
+          {type === 'leave' && (
+            <>
+              <label>حقوق ماهانه (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <label>روزهای مرخصی استحقاقی کسب‌شده
+                <input type="number" value={earnedDays} onChange={(e) => setEarnedDays(Number(e.target.value) || 0)} />
+              </label>
+              <label>روزهای استفاده‌شده
+                <input type="number" value={usedDays} onChange={(e) => setUsedDays(Number(e.target.value) || 0)} />
+              </label>
+              <CalcTable>
+                <TRow label="ارزش هر روز مرخصی (حقوق ÷ ۳۰)" value={formatRial(leaveResult.perDay)} />
+                <TRow label="مانده مرخصی" value={`${formatFaNumber(leaveResult.remaining)} روز`} ok={leaveResult.remaining > 0} no={leaveResult.remaining === 0} />
+                <TRow label="ارزش ریالی مانده مرخصی" value={formatRial(leaveResult.value)} strong />
+              </CalcTable>
+              <p className="muted-note">طبق ماده ۶۶ قانون کار، مانده مرخصی در پایان قرارداد باید نقداً تسویه شود.</p>
+            </>
+          )}
+
+          {type === 'termination' && (
+            <>
+              <label>آخرین حقوق ماهانه (ریال)
+                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+              </label>
+              <label>سابقه کار (سال — اعشار مجاز، مثلاً ۳٫۵)
+                <input type="number" step="0.1" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} />
+              </label>
+              <label>ماه‌های کارکرد در سال جاری (برای عیدی)
+                <input type="number" value={termMonths} onChange={(e) => setTermMonths(Number(e.target.value) || 0)} />
+              </label>
+              <label>مانده روزهای مرخصی
+                <input type="number" value={remainingLeave} onChange={(e) => setRemainingLeave(Number(e.target.value) || 0)} />
+              </label>
+              <CalcTable>
+                <TRow label={`سنوات (${formatFaNumber(years)} سال × حقوق آخر)`} value={formatRial(terminationResult.severance)} />
+                <TRow label={`عیدی پرو‌راتا (${formatFaNumber(termMonths)} ماه)`} value={formatRial(terminationResult.eydi)} />
+                <TRow label={`ارزش ${formatFaNumber(remainingLeave)} روز مرخصی`} value={formatRial(terminationResult.leaveValue)} />
+                <TRow label="جمع مزایای پایان همکاری (خسارت اخراج)" value={formatRial(terminationResult.total)} strong />
+              </CalcTable>
+              <p className="muted-note">حقوق و مزایای معوق ماه جاری جداگانه به این جمع اضافه می‌شود (ماده ۲۷ قانون کار).</p>
             </>
           )}
         </div>

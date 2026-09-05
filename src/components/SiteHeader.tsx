@@ -1,16 +1,35 @@
-import { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { LayoutDashboard, LogIn, Menu, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import NotificationBell from '@/components/NotificationBell';
 
 const links = [
   ['دانشنامه', '/دانشنامه'],
   ['قراردادها', '/قراردادها'],
   ['درخواست‌های اداری', '/درخواست‌های-اداری'],
+  ['چک‌لیست‌ها', '/چک-لیست‌ها'],
   ['خدمات', '/خدمات'],
   ['ابزارهای هوش مصنوعی', '/ابزارهای-هوش-مصنوعی'],
 ] as const;
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user?.id ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUserId(session?.user?.id ?? null));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const authArea = userId ? (
+    <>
+      <NotificationBell userId={userId} />
+      <a className="header-auth" href="/داشبورد"><LayoutDashboard size={16} /> داشبورد</a>
+    </>
+  ) : (
+    <a className="header-auth" href="/ورود"><LogIn size={16} /> ورود</a>
+  );
 
   return (
     <header className="site-header">
@@ -24,6 +43,7 @@ export default function SiteHeader() {
               {label}
             </a>
           ))}
+          {authArea}
         </nav>
         <button className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label="باز و بسته کردن منو">
           {open ? <X /> : <Menu />}
@@ -36,6 +56,7 @@ export default function SiteHeader() {
               {label}
             </a>
           ))}
+          {authArea}
         </nav>
       )}
     </header>
