@@ -1,4 +1,9 @@
 // Karban Content Engine — weekly AI legal content with provider fallback
+// v3.3 — مدل هر ارائه‌دهنده به لیست مدل‌های معتبر امروزی ارتقا یافت:
+//   gemini → gemini-3.6-flash (با موفقیت تست شد)
+//   groq → openai/gpt-oss-120b (طبق توصیهٔ خود گروق؛ لاماها بازنشسته شدند)
+//   openrouter → مدل‌های رایگان فعال امروز
+//   + هر خطای موقتی (۴۲۹/۵xx) یک بار بعد از ۲۰ ثانیه دوباره امتحان می‌شود
 import { createClient } from '@supabase/supabase-js';
 
 /* ── اعتبارسنجی شروع به کار: اگر secretای کم باشد، پیام واضح فارسی بده
@@ -27,10 +32,11 @@ const tg = (text) =>
 /* ── زنجیره ارائه‌دهنده‌ها (همه رایگان) — جمینای اولویت اول است ──
    نام‌های جایگزین جمینای هم پذیرفته می‌شود تا اشتباه اسم secret بلاک‌مان نکند */
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+/* هر ارائه‌دهنده چند مدل پشتیبان دارد؛ اگر یکی ۴۰۴ بدهد مدل بعدی امتحان می‌شود */
 const providers = [
-  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: process.env.GEMINI_MODEL || 'gemini-3.6-flash', key: GEMINI_KEY },
-  { name: 'groq', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', key: process.env.GROQ_API_KEY },
-  { name: 'openrouter', base: 'https://openrouter.ai/api/v1', model: 'meta-llama/llama-3.3-70b-instruct:free', key: process.env.OPENROUTER_API_KEY },
+  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', models: [process.env.GEMINI_MODEL || 'gemini-3.6-flash'], key: GEMINI_KEY },
+  { name: 'groq', base: 'https://api.groq.com/openai/v1', models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b'], key: process.env.GROQ_API_KEY },
+  { name: 'openrouter', base: 'https://openrouter.ai/api/v1', models: ['z-ai/glm-5.2:free', 'minimax/minimax-m3:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'google/gemma-4-31b-it:free'], key: process.env.OPENROUTER_API_KEY },
 ].filter((p) => p.key);
 
 console.log(`🤖 ارائه‌دهنده‌های فعال (به همین ترتیب امتحان می‌شوند): ${providers.map((p) => p.name).join(' → ') || 'هیچ!'}`);
@@ -71,23 +77,36 @@ function describeKey(k) {
 async function callAI(system, user) {
   const errs = [];
   for (const p of providers) {
-    try {
-      const res = await fetch(`${p.base}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
-        body: JSON.stringify({ model: p.model, temperature: 0.7, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
-      });
-      if (!res.ok) {
-        const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 250);
-        throw new Error(`${p.name} HTTP ${res.status}: ${body}`);
+    for (const model of p.models) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const res = await fetch(`${p.base}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
+            body: JSON.stringify({ model, temperature: 0.7, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+          });
+          if (!res.ok) {
+            const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 250);
+            const err = new Error(`${p.name} [${model}] HTTP ${res.status}: ${body}`);
+            err.status = res.status;
+            throw err;
+          }
+          const data = await res.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (!text) throw new Error(`${p.name} [${model}] پاسخ خالی برگرداند`);
+          return { text, provider: p.name, model };
+        } catch (e) {
+          const s = e.status || 0;
+          const transient = s === 429 || s === 500 || s === 502 || s === 503 || s === 529; // شلوغی/محدودیت موقتی
+          console.error(`   ↳ [${p.name}/${model}] تلاش ${attempt}: ${String(e).slice(0, 300)}`);
+          if (attempt === 1 && transient) {
+            await new Promise((r) => setTimeout(r, 20000)); // ۲۰ ثانیه صبر و تلاش دوباره با همان مدل
+            continue;
+          }
+          errs.push(String(e).slice(0, 220));
+          break; // از این مدل منصرف شو → مدل بعدیِ همین ارائه‌دهنده
+        }
       }
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content;
-      if (!text) throw new Error(`${p.name} پاسخ خالی برگرداند`);
-      return { text, provider: p.name };
-    } catch (e) {
-      console.error(`   ↳ [${p.name}] ناموفق: ${String(e).slice(0, 300)}`);
-      errs.push(String(e).slice(0, 250));
     }
   }
   throw new Error(errs.length ? `همه ارائه‌دهنده‌ها شکست خوردند ⇐ ${errs.join(' | ')}` : 'هیچ ارائه‌دهنده‌ای تنظیم نشده است');
@@ -183,7 +202,7 @@ async function runArticle() {
 عناوین موجود (تکراری ممنوع): ${titles.slice(0, 40).join(' | ')}
 خروجی مطابق این اسکیما: ${ARTICLE_SCHEMA}`;
 
-  const { text, provider } = await callAI(LAWYER, user);
+  const { text, provider, model } = await callAI(LAWYER, user);
   const a = parseJSON(text);
   const problem = validArticle(a);
   if (problem) throw new Error(`validation: ${problem}`);
@@ -204,7 +223,7 @@ async function runArticle() {
   if (error) throw new Error(error.message);
 
   await logJob('article', topic, 'success', provider, null, { title: a.title, meta_title: a.meta_title, meta_description: a.meta_description });
-  await tg(`✅ مقاله جدید منتشر شد:\n«${a.title}»\nدسته: ${a.category}\nمتا: ${a.meta_description}\nارائه‌دهنده: ${provider}`);
+  await tg(`✅ مقاله جدید منتشر شد:\n«${a.title}»\nدسته: ${a.category}\nمتا: ${a.meta_description}\nارائه‌دهنده: ${provider} (${model})`);
 }
 
 async function runContracts() {
@@ -212,11 +231,11 @@ async function runContracts() {
   const { data: incomplete } = await supabase.from('contracts').select('id,title,type,industry').or('body.is.null,body.eq.').limit(2);
   for (const c of incomplete || []) {
     const user = `متن کامل و حرفه‌ای «${c.title}» (نوع: ${c.type}، صنف: ${c.industry}) را با بندهای: طرفین، موضوع، تعهدات طرفین، فسخ، فورس‌ماژور، حل اختلاف و داوری، تبصره‌ها بنویس. پاراگراف‌ها با خط خالی، سرتیترها با ## . خروجی JSON: {"body":"..."}`;
-    const { text, provider } = await callAI(LAWYER, user);
+    const { text, provider, model } = await callAI(LAWYER, user);
     const r = parseJSON(text);
     if (r?.body?.length > 500) {
       await supabase.from('contracts').update({ body: r.body }).eq('id', c.id);
-      await tg(`✅ قرارداد ناقص تکمیل شد: «${c.title}» (${provider})`);
+      await tg(`✅ قرارداد ناقص تکمیل شد: «${c.title}» (${provider}/${model})`);
       await logJob('contracts', c.title, 'success', provider, null, null);
     }
   }
@@ -227,11 +246,11 @@ async function runContracts() {
   const pending = CONTRACT_QUEUE.filter((q) => !have.includes(q.title)).slice(0, 2);
   for (const next of pending) {
     const user = `متن کامل «${next.title}» را مانند یک وکیل بنویس (بندهای استاندارد + تبصره). خروجی JSON: {"body":"...","summary":"خلاصه یک خطی"}`;
-    const { text, provider } = await callAI(LAWYER, user);
+    const { text, provider, model } = await callAI(LAWYER, user);
     const r = parseJSON(text);
     if (r?.body?.length > 500) {
       await supabase.from('contracts').insert({ title: next.title, type: next.type, industry: next.industry, summary: r.summary || next.title, body: r.body });
-      await tg(`✅ قرارداد جدید منتشر شد: «${next.title}» (${provider})`);
+      await tg(`✅ قرارداد جدید منتشر شد: «${next.title}» (${provider}/${model})`);
       await logJob('contracts', next.title, 'success', provider, null, null);
     }
   }
