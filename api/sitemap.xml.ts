@@ -34,21 +34,29 @@ export default async function handler(req: any, res: any) {
 
   const supabase = createClient(
     'https://rocjeanizzhfvhnuhnms.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
   );
 
   try {
     const a = await supabase.from('articles').select('id').order('id');
-    (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
-  } catch {
-    // If Supabase is unreachable, the sitemap still lists static routes.
+    if (a.error) {
+      console.error('[sitemap] articles query failed:', a.error.message);
+    } else {
+      (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
+    }
+  } catch (e) {
+    console.error('[sitemap] articles exception:', String(e));
   }
 
   try {
     const c = await supabase.from('contracts').select('id').order('id');
-    (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
-  } catch {
-    // Same graceful fallback for contracts.
+    if (c.error) {
+      console.error('[sitemap] contracts query failed:', c.error.message);
+    } else {
+      (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
+    }
+  } catch (e) {
+    console.error('[sitemap] contracts exception:', String(e));
   }
 
   const xml =
