@@ -19,7 +19,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
@@ -33,11 +33,11 @@ jobs:
             fi
           done
           providers=0
-          for v in GEMINI_API_KEY GITHUB_TOKEN GROQ_API_KEY OPENROUTER_API_KEY; do
+          for v in GEMINI_API_KEY GROQ_API_KEY OPENROUTER_API_KEY GOOGLE_API_KEY; do
             [ -n "${!v}" ] && providers=$((providers+1)) && echo "✓ $v تنظیم است"
           done
           if [ "$providers" -eq 0 ]; then
-            echo "::error::هیچ کلیدی از ارائه‌دهنده‌های هوش مصنوعی تنظیم نشده (حداقل یکی از GEMINI_API_KEY یا GITHUB_TOKEN یا GROQ_API_KEY یا OPENROUTER_API_KEY لازم است)"
+            echo "::error::هیچ کلیدی از ارائه‌دهنده‌های هوش مصنوعی تنظیم نشده (حداقل یکی از GEMINI_API_KEY یا GROQ_API_KEY یا OPENROUTER_API_KEY لازم است)"
             missing=1
           fi
           exit $missing
@@ -50,7 +50,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -62,7 +62,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
