@@ -17,6 +17,24 @@ if (problems.length) {
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+/* ── health-check کلید سرویس: با یک تست نوشتن+پاک‌کردن، مطمئن می‌شویم کلید واقعاً
+   service_role است (کلید anon چون SELECT عمومی دارد، با تستِ فقط-خواندن گول می‌زد) ── */
+{
+  const probe = { job: '__health__', topic: 'write-probe', status: 'failed' };
+  const { error: insErr } = await supabase.from('content_jobs').insert(probe);
+  if (insErr) {
+    console.error(`❌ کلید SUPABASE_SERVICE_ROLE_KEY اجازهٔ نوشتن در دیتابیس ندارد: ${insErr.message}`);
+    if (/row-level security|42501|permission/i.test(insErr.message))
+      console.error('   این یعنی مقدار این secret به‌جای service_role، کلید anon/public گذاشته شده! کلید درست: Supabase → Project Settings → API Keys → سربرگ service_role (کلید sk_live-... یا قدیمی‌ها eyJ... با نقش service_role). بعد از اصلاح، دوباره Run کن.');
+    else
+      console.error('   جدول content_jobs مشکل دارد؛ اسکیمای دیتابیس را چک کن.');
+    process.exit(1);
+  }
+  const { error: delErr } = await supabase.from('content_jobs').delete().eq('job', '__health__');
+  if (delErr) console.error(`⚠️ ردیف تست پاک نشد (${delErr.message}) — در SQL Editor این را بزن: delete from content_jobs where job = '__health__';`);
+  console.log('✅ اتصال Supabase (service_role) سالم است — نوشتن و پاک‌کردن تست شد.');
+}
+
 const tg = (text) =>
   fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
     method: 'POST',
@@ -24,16 +42,19 @@ const tg = (text) =>
     body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text }),
   }).catch(() => {});
 
-/* ── زنجیره ارائه‌دهنده‌ها (همه رایگان) ── */
+/* ── زنجیره ارائه‌دهنده‌ها (همه رایگان) — جمینای اولویت اول است ──
+   نام‌های جایگزین جمینای هم پذیرفته می‌شود تا اشتباه اسم secret بلاک‌مان نکند */
+const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const providers = [
-  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', key: process.env.GEMINI_API_KEY },
-  { name: 'github', base: 'https://models.inference.ai.azure.com', model: 'gpt-4o', key: process.env.GITHUB_TOKEN },
+  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', key: GEMINI_KEY },
   { name: 'groq', base: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile', key: process.env.GROQ_API_KEY },
   { name: 'openrouter', base: 'https://openrouter.ai/api/v1', model: 'meta-llama/llama-3.3-70b-instruct:free', key: process.env.OPENROUTER_API_KEY },
 ].filter((p) => p.key);
 
+console.log(`🤖 ارائه‌دهنده‌های فعال (به همین ترتیب امتحان می‌شوند): ${providers.map((p) => p.name).join(' → ') || 'هیچ!'}`);
+
 async function callAI(system, user) {
-  let lastErr = '';
+  const errs = [];
   for (const p of providers) {
     try {
       const res = await fetch(`${p.base}/chat/completions`, {
@@ -41,16 +62,20 @@ async function callAI(system, user) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
         body: JSON.stringify({ model: p.model, temperature: 0.7, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
       });
-      if (!res.ok) throw new Error(`${p.name} ${res.status}`);
+      if (!res.ok) {
+        const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 250);
+        throw new Error(`${p.name} HTTP ${res.status}: ${body}`);
+      }
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content;
-      if (!text) throw new Error(`${p.name} empty`);
+      if (!text) throw new Error(`${p.name} پاسخ خالی برگرداند`);
       return { text, provider: p.name };
     } catch (e) {
-      lastErr = String(e);
+      console.error(`   ↳ [${p.name}] ناموفق: ${String(e).slice(0, 300)}`);
+      errs.push(String(e).slice(0, 250));
     }
   }
-  throw new Error(lastErr || 'no provider available');
+  throw new Error(errs.length ? `همه ارائه‌دهنده‌ها شکست خوردند ⇐ ${errs.join(' | ')}` : 'هیچ ارائه‌دهنده‌ای تنظیم نشده است');
 }
 
 /* ── دستور وکیل دادگستری ── */
