@@ -10,6 +10,7 @@ type SEOProps = {
   image?: string;
   jsonLd?: JsonLd;
   noindex?: boolean;
+  ogType?: 'website' | 'article';
 };
 
 const ORIGIN = 'https://karbanapp.ir';
@@ -40,7 +41,7 @@ function setLink(rel: string, href: string) {
  * Safe to call from async callbacks (e.g. after fetching an article/contract),
  * in addition to the declarative useSEO hook used by Layout.
  */
-export function applySEO({ title, description, path, image, jsonLd, noindex }: SEOProps) {
+export function applySEO({ title, description, path, image, jsonLd, noindex, ogType }: SEOProps) {
   const ogImage = image ? (image.startsWith('http') ? image : `${ORIGIN}${image}`) : DEFAULT_OG_IMAGE;
 
   document.title = title;
@@ -51,7 +52,7 @@ export function applySEO({ title, description, path, image, jsonLd, noindex }: S
   setMeta('property', 'og:title', title);
   setMeta('property', 'og:description', description);
   setMeta('property', 'og:url', `${ORIGIN}${path}`);
-  setMeta('property', 'og:type', 'website');
+  setMeta('property', 'og:type', ogType || 'website');
   setMeta('property', 'og:site_name', 'کاربان');
   setMeta('property', 'og:locale', 'fa_IR');
   setMeta('property', 'og:image', ogImage);
@@ -79,5 +80,5 @@ export function useSEO(props: SEOProps) {
   useEffect(() => {
     applySEO(props);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.title, props.description, props.path, props.image, props.noindex, props.jsonLd]);
+  }, [props.title, props.description, props.path, props.image, props.noindex, props.ogType, props.jsonLd]);
 }

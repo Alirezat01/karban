@@ -24,19 +24,38 @@ export default function ArticlePage({ title, category, contractId }: Props) {
       .then(({ data }) => {
         if (data) {
           setContractData(data);
-          const contractTitle = data.title || title;
+          const contractTitle = (data.title || title).trim();
+          const contractPath = `/قراردادها/${contractId}`;
+          const summary = (data.summary || '').trim();
+          const contractDesc =
+            summary.length >= 60
+              ? summary
+              : `متن کامل «${contractTitle}» با بندهای استاندارد و دانلود رایگان PDF مطابق مقررات جاری ایران.`;
+          const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
           applySEO({
             title: `${contractTitle} | کاربان`,
-            description: data.summary || `متن کامل و دانلود PDF «${contractTitle}» — نسخه استاندارد کاربان با استناد قانونی.`,
-            path: `/قراردادها/${contractId}`,
+            description: contractDesc,
+            path: contractPath,
+            ogType: 'article',
             jsonLd: [
+              {
+                '@context': 'https://schema.org',
+                '@type': 'Article',
+                headline: contractTitle,
+                description: contractDesc,
+                image: ['https://karbanapp.ir/images/og-cover.jpg'],
+                author: { '@type': 'Organization', name: 'کاربان' },
+                publisher: { '@id': 'https://karbanapp.ir/#organization' },
+                mainEntityOfPage: u(contractPath),
+                inLanguage: 'fa-IR',
+              },
               {
                 '@context': 'https://schema.org',
                 '@type': 'BreadcrumbList',
                 itemListElement: [
                   { '@type': 'ListItem', position: 1, name: 'خانه', item: 'https://karbanapp.ir/' },
-                  { '@type': 'ListItem', position: 2, name: 'قراردادها', item: 'https://karbanapp.ir/قراردادها' },
-                  { '@type': 'ListItem', position: 3, name: contractTitle, item: `https://karbanapp.ir/قراردادها/${contractId}` },
+                  { '@type': 'ListItem', position: 2, name: 'قراردادها', item: u('/قراردادها') },
+                  { '@type': 'ListItem', position: 3, name: contractTitle, item: u(contractPath) },
                 ],
               },
             ],

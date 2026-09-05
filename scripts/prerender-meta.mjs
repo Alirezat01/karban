@@ -1,48 +1,211 @@
 /**
- * Karban — build-time meta prerenderer
- * ------------------------------------
- * The app is a client-rendered React SPA. Crawlers that don't execute JS
- * used to see the homepage <title>/<meta>/<canonical> for EVERY route.
- * This script runs AFTER `vite build` and writes, for each known route,
- * a dist/<route>/index.html with route-specific:
- *   - <title>, meta description, canonical, Open Graph & Twitter tags
- *   - route JSON-LD (FAQ for tools hub, Article for knowledge articles,
- *     BreadcrumbList for contract details)
+ * Karban — build-time FULL-CONTENT prerenderer (v2)
+ * -------------------------------------------------
+ * Previously this script only injected meta tags; crawlers that didn't run JS
+ * saw an empty #root. Now, for every route, it writes a dist/<route>/index.html
+ * that CONTAINS the real page content (H1, intro, body, lists, internal links)
+ * using the exact same CSS classes the React app renders. When the SPA boots,
+ * React replaces the prerendered tree — users see zero visual difference.
  *
- * It does NOT change the app itself — the SPA still takes over on load.
- * Dynamic routes (articles/contracts) are read from Supabase via the
- * public anon key; if Supabase is unreachable, only static routes are
- * prerendered and the build still succeeds.
+ *   - <title>, description, canonical, Open Graph, Twitter (route-specific)
+ *   - single JSON-LD bundle per page (Article / BreadcrumbList / FAQPage /
+ *     WebApplication / ItemList) in <script id="page-jsonld">, so the SPA's
+ *     applySEO() cleanly replaces it after hydration (no duplicates)
+ *   - a crawlable nav/breadcrumb/footer link shell (real <a href>) so every
+ *     important URL is discoverable from the source HTML alone
+ *
+ * Data is read from Supabase with the PUBLIC anon key (same key the browser
+ * uses). If Supabase is unreachable, static routes are still written and the
+ * deploy never breaks.
  */
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import calcSeo from '../src/data/calc-seo.json' with { type: 'json' };
 
 const ORIGIN = 'https://karbanapp.ir';
 const SUPABASE_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
-const SUPABASE_ANON =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
+const OG_IMAGE = `${ORIGIN}/images/og-cover.jpg`;
 
 const HOME_TITLE = 'کاربان | بانک قرارداد تخصصی و ماشین‌حساب حقوق ۱۴۰۵';
 const HOME_DESC =
   'بیش از ۹۰ قرارداد تخصصی کارفرمایی و فریلنسر، ۱۰ ماشین‌حساب دقیق حقوق، سنوات و مالیات ۱۴۰۵، و دانشنامه حقوق کار با استناد قانون کار و قانون مدنی.';
 
 const esc = (s) =>
-  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** Static route manifest (kept in sync with src/App.tsx). */
-const STATIC_ROUTES = [
-  { path: '/', title: HOME_TITLE, description: HOME_DESC },
-  { path: '/قراردادها', title: 'بیش از ۸۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF', description: 'بانک قرارداد کاربان؛ بیش از ۹۰ نمونه قرارداد استاندارد به تفکیک نوع و صنف با متن کامل و دانلود PDF.' },
-  { path: '/دانشنامه', title: 'دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان', description: 'مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده و با استناد به مواد قانونی.' },
-  { path: '/خدمات', title: 'مشاوره و قرارداد اختصاصی برای هر صنف | کاربان', description: 'مشاوره حقوقی، مالی و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین.' },
-  { path: '/ابزارهای-هوش-مصنوعی', title: 'ماشین‌حساب‌های حقوق، سنوات و مالیات مطابق مقررات ۱۴۰۵', description: 'ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵.' },
-  { path: '/درباره-ما', title: 'درباره کاربان | از قرارداد تا آرامش', description: 'کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار برای کارفرمایان، کارمندان و فریلنسرها.' },
-  { path: '/تماس-با-ما', title: 'تماس با کاربان', description: 'تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم | تلفن: ۰۲۱-۸۸۳۴۲۶۷۹ | hello@karbanapp.ir' },
-  { path: '/قوانین', title: 'قوانین و شرایط استفاده از کاربان', description: 'شرایط شفاف استفاده از خدمات و ابزارهای کاربان؛ پیش از ثبت سفارش بخوانید.' },
-  { path: '/حریم-خصوصی', title: 'حریم خصوصی کاربان', description: 'سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود.' },
-  { path: '/درخواست‌های-اداری', title: 'درخواست‌های اداری آماده — استعفا، وام، مرخصی و…', description: 'متن رسمی و آماده درخواست‌های اداری پرتکرار؛ کپی کنید، جاهای خالی را پر کنید و امضا کنید.' },
+/* inline rich text: escape then **bold** → <strong> */
+const inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+/* Mirror of src/lib/rich-text.tsx — keep in sync */
+function richTextToHtml(raw) {
+  if (!raw) return '';
+  const normalized = raw.replace(/\r\n/g, '\n').replace(/\s*###\s+/g, '\n### ').replace(/\s*##\s+/g, '\n## ');
+  const blocks = normalized.split(/\n+/).map((b) => b.trim()).filter(Boolean);
+  let html = '';
+  let list = [];
+  const flush = () => {
+    if (list.length) {
+      html += `<ul>${list.map((i) => `<li>${inline(i)}</li>`).join('')}</ul>`;
+      list = [];
+    }
+  };
+  for (const b of blocks) {
+    if (b.startsWith('### ')) { flush(); html += `<h3>${inline(b.slice(4))}</h3>`; }
+    else if (b.startsWith('## ')) { flush(); html += `<h2>${inline(b.slice(3))}</h2>`; }
+    else if (b.startsWith('- ') || b.startsWith('• ')) { list.push(b.replace(/^[-•]\s+/, '')); }
+    else { flush(); html += `<p>${inline(b)}</p>`; }
+  }
+  flush();
+  return html;
+}
+
+/* Extract visible FAQ pairs from an article body ("## پرسش‌های پرتکرار" section).
+   Schema is emitted ONLY because the same Q/A text is visibly rendered. */
+function parseFaqs(body) {
+  if (!body) return [];
+  const norm = body.replace(/\r\n/g, '\n');
+  const idx = norm.indexOf('پرسش‌های پرتکرار');
+  if (idx < 0) return [];
+  const blocks = norm.slice(idx).split(/\n+/).map((b) => b.trim()).filter(Boolean).slice(1);
+  const faqs = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const m = blocks[i].match(/^\*\*(.+?)\*\*$/);
+    if (m && blocks[i + 1]) { faqs.push([m[1], blocks[i + 1].replace(/^\*\*|\*\*$/g, '')]); i++; }
+  }
+  return faqs;
+}
+
+const url = (path) => `${ORIGIN}${encodeURI(path)}`;
+
+function breadcrumbHtml(pairs) {
+  // mirrors Layout.tsx breadcrumb markup
+  const tail = pairs
+    .map((p, i) =>
+      i === pairs.length - 1
+        ? `<span>/ ${esc(p.name)}</span>`
+        : `<a href="${url(p.href)}">/ ${esc(p.name)}</a>`)
+    .join('');
+  return `<div class="container breadcrumb" aria-label="مسیر صفحه"><a href="${ORIGIN}/">خانه</a>${tail}</div>`;
+}
+
+const NAV_LINKS = [
+  ['/', 'خانه'], ['/قراردادها', 'قراردادها'], ['/ابزارهای-هوش-مصنوعی', 'ابزارهای هوش مصنوعی'],
+  ['/دانشنامه', 'دانشنامه'], ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/خدمات', 'خدمات'], ['/تماس-با-ما', 'تماس با ما'],
 ];
+const FOOTER_LINKS = [
+  ['/دانشنامه', 'دانشنامه'], ['/قراردادها', 'قراردادها'], ['/خدمات', 'خدمات'], ['/ابزارهای-هوش-مصنوعی', 'ابزارهای هوش مصنوعی'],
+  ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/درباره-ما', 'درباره ما'], ['/تماس-با-ما', 'تماس با ما'],
+  ['/قوانین', 'قوانین و شرایط'], ['/حریم-خصوصی', 'حریم خصوصی'],
+];
+
+function shell(path, breadcrumbPairs) {
+  const nav = `<nav class="pr-nav" aria-label="منوی اصلی">${NAV_LINKS.map(([h, t]) => `<a href="${url(h)}">${esc(t)}</a>`).join('')}</nav>`;
+  const crumb = breadcrumbPairs && breadcrumbPairs.length ? breadcrumbHtml(breadcrumbPairs) : '';
+  const footer = `<footer class="pr-footer"><nav aria-label="لینک‌های پایانی">${FOOTER_LINKS.map(([h, t]) => `<a href="${url(h)}">${esc(t)}</a>`).join('')}</nav><p>کاربان — بانک قرارداد، ماشین‌حساب حقوق و دانشنامه حقوق کار</p></footer>`;
+  const style = `<style>.pr-nav{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem;padding:.9rem 4vw}.pr-nav a,.pr-footer a{color:#8fd6b4;text-decoration:none;font-size:.95rem}.pr-footer{padding:1.4rem 4vw 2.2rem;border-top:1px solid rgba(255,255,255,.08);margin-top:2.5rem}.pr-footer nav{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem}.pr-footer p{opacity:.6;font-size:.85rem;margin-top:.8rem}</style>`;
+  return `${style}${nav}${crumb}`;
+}
+
+/* Single JSON-LD bundle; the SPA replaces this node on hydration (no dupes) */
+function jsonLdScript(objects) {
+  if (!objects || !objects.length) return '';
+  return `<script type="application/ld+json" id="page-jsonld">${JSON.stringify(
+    objects.length === 1 ? objects[0] : objects,
+  )}</script>`;
+}
+
+const breadcrumbLd = (items) => ({
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: items.map((it, i) => ({
+    '@type': 'ListItem', position: i + 1, name: it.name,
+    ...(it.href ? { item: url(it.href) } : { item: url(it.path) }),
+  })),
+});
+
+const faqLd = (faqs) => ({
+  '@context': 'https://schema.org', '@type': 'FAQPage',
+  mainEntity: faqs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+});
+
+const articleLd = ({ title, description, path, author, published, modified }) => ({
+  '@context': 'https://schema.org', '@type': 'Article',
+  headline: title, description, image: [OG_IMAGE],
+  author: { '@type': 'Organization', name: author || 'کاربان' },
+  publisher: { '@id': `${ORIGIN}/#organization` },
+  mainEntityOfPage: url(path), inLanguage: 'fa-IR',
+  ...(published ? { datePublished: published } : {}),
+  ...(modified || published ? { dateModified: modified || published } : {}),
+});
+
+const itemListLd = (items) => ({
+  '@context': 'https://schema.org', '@type': 'ItemList',
+  itemListElement: items.map((it, i) => ({ '@type': 'ListItem', position: i + 1, name: it.name, url: url(it.href) })),
+});
+
+const webAppLd = (title, description, path) => ({
+  '@context': 'https://schema.org', '@type': 'WebApplication',
+  name: title, description, url: url(path), applicationCategory: 'FinanceApplication',
+  operatingSystem: 'Web', inLanguage: 'fa-IR',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'IRR' },
+  publisher: { '@id': `${ORIGIN}/#organization` },
+});
+
+function transformHtml(template, { title, description, path, ogType = 'website', jsonLd = [], inner = '', published, modified }) {
+  const canonical = url(path);
+  let out = template
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)
+    .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${esc(description)}" />`)
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${canonical}" />`)
+    .replace(/<meta property="og:type" content="[^"]*" \/>/, `<meta property="og:type" content="${ogType}" />`)
+    .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${esc(title)}" />`)
+    .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${esc(description)}" />`)
+    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${canonical}" />`)
+    .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${esc(title)}" />`)
+    .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${esc(description)}" />`)
+    .replace(/<noscript>[\s\S]*?<\/noscript>/, '');
+
+  if (ogType === 'article') {
+    const extras = [];
+    if (published) extras.push(`<meta property="article:published_time" content="${esc(published)}" />`);
+    if (modified) extras.push(`<meta property="article:modified_time" content="${esc(modified || published)}" />`);
+    if (extras.length) out = out.replace('</head>', `${extras.join('\n')}\n  </head>`);
+  }
+
+  const ld = [...jsonLd];
+  if (ld.length) out = out.replace('</head>', `${jsonLdScript(ld)}\n  </head>`);
+  out = out.replace('<div id="root"></div>', `<div id="root">${inner}</div>`);
+  return out;
+}
+
+async function writeRoute(distDir, html, routePath) {
+  const segments = routePath.split('/').filter(Boolean);
+  const dir = resolve(distDir, ...segments.map((s) => encodeURIComponent(s)));
+  await mkdir(dir, { recursive: true });
+  await writeFile(resolve(dir, 'index.html'), html, 'utf8');
+}
+
+/* Supabase with graceful column fallback (updated_at may not exist) */
+async function supabaseFetch(table, selectFull, selectSafe) {
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON);
+  let res = await client.from(table).select(selectFull).order('id');
+  if (res.error && selectSafe) res = await client.from(table).select(selectSafe).order('id');
+  if (res.error) throw new Error(`${table}: ${res.error.message}`);
+  return res.data || [];
+}
+
+/* ── page-content builders (mirror the React markup/classes) ── */
+
+const pageOpen = (eyebrow, narrow = true) =>
+  `<section class="inner-page"><div class="container${narrow ? ' narrow-content' : ''}">` +
+  (eyebrow ? `<span class="eyebrow">${esc(eyebrow)}</span>` : '');
+const pageClose = () => `</div></section>`;
+
+const relatedBox = (title, links) =>
+  `<div class="related-box"><div><strong>${esc(title)}</strong><div class="related-links">` +
+  links.map((l) => `<a href="${url(l.href)}">${esc(l.label)} ←</a>`).join('') +
+  `</div></div></div>`;
 
 const CALCULATORS = [
   { path: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', description: 'محاسبه آنلاین حقوق خالص، کسورات بیمه و مالیات حقوق ۱۴۰۵ با استناد ماده ۴۱ قانون کار.' },
@@ -52,160 +215,387 @@ const CALCULATORS = [
   { path: '/ابزارهای-هوش-مصنوعی/اضافه-کاری', title: 'ماشین‌حساب اضافه‌کاری ۱۴۰۵', description: 'محاسبه مبلغ اضافه‌کاری با نرخ قانونی ۴۰٪ بالاتر، مطابق ماده ۵۹ قانون کار.' },
   { path: '/ابزارهای-هوش-مصنوعی/مالیات-مشاغل', title: 'ماشین‌حساب مالیات مشاغل و مغازه', description: 'محاسبه پلکانی مالیات مشاغل مطابق ماده ۱۳۱ با کسر معافیت سالانه.' },
   { path: '/ابزارهای-هوش-مصنوعی/ارزش-افزوده', title: 'ماشین‌حساب ارزش افزوده', description: 'محاسبه مالیات بر ارزش افزوده با نرخ ۱۰٪ — هم افزودن به پایه و هم استخراج از داخل فاکتور.' },
-  { path: '/ابزارهای-هوش-مصنوعی/مالیات-حقوق', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', description: 'محاسبه پلکانی مالیات حقوق بر اساس معافیت سال ۱۴۰۵.' },
+  { path: '/ابزارهای-هوش-مصنوعی/مالیات-حقوق', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', description: 'محاسبه پلکانی مالیات حقوق ۱۴۰۵ بر اساس معافیت سالانه و نرخ‌های ماده ۸۴؛ برآورد دقیق مالیات ماهانه و سالانه هر کارمند.' },
+];
+const EXTRA_TOOLS = [
   { path: '/ابزارهای-هوش-مصنوعی/تست-سلامت', title: 'تست سلامت کسب‌وکار', description: 'نقاط قوت و ریسک‌های حقوقی، مالی و عملیاتی کسب‌وکار خود را بشناسید.' },
   { path: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد', title: 'ساخت قرارداد هوشمند', description: 'قرارداد متناسب با نوع همکاری و صنف شما، در چند مرحله و با مبنای قانونی.' },
 ];
-
+const TOOLS_FAQS = [
+  ['آیا نتایج ماشین‌حساب‌ها مبنای قانونی دارد؟', 'محاسبات بر اساس قانون کار، قانون تأمین اجتماعی و قانون مالیات‌های مستقیم و مصوبات ۱۴۰۵ است؛ ملاک نهایی، فیش رسمی سازمان‌هاست.'],
+  ['پارامترهای حقوق ۱۴۰۵ از کجا می‌آید؟', 'مطابق بخشنامه سالانه شورای عالی کار؛ و از پنل مدیریت کاربان قابل به‌روزرسانی است.'],
+  ['سنوات پایان خدمت چگونه محاسبه می‌شود؟', 'به ازای هر سال سابقه معادل یک ماه آخرین حقوق، مطابق ماده ۲۴ قانون کار.'],
+  ['نرخ ارزش افزوده سال ۱۴۰۵ چقدر است؟', '۱۰٪؛ هر دو حالت افزودن به پایه و استخراج از داخل فاکتور محاسبه می‌شود.'],
+  ['مالیات مشاغل چند درصد است؟', 'پلکانی ۱۵ تا ۳۵ درصد مطابق ماده ۱۳۱، پس از کسر معافیت سالانه.'],
+];
 const KNOWLEDGE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
-KNOWLEDGE_CATEGORIES.forEach((c, i) => {
-  STATIC_ROUTES.push({
-    path: `/دانشنامه/${i + 1}`,
-    title: `مقالات ${c} | دانشنامه کاربان`,
-    description: `مقاله‌های تخصصی ${c} برای کسب‌وکارها، با استناد به مواد قانونی.`,
-  });
-});
-
-const TOOLS_FAQ_JSONLD = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    { '@type': 'Question', name: 'آیا نتایج ماشین‌حساب‌ها مبنای قانونی دارد؟', acceptedAnswer: { '@type': 'Answer', text: 'محاسبات بر اساس قانون کار، قانون تأمین اجتماعی و قانون مالیات‌های مستقیم و مصوبات ۱۴۰۵ است؛ ملاک نهایی، فیش رسمی سازمان‌هاست.' } },
-    { '@type': 'Question', name: 'پارامترهای حقوق ۱۴۰۵ از کجا می‌آید؟', acceptedAnswer: { '@type': 'Answer', text: 'مطابق بخشنامه سالانه شورای عالی کار؛ و از پنل مدیریت کاربان قابل به‌روزرسانی است.' } },
-    { '@type': 'Question', name: 'سنوات پایان خدمت چگونه محاسبه می‌شود؟', acceptedAnswer: { '@type': 'Answer', text: 'به ازای هر سال سابقه معادل یک ماه آخرین حقوق، مطابق ماده ۲۴ قانون کار.' } },
-    { '@type': 'Question', name: 'نرخ ارزش افزوده سال ۱۴۰۵ چقدر است؟', acceptedAnswer: { '@type': 'Answer', text: '۱۰٪؛ هر دو حالت افزودن به پایه و استخراج از داخل فاکتور محاسبه می‌شود.' } },
-    { '@type': 'Question', name: 'مالیات مشاغل چند درصد است؟', acceptedAnswer: { '@type': 'Answer', text: 'پلکانی ۱۵ تا ۳۵ درصد مطابق ماده ۱۳۱، پس از کسر معافیت سالانه.' } },
-  ],
+const CATEGORY_INTRO = {
+  'حقوقی و قانون کار': 'از تعریف قرارداد کار و دوره آزمایشی تا اضافه‌کاری، سنوات و تسویه‌حساب؛ مقاله‌های این دسته مواد کلیدی قانون کار را با مثال عملی و استناد دقیق توضیح می‌دهند تا پیش از امضای هر سند، حق و تکلیف دو طرف را بدانید.',
+  'مالیات': 'از اظهارنامه و معافیت‌های سالانه تا ارزش افزوده و مالیات حقوق؛ این دسته مهلت‌ها، نرخ‌ها و مسیرهای قانونی را به زبان ساده مرور می‌کند تا نه جریمه بدهید و نه ریالی بیشتر از موظف بپردازید.',
+  'حسابداری': 'اسناد قابل‌قبول، هزینه‌های سازمانی و کنترل‌های پایه؛ مقاله‌های حسابداری کاربان کمک می‌کند پرونده مالیاتی شما مستند و قابل دفاع باشد.',
+  'منابع انسانی': 'از هزینه واقعی استخدام و آیین‌نامه انضباطی تا محرمانگی و نگهداشت نیرو؛ راهنماهای عملی برای کارفرمایانی که می‌خواهند تیم پایدار و کم‌دردسر بسازند.',
+  'مدیریت': 'تصمیم‌های مدیریتی پرتکرار — از نوع همکاری و قرارداد تا تست سلامت کسب‌وکار — با نگاه حقوقی و مالی، برای رشد مطمئن‌تر.',
 };
 
-async function supabaseFetch(table, select) {
-  const client = createClient(SUPABASE_URL, SUPABASE_ANON);
-  const { data, error } = await client.from(table).select(select).order('id');
-  if (error) throw new Error(`${table}: ${error.message}`);
-  return data;
+const termsItems = [
+  'خدمات کاربان، ابزار و متن‌های آماده، جنبه عمومی و راهنمایی دارد و جایگزین مشاوره حقوقی موردی نمی‌شود.',
+  'با ثبت سفارش، مشخصات واردشده (نام، شماره تماس) صحیح و متعلق به خود شما تلقی می‌شود.',
+  'پس از پرداخت، سفارش حداکثر در یک روز کاری بررسی و با شما هماهنگ می‌شود.',
+  'امکان انصراف تا پیش از شروع انجام کار، با استرداد کامل وجه وجود دارد.',
+  'استفاده از خروجی‌ها صرفاً برای کسب‌وکار خود شما مجاز است؛ بازنشر عمومی ممنوع.',
+  'کاربان متعهد به محرمانگی اطلاعات واردشده در فرم‌هاست.',
+];
+const privacySections = [
+  ['۱. چه داده‌هایی جمع‌آوری می‌کنیم؟', 'تنها داده‌ای که شما در فرم‌ها وارد می‌کنید؛ مانند شماره موبایل برای دریافت فایل، نام و تماس برای سفارش خدمات.'],
+  ['۲. چرا این داده‌ها را جمع می‌کنیم؟', 'برای ارائه همان خدمتی که درخواست کرده‌اید: ارسال فایل، پیگیری سفارش، پاسخ به درخواست مشاوره و اطلاع‌رسانی خبرنامه با رضایت شما.'],
+  ['۳. داده‌ها کجا نگهداری می‌شوند؟', 'روی زیرساخت امن Supabase با رمزنگاری درحال‌انتقال و درحال‌سکونت؛ دسترسی مدیریتی محدود و لاگ‌برداری‌شده است.'],
+  ['۴. حقوق شما', 'هر زمان می‌توانید درخواست اصلاح یا حذف داده‌هایتان را بدهید: hello@karbanapp.ir'],
+  ['۵. کوکی و ابزارهای آماری', 'از Google Analytics برای آمار تجمیعی بازدید استفاده می‌کنیم؛ هیچ داده‌ای به اشخاص ثالث تجاری فروخته نمی‌شود.'],
+  ['۶. تماس', 'تهران، کریمخان، خیابان سنایی، پلاک ۶۱ | تلفن: ۰۲۱-۸۸۳۴۲۶۷۹ | hello@karbanapp.ir'],
+];
+
+const calcLinksOf = (key) => calcSeo[key]?.links || [];
+
+function calcInner(calc) {
+  const key = calc.path.split('/').pop();
+  const seo = calcSeo[key];
+  if (!seo) return `${pageOpen('ابزارهای هوش مصنوعی · قانون کار ۱۴۰۵')}<h1>${esc(calc.title)}</h1><p class="lead">${esc(calc.description)}</p>${relatedBox('صفحات مرتبط', calcLinksOf(key))}${pageClose()}`;
+  const parts = [];
+  parts.push(`<h1>${esc(calc.title)}</h1>`);
+  parts.push(`<p class="lead">${esc(calc.description)}</p>`);
+  parts.push(seo.about.map((p) => `<p>${inline(p)}</p>`).join(''));
+  parts.push(`<h2>روش محاسبه</h2><ul>${seo.how.map((s) => `<li>${inline(s)}</li>`).join('')}</ul>`);
+  parts.push(`<h2>مثال عملی</h2>${seo.example.map((p) => `<p>${inline(p)}</p>`).join('')}`);
+  parts.push(`<div class="legal-box"><h2>مبنای قانونی</h2><ul>${seo.laws.map((n) => `<li>${inline(n)}</li>`).join('')}</ul><p class="muted-note">پارامترها مطابق مقررات ۱۴۰۵ است و با هر مصوبه جدید به‌روزرسانی می‌شود.</p></div>`);
+  parts.push(`<div class="faq-section"><h2>پرسش‌های پرتکرار</h2>${seo.faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${inline(a)}</p></details>`).join('')}</div>`);
+  parts.push(relatedBox('لینک‌های مرتبط', seo.links));
+  return `${pageOpen('ابزارهای هوش مصنوعی · قانون کار ۱۴۰۵')}${parts.join('')}${pageClose()}`;
 }
 
-/** Fallback when direct Supabase access fails at build time:
- *  parse route IDs from the live dynamic sitemap. */
-async function liveSitemapIds(kind) {
-  const res = await fetch(`${ORIGIN}/api/sitemap.xml`);
-  if (!res.ok) throw new Error(`live sitemap: HTTP ${res.status}`);
-  const xml = await res.text();
-  const prefix = kind === 'articles' ? '/دانشنامه/مقاله/' : '/قراردادها/';
-  const ids = [];
-  for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
-    const loc = decodeURIComponent(m[1].replace(ORIGIN, ''));
-    const rest = loc.startsWith(prefix) ? loc.slice(prefix.length) : null;
-    if (rest && /^\d+$/.test(rest)) ids.push(Number(rest));
-  }
-  return [...new Set(ids)].sort((a, b) => a - b);
-}
-
-function transformHtml(html, { title, description, path, jsonLd }) {
-  const url = `${ORIGIN}${encodeURI(path)}`;
-  let out = html
-    .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(title)}</title>`)
-    .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${esc(description)}" />`)
-    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${url}" />`)
-    .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${esc(title)}" />`)
-    .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${esc(description)}" />`)
-    .replace(/<meta property="og:url" content="[^"]*" \/>/, `<meta property="og:url" content="${url}" />`)
-    .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${esc(title)}" />`)
-    .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${esc(description)}" />`);
-
-  if (jsonLd) {
-    const payload = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
-    const tags = payload
-      .map((obj) => `<script type="application/ld+json">${JSON.stringify(obj)}</script>`)
-      .join('\n');
-    out = out.replace('</head>', `${tags}\n  </head>`);
-  }
-  return out;
-}
-
-async function writeRoute(distDir, html, routePath) {
-  const segments = routePath.split('/').filter(Boolean);
-  const dir = resolve(distDir, ...segments.map((s) => encodeURIComponent(s)));
-  await mkdir(dir, { recursive: true });
-  await writeFile(resolve(dir, 'index.html'), html, 'utf8');
-  return dir;
-}
-
+/* main */
 async function main() {
   const distDir = resolve(process.cwd(), 'dist');
   const template = await readFile(resolve(distDir, 'index.html'), 'utf8');
   let count = 0;
+  const write = async (path, html) => { await writeRoute(distDir, html, path); count++; };
 
-  // 1) Static + calculator routes
-  for (const route of [...STATIC_ROUTES, ...CALCULATORS]) {
-    const jsonLd = route.path === '/ابزارهای-هوش-مصنوعی' ? TOOLS_FAQ_JSONLD : undefined;
-    await writeRoute(distDir, transformHtml(template, { ...route, jsonLd }), route.path);
-    count++;
+  /* 1) HOME */
+  {
+    const inner =
+      `${shell('/', null)}` +
+      `${pageOpen(null, false)}` +
+      `<h1>رشد مطمئن کسب‌وکار شما با کاربان</h1>` +
+      `<p class="lead">کاربان پلتفرم هوشمند مدیریت کسب‌وکار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق حقوق و مالیات مطابق مقررات ۱۴۰۵، و دانشنامه‌ای که قانون را به زبان آدم‌ها ترجمه می‌کند.</p>` +
+      `<div class="category-grid">` +
+      [['/کارفرما', 'کارفرما هستم', 'قرارداد، استخدام، حقوق و دستمزد'], ['/کارمند', 'کارگر/کارمند هستم', 'درک قرارداد، حقوق، قانون کار'], ['/فریلنسر', 'فریلنسر هستم', 'قرارداد همکاری، پروژه، مالیات']]
+        .map(([h, t, d]) => `<a href="${url(h)}" class="category-card"><h2>${esc(t)}</h2><p>${esc(d)}</p></a>`).join('') +
+      `</div>` +
+      relatedBox('دسترسی سریع', [
+        { href: '/قراردادها', label: 'بانک قراردادها (۹۰+ نمونه)' },
+        { href: '/ابزارهای-هوش-مصنوعی', label: 'ماشین‌حساب‌های حقوق و مالیات' },
+        { href: '/دانشنامه', label: 'دانشنامه حقوق کار' },
+        { href: '/درخواست‌های-اداری', label: 'درخواست‌های اداری آماده' },
+        { href: '/خدمات', label: 'خدمات تخصصی' },
+      ]) +
+      `${pageClose()}`;
+    await write('/', transformHtml(template, { title: HOME_TITLE, description: HOME_DESC, path: '/', inner }));
   }
 
-  // 2) Dynamic routes — best effort (Supabase first, live sitemap as fallback)
+  /* 2) calculators + extra tools */
+  for (const calc of CALCULATORS) {
+    const key = calc.path.split('/').pop();
+    const seo = calcSeo[key];
+    const ld = [
+      webAppLd(calc.title, calc.description, calc.path),
+      breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, { name: calc.title, path: calc.path }]),
+      ...(seo?.faqs?.length ? [faqLd(seo.faqs)] : []),
+    ];
+    await write(calc.path, transformHtml(template, { title: `${calc.title} | کاربان`, description: calc.description, path: calc.path, jsonLd: ld, inner: shell(calc.path, [{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, { name: calc.title, path: calc.path }]) + calcInner(calc) }));
+  }
+  for (const t of EXTRA_TOOLS) {
+    const inner =
+      `${shell(t.path, [{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, { name: t.title, path: t.path }])}` +
+      `${pageOpen('ابزارهای هوش مصنوعی')}<h1>${esc(t.title)}</h1><p class="lead">${esc(t.description)}</p>` +
+      relatedBox('صفحات مرتبط', [{ href: '/ابزارهای-هوش-مصنوعی', label: 'همه ابزارها' }, { href: '/قراردادها', label: 'بانک قراردادها' }, { href: '/دانشنامه', label: 'دانشنامه' }]) +
+      `${pageClose()}`;
+    await write(t.path, transformHtml(template, { title: `${t.title} | کاربان`, description: t.description, path: t.path, jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, { name: t.title, path: t.path }])], inner }));
+  }
+
+  /* 3) tools hub — visible FAQ mirrors faqJsonLd in App.tsx */
+  {
+    const inner =
+      `${shell('/ابزارهای-هوش-مصنوعی', [{ name: 'ابزارهای هوش مصنوعی', path: '/ابزارهای-هوش-مصنوعی' }])}` +
+      `${pageOpen('ابزارهای هوش مصنوعی', false)}` +
+      `<h1>ابزارهای هوش مصنوعی کاربان</h1>` +
+      `<p class="lead">ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵.</p>` +
+      `<div class="tool-grid">` +
+      [...CALCULATORS, ...EXTRA_TOOLS].map((t) => `<a class="tool-card" href="${url(t.path)}"><h3>${esc(t.title)}</h3><p>${esc(t.description)}</p><span>ورود به ابزار ←</span></a>`).join('') +
+      `</div>` +
+      `<div class="faq-section"><h2>پرسش‌های پرتکرار</h2>${TOOLS_FAQS.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</div>` +
+      `${pageClose()}`;
+    await write('/ابزارهای-هوش-مصنوعی', transformHtml(template, {
+      title: 'ماشین‌حساب‌های حقوق، سنوات و مالیات مطابق مقررات ۱۴۰۵ | کاربان',
+      description: 'ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵.',
+      path: '/ابزارهای-هوش-مصنوعی',
+      jsonLd: [faqLd(TOOLS_FAQS), breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'ابزارهای هوش مصنوعی', path: '/ابزارهای-هوش-مصنوعی' }])],
+      inner,
+    }));
+  }
+
+  /* 4) static pages */
+  {
+    const aboutInner = `${shell('/درباره-ما', [{ name: 'درباره ما', path: '/درباره-ما' }])}${pageOpen('درباره ما')}<h1>درباره کاربان</h1><p class="article-intro">کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار است: بانک قرارداد تخصصی به تفکیک صنف، ماشین‌حساب‌های دقیق مطابق مقررات ۱۴۰۵، و دانشنامه کاربردی برای کارفرمایان، کارمندان و فریلنسرها. کاربان؛ از قرارداد تا آرامش.</p>${pageClose()}`;
+    await write('/درباره-ما', transformHtml(template, { title: 'درباره کاربان | از قرارداد تا آرامش', description: 'کاربان پلتفرم هوشمند قرارداد و همراه حقوق کار برای کارفرمایان، کارمندان و فریلنسرها.', path: '/درباره-ما', jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'درباره ما', path: '/درباره-ما' }])], inner: aboutInner }));
+
+    const contactInner = `${shell('/تماس-با-ما', [{ name: 'تماس با ما', path: '/تماس-با-ما' }])}${pageOpen('تماس با ما')}<h1>تماس با کاربان</h1><div class="contact-card"><p>تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم</p><p>تلفن گویا: ۰۲۱-۸۸۳۴۲۶۷۹</p><p>شنبه تا چهارشنبه ۹ تا ۱۷</p><p>hello@karbanapp.ir</p></div>${pageClose()}`;
+    await write('/تماس-با-ما', transformHtml(template, { title: 'تماس با کاربان', description: 'تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم | تلفن: ۰۲۱-۸۸۳۴۲۶۷۹ | hello@karbanapp.ir', path: '/تماس-با-ما', jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'تماس با ما', path: '/تماس-با-ما' }])], inner: contactInner }));
+
+    const termsInner = `${shell('/قوانین', [{ name: 'قوانین', path: '/قوانین' }])}${pageOpen(null)}<h1>قوانین و شرایط استفاده از کاربان</h1><p class="lead">شرایط شفاف استفاده از خدمات و ابزارهای کاربان؛ پیش از ثبت سفارش بخوانید.</p><ul>${termsItems.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>${pageClose()}`;
+    await write('/قوانین', transformHtml(template, { title: 'قوانین و شرایط استفاده از کاربان', description: 'شرایط شفاف استفاده از خدمات و ابزارهای کاربان؛ پیش از ثبت سفارش بخوانید.', path: '/قوانین', jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'قوانین', path: '/قوانین' }])], inner: termsInner }));
+
+    const privacyInner = `${shell('/حریم-خصوصی', [{ name: 'حریم خصوصی', path: '/حریم-خصوصی' }])}${pageOpen(null)}<h1>سیاست حریم خصوصی کاربان</h1><p class="lead">در کاربان فقط داده‌ای که خودتان وارد می‌کنید ذخیره می‌شود و فقط برای همان خدمت استفاده می‌شود.</p>${privacySections.map(([t, d]) => `<h2>${esc(t)}</h2><p>${esc(d)}</p>`).join('')}${pageClose()}`;
+    await write('/حریم-خصوصی', transformHtml(template, { title: 'حریم خصوصی کاربان', description: 'سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود.', path: '/حریم-خصوصی', jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'حریم خصوصی', path: '/حریم-خصوصی' }])], inner: privacyInner }));
+  }
+  console.log(`prerender: static + tools sections done (${count} so far).`);
+
+  /* 5) Supabase-driven routes — best effort */
   try {
-    let articles;
+    const knowledgeInner = (articlesByCat) =>
+      `${shell('/دانشنامه', [{ name: 'دانشنامه', path: '/دانشنامه' }])}` +
+      `${pageOpen('دانشنامه', false)}` +
+      `<h1>دانشنامه حقوقی و مالیاتی کسب‌وکار</h1>` +
+      `<p class="lead">مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده و با استناد به مواد قانونی.</p>` +
+      `<div class="category-grid">` +
+      KNOWLEDGE_CATEGORIES.map((c, i) => `<a href="${url(`/دانشنامه/${i + 1}`)}" class="category-card"><h2>${esc(c)}</h2><p>${esc(CATEGORY_INTRO[c].slice(0, 80))}…</p></a>`).join('') +
+      `</div>` +
+      relatedBox('پرمخاطب‌های کاربان', [{ href: '/قراردادها', label: 'بانک قراردادها' }, { href: '/ابزارهای-هوش-مصنوعی', label: 'ماشین‌حساب‌ها' }, { href: '/درخواست‌های-اداری', label: 'درخواست‌های اداری' }]) +
+      `${pageClose()}`;
+
+    await write('/دانشنامه', transformHtml(template, {
+      title: 'دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان',
+      description: 'مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده و با استناد به مواد قانونی.',
+      path: '/دانشنامه',
+      jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'دانشنامه', path: '/دانشنامه' }])],
+      inner: knowledgeInner(),
+    }));
+
+    let articles = [];
     try {
-      articles = await supabaseFetch('articles', 'id,title,intro,meta_title,meta_description');
-    } catch {
-      articles = [];
+      articles = await supabaseFetch(
+        'articles',
+        'id,category,title,intro,author,body,meta_title,meta_description,created_at,updated_at',
+        'id,category,title,intro,author,body,meta_title,meta_description,created_at',
+      );
+    } catch (e) {
+      console.warn(`prerender: articles fetch failed (${String(e).slice(0, 100)})`);
     }
-    if (!articles.length) articles = (await liveSitemapIds('articles')).map((id) => ({ id, title: `مقاله دانشنامه`, intro: '', meta_title: null, meta_description: null }));
+
+    /* category pages with real article lists */
+    for (let i = 0; i < KNOWLEDGE_CATEGORIES.length; i++) {
+      const cat = KNOWLEDGE_CATEGORIES[i];
+      const catPath = `/دانشنامه/${i + 1}`;
+      const items = articles.filter((a) => a.category === cat);
+      const inner =
+        `${shell(catPath, [{ name: 'دانشنامه', href: '/دانشنامه' }, { name: cat, path: catPath }])}` +
+        `${pageOpen('دانشنامه')}<h1>${esc(cat)}</h1><p class="lead">مقاله‌های تخصصی این دسته، نوشته‌شده با استناد به مواد قانونی.</p><p>${esc(CATEGORY_INTRO[cat])}</p>` +
+        `<div class="article-list">` +
+        items.map((a) => `<a class="article-list-item" href="${url(`/دانشنامه/مقاله/${a.id}`)}"><div><h2>${esc(a.title)}</h2><p>${esc(a.intro || '')}</p><small>${esc(a.author || 'کاربان')}</small></div></a>`).join('') +
+        (items.length === 0 ? '<p>به‌زودی مقاله‌های این دسته منتشر می‌شود.</p>' : '') +
+        `</div>${pageClose()}`;
+      await write(catPath, transformHtml(template, {
+        title: `مقالات ${cat} | دانشنامه کاربان`,
+        description: `مقاله‌های تخصصی ${cat} برای کسب‌وکارها، با استناد به مواد قانونی.`,
+        path: catPath,
+        jsonLd: [
+          breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'دانشنامه', href: '/دانشنامه' }, { name: cat, path: catPath }]),
+          ...(items.length ? [itemListLd(items.map((a) => ({ name: a.title, href: `/دانشنامه/مقاله/${a.id}` })))] : []),
+        ],
+        inner,
+      }));
+    }
+
+    /* article detail pages — full content */
     for (const a of articles) {
       const path = `/دانشنامه/مقاله/${a.id}`;
       const title = a.meta_title || `${a.title} | کاربان`;
       const description = a.meta_description || a.intro || title;
-      const jsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: a.title,
-        description,
-        mainEntityOfPage: `${ORIGIN}${encodeURI(path)}`,
-        publisher: { '@type': 'Organization', name: 'کاربان', url: `${ORIGIN}/` },
-        inLanguage: 'fa-IR',
-      };
-      await writeRoute(distDir, transformHtml(template, { title, description, path, jsonLd }), path);
-      count++;
+      const catIndex = KNOWLEDGE_CATEGORIES.indexOf(a.category) + 1;
+      const faqs = parseFaqs(a.body);
+      const inner =
+        `${shell(path, [{ name: 'دانشنامه', href: '/دانشنامه' }, ...(catIndex ? [{ name: a.category, href: `/دانشنامه/${catIndex}` }] : []), { name: a.title, path }])}` +
+        `${pageOpen(a.category)}<h1>${esc(a.title)}</h1><p class="article-intro">${esc(a.intro || '')}</p><small class="article-author">${esc(a.author || 'تیم کاربان')}</small>` +
+        `<div class="article-body">${richTextToHtml(a.body)}</div>` +
+        relatedBox('ابزارهای مرتبط', [
+          { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق ۱۴۰۵' },
+          { href: '/قراردادها', label: 'بانک قراردادها' },
+          { href: '/دانشنامه', label: 'دانشنامه' },
+        ]) +
+        `<a class="button" href="${url('/دانشنامه')}">بازگشت به دانشنامه</a>${pageClose()}`;
+      const ld = [
+        articleLd({ title: a.title, description, path, author: a.author, published: a.created_at, modified: a.updated_at }),
+        breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'دانشنامه', href: '/دانشنامه' }, ...(catIndex ? [{ name: a.category, href: `/دانشنامه/${catIndex}` }] : []), { name: a.title, path }]),
+        ...(faqs.length ? [faqLd(faqs)] : []),
+      ];
+      await write(path, transformHtml(template, { title, description, path, ogType: 'article', jsonLd: ld, inner, published: a.created_at, modified: a.updated_at }));
     }
-    console.log(`prerender-meta: ${articles.length} articles done.`);
+    console.log(`prerender: knowledge done (${articles.length} articles, ${count} total).`);
   } catch (e) {
-    console.warn(`prerender-meta: articles skipped (${String(e).slice(0, 120)})`);
+    console.warn(`prerender: knowledge skipped (${String(e).slice(0, 120)})`);
   }
 
+  /* 6) Contracts — hub with full crawlable list + detail pages with full body */
   try {
-    let contracts;
-    try {
-      contracts = await supabaseFetch('contracts', 'id,title,summary');
-    } catch {
-      contracts = [];
-    }
-    if (!contracts.length) contracts = (await liveSitemapIds('contracts')).map((id) => ({ id, title: 'قرارداد کاربان', summary: '' }));
+    const contracts = await supabaseFetch(
+      'contracts',
+      'id,title,type,industry,summary,body,pdf_url,created_at,updated_at',
+      'id,title,type,industry,summary,body,pdf_url,created_at',
+    );
+
+    const hubInner =
+      `${shell('/قراردادها', [{ name: 'قراردادها', path: '/قراردادها' }])}` +
+      `${pageOpen('قراردادها', false)}` +
+      `<h1>بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده</h1>` +
+      `<p class="lead">بیش از ۸۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی.</p>` +
+      `<div class="contract-grid">` +
+      contracts.map((c) =>
+        `<article class="contract-card"><div class="contract-card-top"><div><small>${esc(c.industry || '')}</small><h2>${esc(c.title)}</h2><p>${esc(c.summary || '')}</p></div></div>` +
+        `<div class="contract-tiers"><span>عمومی <b>رایگان</b></span><span>تخصصی <b>قیمت ثابت</b></span><span>اختصاصی <b>متخصص</b></span></div>` +
+        `<a class="button button-small" href="${url(`/قراردادها/${c.id}`)}">مشاهده ←</a></article>`).join('') +
+      `</div>${pageClose()}`;
+    await write('/قراردادها', transformHtml(template, {
+      title: 'بیش از ۸۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF | کاربان',
+      description: 'بانک قرارداد کاربان؛ بیش از ۹۰ نمونه قرارداد استاندارد به تفکیک نوع و صنف با متن کامل و دانلود PDF.',
+      path: '/قراردادها',
+      jsonLd: [
+        breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'قراردادها', path: '/قراردادها' }]),
+        itemListLd(contracts.slice(0, 100).map((c) => ({ name: c.title, href: `/قراردادها/${c.id}` }))),
+      ],
+      inner: hubInner,
+    }));
+    console.log(`prerender: contracts hub done (${count} total).`);
+
     for (const c of contracts) {
       const path = `/قراردادها/${c.id}`;
-      const title = `${c.title} | کاربان`;
-      const description = c.summary || `متن کامل و دانلود PDF «${c.title}» — نسخه استاندارد کاربان.`;
-      const jsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'خانه', item: `${ORIGIN}/` },
-          { '@type': 'ListItem', position: 2, name: 'قراردادها', item: `${ORIGIN}/قراردادها` },
-          { '@type': 'ListItem', position: 3, name: c.title, item: `${ORIGIN}${encodeURI(path)}` },
-        ],
-      };
-      await writeRoute(distDir, transformHtml(template, { title, description, path, jsonLd }), path);
-      count++;
+      const title = `${String(c.title).trim()} | کاربان`;
+      const summary = String(c.summary || '').trim();
+      const description = summary.length >= 60
+        ? summary
+        : `متن کامل «${String(c.title).trim()}» با بندهای استاندارد و دانلود رایگان PDF${c.industry ? ` — نسخهٔ مناسب صنف «${c.industry}»` : ''} مطابق مقررات جاری ایران.`;
+      const inner =
+        `${shell(path, [{ name: 'قراردادها', href: '/قراردادها' }, { name: c.title, path }])}` +
+        `${pageOpen('قراردادهای کاربان')}<h1>${esc(String(c.title).trim())}</h1><p class="article-intro">${esc(summary || description)}</p>` +
+        (c.body ? `<div class="article-body"><div class="contract-body" style="white-space:pre-wrap;line-height:2">${esc(c.body)}</div></div>` : `<div class="article-body"><p>این قرارداد به‌صورت تخصصی برای صنف «${esc(c.industry || 'عمومی')}» آماده شده است؛ برای دریافت نسخه کامل، از بخش دانلود استفاده کنید.</p></div>`) +
+        relatedBox('مسیرهای مرتبط', [
+          { href: '/قراردادها', label: 'همه قراردادها' },
+          { href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', label: 'ماشین‌حساب هزینه استخدام' },
+          { href: '/خدمات', label: 'نگارش قرارداد اختصاصی' },
+        ]) +
+        `<a class="button" href="${url('/قراردادها')}">بازگشت به فهرست</a>${pageClose()}`;
+      const ld = [
+        articleLd({ title: String(c.title).trim(), description, path, author: 'کاربان', published: c.created_at, modified: c.updated_at }),
+        breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'قراردادها', href: '/قراردادها' }, { name: String(c.title).trim(), path }]),
+      ];
+      if (c.type || c.industry) ld[0].about = [c.type, c.industry].filter(Boolean).map((n) => ({ '@type': 'Thing', name: n }));
+      await write(path, transformHtml(template, { title, description, path, ogType: 'article', jsonLd: ld, inner, published: c.created_at, modified: c.updated_at }));
     }
-    console.log(`prerender-meta: ${contracts.length} contracts done.`);
+    console.log(`prerender: contracts done (${contracts.length}, ${count} total).`);
   } catch (e) {
-    console.warn(`prerender-meta: contracts skipped (${String(e).slice(0, 120)})`);
+    console.warn(`prerender: contracts skipped (${String(e).slice(0, 120)})`);
   }
 
-  console.log(`prerender-meta: ${count} route HTML files written.`);
+  /* 7) Services page — mirror ServicesPage markup */
+  try {
+    const services = await supabaseFetch(
+      'services',
+      'id,title,price,description,domain,unit,featured,kind,discount_percent',
+      'id,title,price,description,domain,unit,featured,kind',
+    );
+    const consultation = services.filter((s) => !s.kind);
+    const groups = [
+      ['مشاوره روابط کار', consultation.filter((s) => s.domain === 'labor')],
+      ['مشاوره مالی، مالیاتی و حسابرسی', consultation.filter((s) => s.domain === 'financial')],
+      ['خدمات قراردادی', services.filter((s) => s.kind)],
+    ];
+    const card = (s) => {
+      const d = s.discount_percent || 0;
+      const base = String(s.price || '');
+      const priceHtml = d > 0
+        ? `<del>${esc(base)}</del> <strong>${esc(base)}</strong>`
+        : `<strong>${esc(base)}</strong>`;
+      return `<a class="plan-card plan-link ${s.featured ? 'plan-featured' : ''}" href="${url(`/سفارش/${s.id}`)}"><h2>${esc(s.title)}</h2><p>${esc(s.description || '')}</p>${priceHtml}<small>${esc(s.unit || '')}</small><span class="plan-cta">ثبت سفارش ←</span></a>`;
+    };
+    const inner =
+      `${shell('/خدمات', [{ name: 'خدمات', path: '/خدمات' }])}` +
+      `${pageOpen('خدمات تخصصی کاربان', false)}` +
+      `<div class="narrow-content"><h1>خدمات قراردادی و تخصصی</h1><p class="lead">روی هر خدمت بزنید تا توضیح کامل را ببینید و همان‌جا سفارش بدهید.</p></div>` +
+      groups.filter(([, items]) => items.length).map(([t, items]) => `<section><h2>${esc(t)}</h2><div class="plans-grid">${items.map(card).join('')}</div></section>`).join('') +
+      `<div class="guarantee"><span><strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.</span></div>` +
+      `${pageClose()}`;
+    await write('/خدمات', transformHtml(template, {
+      title: 'مشاوره و قرارداد اختصاصی برای هر صنف | کاربان',
+      description: 'مشاوره حقوقی، مالی و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین.',
+      path: '/خدمات',
+      jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'خدمات', path: '/خدمات' }])],
+      inner,
+    }));
+  } catch (e) {
+    console.warn(`prerender: services skipped (${String(e).slice(0, 120)})`);
+  }
+
+  /* 8) Administrative requests — hub + detail pages */
+  try {
+    const requests = await supabaseFetch('admin_requests', 'id,category,title,intro,body');
+
+    const hubInner =
+      `${shell('/درخواست‌های-اداری', [{ name: 'درخواست‌های اداری', path: '/درخواست‌های-اداری' }])}` +
+      `${pageOpen('ابزارهای اداری', false)}` +
+      `<h1>درخواست‌های اداری آماده</h1>` +
+      `<p class="lead">متن رسمی و آماده برای درخواست‌های پرتکرار؛ مشاهده کن، کپی بگیر یا PDF برنددار دانلود کن، جاهای خالی را پر کن و امضا کن.</p>` +
+      `<div class="contract-grid">` +
+      requests.map((r) =>
+        `<article class="contract-card"><div class="contract-card-top"><div><small>${esc(r.category || '')}</small><h2>${esc(r.title)}</h2><p>${esc(r.intro || '')}</p></div></div>` +
+        `<a class="button button-small" href="${url(`/درخواست‌های-اداری/${r.id}`)}">مشاهده و دانلود ←</a></article>`).join('') +
+      `</div>` +
+      relatedBox('ابزارهای مرتبط کاربان', [{ href: '/قراردادها', label: 'بانک قراردادها' }, { href: '/دانشنامه', label: 'دانشنامه حقوقی' }, { href: '/ابزارهای-هوش-مصنوعی', label: 'ماشین‌حساب‌ها' }]) +
+      `${pageClose()}`;
+    await write('/درخواست‌های-اداری', transformHtml(template, {
+      title: 'درخواست‌های اداری آماده — استعفا، وام، مرخصی و… | کاربان',
+      description: 'متن رسمی و آماده درخواست‌های اداری پرتکرار؛ کپی کنید، جاهای خالی را پر کنید و امضا کنید.',
+      path: '/درخواست‌های-اداری',
+      jsonLd: [
+        breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'درخواست‌های اداری', path: '/درخواست‌های-اداری' }]),
+        itemListLd(requests.map((r) => ({ name: r.title, href: `/درخواست‌های-اداری/${r.id}` }))),
+      ],
+      inner: hubInner,
+    }));
+
+    for (const r of requests) {
+      const path = `/درخواست‌های-اداری/${r.id}`;
+      const title = `${r.title} | کاربان`;
+      const description = r.intro || `متن رسمی و آماده «${r.title}»؛ کپی کنید یا PDF برنددانلود بگیرید.`;
+      const inner =
+        `${shell(path, [{ name: 'درخواست‌های اداری', href: '/درخواست‌های-اداری' }, { name: r.title, path }])}` +
+        `${pageOpen(r.category)}<h1>${esc(r.title)}</h1><p class="article-intro">${esc(r.intro || '')}</p>` +
+        `<div class="contract-body" style="white-space:pre-wrap;line-height:2">${esc(r.body || '')}</div>` +
+        `<a class="button" href="${url('/درخواست‌های-اداری')}">بازگشت به فهرست</a>${pageClose()}`;
+      await write(path, transformHtml(template, {
+        title, description, path, ogType: 'article',
+        jsonLd: [
+          breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'درخواست‌های اداری', href: '/درخواست‌های-اداری' }, { name: r.title, path }]),
+          { '@context': 'https://schema.org', '@type': 'WebPage', name: r.title, description, inLanguage: 'fa-IR', mainEntityOfPage: url(path), isPartOf: { '@id': `${ORIGIN}/#website` } },
+        ],
+        inner,
+      }));
+    }
+    console.log(`prerender: requests done (${requests.length}, ${count} total).`);
+  } catch (e) {
+    console.warn(`prerender: requests skipped (${String(e).slice(0, 120)})`);
+  }
+
+  console.log(`prerender: ${count} route HTML files written (full-content mode).`);
 }
 
 main().catch((e) => {
   // Never break the deploy because of prerendering.
-  console.error('prerender-meta failed (build continues with SPA fallback):', e);
+  console.error('prerender failed (build continues with SPA fallback):', e);
 });

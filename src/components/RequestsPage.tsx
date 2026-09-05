@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Copy, FileText, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { applySEO } from '@/lib/seo';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 
@@ -110,7 +111,36 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
       .then(({ data }) => {
         if (!active) return;
         setItem((data as Req) || null);
-        if (data) document.title = `${data.title} | کاربان`;
+        if (data) {
+          const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
+          const path = `/درخواست‌های-اداری/${data.id}`;
+          applySEO({
+            title: `${data.title} | کاربان`,
+            description: data.intro || `متن رسمی و آماده «${data.title}»؛ کپی کنید، جاهای خالی را پر کنید و امضا کنید.`,
+            path,
+            ogType: 'article',
+            jsonLd: [
+              {
+                '@context': 'https://schema.org',
+                '@type': 'WebPage',
+                name: data.title,
+                description: data.intro || '',
+                inLanguage: 'fa-IR',
+                mainEntityOfPage: u(path),
+                isPartOf: { '@id': 'https://karbanapp.ir/#website' },
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'خانه', item: 'https://karbanapp.ir/' },
+                  { '@type': 'ListItem', position: 2, name: 'درخواست‌های اداری', item: u('/درخواست‌های-اداری') },
+                  { '@type': 'ListItem', position: 3, name: data.title, item: u(path) },
+                ],
+              },
+            ],
+          });
+        }
         setLoading(false);
       });
     return () => {

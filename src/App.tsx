@@ -5,6 +5,7 @@ import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
 import { KNOWLEDGE_CATEGORIES } from '@/components/KnowledgePage';
 import type { JsonLd } from '@/lib/seo';
+import calcSeo from '@/data/calc-seo.json';
 const ContentPage = React.lazy(() => import('@/components/ContentPage'));
 const ServicesPage = React.lazy(() =>
   import('@/components/ContentPage').then((m) => ({ default: m.ServicesPage })),
@@ -63,7 +64,7 @@ const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirem
   'اضافه-کاری': { type: 'overtime', title: 'ماشین‌حساب اضافه‌کاری', desc: 'مبلغ اضافه‌کاری را بر اساس نرخ قانونی محاسبه کنید.' },
   'مالیات-مشاغل': { type: 'business-tax', title: 'ماشین‌حساب مالیات مشاغل و مغازه', desc: 'محاسبه پلکانی ماده ۱۳۱ با معافیت سالانه.' },
   'ارزش-افزوده': { type: 'vat', title: 'ماشین‌حساب ارزش افزوده', desc: 'محاسبه ۱۰٪ — از پایه یا از داخل فاکتور.' },
-  'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', desc: 'محاسبه پلکانی مالیات حقوق بر اساس معافیت سال ۱۴۰۵.' },
+  'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', desc: 'محاسبه پلکانی مالیات حقوق ۱۴۰۵ بر اساس معافیت سالانه و نرخ‌های ماده ۸۴؛ برآورد دقیق مالیات ماهانه و سالانه هر کارمند.' },
 };
 
 const faqJsonLd = {
@@ -77,6 +78,45 @@ const faqJsonLd = {
     { '@type': 'Question', name: 'مالیات مشاغل چند درصد است؟', acceptedAnswer: { '@type': 'Answer', text: 'پلکانی ۱۵ تا ۳۵ درصد مطابق ماده ۱۳۱، پس از کسر معافیت سالانه.' } },
   ],
 };
+type CalcSeoEntry = { about: string[]; how: string[]; example: string[]; laws: string[]; faqs: [string, string][]; links: { href: string; label: string }[] };
+const calcSeoMap = calcSeo as unknown as Record<string, CalcSeoEntry>;
+
+/** JSON-LD for calculator pages — mirrors the bundle written by prerender-meta.mjs */
+function calcJsonLd(slug: string, title: string, description: string): JsonLd {
+  const path = `/ابزارهای-هوش-مصنوعی/${slug}`;
+  const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
+  const webApp = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: title,
+    description,
+    url: u(path),
+    applicationCategory: 'FinanceApplication',
+    operatingSystem: 'Web',
+    inLanguage: 'fa-IR',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'IRR' },
+    publisher: { '@id': 'https://karbanapp.ir/#organization' },
+  };
+  const crumb = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'خانه', item: 'https://karbanapp.ir/' },
+      { '@type': 'ListItem', position: 2, name: 'ابزارهای هوش مصنوعی', item: u('/ابزارهای-هوش-مصنوعی') },
+      { '@type': 'ListItem', position: 3, name: title, item: u(path) },
+    ],
+  };
+  const faqs = calcSeoMap[slug]?.faqs || [];
+  const faq = faqs.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+      }
+    : null;
+  return faq ? [webApp, crumb, faq] : [webApp, crumb];
+}
+
 export default function App() {
   const route = useRoute();
   const segments = route.split('/').filter(Boolean);
@@ -210,10 +250,11 @@ export default function App() {
       );
     }
 
-    const calc = segments[1] ? calcMap[segments[1]] : undefined;
+    const calcSlug = segments[1] as string;
+    const calc = calcSlug ? calcMap[calcSlug] : undefined;
     if (calc) {
       return (
-        <Page title={calc.title} description={calc.desc} breadcrumb={['ابزارهای هوش مصنوعی', calc.title]}>
+        <Page title={calc.title} description={calc.desc} breadcrumb={['ابزارهای هوش مصنوعی', calc.title]} jsonLd={calcJsonLd(calcSlug, calc.title, calc.desc)}>
           <CalculatorPage type={calc.type} title={calc.title} description={calc.desc} />
         </Page>
       );

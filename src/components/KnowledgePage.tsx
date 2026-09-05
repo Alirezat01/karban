@@ -6,6 +6,15 @@ import { renderRichText } from '@/lib/rich-text';
 
 export const KNOWLEDGE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
 
+/** اختصاصی هر دسته — باید با CATEGORY_INTRO در scripts/prerender-meta.mjs هماهنگ بماند */
+export const CATEGORY_INTRO: Record<string, string> = {
+  'حقوقی و قانون کار': 'از تعریف قرارداد کار و دوره آزمایشی تا اضافه‌کاری، سنوات و تسویه‌حساب؛ مقاله‌های این دسته مواد کلیدی قانون کار را با مثال عملی و استناد دقیق توضیح می‌دهند تا پیش از امضای هر سند، حق و تکلیف دو طرف را بدانید.',
+  'مالیات': 'از اظهارنامه و معافیت‌های سالانه تا ارزش افزوده و مالیات حقوق؛ این دسته مهلت‌ها، نرخ‌ها و مسیرهای قانونی را به زبان ساده مرور می‌کند تا نه جریمه بدهید و نه ریالی بیشتر از موظف بپردازید.',
+  'حسابداری': 'اسناد قابل‌قبول، هزینه‌های سازمانی و کنترل‌های پایه؛ مقاله‌های حسابداری کاربان کمک می‌کند پرونده مالیاتی شما مستند و قابل دفاع باشد.',
+  'منابع انسانی': 'از هزینه واقعی استخدام و آیین‌نامه انضباطی تا محرمانگی و نگهداشت نیرو؛ راهنماهای عملی برای کارفرمایانی که می‌خواهند تیم پایدار و کم‌دردسر بسازند.',
+  'مدیریت': 'تصمیم‌های مدیریتی پرتکرار — از نوع همکاری و قرارداد تا تست سلامت کسب‌وکار — با نگاه حقوقی و مالی، برای رشد مطمئن‌تر.',
+};
+
 const relatedLinks: Record<string, { href: string; label: string }[]> = {
   'حقوقی و قانون کار': [
     { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق ۱۴۰۵' },
@@ -64,6 +73,7 @@ export function ArticlesListPage({ categoryIndex }: { categoryIndex: number }) {
         <span className="eyebrow">دانشنامه</span>
         <h1>{category}</h1>
         <p className="lead">مقاله‌های تخصصی این دسته، نوشته‌شده با استناد به مواد قانونی.</p>
+        {CATEGORY_INTRO[category] && <p className="category-intro">{CATEGORY_INTRO[category]}</p>}
         {loading ? (
           <p>در حال بارگذاری…</p>
         ) : (
@@ -103,21 +113,40 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
           const a = (data as Article) || null;
           setArticle(a);
           if (a) {
+            const catIndex = KNOWLEDGE_CATEGORIES.indexOf(a.category) + 1;
+            const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
             applySEO({
               title: a.meta_title || `${a.title} | کاربان`,
               description: a.meta_description || a.intro,
               path: `/دانشنامه/مقاله/${a.id}`,
-              jsonLd: {
-                '@context': 'https://schema.org',
-                '@type': 'Article',
-                headline: a.title,
-                description: a.meta_description || a.intro,
-                author: { '@type': 'Organization', name: a.author || 'کاربان' },
-                publisher: { '@type': 'Organization', name: 'کاربان', url: 'https://karbanapp.ir/' },
-                mainEntityOfPage: `https://karbanapp.ir/دانشنامه/مقاله/${a.id}`,
-                inLanguage: 'fa-IR',
-                ...(a.created_at ? { datePublished: a.created_at } : {}),
-              },
+              ogType: 'article',
+              jsonLd: [
+                {
+                  '@context': 'https://schema.org',
+                  '@type': 'Article',
+                  headline: a.title,
+                  description: a.meta_description || a.intro,
+                  image: ['https://karbanapp.ir/images/og-cover.jpg'],
+                  author: { '@type': 'Organization', name: a.author || 'کاربان' },
+                  publisher: { '@id': 'https://karbanapp.ir/#organization' },
+                  mainEntityOfPage: u(`/دانشنامه/مقاله/${a.id}`),
+                  inLanguage: 'fa-IR',
+                  ...(a.created_at ? { datePublished: a.created_at } : {}),
+                  ...(a.created_at ? { dateModified: a.created_at } : {}),
+                },
+                {
+                  '@context': 'https://schema.org',
+                  '@type': 'BreadcrumbList',
+                  itemListElement: [
+                    { '@type': 'ListItem', position: 1, name: 'خانه', item: 'https://karbanapp.ir/' },
+                    { '@type': 'ListItem', position: 2, name: 'دانشنامه', item: u('/دانشنامه') },
+                    ...(catIndex
+                      ? [{ '@type': 'ListItem', position: 3, name: a.category, item: u(`/دانشنامه/${catIndex}`) }]
+                      : []),
+                    { '@type': 'ListItem', position: catIndex ? 4 : 3, name: a.title, item: u(`/دانشنامه/مقاله/${a.id}`) },
+                  ],
+                },
+              ],
             });
           }
           setLoading(false);

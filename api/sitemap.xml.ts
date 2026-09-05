@@ -11,6 +11,7 @@ export default async function handler(req: any, res: any) {
     { path: '/قراردادها', priority: '0.9', lastmod: today },
     { path: '/دانشنامه', priority: '0.9', lastmod: today },
     { path: '/ابزارهای-هوش-مصنوعی', priority: '0.9', lastmod: today },
+    { path: '/درخواست‌های-اداری', priority: '0.8', lastmod: today },
     { path: '/درباره-ما', priority: '0.5' },
     { path: '/تماس-با-ما', priority: '0.5' },
     { path: '/قوانین', priority: '0.4' },
@@ -38,25 +39,49 @@ export default async function handler(req: any, res: any) {
   );
 
   try {
-    const a = await supabase.from('articles').select('id').order('id');
+    const a = await supabase.from('articles').select('id,created_at').order('id');
     if (a.error) {
-      console.error('[sitemap] articles query failed:', a.error.message);
+      // ستون created_at ممکن است نباشد؛ fallback بدون آن
+      const fb = await supabase.from('articles').select('id').order('id');
+      if (fb.error) throw new Error(fb.error.message);
+      (fb.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
     } else {
-      (a.data || []).forEach((r: any) => rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7' }));
+      (a.data || []).forEach((r: any) =>
+        rows.push({ path: `/دانشنامه/مقاله/${r.id}`, priority: '0.7', lastmod: r.created_at ? String(r.created_at).slice(0, 10) : undefined }),
+      );
     }
   } catch (e) {
     console.error('[sitemap] articles exception:', String(e));
   }
 
   try {
-    const c = await supabase.from('contracts').select('id').order('id');
+    const c = await supabase.from('contracts').select('id,created_at').order('id');
     if (c.error) {
-      console.error('[sitemap] contracts query failed:', c.error.message);
+      const fb = await supabase.from('contracts').select('id').order('id');
+      if (fb.error) throw new Error(fb.error.message);
+      (fb.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
     } else {
-      (c.data || []).forEach((r: any) => rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8' }));
+      (c.data || []).forEach((r: any) =>
+        rows.push({ path: `/قراردادها/${r.id}`, priority: '0.8', lastmod: r.created_at ? String(r.created_at).slice(0, 10) : undefined }),
+      );
     }
   } catch (e) {
     console.error('[sitemap] contracts exception:', String(e));
+  }
+
+  try {
+    const r = await supabase.from('admin_requests').select('id,created_at').order('id');
+    if (r.error) {
+      const fb = await supabase.from('admin_requests').select('id').order('id');
+      if (fb.error) throw new Error(fb.error.message);
+      (fb.data || []).forEach((x: any) => rows.push({ path: `/درخواست‌های-اداری/${x.id}`, priority: '0.6' }));
+    } else {
+      (r.data || []).forEach((x: any) =>
+        rows.push({ path: `/درخواست‌های-اداری/${x.id}`, priority: '0.6', lastmod: x.created_at ? String(x.created_at).slice(0, 10) : undefined }),
+      );
+    }
+  } catch (e) {
+    console.error('[sitemap] admin_requests exception:', String(e));
   }
 
   const xml =

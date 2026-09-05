@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Scale, ShieldCheck, Table2 } from 'lucide-react';
+import { ArrowLeft, Scale, ShieldCheck, Table2 } from 'lucide-react';
 import { legalConfig, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { formatRial, formatFaNumber } from '@/lib/format';
+import calcSeo from '@/data/calc-seo.json';
+
+type CalcSeoEntry = {
+  about: string[];
+  how: string[];
+  example: string[];
+  laws: string[];
+  faqs: [string, string][];
+  links: { href: string; label: string }[];
+};
+const calcSeoMap = calcSeo as unknown as Record<string, CalcSeoEntry>;
 
 export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax';
 
@@ -225,6 +236,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
   }, [base, params.salary]);
 
   const notes = legalNotes[noteKey[type]] || [];
+  const seo = calcSeoMap[noteKey[type]];
 
   return (
     <section className="inner-page">
@@ -419,6 +431,48 @@ export default function CalculatorPage({ type, title, description }: Props) {
           </ul>
           <p className="muted-note"><ShieldCheck size={14} /> پارامترها مطابق مقررات ۱۴۰۵ است و از تب «تنظیمات» پنل ادمین قابل به‌روزرسانی است.</p>
         </div>
+
+        {seo && (
+          <div className="article-body calc-seo">
+            <h2>راهنمای کامل {title}</h2>
+            {seo.about.map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+            <h2>روش محاسبه</h2>
+            <ul>
+              {seo.how.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+            <h2>مثال عملی</h2>
+            {seo.example.map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+            <div className="faq-section">
+              <h2>پرسش‌های پرتکرار</h2>
+              {seo.faqs.map(([q, a]) => (
+                <details key={q}>
+                  <summary>{q}</summary>
+                  <p>{a}</p>
+                </details>
+              ))}
+            </div>
+            {seo.links.length > 0 && (
+              <div className="related-box">
+                <div>
+                  <strong>لینک‌های مرتبط</strong>
+                  <div className="related-links">
+                    {seo.links.map((l) => (
+                      <a key={l.href} href={l.href}>
+                        {l.label} <ArrowLeft size={14} />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
