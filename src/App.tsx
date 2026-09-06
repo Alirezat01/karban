@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
 import { KNOWLEDGE_CATEGORIES } from '@/components/KnowledgePage';
-import type { JsonLd } from '@/lib/seo';
+import { applySEO, type JsonLd } from '@/lib/seo';
 import calcSeo from '@/data/calc-seo.json';
 const ContentPage = React.lazy(() => import('@/components/ContentPage'));
 const ServicesPage = React.lazy(() =>
@@ -66,6 +66,19 @@ function NotFound() {
       </div>
     </section>
   );
+}
+
+/** پنل مدیریت: بدون تغییر ظاهر، فقط از ایندکس خارج می‌شود */
+function AdminShell() {
+  useEffect(() => {
+    applySEO({
+      title: 'پنل مدیریت | کاربان',
+      description: 'ورود مدیران کاربان.',
+      path: window.location.pathname,
+      noindex: true,
+    });
+  }, []);
+  return <AdminPage />;
 }
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination'; title: string; desc: string }> = {
   'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
@@ -206,7 +219,7 @@ export default function App() {
       );
     }
     return (
-      <Page title={`چک‌لیست ${segments[1]} | کاربان`} description="چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت." breadcrumb={['چک‌لیست‌ها', segments[1]]}>
+      <Page title={`چک‌لیست ${segments[1]} | کاربان`} description="چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت." breadcrumb={['چک‌لیست‌ها']}>
         <ChecklistViewPage slug={segments[1]} />
       </Page>
     );
@@ -226,7 +239,7 @@ export default function App() {
       );
     }
     return (
-      <Page title={`${segments[1]} — کتابخانه قوانین کاربان`} description="گزیده مواد پرکاربرد این قانون با زبان ساده و جست‌وجوی سریع." breadcrumb={['کتابخانه قوانین', segments[1]]}>
+      <Page title={`${segments[1]} — کتابخانه قوانین کاربان`} description="گزیده مواد پرکاربرد این قانون با زبان ساده و جست‌وجوی سریع." breadcrumb={['کتابخانه قوانین']}>
         <LawLibraryPage category={segments[1]} />
       </Page>
     );
@@ -292,7 +305,7 @@ export default function App() {
 
     if (segments[1] === 'مقاله' && segments[2]) {
       return (
-        <Page title="مقاله دانشنامه کاربان" description="مقاله تخصصی با استناد قانونی." breadcrumb={['دانشنامه', 'مقاله']}>
+        <Page title="مقاله دانشنامه کاربان" description="مقاله تخصصی با استناد قانونی." breadcrumb={['دانشنامه']}>
           <ArticleViewPage articleId={segments[2]} />
         </Page>
       );
@@ -317,7 +330,7 @@ export default function App() {
     }
 
     return (
-      <Page title={`قرارداد ${segments.slice(1).join(' ')}`} description="متن کامل قرارداد و فایل PDF." breadcrumb={['قراردادها', segments.slice(1).join(' ')]}>
+      <Page title={`قرارداد ${segments.slice(1).join(' ')}`} description="متن کامل قرارداد و فایل PDF." breadcrumb={['قراردادها']}>
         <ArticlePage title={`جزئیات قرارداد ${segments.slice(1).join(' ')}`} category="قراردادهای کاربان" contractId={segments[1]} />
       </Page>
     );
@@ -401,7 +414,7 @@ export default function App() {
   if (segments[0] === 'admin') {
     return (
       <div dir="rtl" className="app-root">
-        <AdminPage />
+        <AdminShell />
       </div>
     );
   }
