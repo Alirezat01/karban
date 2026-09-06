@@ -1,5 +1,12 @@
+# کاربان — robots.txt
+# صفحات خصوصی و پنل‌ها از خزش خارج هستند؛ بقیه سایت آزاد است.
+
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /%D8%AF%D8%A7%D8%B4%D8%A8%D9%88%D8%B1%D8%AF
+Disallow: /%D9%88%D8%B1%D9%88%D8%AF
+Disallow: /%D8%B3%D9%81%D8%A7%D8%B1%D8%B4
+Disallow: /api/
 
 Sitemap: https://karbanapp.ir/sitemap.xml
