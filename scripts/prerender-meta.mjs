@@ -24,6 +24,13 @@ import { createClient } from '@supabase/supabase-js';
 import calcSeo from '../src/data/calc-seo.json' with { type: 'json' };
 import checklists from '../src/data/checklists.json' with { type: 'json' };
 import lawsData from '../src/data/laws.json' with { type: 'json' };
+import articleRelated from '../src/data/article-related.json' with { type: 'json' };
+import contractRelated from '../src/data/contract-related.json' with { type: 'json' };
+import lawRelated from '../src/data/law-related.json' with { type: 'json' };
+
+const articleRelatedMap = /** @type {Record<string, {href:string;label:string}[]>} */ (articleRelated);
+const contractRelatedMap = /** @type {Record<string, {href:string;label:string}[]>} */ (contractRelated);
+const lawRelatedMap = /** @type {Record<string, {href:string;label:string}[]>} */ (lawRelated);
 
 const ORIGIN = 'https://karbanapp.ir';
 const SUPABASE_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
@@ -235,6 +242,20 @@ const TOOLS_FAQS = [
   ['مالیات مشاغل چند درصد است؟', 'پلکانی ۱۵ تا ۳۵ درصد مطابق ماده ۱۳۱، پس از کسر معافیت سالانه.'],
 ];
 const KNOWLEDGE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
+
+/* Mirror of src/data/law-related fallback + LawLibraryPage CATEGORY_INTRO — keep in sync */
+const LAW_INTRO = {
+  'همه': 'گزیده مواد پرکاربرد قانون کار، تأمین اجتماعی، مالیات‌های مستقیم و آیین‌نامه‌های اجرایی — با زبان ساده و برچسب‌های کاربردی.',
+  'قانون کار': 'روابط کارفرما و کارمند: از انعقاد قرارداد و حقوق و مزایا تا مرخصی، اخراج، سنوات و حل اختلاف (قانون کار ۱۳۶۹).',
+  'تأمین اجتماعی': 'بیمه، بازنشستگی، بیمه بیکاری و غرامت‌ها؛ نرخ‌ها و شرایطی که هر کارفرما و کارگر باید بداند.',
+  'مالیات‌های مستقیم': 'مالیات حقوق، مشاغل و معافیت‌ها؛ پلکانی‌ها و مهلت‌هایی که جریمه‌سازند.',
+  'آیین‌نامه‌ها': 'بخشنامه‌ها و آیین‌نامه‌های اجرایی: بن و مسکن، عیدی، حق بیمه، ساعت کار و ایمنی.',
+};
+const ARTICLE_FALLBACK_LINKS = [
+  { href: '/ابزارهای-هوش-مصنوعی', label: 'ابزارهای هوش مصنوعی کاربان' },
+  { href: '/قراردادها', label: 'بانک قراردادها' },
+  { href: '/خدمات', label: 'خدمات تخصصی' },
+];
 const CATEGORY_INTRO = {
   'حقوقی و قانون کار': 'از تعریف قرارداد کار و دوره آزمایشی تا اضافه‌کاری، سنوات و تسویه‌حساب؛ مقاله‌های این دسته مواد کلیدی قانون کار را با مثال عملی و استناد دقیق توضیح می‌دهند تا پیش از امضای هر سند، حق و تکلیف دو طرف را بدانید.',
   'مالیات': 'از اظهارنامه و معافیت‌های سالانه تا ارزش افزوده و مالیات حقوق؛ این دسته مهلت‌ها، نرخ‌ها و مسیرهای قانونی را به زبان ساده مرور می‌کند تا نه جریمه بدهید و نه ریالی بیشتر از موظف بپردازید.',
@@ -431,11 +452,7 @@ async function main() {
         `${shell(path, [{ name: 'دانشنامه', href: '/دانشنامه' }, ...(catIndex ? [{ name: a.category, href: `/دانشنامه/${catIndex}` }] : []), { name: a.title, path }])}` +
         `${pageOpen(a.category)}<h1>${esc(a.title)}</h1><p class="article-intro">${esc(a.intro || '')}</p><small class="article-author">${esc(a.author || 'تیم کاربان')}</small>` +
         `<div class="article-body">${richTextToHtml(a.body)}</div>` +
-        relatedBox('ابزارهای مرتبط', [
-          { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق ۱۴۰۵' },
-          { href: '/قراردادها', label: 'بانک قراردادها' },
-          { href: '/دانشنامه', label: 'دانشنامه' },
-        ]) +
+        relatedBox('ابزارها و صفحات مرتبط', articleRelatedMap[a.category] || ARTICLE_FALLBACK_LINKS) +
         `<a class="button" href="${url('/دانشنامه')}">بازگشت به دانشنامه</a>${pageClose()}`;
       const ld = [
         articleLd({ title: a.title, description, path, author: a.author, published: a.created_at, modified: a.updated_at }),
@@ -451,11 +468,11 @@ async function main() {
 
   /* 6) Contracts — hub with full crawlable list + detail pages with full body */
   try {
-    const contracts = await supabaseFetch(
+    const contracts = (await supabaseFetch(
       'contracts',
-      'id,title,type,industry,summary,body,pdf_url,created_at,updated_at',
+      'id,title,type,industry,summary,body,pdf_url,created_at,updated_at,is_published',
       'id,title,type,industry,summary,body,pdf_url,created_at',
-    );
+    )).filter((c) => c.is_published !== false); /* هماهنگ با sitemap: فقط منتشرشده‌ها */
 
     const hubInner =
       `${shell('/قراردادها', [{ name: 'قراردادها', path: '/قراردادها' }])}` +
@@ -491,11 +508,7 @@ async function main() {
         `${shell(path, [{ name: 'قراردادها', href: '/قراردادها' }, { name: c.title, path }])}` +
         `${pageOpen('قراردادهای کاربان')}<h1>${esc(String(c.title).trim())}</h1><p class="article-intro">${esc(summary || description)}</p>` +
         (c.body ? `<div class="article-body"><div class="contract-body" style="white-space:pre-wrap;line-height:2">${esc(c.body)}</div></div>` : `<div class="article-body"><p>این قرارداد به‌صورت تخصصی برای صنف «${esc(c.industry || 'عمومی')}» آماده شده است؛ برای دریافت نسخه کامل، از بخش دانلود استفاده کنید.</p></div>`) +
-        relatedBox('مسیرهای مرتبط', [
-          { href: '/قراردادها', label: 'همه قراردادها' },
-          { href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', label: 'ماشین‌حساب هزینه استخدام' },
-          { href: '/خدمات', label: 'نگارش قرارداد اختصاصی' },
-        ]) +
+        relatedBox('صفحات مرتبط', contractRelatedMap[c.type] || contractRelatedMap['_default']) +
         `<a class="button" href="${url('/قراردادها')}">بازگشت به فهرست</a>${pageClose()}`;
       const ld = [
         articleLd({ title: String(c.title).trim(), description, path, author: 'کاربان', published: c.created_at, modified: c.updated_at }),
@@ -536,12 +549,35 @@ async function main() {
       `<div class="narrow-content"><h1>خدمات قراردادی و تخصصی</h1><p class="lead">روی هر خدمت بزنید تا توضیح کامل را ببینید و همان‌جا سفارش بدهید.</p></div>` +
       groups.filter(([, items]) => items.length).map(([t, items]) => `<section><h2>${esc(t)}</h2><div class="plans-grid">${items.map(card).join('')}</div></section>`).join('') +
       `<div class="guarantee"><span><strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.</span></div>` +
+      relatedBox('صفحات مرتبط', [
+        { href: '/قراردادها', label: 'بانک قراردادها' },
+        { href: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد', label: 'ساخت قرارداد هوشمند' },
+        { href: '/دانشنامه', label: 'دانشنامه حقوقی' },
+      ]) +
       `${pageClose()}`;
     await write('/خدمات', transformHtml(template, {
       title: 'مشاوره و قرارداد اختصاصی برای هر صنف | کاربان',
       description: 'مشاوره حقوقی، مالی و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین.',
       path: '/خدمات',
-      jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'خدمات', path: '/خدمات' }])],
+      jsonLd: [
+        breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'خدمات', path: '/خدمات' }]),
+        {
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: 'خدمات تخصصی کاربان',
+          itemListElement: services.map((s, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            item: {
+              '@type': 'Service',
+              name: s.title,
+              description: s.description || '',
+              url: url(`/سفارش/${s.id}`),
+              provider: { '@type': 'Organization', '@id': `${ORIGIN}/#organization`, name: 'کاربان' },
+            },
+          })),
+        },
+      ],
       inner,
     }));
   } catch (e) {
@@ -660,7 +696,7 @@ async function main() {
     const catCrumb = [{ name: 'خانه', href: '/' }, { name: 'کتابخانه قوانین', path: '/کتابخانه-قوانین' }];
     const lawCard = (l) =>
       `<article class="law-card"><header><span class="law-badge">${esc(l.law)}</span><strong>${esc(l.num)} — ${esc(l.title)}</strong></header><p>${esc(l.text)}</p><footer>${l.tags.map((t) => `<span class="law-tag">#${esc(t)}</span>`).join('')}</footer></article>`;
-    const related = [
+    const LAW_FALLBACK = [
       { href: '/دانشنامه', label: 'دانشنامه حقوقی' },
       { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق' },
       { href: '/درخواست‌های-اداری', label: 'درخواست‌های اداری آماده' },
@@ -676,7 +712,7 @@ async function main() {
       tabsHtml('همه') +
       LAWS.map(lawCard).join('') +
       `<p class="muted-note">متن‌ها خلاصه کاربردی مواد قانونی است و جایگزین مشاوره حقوقی موردی نیست؛ در پرونده‌های حساس به متن رسمی قانون مراجعه کنید.</p>` +
-      relatedBox('راهنماها و ابزارهای مرتبط', related) +
+      relatedBox('راهنماها و ابزارهای مرتبط', LAW_FALLBACK) +
       `${pageClose()}`;
     await write('/کتابخانه-قوانین', transformHtml(template, {
       title: 'کتابخانه قوانین — قانون کار، تأمین اجتماعی و مالیات به زبان ساده | کاربان',
@@ -696,10 +732,10 @@ async function main() {
         `${shell(path, [{ name: 'کتابخانه قوانین', href: '/کتابخانه-قوانین' }, { name: cat, path }])}` +
         `${pageOpen('کتابخانه قوانین کاربان')}` +
         `<h1>${esc(cat)} — کتابخانه قوانین کاربان</h1>` +
-        `<p class="lead">گزیده ${esc(items.length.toString())} ماده پرکاربرد با زبان ساده؛ برای جست‌وجوی سریع بین همه مواد، صفحه اصلی کتابخانه را ببین.</p>` +
+        `<p class="lead">${esc(LAW_INTRO[cat] || '')}</p>` +
         tabsHtml(cat) +
         items.map(lawCard).join('') +
-        relatedBox('راهنماها و ابزارهای مرتبط', related) +
+        relatedBox('راهنماها و ابزارهای مرتبط', lawRelatedMap[cat] || LAW_FALLBACK) +
         `${pageClose()}`;
       await write(path, transformHtml(template, {
         title: `${cat} — گزیده مواد پرکاربرد به زبان ساده | کاربان`,
@@ -710,6 +746,50 @@ async function main() {
       }));
     }
     console.log(`prerender: law library done (${CATS.length}, ${count} total).`);
+  }
+
+  /* 10) صفحه 404 واقعی — فایل ریشه‌ای که Vercel برای مسیرهای بی‌معنا
+     با status 404 سرو می‌کند (noindex + لینک‌های نجات) */
+  {
+    const quickLinks = [
+      ['/', 'صفحه اصلی'],
+      ['/قراردادها', 'بانک قراردادها'],
+      ['/ابزارهای-هوش-مصنوعی', 'ماشین‌حساب‌ها'],
+      ['/دانشنامه', 'دانشنامه'],
+      ['/درخواست‌های-اداری', 'درخواست‌های اداری'],
+    ];
+    const html404 = `<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, follow" />
+<title>صفحه پیدا نشد | کاربان</title>
+<link rel="icon" type="image/png" href="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" />
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Vazirmatn,Tahoma,sans-serif;background:#f4f6f8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem}
+.card{background:#fff;border-radius:20px;padding:3rem 2.5rem;max-width:560px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(18,57,91,.12);border-top:6px solid #12395b}
+.eyebrow{display:inline-block;background:rgba(216,165,63,.14);color:#8a6a1f;font-size:.8rem;padding:.35rem 1rem;border-radius:999px;margin-bottom:1.1rem}
+h1{color:#12395b;font-size:1.6rem;margin-bottom:.8rem}
+p{color:#4a5b6a;line-height:2;font-size:.95rem;margin-bottom:1.6rem}
+.links{display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center}
+.links a{display:inline-block;background:#f4f6f8;border:1px solid #dde4ea;color:#12395b;text-decoration:none;padding:.55rem 1.1rem;border-radius:999px;font-size:.88rem;transition:border-color .2s}
+.links a:hover{border-color:#d8a53f}
+.code{color:#98a6b3;font-size:.8rem;margin-top:1.6rem}
+</style>
+</head>
+<body>
+<div class="card">
+  <span class="eyebrow">خطا ۴۰۴</span>
+  <h1>این صفحه پیدا نشد</h1>
+  <p>صفحه‌ای که دنبال آن بودید وجود ندارد یا جابه‌جا شده است؛ از لینک‌های زیر استفاده کن:</p>
+  <div class="links">${quickLinks.map(([h, t]) => `<a href="${url(h)}">${esc(t)}</a>`).join('')}</div>
+  <div class="code">کاربان — karbanapp.ir</div>
+</div>
+</body>
+</html>`;
+    await writeFile(resolve(distDir, '404.html'), html404, 'utf8');
   }
 
   console.log(`prerender: ${count} route HTML files written (full-content mode).`);
