@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { ArrowLeft, BadgeCheck, BookMarked, ClipboardCheck, Coins, Compass, FileSignature, Gavel, Palette, Sparkles, Users } from 'lucide-react';
 import { roleCards } from '@/data/config';
+import { useRevealGroup } from '@/lib/reveal';
 
 const icons: Record<string, typeof Sparkles> = {
   briefcase: Sparkles,
@@ -32,6 +34,33 @@ const tools = [
 ];
 
 export default function HomePage() {
+  /* ورود تدریجی کارت‌ها هنگام اسکرول (یک‌باره، با تاخیر پلکانی خیلی کوتاه) */
+  const stripRef = useRevealGroup('.section-card');
+  const servicesRef = useRevealGroup('.seven-card');
+  const toolsRef = useRevealGroup('.tool-lux-card');
+
+  /* پارالاکس بسیار آهسته تصویر هیرو — فقط دسکتاپ و با احترام به reduced-motion */
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const img = document.querySelector<HTMLElement>('.hero-lux-media img');
+    if (!img) return;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      if (window.innerWidth < 900) { img.style.transform = ''; return; }
+      const y = Math.min(window.scrollY, 900);
+      img.style.transform = `translate3d(0, ${y * 0.12}px, 0) scale(1.06)`;
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      img.style.transform = '';
+    };
+  }, []);
+
   return (
     <div className="home-page">
       {/* ═══ هیرو: متن راست، تصویر بزرگ چپ ═══ */}
@@ -65,7 +94,7 @@ export default function HomePage() {
 
       {/* ═══ ۴ بخش اصلی با تصاویر سه‌بعدی ═══ */}
       <section className="sections-strip">
-        <div className="container section-cards">
+        <div className="container section-cards" ref={stripRef}>
           {mainSections.map((item) => (
             <a className="section-card" href={item.href} key={item.title}>
               <div className="section-card-media">
@@ -87,7 +116,7 @@ export default function HomePage() {
             <h2>خدمات اصلی کاربان</h2>
             <span className="line" />
           </div>
-          <div className="services-seven">
+          <div className="services-seven" ref={servicesRef}>
             {serviceMenu.map((item) => {
               const Icon = item.icon;
               return (
@@ -110,7 +139,7 @@ export default function HomePage() {
             <h2>ابزارهای هوشمند کاربان</h2>
             <span className="line" />
           </div>
-          <div className="tools-four">
+          <div className="tools-four" ref={toolsRef}>
             {tools.map((item) => (
               <a className="tool-lux-card" href={item.href} key={item.title}>
                 <div className="tool-lux-media">

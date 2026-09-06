@@ -18,7 +18,8 @@ type Props = {
 };
 
 export default function Layout({ children, title, description, breadcrumb, jsonLd, noindex }: Props) {
-  const pathSegments = window.location.pathname.split('/').filter(Boolean);
+  const path = window.location.pathname;
+  const pathSegments = path.split('/').filter(Boolean);
 
   /* منبع واحد breadcrumb: اگر صفحه BreadcrumbList اختصاصی در jsonLd دارد
      (صفحات دیتابیسی با عنوان واقعی، هماهنگ با prerender) همان ملاک است؛
@@ -33,11 +34,11 @@ export default function Layout({ children, title, description, breadcrumb, jsonL
       ? [...(Array.isArray(jsonLd) ? jsonLd : [jsonLd]), crumbJsonLd]
       : crumbJsonLd || jsonLd;
 
-  useSEO({ title, description, path: window.location.pathname, jsonLd: effectiveJsonLd, noindex });
+  useSEO({ title, description, path, jsonLd: effectiveJsonLd, noindex });
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader path={path} />
       {breadcrumb && breadcrumb.length > 0 && (
         <div className="container breadcrumb" aria-label="مسیر صفحه">
           <a href="/">خانه</a>
@@ -48,7 +49,8 @@ export default function Layout({ children, title, description, breadcrumb, jsonL
           })}
         </div>
       )}
-      <main>{children}</main>
+      {/* جابه‌جایی سریع صفحات: با هر تغییر مسیر، fade کوتاه ۲۰۰ms پخش می‌شود */}
+      <main key={path} className="page-fade">{children}</main>
       <SiteFooter />
     </>
   );

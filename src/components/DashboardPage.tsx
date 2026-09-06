@@ -6,6 +6,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { formatFaDate } from '@/lib/format';
+import { useCountUp } from '@/lib/reveal';
+import KarbanLoader from '@/components/KarbanLoader';
 
 type SavedContract = {
   id: string; root_id: string; title: string; type: string; industry: string;
@@ -43,7 +45,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <section className="inner-page">
-        <div className="container narrow-content"><p>در حال بارگذاری…</p></div>
+        <div className="container narrow-content"><KarbanLoader label="در حال آماده‌سازی داشبورد…" /></div>
       </section>
     );
   }
@@ -51,11 +53,7 @@ export default function DashboardPage() {
   return (
     <section className="inner-page">
       <div className="container">
-        <div className="narrow-content dash-head">
-          <span className="eyebrow"><LayoutDashboard size={14} /> داشبورد کاربان</span>
-          <h1>سلام {profile?.full_name || 'کاربر کاربان'} 👋</h1>
-          <p className="lead">قراردادها، درخواست‌ها، تیکت‌ها و اعلان‌هایت همگی این‌جاست.</p>
-        </div>
+        <DashHero name={profile?.full_name || 'کاربر کاربان'} />
 
         <nav className="dash-tabs" aria-label="بخش‌های داشبورد">
           <button className={tab === 'contracts' ? 'active' : ''} onClick={() => setTab('contracts')}><FileText size={16} /> قراردادهای من</button>
@@ -72,6 +70,57 @@ export default function DashboardPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── هیرو داشبورد: خوش‌آمد پریمیوم + آمار زنده با count-up ── */
+function DashHero({ name }: { name: string }) {
+  const { userId } = useAuth();
+  const [stats, setStats] = useState<{ contracts: number; consults: number; tickets: number; notifs: number } | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    const cnt = async (p: PromiseLike<{ count: number | null }>) => {
+      try { return (await p).count || 0; } catch { return 0; }
+    };
+    (async () => {
+      const [contracts, consults, tickets, notifs] = await Promise.all([
+        cnt(supabase.from('saved_contracts').select('id', { count: 'exact', head: true }).eq('user_id', userId)),
+        cnt(supabase.from('consultation_requests').select('id', { count: 'exact', head: true }).eq('user_id', userId)),
+        cnt(supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('user_id', userId).in('status', ['open', 'answered'])),
+        cnt(supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('is_read', false)),
+      ]);
+      if (alive) setStats({ contracts, consults, tickets, notifs });
+    })();
+    return () => { alive = false; };
+  }, [userId]);
+
+  return (
+    <div className="dash-hero">
+      <span className="eyebrow"><LayoutDashboard size={14} /> داشبورد کاربان</span>
+      <h1>سلام {name}</h1>
+      <p className="lead">قراردادها، درخواست‌ها، تیکت‌ها و اعلان‌هایت همگی این‌جاست.</p>
+      <div className="dash-stats">
+        <StatCard icon={FileText} label="قرارداد ذخیره‌شده" value={stats?.contracts ?? 0} ready={!!stats} />
+        <StatCard icon={MessageSquare} label="درخواست مشاوره" value={stats?.consults ?? 0} ready={!!stats} />
+        <StatCard icon={LifeBuoy} label="تیکت در جریان" value={stats?.tickets ?? 0} ready={!!stats} />
+        <StatCard icon={Bell} label="اعلان خوانده‌نشده" value={stats?.notifs ?? 0} ready={!!stats} />
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, ready }: { icon: typeof FileText; label: string; value: number; ready: boolean }) {
+  const { ref, value: shown } = useCountUp(ready ? value : 0);
+  return (
+    <div className="dash-stat">
+      <Icon size={20} aria-hidden />
+      <div>
+        <b ref={ref}>{shown.toLocaleString('fa-IR')}</b>
+        <span>{label}</span>
+      </div>
+    </div>
   );
 }
 
@@ -114,10 +163,10 @@ function MyContracts() {
     } catch { /* noop */ }
   };
 
-  if (loading) return <p>در حال بارگذاری…</p>;
+  if (loading) return <KarbanLoader label="در حال دریافت قراردادها…" />;
 
   return (
-    <div className="contact-card calc-card">
+    <div className="contact-card calc-card dash-card">
       <h2><FileText size={17} /> قراردادهای ذخیره‌شده</h2>
       {rows.length === 0 ? (
         <p className="muted-note">
@@ -205,7 +254,7 @@ function MyConsults() {
   };
 
   return (
-    <div className="contact-card calc-card">
+    <div className="contact-card calc-card dash-card">
       <h2><MessageSquare size={17} /> درخواست مشاوره جدید</h2>
       <label>موضوع
         <select value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })}>
@@ -216,7 +265,7 @@ function MyConsults() {
         </select>
       </label>
       <label>توضیح مشکل
-        <textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="مسئله را کامل بنویس؛ هرچه دقیق‌تر، پاسخ سریع‌تر…" />
+        <textarea rows={6} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="مسئله را کامل بنویس؛ هرچه دقیق‌تر، پاسخ سریع‌تر…" />
       </label>
       <label>اولویت
         <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
@@ -232,7 +281,7 @@ function MyConsults() {
       {state === 'error' && <small className="admin-error">ثبت نشد؛ توضیح مشکل را کامل‌تر بنویس و دوباره امتحان کن.</small>}
 
       <h2 style={{ marginTop: '1.5rem' }}><Headphones size={17} /> سوابق درخواست‌ها</h2>
-      {loading ? <p>در حال بارگذاری…</p> : rows.length === 0 ? (
+      {loading ? <KarbanLoader label="در حال دریافت سوابق…" /> : rows.length === 0 ? (
         <p className="muted-note">هنوز درخواست مشاوره‌ای ثبت نکرده‌ای.</p>
       ) : (
         rows.map((r) => (
@@ -333,7 +382,7 @@ function MyTickets() {
 
   return (
     <>
-      <div className="contact-card calc-card">
+      <div className="contact-card calc-card dash-card">
         <h2><Plus size={17} /> تیکت جدید</h2>
         <label>موضوع
           <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="خلاصه مشکل را بنویس…" />
@@ -349,9 +398,9 @@ function MyTickets() {
         {state === 'error' && <small className="admin-error">موضوع را بنویس و دوباره امتحان کن.</small>}
       </div>
 
-      <div className="contact-card calc-card">
+      <div className="contact-card calc-card dash-card">
         <h2><LifeBuoy size={17} /> گفت‌وگوهای پشتیبانی</h2>
-        {loading ? <p>در حال بارگذاری…</p> : tickets.length === 0 ? (
+        {loading ? <KarbanLoader label="در حال دریافت تیکت‌ها…" /> : tickets.length === 0 ? (
           <p className="muted-note">هنوز تیکتی نداری.</p>
         ) : (
           <>
@@ -425,10 +474,10 @@ function MyNotifs() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری…</p>;
+  if (loading) return <KarbanLoader label="در حال دریافت اعلان‌ها…" />;
 
   return (
-    <div className="contact-card calc-card">
+    <div className="contact-card calc-card dash-card">
       <h2><Bell size={17} /> اعلان‌ها</h2>
       {rows.length === 0 ? (
         <p className="muted-note">اعلانی نداری؛ وقتی وضعیت درخواست‌ها یا قراردادها تغییر کند این‌جا خبر می‌شوی.</p>

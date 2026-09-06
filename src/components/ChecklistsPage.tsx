@@ -18,28 +18,31 @@ export function ChecklistsListPage() {
     <section className="inner-page">
       <div className="container">
         <div className="narrow-content">
-          <span className="eyebrow"><ClipboardCheck size={14} /> ابزارهای آماده کاربان</span>
-          <h1>چک‌لیست‌های آماده مدیریت کسب‌وکار</h1>
+          <span className="eyebrow"><ClipboardCheck size={14} /> راهنماهای اجرایی کاربان</span>
+          <h1>چک‌لیست‌های طلایی مدیریت کسب‌وکار</h1>
           <p className="lead">
-            پنج چک‌لیست کاربردی برای لحظه‌های حساس مدیریت: استخدام، اخراج، تنظیم قرارداد، تسویه و مالیات؛
-            هر مورد را تیک بزن، پیشرفتت ذخیره می‌شود و دفعه بعد از همان‌جا ادامه می‌دهی.
+            پنج مسیر گام‌به‌گام برای لحظه‌های حساس مدیریت: استخدام، اخراج، تنظیم قرارداد، تسویه و مالیات؛
+            هر گام را تیک بزن، پیشرفتت ذخیره می‌شود و دفعه بعد از همان‌جا ادامه می‌دهی.
           </p>
         </div>
 
-        <div className="contract-grid" style={{ marginTop: '2rem' }}>
+        <div className="check-grid">
           {checklistCatalog.map((c) => (
-            <article className="contract-card" key={c.slug}>
-              <div className="contract-card-top">
-                <ClipboardCheck />
-                <div>
-                  <small>چک‌لیست</small>
-                  <h2>{c.title}</h2>
-                  <p>{c.description}</p>
-                </div>
+            <article className="check-card" key={c.slug}>
+              <div className="check-card-head">
+                <ClipboardCheck aria-hidden />
+                <h2>{c.title}</h2>
               </div>
-              <a className="button button-small" href={`/چک-لیست‌ها/${c.slug}`}>
-                شروع چک‌لیست <ArrowLeft size={15} />
-              </a>
+              <p>{c.description}</p>
+              <div className="check-card-meta">
+                <small>
+                  <ClipboardCheck size={13} aria-hidden />
+                  {c.items.length.toLocaleString('fa-IR')} گام اجرایی
+                </small>
+                <a className="text-link" href={`/چک-لیست‌ها/${c.slug}`}>
+                  شروع <ArrowLeft size={14} />
+                </a>
+              </div>
             </article>
           ))}
         </div>
@@ -103,7 +106,7 @@ export function ChecklistViewPage({ slug }: { slug: string }) {
   return (
     <section className="inner-page">
       <div className="container narrow-content">
-        <span className="eyebrow"><ClipboardCheck size={14} /> چک‌لیست کاربردی</span>
+        <span className="eyebrow"><ClipboardCheck size={14} /> چک‌لیست طلایی کاربان</span>
         <h1>{checklist.title}</h1>
         <p className="lead">{checklist.description}</p>
 
@@ -131,7 +134,7 @@ export function ChecklistViewPage({ slug }: { slug: string }) {
         <div className="related-box">
           <ClipboardCheck />
           <div>
-            <strong>چک‌لیست‌های دیگر</strong>
+            <strong>چک‌لیست‌های طلایی دیگر</strong>
             <div className="related-links">
               {checklistCatalog.filter((c) => c.slug !== slug).map((c) => (
                 <a key={c.slug} href={`/چک-لیست‌ها/${c.slug}`}>{c.title} <ArrowLeft size={14} /></a>

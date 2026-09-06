@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function NotificationBell({ userId }: { userId: string }) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [pulse, setPulse] = useState(false);
   const [items, setItems] = useState<{ id: string; title: string; href: string | null; created_at: string }[]>([]);
+  const prevUnread = useRef(0);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -28,9 +30,20 @@ export default function NotificationBell({ userId }: { userId: string }) {
     return () => { supabase.removeChannel(channel); };
   }, [load, userId]);
 
+  /* میکرو-اینترکشن: هنگام رسیدن اعلان جدید، فقط یک pulse کوتاه روی زنگ */
+  useEffect(() => {
+    if (unread > prevUnread.current) {
+      setPulse(true);
+      const t = setTimeout(() => setPulse(false), 1500);
+      prevUnread.current = unread;
+      return () => clearTimeout(t);
+    }
+    prevUnread.current = unread;
+  }, [unread]);
+
   return (
     <div className="notif-bell-wrap">
-      <a className="notif-bell" href="/داشبورد" aria-label={`اعلان‌ها${unread ? ` — ${unread} خوانده‌نشده` : ''}`} onClick={() => setOpen((v) => !v)}>
+      <a className={`notif-bell${pulse ? ' pulse' : ''}`} href="/داشبورد" aria-label={`اعلان‌ها${unread ? ` — ${unread} خوانده‌نشده` : ''}`} onClick={() => setOpen((v) => !v)}>
         <Bell size={19} />
         {unread > 0 && <span className="notif-badge">{unread > 9 ? '۹+' : unread.toLocaleString('fa-IR')}</span>}
       </a>

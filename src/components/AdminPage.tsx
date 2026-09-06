@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, LogOut, Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft, Bell, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
+  Mail, MessagesSquare, Newspaper, Phone, Plus, Save, ShieldCheck, ShoppingCart, SlidersHorizontal,
+  Star, Trash2, Users, Wrench,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
+import { useCountUp } from '@/lib/reveal';
 
-type Tab = 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
+type Tab = 'overview' | 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -95,7 +100,7 @@ export default function AdminPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [tab, setTab] = useState<Tab>('services');
+  const [tab, setTab] = useState<Tab>('overview');
   const [sessionTimer, setSessionTimer] = useState<number | null>(null);
 
   useEffect(() => {
@@ -222,20 +227,21 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: [Tab, string][] = [
-    ['services', 'خدمات'],
-    ['settings', 'تنظیمات'],
-    ['contracts', 'قراردادها'],
-    ['articles', 'مقاله‌ها'],
-    ['requests', 'درخواست‌های اداری'],
-    ['leads', 'شماره‌های دانلود'],
-    ['orders', 'سفارش‌ها'],
-    ['consultations', 'درخواست‌های مشاوره'],
-    ['tickets', 'تیکت‌ها'],
-    ['feedback', 'بازخوردها'],
-    ['notifs', 'اعلان‌ها'],
-    ['users', 'مدیریت کاربران'],
-    ['newsletter', 'خبرنامه'],
+  const tabs: [Tab, string, typeof ShieldCheck][] = [
+    ['overview', 'نمای کلی', LayoutDashboard],
+    ['services', 'خدمات', Wrench],
+    ['settings', 'تنظیمات', SlidersHorizontal],
+    ['contracts', 'قراردادها', FileSignature],
+    ['articles', 'مقاله‌ها', Newspaper],
+    ['requests', 'درخواست‌های اداری', FileText],
+    ['leads', 'شماره‌های دانلود', Phone],
+    ['orders', 'سفارش‌ها', ShoppingCart],
+    ['consultations', 'درخواست‌های مشاوره', MessagesSquare],
+    ['tickets', 'تیکت‌ها', LifeBuoy],
+    ['feedback', 'بازخوردها', Star],
+    ['notifs', 'اعلان‌ها', Bell],
+    ['users', 'مدیریت کاربران', Users],
+    ['newsletter', 'خبرنامه', Mail],
   ];
 
   return (
@@ -253,14 +259,15 @@ export default function AdminPage() {
         </div>
 
         <nav className="admin-tabs">
-          {tabs.map(([key, label]) => (
+          {tabs.map(([key, label, Icon]) => (
             <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
-              {label}
+              <Icon size={15} aria-hidden /> {label}
             </button>
           ))}
         </nav>
 
         <div className="admin-content">
+          {tab === 'overview' && <OverviewTab go={setTab} />}
           {tab === 'services' && <ServicesTab />}
           {tab === 'settings' && <SettingsTab />}
           {tab === 'contracts' && <ContractsTab />}
@@ -277,6 +284,111 @@ export default function AdminPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── نمای کلی: آمار زنده + آخرین رویدادها ── */
+function AdminStat({ icon: Icon, label, value, ready }: { icon: typeof ShieldCheck; label: string; value: number; ready: boolean }) {
+  const { ref, value: shown } = useCountUp(ready ? value : 0);
+  return (
+    <div className="admin-stat">
+      <span className="admin-stat-icon"><Icon size={20} aria-hidden /></span>
+      <div>
+        <b ref={ref}>{shown.toLocaleString('fa-IR')}</b>
+        <span>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function OverviewTab({ go }: { go: (tab: Tab) => void }) {
+  const [stats, setStats] = useState<Record<string, number> | null>(null);
+  const [recentOrders, setRecentOrders] = useState<OrderRow[]>([]);
+  const [openTickets, setOpenTickets] = useState<{ id: string; subject: string; status: string; created_at: string }[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    const cnt = async (p: PromiseLike<{ count: number | null }>) => {
+      try { return (await p).count || 0; } catch { return 0; }
+    };
+    (async () => {
+      const [services, contracts, articles, requests, leads, orders, consults, tickets, feedback, users, subs] = await Promise.all([
+        cnt(supabase.from('services').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('contracts').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('articles').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('admin_requests').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('leads').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('orders').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('consultation_requests').select('id', { count: 'exact', head: true }).eq('status', 'new')),
+        cnt(supabase.from('tickets').select('id', { count: 'exact', head: true }).in('status', ['open', 'answered'])),
+        cnt(supabase.from('feedback').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('profiles').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('newsletter').select('id', { count: 'exact', head: true })),
+      ]);
+      if (alive) setStats({ services, contracts, articles, requests, leads, orders, consults, tickets, feedback, users, subs });
+    })();
+    (async () => {
+      const [o, t] = await Promise.all([
+        supabase.from('orders').select('id,full_name,service_title,amount,status,created_at').order('created_at', { ascending: false }).limit(4),
+        supabase.from('tickets').select('id,subject,status,created_at').in('status', ['open', 'answered']).order('created_at', { ascending: false }).limit(4),
+      ]);
+      if (alive) {
+        setRecentOrders((o.data || []) as OrderRow[]);
+        setOpenTickets((t.data || []) as { id: string; subject: string; status: string; created_at: string }[]);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  return (
+    <>
+      <div className="admin-toolbar"><h2>نمای کلی</h2></div>
+      <div className="admin-stat-grid">
+        <AdminStat icon={Layers} label="خدمات" value={stats?.services ?? 0} ready={!!stats} />
+        <AdminStat icon={FileSignature} label="قراردادها" value={stats?.contracts ?? 0} ready={!!stats} />
+        <AdminStat icon={Newspaper} label="مقاله‌ها" value={stats?.articles ?? 0} ready={!!stats} />
+        <AdminStat icon={FileText} label="درخواست‌های اداری" value={stats?.requests ?? 0} ready={!!stats} />
+        <AdminStat icon={Phone} label="شماره‌های دانلود" value={stats?.leads ?? 0} ready={!!stats} />
+        <AdminStat icon={ShoppingCart} label="سفارش‌ها" value={stats?.orders ?? 0} ready={!!stats} />
+        <AdminStat icon={MessagesSquare} label="مشاوره‌های جدید" value={stats?.consults ?? 0} ready={!!stats} />
+        <AdminStat icon={LifeBuoy} label="تیکت در جریان" value={stats?.tickets ?? 0} ready={!!stats} />
+        <AdminStat icon={Star} label="بازخوردها" value={stats?.feedback ?? 0} ready={!!stats} />
+        <AdminStat icon={Users} label="کاربران" value={stats?.users ?? 0} ready={!!stats} />
+        <AdminStat icon={Mail} label="مشترکان خبرنامه" value={stats?.subs ?? 0} ready={!!stats} />
+      </div>
+
+      <div className="admin-cols">
+        <div className="admin-mini">
+          <h3><ShoppingCart size={15} /> آخرین سفارش‌ها</h3>
+          {recentOrders.length === 0 ? (
+            <p className="admin-empty">هنوز سفارشی ثبت نشده است.</p>
+          ) : (
+            recentOrders.map((o) => (
+              <div className="admin-mini-row" key={o.id}>
+                <span>{o.service_title} — {o.full_name}</span>
+                <small>{fmtDate(o.created_at)}</small>
+              </div>
+            ))
+          )}
+          <button className="button button-small" style={{ marginTop: '.7rem' }} onClick={() => go('orders')}>مدیریت سفارش‌ها</button>
+        </div>
+
+        <div className="admin-mini">
+          <h3><LifeBuoy size={15} /> تیکت‌های در جریان</h3>
+          {openTickets.length === 0 ? (
+            <p className="admin-empty">تیکت بازی وجود ندارد.</p>
+          ) : (
+            openTickets.map((t) => (
+              <div className="admin-mini-row" key={t.id}>
+                <span>{t.subject}</span>
+                <small>{fmtDate(t.created_at)}</small>
+              </div>
+            ))
+          )}
+          <button className="button button-small" style={{ marginTop: '.7rem' }} onClick={() => go('tickets')}>مدیریت تیکت‌ها</button>
+        </div>
+      </div>
+    </>
   );
 }
 
