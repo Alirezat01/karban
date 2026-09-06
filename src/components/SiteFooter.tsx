@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, Instagram, Linkedin, Mail, Phone, Send } from 'lucide-react';
+import { CheckCircle2, Instagram, Mail, Phone } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
@@ -8,18 +8,20 @@ const toEnDigits = (value: string) => value.replace(/[۰-۹]/g, (d) => String('�
 
 export default function SiteFooter() {
   const [mobile, setMobile] = useState('');
-  const [state, setState] = useState<'idle' | 'ok' | 'dup' | 'err'>('idle');
+  const [state, setState] = useState<'idle' | 'loading' | 'ok' | 'dup' | 'err' | 'net'>('idle');
 
   async function subscribe(e: React.FormEvent) {
     e.preventDefault();
+    if (state === 'loading') return; /* جلوگیری از submit چندباره */
     const cleaned = toEnDigits(mobile).trim();
     if (!isIranianMobile(cleaned)) {
       setState('err');
       return;
     }
+    setState('loading');
     const { error } = await supabase.from('newsletter').insert({ mobile: normalizeMobile(cleaned) });
     if (error) {
-      setState(error.code === '23505' ? 'dup' : 'err');
+      setState(error.code === '23505' ? 'dup' : 'net');
       return;
     }
     setState('ok');
@@ -35,8 +37,7 @@ export default function SiteFooter() {
           <p>مرجع هوشمند مدیریت کسب‌وکار برای کارفرمایان، کارمندان و فریلنسرها؛ از قرارداد تا آرامش.</p>
           <div className="socials">
             <a href="https://www.instagram.com/karbanapp" target="_blank" rel="noopener" aria-label="اینستاگرام کاربان"><Instagram size={18} /></a>
-            <a href="/تماس-با-ما" aria-label="لینکدین"><Linkedin size={18} /></a>
-            <a href="/تماس-با-ما" aria-label="تلگرام"><Send size={18} /></a>
+            <a href="/تماس-با-ما" aria-label="راه‌های تماس با کاربان"><Phone size={18} /></a>
           </div>
         </div>
         <div>
@@ -68,13 +69,14 @@ export default function SiteFooter() {
           <p>تغییرات قوانین، مهلت‌های مالیاتی و ابزارهای جدید؛ ماهی یک پیام، بدون اسپم.</p>
         </div>
         <form className="news-form" onSubmit={subscribe}>
-          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); setState('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل برای خبرنامه" />
-          <button className="button" type="submit">عضویت</button>
+          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); if (state !== 'loading') setState('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل برای خبرنامه" disabled={state === 'loading'} />
+          <button className="button" type="submit" disabled={state === 'loading'}>{state === 'loading' ? 'در حال ثبت…' : 'عضویت'}</button>
         </form>
         <div className="news-msg">
           {state === 'ok' && <small className="news-ok"><CheckCircle2 size={14} /> عضویت شما در خبرنامه ثبت شد.</small>}
           {state === 'dup' && <small className="news-ok">این شماره قبلاً عضو شده است.</small>}
           {state === 'err' && <small className="news-err">شماره معتبر وارد کنید؛ نمونه: ۰۹۱۲۳۴۵۶۷۸۹</small>}
+          {state === 'net' && <small className="news-err">خطا در ارتباط با سرور؛ چند لحظه بعد دوباره تلاش کن.</small>}
         </div>
       </div>
 

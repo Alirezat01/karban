@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Calculator, Clock, Coins, FileText, HeartHandshake, Scale, Sun, BriefcaseBusiness, TrendingUp } from 'lucide-react';
 import { contractCatalog, calculatorItems, CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
 import { supabase } from '@/lib/supabase';
+import { applySEO } from '@/lib/seo';
 import { formatRial, toNumericValue } from '@/lib/format';
 
 const icons = [Scale, FileText, BriefcaseBusiness, Calculator, Sun, HeartHandshake];
@@ -219,7 +220,43 @@ export function ServicesPage() {
           console.error('services load failed', error);
           return;
         }
-        setServices((data || []) as Service[]);
+        const list = (data || []) as Service[];
+        setServices(list);
+        /* Service JSON-LD + breadcrumb — هماهنگ با prerender services block */
+        if (list.length) {
+          const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
+          applySEO({
+            title: 'مشاوره و قرارداد اختصاصی برای هر صنف | کاربان',
+            description: 'مشاوره حقوقی، مالی و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین.',
+            path: '/خدمات',
+            jsonLd: [
+              {
+                '@context': 'https://schema.org',
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'خانه', item: u('/') },
+                  { '@type': 'ListItem', position: 2, name: 'خدمات', item: u('/خدمات') },
+                ],
+              },
+              {
+                '@context': 'https://schema.org',
+                '@type': 'ItemList',
+                name: 'خدمات تخصصی کاربان',
+                itemListElement: list.map((s, i) => ({
+                  '@type': 'ListItem',
+                  position: i + 1,
+                  item: {
+                    '@type': 'Service',
+                    name: s.title,
+                    description: s.description || '',
+                    url: u(`/سفارش/${s.id}`),
+                    provider: { '@type': 'Organization', '@id': 'https://karbanapp.ir/#organization', name: 'کاربان' },
+                  },
+                })),
+              },
+            ],
+          });
+        }
       });
     return () => {
       active = false;
@@ -292,6 +329,18 @@ export function ServicesPage() {
         <div className="guarantee">
           <Scale size={23} />
           <span><strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.</span>
+        </div>
+
+        <div className="related-box">
+          <FileText size={18} />
+          <div>
+            <strong>صفحات مرتبط</strong>
+            <div className="related-links">
+              <a href="/قراردادها">بانک قراردادها <ArrowLeft size={14} /></a>
+              <a href="/ابزارهای-هوش-مصنوعی/ساخت-قرارداد">ساخت قرارداد هوشمند <ArrowLeft size={14} /></a>
+              <a href="/دانشنامه">دانشنامه حقوقی <ArrowLeft size={14} /></a>
+            </div>
+          </div>
         </div>
       </div>
     </section>

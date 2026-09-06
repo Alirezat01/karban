@@ -108,9 +108,18 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
       .select('*')
       .eq('id', Number(requestId))
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!active) return;
         setItem((data as Req) || null);
+        if (!data && !error) {
+          /* درخواست وجود ندارد: از ایندکس خارج شود (با ۴۰۴ واقعی سرور هم پوشش دارد) */
+          applySEO({
+            title: 'درخواست پیدا نشد | کاربان',
+            description: 'صفحه‌ای که دنبال آن بودید وجود ندارد.',
+            path: window.location.pathname,
+            noindex: true,
+          });
+        }
         if (data) {
           const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
           const path = `/درخواست‌های-اداری/${data.id}`;

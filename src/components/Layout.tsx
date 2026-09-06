@@ -2,6 +2,11 @@ import type { ReactNode } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import { useSEO, type JsonLd } from '@/lib/seo';
+import {
+  breadcrumbJsonLd,
+  crumbsFor,
+  hasBreadcrumbLd,
+} from '@/lib/breadcrumbs';
 
 type Props = {
   children: ReactNode;
@@ -13,9 +18,22 @@ type Props = {
 };
 
 export default function Layout({ children, title, description, breadcrumb, jsonLd, noindex }: Props) {
-  useSEO({ title, description, path: window.location.pathname, jsonLd, noindex });
-
   const pathSegments = window.location.pathname.split('/').filter(Boolean);
+
+  /* منبع واحد breadcrumb: اگر صفحه BreadcrumbList اختصاصی در jsonLd دارد
+     (صفحات دیتابیسی با عنوان واقعی، هماهنگ با prerender) همان ملاک است؛
+     وگرنه از همان trail ظاهری ساخته می‌شود تا متن/ترتیب/URL در UI و
+     Schema همیشه یکی باشد. */
+  const crumbJsonLd = hasBreadcrumbLd(jsonLd)
+    ? undefined
+    : breadcrumbJsonLd(crumbsFor(breadcrumb || [], window.location.pathname));
+  const effectiveJsonLd = hasBreadcrumbLd(jsonLd)
+    ? jsonLd
+    : crumbJsonLd && jsonLd
+      ? [...(Array.isArray(jsonLd) ? jsonLd : [jsonLd]), crumbJsonLd]
+      : crumbJsonLd || jsonLd;
+
+  useSEO({ title, description, path: window.location.pathname, jsonLd: effectiveJsonLd, noindex });
 
   return (
     <>

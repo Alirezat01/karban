@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, Scale, Search } from 'lucide-react';
-import { LAWS, LAW_CATEGORIES, lawCategoryBySlug, lawSlug, searchLaws } from '@/data/laws';
+import { LAW_CATEGORIES, lawCategoryBySlug, lawSlug, searchLaws } from '@/data/laws';
+import lawRelated from '@/data/law-related.json';
+
+const lawRelatedMap = lawRelated as Record<string, { href: string; label: string }[]>;
 
 const CATEGORY_INTRO: Record<string, string> = {
   'همه': 'گزیده مواد پرکاربرد قانون کار، تأمین اجتماعی، مالیات‌های مستقیم و آیین‌نامه‌های اجرایی — با زبان ساده و برچسب‌های کاربردی.',
@@ -71,9 +74,15 @@ export function LawLibraryPage({ category }: { category?: string }) {
           <div>
             <strong>راهنماها و ابزارهای مرتبط</strong>
             <div className="related-links">
-              <a href="/دانشنامه">دانشنامه حقوقی <ArrowLeft size={14} /></a>
-              <a href="/ابزارهای-هوش-مصنوعی/محاسبه-حقوق">ماشین‌حساب حقوق <ArrowLeft size={14} /></a>
-              <a href="/درخواست‌های-اداری">درخواست‌های اداری آماده <ArrowLeft size={14} /></a>
+              {(lawRelatedMap[activeCategory] || [
+                { href: '/دانشنامه', label: 'دانشنامه حقوقی' },
+                { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق' },
+                { href: '/درخواست‌های-اداری', label: 'درخواست‌های اداری آماده' },
+              ]).map((l) => (
+                <a key={l.href} href={l.href}>
+                  {l.label} <ArrowLeft size={14} />
+                </a>
+              ))}
             </div>
           </div>
         </div>

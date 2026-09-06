@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, LogIn, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth, signInWithGoogle, signOutUser } from '@/lib/auth';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';

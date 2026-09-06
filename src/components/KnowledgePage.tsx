@@ -3,6 +3,7 @@ import { ArrowLeft, FileText } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { applySEO } from '@/lib/seo';
 import { renderRichText } from '@/lib/rich-text';
+import articleRelated from '@/data/article-related.json';
 
 export const KNOWLEDGE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
 
@@ -15,32 +16,7 @@ export const CATEGORY_INTRO: Record<string, string> = {
   'مدیریت': 'تصمیم‌های مدیریتی پرتکرار — از نوع همکاری و قرارداد تا تست سلامت کسب‌وکار — با نگاه حقوقی و مالی، برای رشد مطمئن‌تر.',
 };
 
-const relatedLinks: Record<string, { href: string; label: string }[]> = {
-  'حقوقی و قانون کار': [
-    { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق ۱۴۰۵' },
-    { href: '/ابزارهای-هوش-مصنوعی/سنوات', label: 'ماشین‌حساب سنوات' },
-    { href: '/قراردادها', label: 'بانک قراردادها' },
-  ],
-  'مالیات': [
-    { href: '/ابزارهای-هوش-مصنوعی/مالیات-مشاغل', label: 'ماشین‌حساب مالیات مشاغل' },
-    { href: '/ابزارهای-هوش-مصنوعی/ارزش-افزوده', label: 'ماشین‌حساب ارزش افزوده' },
-    { href: '/ابزارهای-هوش-مصنوعی/مالیات-حقوق', label: 'ماشین‌حساب مالیات حقوق' },
-  ],
-  'حسابداری': [
-    { href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', label: 'ماشین‌حساب هزینه استخدام' },
-    { href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', label: 'ماشین‌حساب حقوق' },
-  ],
-  'منابع انسانی': [
-    { href: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', label: 'ماشین‌حساب هزینه استخدام' },
-    { href: '/ابزارهای-هوش-مصنوعی/سنوات', label: 'ماشین‌حساب سنوات' },
-    { href: '/ابزارهای-هوش-مصنوعی/تست-سلامت', label: 'تست سلامت کسب‌وکار' },
-  ],
-  'مدیریت': [
-    { href: '/ابزارهای-هوش-مصنوعی/تست-سلامت', label: 'تست سلامت کسب‌وکار' },
-    { href: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد', label: 'ساخت قرارداد هوشمند' },
-    { href: '/خدمات', label: 'خدمات تخصصی کاربان' },
-  ],
-};
+const articleRelatedMap = articleRelated as Record<string, { href: string; label: string }[]>;
 
 type Article = { id: number; category: string; title: string; intro: string; body: string; author: string; meta_title?: string | null; meta_description?: string | null; created_at?: string | null };
 
@@ -108,7 +84,7 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
       .select('*')
       .eq('id', Number(articleId))
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (active) {
           const a = (data as Article) || null;
           setArticle(a);
@@ -148,6 +124,14 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
                 },
               ],
             });
+          } else if (!error) {
+            /* مقاله وجود ندارد: از ایندکس خارج شود (با ۴۰۴ واقعی سرور هم پوشش دارد) */
+            applySEO({
+              title: 'مقاله پیدا نشد | کاربان',
+              description: 'صفحه‌ای که دنبال آن بودید وجود ندارد.',
+              path: window.location.pathname,
+              noindex: true,
+            });
           }
           setLoading(false);
         }
@@ -172,13 +156,14 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
       <section className="inner-page">
         <div className="container narrow-content">
           <h1>مقاله پیدا نشد</h1>
+          <p className="lead">مقاله‌ای که دنبال آن بودید حذف شده یا آدرس اشتباه است.</p>
           <a className="button" href="/دانشنامه">بازگشت به دانشنامه</a>
         </div>
       </section>
     );
   }
 
-    const links = relatedLinks[article.category] || [
+  const links = articleRelatedMap[article.category] || [
     { href: '/ابزارهای-هوش-مصنوعی', label: 'ابزارهای هوش مصنوعی کاربان' },
     { href: '/قراردادها', label: 'بانک قراردادها' },
     { href: '/خدمات', label: 'خدمات تخصصی' },
@@ -197,13 +182,16 @@ export function ArticleViewPage({ articleId }: { articleId: string }) {
 
         {links.length > 0 && (
           <div className="related-box">
-            <h2>ابزارهای مرتبط</h2>
-            <div className="related-links">
-              {links.map((l) => (
-                <a key={l.href} href={l.href}>
-                  {l.label} <ArrowLeft size={14} />
-                </a>
-              ))}
+            <FileText size={18} />
+            <div>
+              <strong>ابزارها و صفحات مرتبط</strong>
+              <div className="related-links">
+                {links.map((l) => (
+                  <a key={l.href} href={l.href}>
+                    {l.label} <ArrowLeft size={14} />
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         )}

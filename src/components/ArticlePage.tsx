@@ -6,23 +6,36 @@ import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin } from '@/lib/notify';
 import RatingWidget from '@/components/RatingWidget';
+import contractRelated from '@/data/contract-related.json';
+
+const contractRelatedMap = contractRelated as Record<string, { href: string; label: string }[]>;
 
 type Props = { title: string; category: string; contractId?: string };
 
 export default function ArticlePage({ title, category, contractId }: Props) {
   const [mobile, setMobile] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [contractData, setContractData] = useState<{ title?: string; summary?: string; body?: string; pdf_url?: string } | null>(null);
+  const [contractData, setContractData] = useState<{ title?: string; summary?: string; body?: string; pdf_url?: string; type?: string | null; industry?: string | null; created_at?: string | null } | null>(null);
   const isContract = category.includes('قرارداد');
 
   useEffect(() => {
     if (!contractId) return;
     supabase
       .from('contracts')
-      .select('title, summary, body, pdf_url')
+      .select('title, summary, body, pdf_url, type, industry, created_at')
       .eq('id', contractId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (!data && !error) {
+          /* قرارداد وجود ندارد: از ایندکس خارج شود (با ۴۰۴ واقعی سرور هم پوشش دارد) */
+          applySEO({
+            title: 'قرارداد پیدا نشد | کاربان',
+            description: 'صفحه‌ای که دنبال آن بودید وجود ندارد.',
+            path: window.location.pathname,
+            noindex: true,
+          });
+          return;
+        }
         if (data) {
           setContractData(data);
           const contractTitle = (data.title || title).trim();
@@ -49,6 +62,10 @@ export default function ArticlePage({ title, category, contractId }: Props) {
                 publisher: { '@id': 'https://karbanapp.ir/#organization' },
                 mainEntityOfPage: u(contractPath),
                 inLanguage: 'fa-IR',
+                ...(data.created_at ? { datePublished: data.created_at, dateModified: data.created_at } : {}),
+                ...((data.type || data.industry)
+                  ? { about: [data.type, data.industry].filter(Boolean).map((n) => ({ '@type': 'Thing', name: n })) }
+                  : {}),
               },
               {
                 '@context': 'https://schema.org',
@@ -211,6 +228,20 @@ export default function ArticlePage({ title, category, contractId }: Props) {
               <a className="text-link" href="/قراردادها">
                 مشاهده قراردادها <ArrowLeft size={15} />
               </a>
+            </div>
+          </div>
+
+          <div className="related-box no-print">
+            <FileText />
+            <div>
+              <strong>صفحات مرتبط</strong>
+              <div className="related-links">
+                {(contractRelatedMap[contractData?.type || ''] || contractRelatedMap['_default']).map((l) => (
+                  <a key={l.href} href={l.href}>
+                    {l.label} <ArrowLeft size={14} />
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
 

@@ -21,7 +21,6 @@ type ArticleRow = { id: number; category: string; title: string; intro: string; 
 type RequestRow = { id: number; category: string; title: string; intro: string; body: string };
 type LeadRow = { id: number; mobile: string; source: string; created_at: string };
 type OrderRow = { id: string; full_name: string; mobile: string; service_title: string; amount: number; status: string; created_at: string };
-type ConsultRow = { id: string; mobile: string; domain: string; service: string; created_at: string };
 
 const ARTICLE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'];
 const REQUEST_CATEGORIES = ['روابط کار', 'مالی و بانکی', 'اداری و عمومی'];
@@ -311,7 +310,8 @@ function ServicesTab() {
   const save = async (id: string) => {
     const current = services.find((service) => service.id === id);
     if (!current) return;
-    const { id: _skip, ...payload } = current;
+    const payload: Record<string, unknown> = { ...current };
+    delete payload.id;
     const { error } = await supabase.from('services').update(payload).eq('id', id);
     if (error) {
       alert('ذخیره نشد: ' + error.message);
