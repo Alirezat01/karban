@@ -16,6 +16,13 @@ type SEOProps = {
 const ORIGIN = 'https://karbanapp.ir';
 export const DEFAULT_OG_IMAGE = `${ORIGIN}/images/og-cover.jpg`;
 
+/** نرمال‌سازی مسیر برای canonical/og:url: حذف trailing slash + انکد فارسی (هماهنگ با prerender) */
+function normalizePath(path: string): string {
+  let p = path || '/';
+  if (p.length > 1 && p.endsWith('/')) p = p.replace(/\/+$/, '');
+  return `${ORIGIN}${encodeURI(p)}`;
+}
+
 function setMeta(attr: 'name' | 'property', key: string, content: string) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
   if (!el) {
@@ -43,6 +50,7 @@ function setLink(rel: string, href: string) {
  */
 export function applySEO({ title, description, path, image, jsonLd, noindex, ogType }: SEOProps) {
   const ogImage = image ? (image.startsWith('http') ? image : `${ORIGIN}${image}`) : DEFAULT_OG_IMAGE;
+  const canonicalUrl = normalizePath(path);
 
   document.title = title;
   setMeta('name', 'description', description);
@@ -51,7 +59,7 @@ export function applySEO({ title, description, path, image, jsonLd, noindex, ogT
 
   setMeta('property', 'og:title', title);
   setMeta('property', 'og:description', description);
-  setMeta('property', 'og:url', `${ORIGIN}${path}`);
+  setMeta('property', 'og:url', canonicalUrl);
   setMeta('property', 'og:type', ogType || 'website');
   setMeta('property', 'og:site_name', 'کاربان');
   setMeta('property', 'og:locale', 'fa_IR');
@@ -63,7 +71,7 @@ export function applySEO({ title, description, path, image, jsonLd, noindex, ogT
   setMeta('name', 'twitter:description', description);
   setMeta('name', 'twitter:image', ogImage);
 
-  setLink('canonical', `${ORIGIN}${path}`);
+  setLink('canonical', canonicalUrl);
 
   const old = document.getElementById('page-jsonld');
   if (old) old.remove();
