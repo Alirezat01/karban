@@ -1,3 +1,11 @@
+"redirects": [
+  {
+    "source": "/(.*)",
+    "has": [{ "type": "host", "value": "www.karbanapp.ir" }],
+    "destination": "https://karbanapp.ir/$1",
+    "permanent": true
+  }
+]
 {
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap.xml" },
