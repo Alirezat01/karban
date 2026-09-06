@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import { KNOWLEDGE_CATEGORIES } from '@/components/KnowledgePage';
 import { applySEO, type JsonLd } from '@/lib/seo';
 import calcSeo from '@/data/calc-seo.json';
+import KarbanLoader from '@/components/KarbanLoader';
 const ContentPage = React.lazy(() => import('@/components/ContentPage'));
 const ServicesPage = React.lazy(() =>
   import('@/components/ContentPage').then((m) => ({ default: m.ServicesPage })),
@@ -48,7 +49,7 @@ const RequestViewPage = React.lazy(() =>
 function Page({ title, description, breadcrumb, children, jsonLd, noindex }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode; jsonLd?: JsonLd; noindex?: boolean }) {
   return (
     <Layout title={title} description={description} breadcrumb={breadcrumb} jsonLd={jsonLd} noindex={noindex}>
-      <Suspense fallback={<div style={{ textAlign: 'center', padding: '3rem' }}>در حال بارگذاری...</div>}>
+      <Suspense fallback={<KarbanLoader label="در حال آماده‌سازی…" />}>
         {children}
       </Suspense>
     </Layout>
@@ -207,7 +208,7 @@ export default function App() {
     if (segments[0] === 'چک-لیست‌ها') {
     if (segments.length === 1) {
       return (
-        <Page title="چک‌لیست‌های آماده مدیریت کسب‌وکار | کاربان" description="چک‌لیست استخدام، اخراج، تنظیم قرارداد، پایان همکاری و مالیاتی کسب‌وکار — با ذخیره پیشرفت و خروجی PDF." breadcrumb={['چک‌لیست‌ها']} jsonLd={listJsonLd('/چک-لیست‌ها', [
+        <Page title="چک‌لیست‌های طلایی مدیریت کسب‌وکار | کاربان" description="چک‌لیست استخدام، اخراج، تنظیم قرارداد، پایان همکاری و مالیاتی کسب‌وکار — با ذخیره پیشرفت و خروجی PDF." breadcrumb={['چک‌لیست‌های طلایی']} jsonLd={listJsonLd('/چک-لیست‌ها', [
           { name: 'چک‌لیست استخدام نیروی جدید', href: '/چک-لیست‌ها/چک-لیست-استخدام' },
           { name: 'چک‌لیست اخراج و فسخ', href: '/چک-لیست‌ها/چک-لیست-اخراج-و-فسخ' },
           { name: 'چک‌لیست تنظیم قرارداد', href: '/چک-لیست‌ها/چک-لیست-تنظیم-قرارداد' },
@@ -219,7 +220,7 @@ export default function App() {
       );
     }
     return (
-      <Page title={`چک‌لیست ${segments[1]} | کاربان`} description="چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت." breadcrumb={['چک‌لیست‌ها']}>
+      <Page title={`چک‌لیست ${segments[1]} | کاربان`} description="چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت." breadcrumb={['چک‌لیست‌های طلایی']}>
         <ChecklistViewPage slug={segments[1]} />
       </Page>
     );

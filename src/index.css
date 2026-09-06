@@ -36,7 +36,8 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 
 /* ══════════ دکمه‌ها (شیشه‌ای طلایی) ══════════ */
 .button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .8rem 1.5rem; border-radius: 14px; font-weight: 600; font-size: .92rem; white-space: nowrap; transition: all .25s ease; background: linear-gradient(135deg, rgba(231,194,116,.3), rgba(201,150,46,.18)); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); border: 1px solid rgba(216,165,63,.45); color: var(--gold2); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 30px -14px rgba(216,165,63,.45); }
-.button:hover { background: linear-gradient(135deg, rgba(231,194,116,.45), rgba(201,150,46,.3)); color: #f7e8a4; transform: translateY(-2px); }
+/* هاور دکمه طلایی: glow بسیار ظریف */
+.button:hover { background: linear-gradient(135deg, rgba(231,194,116,.45), rgba(201,150,46,.3)); color: #f7e8a4; transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 8px 26px -8px rgba(216,165,63,.5); }
 .button-small { padding: .55rem 1.05rem; font-size: .84rem; border-radius: 11px; }
 .button-outline, .button-outline-light { background: rgba(255,255,255,.06); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.18); color: var(--text); }
 .button-green { background: linear-gradient(135deg, rgba(231,194,116,.9), rgba(201,150,46,.85)); color: #14100a; border: none; }
@@ -45,23 +46,31 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .text-link:hover { gap: .5rem; }
 .text-link-light { color: var(--gold2); }
 
-/* ══════════ هدر + لوگوی ۵ برابر ══════════ */
-.site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(8,12,22,.97); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(216,165,63,.2); }
-.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 132px; }
+/* ══════════ هدر جمع‌وجور (لوگو هم‌اندازه می‌ماند) ══════════
+   PNG لوگو حاشیه شفاف دارد؛ transform محتوای لوگو را پرتر نشان می‌دهد تا
+   با کم‌ارتفاع‌شدن هدر، لوگو نه‌تنها کوچک نشود بلکه کمی درشت‌تر دیده شود */
+.site-header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(8,12,22,.97); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(216,165,63,.2); transition: background .3s ease, box-shadow .3s ease; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 106px; transition: height .3s ease; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand img {
-  height: 100px; width: 220px; object-fit: cover; object-position: center;
+  height: 100px; width: 220px; object-fit: cover; object-position: center; transform: scale(1.3);
+  transition: height .3s ease;
   filter: brightness(0) invert(0.88) sepia(0.6) saturate(2.2) hue-rotate(-12deg) drop-shadow(0 2px 10px rgba(216,165,63,.35));
 }
 .desktop-nav { display: flex; align-items: center; gap: .25rem; }
-.desktop-nav a { padding: .5rem .85rem; font-size: .88rem; font-weight: 500; color: rgba(255,255,255,.75); border-radius: 12px; transition: all .25s ease; }
-.desktop-nav a:hover {
-  color: var(--gold2);
-  background: rgba(216,165,63,.08);
-  box-shadow: inset 0 0 0 1px rgba(216,165,63,.5), 0 0 18px rgba(216,165,63,.28);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
+.desktop-nav a { position: relative; padding: .5rem .85rem; font-size: .88rem; font-weight: 500; color: rgba(255,255,255,.75); border-radius: 12px; transition: color .25s ease, background .25s ease; }
+/* هاور خیلی ظریف: فقط تغییر رنگ متن به طلایی */
+.desktop-nav a:hover { color: var(--gold2); background: rgba(216,165,63,.05); }
+/* خط طلایی کوتاه زیر آیتم فعال */
+.desktop-nav a::after { content: ''; position: absolute; bottom: .14rem; right: 50%; transform: translateX(50%) scaleX(0); width: 18px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--gold), var(--gold2)); transition: transform .25s ease; }
+.desktop-nav a.is-active { color: var(--gold2); font-weight: 600; }
+.desktop-nav a.is-active::after { transform: translateX(50%) scaleX(1); }
+/* هدر هنگام اسکرول: کمی کوچک‌تر، شفاف‌تر و با blur ظریف */
+.site-header.is-scrolled { background: rgba(8,12,22,.82); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 10px 30px -20px rgba(0,0,0,.8); }
+.site-header.is-scrolled .header-inner { height: 84px; }
+.site-header.is-scrolled .brand img { height: 82px; }
+/* نوار پیشرفت اسکرول (خیلی ظریف، ۲ پیکسل) */
+.scroll-progress { position: absolute; bottom: -1px; right: 0; height: 2px; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 2px 0 0 2px; pointer-events: none; opacity: .85; }
 .header-actions { display: flex; align-items: center; gap: .75rem; }
 .login-link { display: inline-flex; align-items: center; gap: .3rem; color: rgba(255,255,255,.8); font-size: .88rem; padding: .5rem .75rem; }
 .login-link:hover { color: var(--gold2); }
@@ -73,16 +82,18 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
   .desktop-nav, .header-actions { display: none; }
   .mobile-menu-button { display: flex; }
   .mobile-nav { display: flex; }
-  .header-inner { height: 76px; }
-  .brand img { height: 54px; width: 120px; }
+  .header-inner { height: 68px; }
+  .brand img { height: 52px; width: 116px; transform: scale(1.4); }
+  .site-header.is-scrolled .header-inner { height: 60px; }
+  .site-header.is-scrolled .brand img { height: 46px; }
 }
 
-.breadcrumb { padding-top: 9.5rem; display: flex; gap: .4rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+.breadcrumb { padding-top: 7.75rem; display: flex; gap: .4rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
 .breadcrumb a { color: var(--gold2); }
 .breadcrumb a:hover { text-decoration: underline; }
 
 /* ══════════ هیرو لوکس ══════════ */
-.hero-lux { position: relative; background: var(--bg); padding: 9.5rem 0 4rem; overflow: hidden; }
+.hero-lux { position: relative; background: var(--bg); padding: 8rem 0 4rem; overflow: hidden; }
 .hero-lux::before { content: ''; position: absolute; inset: 0; background: radial-gradient(900px 420px at 90% -10%, rgba(216,165,63,.14), transparent 60%); pointer-events: none; }
 .hero-lux-media { position: absolute; inset: 0; z-index: 0; }
 .hero-lux-media img {
@@ -96,7 +107,8 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .hero-lead { color: var(--muted); font-size: 1.1rem; max-width: 520px; margin-bottom: 2rem; line-height: 2; }
 .role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 1rem; }
 .role-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; color: var(--text); transition: transform .25s, border-color .25s; }
-.role-card:hover { transform: translateY(-5px); border-color: rgba(216,165,63,.5); }
+/* کارت نقش: هاور/فوکوس برجسته با border طلایی و glow کنترل‌شده */
+.role-card:hover, .role-card:focus-visible { transform: translateY(-4px); border-color: rgba(216,165,63,.6); box-shadow: 0 0 0 1px rgba(216,165,63,.25), 0 16px 36px -16px rgba(216,165,63,.3); }
 .role-card svg { color: var(--gold); margin-bottom: 10px; }
 .role-card h3 { margin: 0 0 6px; font-size: 1.05rem; }
 .role-card p { margin: 0 0 12px; color: var(--muted); font-size: .88rem; line-height: 1.9; }
@@ -116,7 +128,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .sections-strip { padding: 3.5rem 0; background: var(--bg2); }
 .section-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .section-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; transition: all .25s; display: block; }
-.section-card:hover { border-color: rgba(216,165,63,.45); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+.section-card:hover { border-color: rgba(216,165,63,.45); transform: translateY(-4px); box-shadow: 0 16px 34px -16px rgba(0,0,0,.55), 0 0 0 1px rgba(216,165,63,.14); }
 .section-card-media img { height: 160px; width: 100%; object-fit: cover; }
 .section-card h2 { font-size: 1.05rem; padding: 1rem 1.25rem 0; }
 .section-card p { font-size: .84rem; padding: .35rem 1.25rem 0; }
@@ -134,7 +146,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .services-lux { padding: 4rem 0; background: var(--bg); }
 .services-seven { display: grid; grid-template-columns: repeat(7, 1fr); gap: .75rem; }
 .seven-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1.4rem 1rem; text-align: center; transition: all .25s; display: block; }
-.seven-card:hover { border-color: rgba(216,165,63,.5); transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.4); }
+.seven-card:hover { border-color: rgba(216,165,63,.5); transform: translateY(-4px); box-shadow: 0 14px 30px -14px rgba(0,0,0,.5), 0 0 0 1px rgba(216,165,63,.16); }
 .seven-card svg { color: var(--gold); margin: 0 auto .8rem; }
 .seven-card h3 { font-size: .93rem; margin-bottom: .35rem; }
 .seven-card p { font-size: .74rem; color: var(--muted); line-height: 1.8; }
@@ -145,7 +157,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .tools-lux { padding: 4rem 0; background: var(--bg2); }
 .tools-four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .tool-lux-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; transition: all .25s; display: block; }
-.tool-lux-card:hover { border-color: rgba(216,165,63,.45); transform: translateY(-4px); }
+.tool-lux-card:hover { border-color: rgba(216,165,63,.45); transform: translateY(-4px); box-shadow: 0 16px 34px -16px rgba(0,0,0,.55), 0 0 0 1px rgba(216,165,63,.14); }
 .tool-lux-media img { height: 140px; width: 100%; object-fit: cover; }
 .tool-lux-card h3 { font-size: 1rem; padding: 1rem 1.25rem 0; }
 .tool-lux-card p { font-size: .84rem; padding: .35rem 1.25rem 0; }
@@ -154,7 +166,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 @media (max-width: 560px) { .tools-four { grid-template-columns: 1fr; } }
 
 /* ══════════ صفحات داخلی ══════════ */
-.inner-page { padding-top: 9rem; padding-bottom: 4rem; min-height: 60vh; }
+.inner-page { padding-top: 7.5rem; padding-bottom: 4rem; min-height: 60vh; }
 .inner-page h1 { margin: .75rem 0 1rem; }
 .inner-page h1::after, .section-heading h2::after, .center-heading h2::after { content: ''; display: block; width: 60px; height: 3px; border-radius: 2px; margin-top: .6rem; background: linear-gradient(90deg, var(--gold), transparent); }
 .center-heading h2::after { margin: .6rem auto 0; }
@@ -165,7 +177,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 /* دسته‌بندی دانشنامه */
 .category-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem; }
 .category-card { display: flex; flex-direction: column; gap: .5rem; padding: 1.5rem; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); transition: all .25s; }
-.category-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-3px); }
+.category-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-4px); box-shadow: 0 14px 30px -16px rgba(0,0,0,.5), 0 0 0 1px rgba(216,165,63,.12); }
 .category-card svg { color: var(--gold); }
 .category-card h2 { font-size: 1.1rem; }
 .category-card p { font-size: .85rem; flex: 1; }
@@ -180,7 +192,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .filter-row select, .filter-row input { flex: 1; min-width: 170px; padding: .65rem 1rem; border: 1.5px solid var(--line); border-radius: 12px; font-size: .9rem; background: var(--surface2); color: var(--text); }
 .contract-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .contract-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 1.5rem; transition: all .25s; }
-.contract-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-3px); }
+.contract-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-4px); box-shadow: 0 14px 30px -16px rgba(0,0,0,.5), 0 0 0 1px rgba(216,165,63,.12); }
 .contract-card .button { margin-top: auto; align-self: flex-start; }
 .contract-card-top { display: flex; align-items: flex-start; gap: .85rem; margin-bottom: 1rem; }
 .contract-card-top > svg { width: 44px; height: 44px; border-radius: 12px; background: rgba(216,165,63,.12); color: var(--gold); padding: 10px; flex-shrink: 0; }
@@ -194,10 +206,10 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 @media (max-width: 600px) { .contract-grid { grid-template-columns: 1fr; } }
 
 /* ابزارها (صفحه) */
-.tools-page { padding-top: 10rem; }
+.tools-page { padding-top: 8.5rem; }
 .tool-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
 .tool-card { display: flex; flex-direction: column; gap: .5rem; padding: 1.5rem; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); transition: all .25s; }
-.tool-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-3px); }
+.tool-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-4px); box-shadow: 0 14px 30px -16px rgba(0,0,0,.5), 0 0 0 1px rgba(216,165,63,.12); }
 .tool-icon { width: 44px; height: 44px; border-radius: 12px; background: rgba(216,165,63,.14); color: var(--gold); display: flex; align-items: center; justify-content: center; margin-bottom: .5rem; }
 .tool-card h3 { font-size: 1rem; }
 .tool-card p { font-size: .85rem; flex: 1; }
@@ -219,7 +231,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 /* ══════════ خدمات / پلن‌ها ══════════ */
 .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 2rem; }
 .plan-card { position: relative; display: flex; flex-direction: column; gap: .5rem; padding: 2rem 1.75rem; border-radius: 20px; background: var(--surface); border: 1.5px solid var(--line); transition: all .25s; overflow: visible; }
-.plan-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-3px); }
+.plan-card:hover { border-color: rgba(216,165,63,.4); transform: translateY(-4px); box-shadow: 0 14px 30px -16px rgba(0,0,0,.5), 0 0 0 1px rgba(216,165,63,.12); }
 .plan-featured { border-color: var(--gold); }
 .plan-badge { position: absolute; top: -12px; right: 1.75rem; padding: .3rem .85rem; border-radius: 999px; background: var(--gold); color: #14100a; font-size: .75rem; font-weight: 700; }
 .plan-card h2 { font-size: 1.12rem; }
@@ -258,7 +270,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .terms-list li { margin: 10px 0; line-height: 1.9; }
 
 /* ══════════ ماشین‌حساب ══════════ */
-.calculator-page { padding-top: 9rem; padding-bottom: 4rem; }
+.calculator-page { padding-top: 7.5rem; padding-bottom: 4rem; }
 .calc-layout { display: grid; grid-template-columns: 1fr 380px; gap: 3rem; align-items: start; }
 .calc-copy .lead { margin-bottom: 2rem; }
 .education { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
@@ -274,7 +286,10 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .calc-card-head svg { color: var(--gold); }
 .calc-card-head span { font-weight: 700; color: var(--text); }
 .calculator-card label, .calc-card label { display: block; margin-bottom: 1rem; font-size: .88rem; color: var(--muted); }
-.calculator-card input, .calc-card input, .calc-card select { display: block; width: 100%; margin-top: .4rem; padding: .75rem 1rem; border: 1.5px solid var(--line); border-radius: 12px; font-size: 1rem; background: var(--surface2); color: var(--text); }
+.calculator-card input, .calc-card input, .calc-card select, .calc-card textarea { display: block; width: 100%; margin-top: .4rem; padding: .75rem 1rem; border: 1.5px solid var(--line); border-radius: 12px; font-size: 1rem; background: var(--surface2); color: var(--text); }
+/* باکس توضیح مشکل: بزرگ و هم‌اندازه بقیه فیلدها */
+.calc-card textarea { min-height: 150px; line-height: 1.9; resize: vertical; }
+.calc-card textarea:focus { outline: none; border-color: var(--gold); }
 .calculator-card input:focus, .calc-card input:focus { outline: none; border-color: var(--gold); }
 .calc-hints { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .calc-hints span { font-size: .78rem; color: var(--muted); padding: .3rem .7rem; border-radius: 8px; background: rgba(255,255,255,.05); }
@@ -447,7 +462,9 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .admin-logout { background: none; border: 1px solid #ccc; border-radius: 8px; padding: 0.5rem 0.85rem; font-size: 0.85rem; color: #666; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; font-family: inherit; }
 .admin-logout:hover { border-color: #dc2626; color: #dc2626; }
 .admin-tabs { display: flex; gap: 0.5rem; flex-wrap: wrap; border-bottom: 2px solid #e0e0e0; margin-bottom: 1.5rem; }
-.admin-tabs button { background: none; border: none; padding: 0.65rem 1rem; font-size: 0.9rem; color: #666; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-family: inherit; }
+.admin-tabs button { background: none; border: none; padding: 0.65rem 1rem; font-size: 0.9rem; color: #666; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-family: inherit; display: inline-flex; align-items: center; gap: .35rem; transition: color .2s ease; }
+.admin-tabs button:hover { color: #12344D; }
+.admin-tabs button svg { opacity: .7; }
 .admin-tabs button.active { color: #12344D; border-bottom-color: #C9A227; font-weight: 700; }
 .admin-content { background: #fff; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .admin-content h2 { font-size: 1.1rem; color: #12344D !important; margin-bottom: 1rem; }
@@ -469,6 +486,23 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .admin-form label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; color: #555; }
 .admin-form-block { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
+
+/* نمای کلی ادمین — کارت‌های آماری */
+.admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .9rem; margin-bottom: 1.5rem; }
+.admin-stat { display: flex; align-items: center; gap: .85rem; padding: 1.05rem 1.15rem; border-radius: 14px; background: #fff; border: 1px solid #e3e7ec; box-shadow: 0 2px 10px rgba(16,42,67,.05); transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.admin-stat:hover { transform: translateY(-3px); border-color: rgba(201,162,39,.55); box-shadow: 0 10px 24px -12px rgba(16,42,67,.16); }
+.admin-stat-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(201,162,39,.14); color: #A8861D; flex-shrink: 0; }
+.admin-stat b { display: block; font-size: 1.28rem; color: #12344D; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.admin-stat span { font-size: .8rem; color: #5a6b7a; }
+.admin-cols { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+.admin-mini { background: #fff; border: 1px solid #e3e7ec; border-radius: 14px; padding: 1rem 1.1rem; }
+.admin-mini h3 { margin: 0 0 .5rem; font-size: .95rem; color: #12344D; display: flex; align-items: center; gap: .4rem; }
+.admin-mini h3 svg { color: #C9A227; }
+.admin-mini-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .5rem 0; border-bottom: 1px dashed #e8ecf0; font-size: .85rem; color: #29424e; }
+.admin-mini-row:last-child { border-bottom: 0; }
+.admin-mini-row small { color: #7a8a99; font-size: .76rem; }
+.admin-mini .admin-empty { color: #7a8a99; font-size: .85rem; }
+@media (max-width: 720px) { .admin-cols { grid-template-columns: 1fr; } }
 .admin-empty { text-align: center; padding: 1.5rem 0; }
 .admin-settings h3 { margin: 22px 0 10px; color: #12395b; border-right: 3px solid #d9a53a; padding-right: 10px; }
 .admin-settings .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
@@ -481,10 +515,51 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .admin-panel .button-green { background: #0F5132 !important; color: #fff !important; }
 @media (max-width: 640px) { .admin-tabs button { font-size: 0.82rem; padding: 0.5rem 0.7rem; } .admin-content { padding: 1rem; } .admin-table { font-size: 0.82rem; } .admin-form-block { grid-template-columns: 1fr; } }
 
-/* ══════════ انیمیشن ══════════ */
+/* ══════════ انیمیشن‌های پایه ══════════ */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.hero-copy, .role-card, .section-card, .seven-card, .tool-lux-card, .contract-card, .plan-card, .tool-card, .category-card { animation: fadeUp .5s ease-out both; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; } }
+.hero-copy, .role-card { animation: fadeUp .5s ease-out both; }
+
+/* ══════════ میکرو-اینترکشن‌های ظریف کاربان ══════════ */
+/* ورود تدریجی سکشن‌ها هنگام اسکرول (Fade + Slide خیلی کوتاه، یک‌باره) */
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity .55s ease, transform .55s ease; will-change: opacity, transform; }
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* حرکت بسیار کوچک آیکون کارت‌ها هنگام هاور (یک‌باره) */
+@keyframes iconPop { 0% { transform: translateY(0) scale(1); } 45% { transform: translateY(-3px) scale(1.09); } 100% { transform: translateY(-1px) scale(1.04); } }
+.section-card:hover svg, .seven-card:hover svg, .tool-lux-card:hover svg, .tool-card:hover svg, .category-card:hover svg, .contract-card:hover .contract-card-top > svg, .check-card:hover .check-card-head > svg { animation: iconPop .45s ease both; }
+
+/* زوم بسیار نرم تصاویر کارت‌ها (حدود ۱.۰۳) */
+.section-card-media, .tool-lux-media { overflow: hidden; }
+.section-card-media img, .tool-lux-media img { transition: transform .5s ease; }
+.section-card:hover .section-card-media img, .tool-lux-card:hover .tool-lux-media img { transform: scale(1.03); }
+
+/* خط طلایی تزئینی: بازشدن از صفر تا اندازه کامل */
+@keyframes goldGrow { from { width: 0; } }
+@keyframes goldScale { from { transform: scaleX(0); } }
+.inner-page h1::after, .section-heading h2::after, .center-heading h2::after { animation: goldGrow .7s .12s ease-out both; }
+.lux-heading .line { transform-origin: right; animation: goldScale .8s .1s ease-out both; }
+.lux-heading .line:last-child { transform-origin: left; }
+
+/* جابه‌جایی سریع صفحات (Fade حدود ۲۰۰ میلی‌ثانیه) */
+@keyframes pageFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.page-fade { animation: pageFade .2s ease both; }
+
+/* Pulse کوتاه آیکون زنگ هنگام دریافت اعلان */
+@keyframes bellPulse { 0% { box-shadow: 0 0 0 0 rgba(216,165,63,.45); } 100% { box-shadow: 0 0 0 12px rgba(216,165,63,0); } }
+.notif-bell.pulse { animation: bellPulse .7s ease-out 2; }
+
+/* Loader مینیمال با هویت طلایی کاربان */
+.k-loader { display: flex; align-items: center; justify-content: center; gap: .6rem; padding: 2.2rem 0; }
+.k-loader-ring { width: 26px; height: 26px; border-radius: 50%; border: 2.5px solid rgba(216,165,63,.22); border-top-color: var(--gold); animation: kSpin .8s linear infinite; }
+.k-loader-label { font-size: .88rem; color: var(--muted); }
+@keyframes kSpin { to { transform: rotate(360deg); } }
+.admin-panel .k-loader-ring { border-color: rgba(18,52,77,.12); border-top-color: #C9A227; }
+.admin-panel .k-loader-label { color: #5a6b7a; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .reveal { opacity: 1; transform: none; }
+}
 
 /* ══════════ اصلاح چک‌باکس در ماشین‌حساب‌ها (بعد از قوانین calc) ══════════ */
 .calc-card input[type="checkbox"], .calculator-card input[type="checkbox"], .calc-card label input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; padding: 0; margin-top: 2px; }
@@ -537,6 +612,20 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .checklist-item.is-done .checklist-tick { color: #7ddb9a; }
 .checklist-item.is-done span { color: var(--muted); text-decoration: line-through; }
 
+/* ══════════ چک‌لیست‌های طلایی — کارت‌های جمع‌وجور ══════════ */
+.check-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; margin-top: 2rem; }
+.check-card { display: flex; flex-direction: column; gap: .55rem; padding: 1.1rem 1.15rem; border-radius: 15px; background: var(--surface); border: 1px solid var(--line); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+.check-card:hover { border-color: rgba(216,165,63,.5); transform: translateY(-4px); box-shadow: 0 14px 30px -16px rgba(0,0,0,.5), 0 0 0 1px rgba(216,165,63,.14); }
+.check-card-head { display: flex; align-items: center; gap: .65rem; }
+.check-card-head > svg { width: 38px; height: 38px; border-radius: 11px; background: rgba(216,165,63,.12); color: var(--gold); padding: 9px; flex-shrink: 0; }
+.check-card-head h2 { font-size: .98rem; line-height: 1.5; }
+.check-card > p { font-size: .84rem; line-height: 1.8; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.check-card-meta { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: auto; padding-top: .3rem; }
+.check-card-meta small { color: var(--muted); font-size: .78rem; display: inline-flex; align-items: center; gap: .3rem; }
+.check-card-meta .text-link { font-size: .84rem; }
+@media (max-width: 900px) { .check-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .check-grid { grid-template-columns: 1fr; } }
+
 /* کتابخانه قوانین */
 .law-search { display: flex; align-items: center; gap: .6rem; margin: 1.4rem 0 .9rem; padding: .8rem 1.1rem; background: var(--surface2); border: 1.5px solid var(--line); border-radius: 14px; }
 .law-search svg { color: var(--gold); flex-shrink: 0; }
@@ -574,11 +663,26 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .auth-user strong { color: var(--text); }
 .auth-user small { color: var(--muted); }
 
-/* داشبورد */
+/* ══════════ داشبورد پریمیوم کاربان ══════════ */
+.dash-hero { position: relative; overflow: hidden; border: 1px solid rgba(216,165,63,.28); border-radius: 20px; padding: 1.7rem 1.8rem 1.5rem; background: radial-gradient(560px 220px at 88% -30%, rgba(216,165,63,.16), transparent 65%), linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0)), var(--surface); max-width: 1200px; margin: 0 auto 1.4rem; }
+.dash-hero::after { content: ''; position: absolute; right: 0; left: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(216,165,63,.55), transparent); }
+.dash-hero h1 { font-size: clamp(1.35rem, 3vw, 1.85rem); margin: .6rem 0 .3rem; }
+.dash-hero .lead { margin-bottom: 0; }
+.dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .7rem; margin-top: 1.3rem; }
+.dash-stat { display: flex; align-items: center; gap: .7rem; padding: .8rem .95rem; border-radius: 14px; background: var(--surface2); border: 1px solid var(--line); transition: border-color .25s ease, transform .25s ease; }
+.dash-stat:hover { border-color: rgba(216,165,63,.4); transform: translateY(-2px); }
+.dash-stat > svg { color: var(--gold); flex-shrink: 0; }
+.dash-stat b { display: block; font-size: 1.12rem; color: var(--gold2); font-variant-numeric: tabular-nums; line-height: 1.3; }
+.dash-stat span { font-size: .76rem; color: var(--muted); }
+.dash-card { border-radius: 18px; box-shadow: 0 12px 30px -22px rgba(0,0,0,.65); }
+.dash-card h2 { display: flex; align-items: center; gap: .5rem; }
+.dash-card h2 svg { color: var(--gold); flex-shrink: 0; }
+@media (max-width: 760px) { .dash-stats { grid-template-columns: repeat(2, 1fr); } }
 .dash-head { margin-bottom: 1.2rem; }
 .dash-tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.4rem; max-width: 1200px; margin-inline: auto; }
 .dash-tabs button { display: inline-flex; align-items: center; gap: .45rem; padding: .55rem 1.1rem; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: .88rem; font-weight: 600; background: var(--surface); }
 .dash-tabs button.active, .dash-tabs button:hover { border-color: rgba(216,165,63,.5); color: var(--gold2); background: rgba(216,165,63,.08); }
+.dash-tabs button.active { box-shadow: 0 6px 18px -10px rgba(216,165,63,.5); }
 .dash-content { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.2rem; }
 .dash-item { border: 1px solid var(--line); border-radius: 12px; padding: .8rem 1rem; margin-top: .7rem; background: var(--surface2); }
 .dash-item-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
