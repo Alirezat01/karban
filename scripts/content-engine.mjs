@@ -1,9 +1,9 @@
 // Karban Content Engine — weekly AI legal content with provider fallback
-// v3.3 — مدل هر ارائه‌دهنده به لیست مدل‌های معتبر امروزی ارتقا یافت:
-//   gemini → gemini-3.6-flash (با موفقیت تست شد)
-//   groq → openai/gpt-oss-120b (طبق توصیهٔ خود گروق؛ لاماها بازنشسته شدند)
-//   openrouter → مدل‌های رایگان فعال امروز
-//   + هر خطای موقتی (۴۲۹/۵xx) یک بار بعد از ۲۰ ثانیه دوباره امتحان می‌شود
+// v3.4 — کنترل حجم تولید:
+//   مقاله: حداکثر ۱ مقاله در ۶ روز (سقف هفتگی) — retry هم از این سقف عبور نمی‌کند
+//   قرارداد: تکمیل ناقص‌ها همیشه آزاد؛ قرارداد جدید حداکثر ۲ در ۷ روز
+//   retry: هر ران فقط یک ردیف failed؛ فقط job=article/contracts؛ بقیه skipped
+//   (علت: در شهریور ۱۴۰۵ بدهی ردیف‌های failed قدیمی باعث انتشار ۵ مقاله در یک روز شد)
 import { createClient } from '@supabase/supabase-js';
 
 /* ── اعتبارسنجی شروع به کار: اگر secretای کم باشد، پیام واضح فارسی بده
@@ -175,6 +175,20 @@ function parseJSON(text) {
   return m ? JSON.parse(m[0]) : null;
 }
 
+/* تعداد ردیف‌های ایجادشده در N روز اخیر — برای سقف‌های هفتگی */
+async function createdSince(table, days) {
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const { count, error } = await supabase
+    .from(table)
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', since);
+  if (error) {
+    console.error(`[createdSince:${table}]`, error.message);
+    return 0; // در خطای شمارش، سقف را نبندیم ولی لاگ بماند
+  }
+  return count || 0;
+}
+
 async function logJob(job, topic, status, provider, error, meta) {
   // سه لایه تلاش تا ردیف لاگ هرگز گم نشود (ستون error ممکن است varchar کوچک باشد یا topic NOT NULL)
   const safeTopic = topic || job;
@@ -193,6 +207,16 @@ async function logJob(job, topic, status, provider, error, meta) {
 }
 
 async function runArticle() {
+  /* سقف هفتگی: اگر در ۶ روز اخیر مقاله‌ای منتشر شده، مقاله جدید نساز.
+     این همان دریچه‌ای است که بدهی ردیف‌های failed قدیمی را بی‌خطر می‌کند:
+     retry ردیف را recovered می‌کند ولی محتوای تازه تولید نمی‌شود. */
+  const weekCount = await createdSince('articles', 6);
+  if (weekCount >= 1) {
+    console.log(`⏭ سقف هفتگی مقاله پر است (${weekCount} مقاله در ۶ روز اخیر) — تولید جدید انجام نشد.`);
+    await logJob('article', 'weekly-cap', 'skipped', null, null, { reason: 'weekly cap reached' });
+    return;
+  }
+
   const { data: existing } = await supabase.from('articles').select('title');
   const titles = (existing || []).map((a) => a.title);
   const pool = TOPICS.filter(([c, t]) => !titles.some((x) => x.includes(t.slice(0, 12))));
@@ -240,10 +264,15 @@ async function runContracts() {
     }
   }
 
-  // ۲) دو قرارداد جدید در هفته
+  // ۲) دو قرارداد جدید در هفته (با سقف: مجموع قراردادهای جدید ۷ روز اخیر حداکثر ۲)
+  const newThisWeek = await createdSince('contracts', 7);
+  const quota = Math.max(0, 2 - newThisWeek);
+  if (quota === 0) {
+    console.log(`⏭ سقف هفتگی قرارداد جدید پر است (${newThisWeek} در ۷ روز اخیر) — فقط تکمیل ناقص‌ها انجام شد.`);
+  }
   const { data: all } = await supabase.from('contracts').select('title');
   const have = (all || []).map((c) => c.title);
-  const pending = CONTRACT_QUEUE.filter((q) => !have.includes(q.title)).slice(0, 2);
+  const pending = CONTRACT_QUEUE.filter((q) => !have.includes(q.title)).slice(0, quota);
   for (const next of pending) {
     const user = `متن کامل «${next.title}» را مانند یک وکیل بنویس (بندهای استاندارد + تبصره). خروجی JSON: {"body":"...","summary":"خلاصه یک خطی"}`;
     const { text, provider, model } = await callAI(LAWYER, user);
@@ -257,20 +286,28 @@ async function runContracts() {
 }
 
 async function runRetry() {
+  // هر ران فقط یک ردیف failed — و فقط برای jobهای شناخته‌شده.
   // ستون attempts ممکن است در جدول نباشد؛ دفاعی کوئری می‌زنیم
-  let q = supabase.from('content_jobs').select('*').eq('status', 'failed').order('id').limit(2);
+  let q = supabase.from('content_jobs').select('*').eq('status', 'failed').order('id').limit(1);
   const withAttempts = await q.lt('attempts', 4);
   let failed = withAttempts.data;
   if (withAttempts.error) {
-    const fallback = await supabase.from('content_jobs').select('*').eq('status', 'failed').order('id').limit(2);
+    const fallback = await supabase.from('content_jobs').select('*').eq('status', 'failed').order('id').limit(1);
     failed = fallback.data;
     if (fallback.error) throw new Error(fallback.error.message);
   }
   for (const f of failed || []) {
     await supabase.from('content_jobs').update({ attempts: (f.attempts || 0) + 1 }).eq('id', f.id).then(({ error }) => { if (error) console.error('[attempts]', error.message); });
     try {
+      /* نگاشت سخت‌گیرانه: ردیف‌های ناشناخته (مثل job=retry) تولید محتوا را
+         راه نمی‌اندازند — فقط skipped می‌شوند تا زنجیره بی‌نهایت شعله‌ور نشود */
       if (f.job === 'article') await runArticle();
-      else await runContracts();
+      else if (f.job === 'contracts') await runContracts();
+      else {
+        console.log(`⏭ ردیف failed با job ناشناخته «${f.job}» — skipped شد (بدون تولید محتوا).`);
+        await supabase.from('content_jobs').update({ status: 'skipped' }).eq('id', f.id);
+        continue;
+      }
       await supabase.from('content_jobs').update({ status: 'recovered' }).eq('id', f.id);
     } catch (e) {
       await tg(`⚠️ تلاش مجدد ${f.job} شکست خورد: ${String(e).slice(0, 200)}`);

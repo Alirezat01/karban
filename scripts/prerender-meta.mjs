@@ -101,11 +101,11 @@ function breadcrumbHtml(pairs) {
 
 const NAV_LINKS = [
   ['/', 'خانه'], ['/قراردادها', 'قراردادها'], ['/ابزارهای-هوش-مصنوعی', 'ابزارهای هوش مصنوعی'],
-  ['/دانشنامه', 'دانشنامه'], ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/چک-لیست‌ها', 'چک‌لیست‌ها'], ['/خدمات', 'خدمات'], ['/تماس-با-ما', 'تماس با ما'],
+  ['/دانشنامه', 'دانشنامه'], ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/چک-لیست‌ها', 'چک‌لیست‌های طلایی'], ['/خدمات', 'خدمات'], ['/تماس-با-ما', 'تماس با ما'],
 ];
 const FOOTER_LINKS = [
   ['/دانشنامه', 'دانشنامه'], ['/قراردادها', 'قراردادها'], ['/خدمات', 'خدمات'], ['/ابزارهای-هوش-مصنوعی', 'ابزارهای هوش مصنوعی'],
-  ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/چک-لیست‌ها', 'چک‌لیست‌ها'], ['/کتابخانه-قوانین', 'کتابخانه قوانین'], ['/درباره-ما', 'درباره ما'], ['/تماس-با-ما', 'تماس با ما'],
+  ['/درخواست‌های-اداری', 'درخواست‌های اداری'], ['/چک-لیست‌ها', 'چک‌لیست‌های طلایی'], ['/کتابخانه-قوانین', 'کتابخانه قوانین'], ['/درباره-ما', 'درباره ما'], ['/تماس-با-ما', 'تماس با ما'],
   ['/قوانین', 'قوانین و شرایط'], ['/حریم-خصوصی', 'حریم خصوصی'],
 ];
 
@@ -634,17 +634,17 @@ async function main() {
     console.warn(`prerender: requests skipped (${String(e).slice(0, 120)})`);
   }
 
-  /* 8) چک‌لیست‌ها — هاب + ۵ صفحه کامل */
+  /* 8) چک‌لیست‌های طلایی — هاب + ۵ صفحه کامل */
   {
     const cl = checklists;
-    const crumb = [{ name: 'خانه', href: '/' }, { name: 'چک‌لیست‌ها', path: '/چک-لیست‌ها' }];
+    const crumb = [{ name: 'خانه', href: '/' }, { name: 'چک‌لیست‌های طلایی', path: '/چک-لیست‌ها' }];
     const inner =
       `${shell('/چک-لیست‌ها', crumb)}` +
-      `${pageOpen('ابزارهای آماده کاربان', false)}` +
-      `<h1>چک‌لیست‌های آماده مدیریت کسب‌وکار</h1>` +
-      `<p class="lead">پنج چک‌لیست کاربردی برای لحظه‌های حساس مدیریت: استخدام، اخراج، تنظیم قرارداد، تسویه و مالیات؛ هر مورد را تیک بزن و پیشرفتت را دنبال کن.</p>` +
-      `<div class="contract-grid">` +
-      cl.map((c) => `<article class="contract-card"><div class="contract-card-top"><div><small>چک‌لیست</small><h2>${esc(c.title)}</h2><p>${esc(c.description)}</p></div></div><a class="button button-small" href="${url(`/چک-لیست‌ها/${c.slug}`)}">شروع چک‌لیست ←</a></article>`).join('') +
+      `${pageOpen('راهنماهای اجرایی کاربان', false)}` +
+      `<h1>چک‌لیست‌های طلایی مدیریت کسب‌وکار</h1>` +
+      `<p class="lead">پنج مسیر گام‌به‌گام برای لحظه‌های حساس مدیریت: استخدام، اخراج، تنظیم قرارداد، تسویه و مالیات؛ هر گام را تیک بزن، پیشرفتت ذخیره می‌شود و دفعه بعد از همان‌جا ادامه می‌دهی.</p>` +
+      `<div class="check-grid">` +
+      cl.map((c) => `<article class="check-card"><div class="check-card-head"><h2>${esc(c.title)}</h2></div><p>${esc(c.description)}</p><div class="check-card-meta"><small>${c.items.length.toLocaleString('fa-IR')} گام اجرایی</small><a class="text-link" href="${url(`/چک-لیست‌ها/${c.slug}`)}">شروع ←</a></div></article>`).join('') +
       `</div>` +
       relatedBox('ابزارهای مرتبط کاربان', [
         { href: '/قراردادها', label: 'بانک قراردادها' },
@@ -653,7 +653,7 @@ async function main() {
       ]) +
       `${pageClose()}`;
     await write('/چک-لیست‌ها', transformHtml(template, {
-      title: 'چک‌لیست‌های آماده مدیریت کسب‌وکار | کاربان',
+      title: 'چک‌لیست‌های طلایی مدیریت کسب‌وکار | کاربان',
       description: 'چک‌لیست استخدام، اخراج، تنظیم قرارداد، پایان همکاری و مالیاتی کسب‌وکار — با ذخیره پیشرفت و خروجی PDF.',
       path: '/چک-لیست‌ها',
       jsonLd: [
@@ -666,21 +666,21 @@ async function main() {
     for (const c of cl) {
       const path = `/چک-لیست‌ها/${c.slug}`;
       const body =
-        `${shell(path, [{ name: 'چک‌لیست‌ها', href: '/چک-لیست‌ها' }, { name: c.title, path }])}` +
-        `${pageOpen('چک‌لیست کاربردی')}` +
+        `${shell(path, [{ name: 'چک‌لیست‌های طلایی', href: '/چک-لیست‌ها' }, { name: c.title, path }])}` +
+        `${pageOpen('چک‌لیست طلایی کاربان')}` +
         `<h1>${esc(c.title)}</h1>` +
         `<p class="lead">${esc(c.description)}</p>` +
         `<div class="contact-card calc-card checklist-box">` +
         c.items.map((i) => `<div class="checklist-item"><span>${esc(i)}</span></div>`).join('') +
         `</div>` +
-        relatedBox('چک‌لیست‌های دیگر', cl.filter((x) => x.slug !== c.slug).map((x) => ({ href: `/چک-لیست‌ها/${x.slug}`, label: x.title }))) +
+        relatedBox('چک‌لیست‌های طلایی دیگر', cl.filter((x) => x.slug !== c.slug).map((x) => ({ href: `/چک-لیست‌ها/${x.slug}`, label: x.title }))) +
         `${pageClose()}`;
       await write(path, transformHtml(template, {
         title: `${c.title} | کاربان`,
         description: `${c.description} — ${c.items.length} گام عملی با ذخیره پیشرفت و خروجی PDF.`,
         path,
         jsonLd: [
-          breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'چک‌لیست‌ها', href: '/چک-لیست‌ها' }, { name: c.title, path }]),
+          breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'چک‌لیست‌های طلایی', href: '/چک-لیست‌ها' }, { name: c.title, path }]),
           faqLd(c.items.slice(0, 4).map((i) => [i.split('؛')[0].split(' (')[0], i])),
         ],
         inner: body,
