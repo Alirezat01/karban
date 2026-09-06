@@ -578,7 +578,7 @@ async function main() {
     for (const r of requests) {
       const path = `/درخواست‌های-اداری/${r.id}`;
       const title = `${r.title} | کاربان`;
-      const description = r.intro || `متن رسمی و آماده «${r.title}»؛ کپی کنید یا PDF برنددانلود بگیرید.`;
+      const description = r.intro || `متن رسمی و آماده «${r.title}»؛ کپی کنید یا PDF برنددار دانلود بگیرید.`;
       const inner =
         `${shell(path, [{ name: 'درخواست‌های اداری', href: '/درخواست‌های-اداری' }, { name: r.title, path }])}` +
         `${pageOpen(r.category)}<h1>${esc(r.title)}</h1><p class="article-intro">${esc(r.intro || '')}</p>` +
