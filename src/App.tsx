@@ -3,10 +3,20 @@ import type { ReactNode } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRoute } from '@/router';
 import Layout from '@/components/Layout';
-import { KNOWLEDGE_CATEGORIES } from '@/components/KnowledgePage';
 import { applySEO, type JsonLd } from '@/lib/seo';
 import calcSeo from '@/data/calc-seo.json';
+import routeMeta from '@/data/route-meta.json';
+import { checklistCatalog } from '@/data/config';
+import { lawCategoryBySlug } from '@/data/laws';
+import { categoryFromSegment, categorySlug, KNOWLEDGE_CATEGORIES } from '@/lib/slug';
 import KarbanLoader from '@/components/KarbanLoader';
+
+/* منبع واحد متای صفحات ثابت — مشترک با scripts/prerender-meta.mjs و api/sitemap.xml.ts */
+const META_HOME = routeMeta.home as { title: string; description: string; priority?: string };
+const META_ROUTES = routeMeta.routes as Record<string, { title: string; description: string; image?: string; priority?: string }>;
+const META_TOOLS = routeMeta.tools as Record<string, { title: string; description: string; priority?: string }>;
+/* عنوان نمایشی بدون پسوند | کاربان (برای h1 و breadcrumb) */
+const display = (t: string) => t.replace(/ \| کاربان$/, '');
 const ContentPage = React.lazy(() => import('@/components/ContentPage'));
 const ServicesPage = React.lazy(() =>
   import('@/components/ContentPage').then((m) => ({ default: m.ServicesPage })),
@@ -39,6 +49,7 @@ const LawLibraryPage = React.lazy(() =>
 );
 const LoginPage = React.lazy(() => import('@/components/LoginPage'));
 const DashboardPage = React.lazy(() => import('@/components/DashboardPage'));
+const ProfilePage = React.lazy(() => import('@/components/ProfilePage'));
 const RequestsListPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestsListPage })),
 );
@@ -46,9 +57,9 @@ const RequestViewPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestViewPage })),
 );
 
-function Page({ title, description, breadcrumb, children, jsonLd, noindex }: { title: string; description: string; breadcrumb?: string[]; children: ReactNode; jsonLd?: JsonLd; noindex?: boolean }) {
+function Page({ title, description, breadcrumb, children, jsonLd, noindex, image }: { title: string; description: string; breadcrumb?: (string | { name: string; href: string })[]; children: ReactNode; jsonLd?: JsonLd; noindex?: boolean; image?: string }) {
   return (
-    <Layout title={title} description={description} breadcrumb={breadcrumb} jsonLd={jsonLd} noindex={noindex}>
+    <Layout title={title} description={description} breadcrumb={breadcrumb} jsonLd={jsonLd} noindex={noindex} image={image}>
       <Suspense fallback={<KarbanLoader label="در حال آماده‌سازی…" />}>
         {children}
       </Suspense>
@@ -82,18 +93,18 @@ function AdminShell() {
   return <AdminPage />;
 }
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination'; title: string; desc: string }> = {
-  'محاسبه-حقوق': { type: 'salary', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق خالص، کسورات بیمه و مالیات را برآورد کنید.' },
-  'هزینه-استخدام': { type: 'hire', title: 'ماشین‌حساب هزینه استخدام', desc: 'بهای تمام‌شدن واقعی یک کارمند، قلم‌به‌قلم.' },
-  'سنوات': { type: 'severance', title: 'ماشین‌حساب سنوات پایان خدمت', desc: 'مبلغ سنوات پایان کار را محاسبه کنید.' },
-  'بازنشستگی': { type: 'retirement', title: 'ماشین‌حساب بازنشستگی تأمین اجتماعی', desc: 'وضعیت بازنشستگی و برآورد مستمری را ببینید.' },
-  'اضافه-کاری': { type: 'overtime', title: 'ماشین‌حساب اضافه‌کاری', desc: 'مبلغ اضافه‌کاری را بر اساس نرخ قانونی محاسبه کنید.' },
-  'مالیات-مشاغل': { type: 'business-tax', title: 'ماشین‌حساب مالیات مشاغل و مغازه', desc: 'محاسبه پلکانی ماده ۱۳۱ با معافیت سالانه.' },
-  'ارزش-افزوده': { type: 'vat', title: 'ماشین‌حساب ارزش افزوده', desc: 'محاسبه ۱۰٪ — از پایه یا از داخل فاکتور.' },
-  'مالیات-حقوق': { type: 'salary-tax', title: 'ماشین‌حساب مالیات حقوق ۱۴۰۵', desc: 'محاسبه پلکانی مالیات حقوق ۱۴۰۵ بر اساس معافیت سالانه و نرخ‌های ماده ۸۴؛ برآورد دقیق مالیات ماهانه و سالانه هر کارمند.' },
-  'عیدی-و-پاداش': { type: 'eydi', title: 'ماشین‌حساب عیدی و پاداش ۱۴۰۵', desc: 'مبلغ عیدی به نسبت ماه‌های کارکرد و پس‌انداز ماهانه آن — مطابق ماده ۱۱۷ قانون کار.' },
-  'بیمه-تامین-اجتماعی': { type: 'insurance', title: 'ماشین‌حساب بیمه تأمین اجتماعی', desc: 'تفکیک دقیق سهم ۷٪ کارگر و ۲۳٪ کارفرما (بیمه + بیکاری) از حقوق مشمول.' },
-  'مرخصی': { type: 'leave', title: 'ماشین‌حساب مرخصی و ارزش آن', desc: 'مانده مرخصی استحقاقی و ارزش ریالی آن — مطابق مواد ۶۴ و ۶۶ قانون کار.' },
-  'مزایای-پایان-همکاری': { type: 'termination', title: 'ماشین‌حساب تسویه حساب و مزایای پایان همکاری', desc: 'سنوات + عیدی پرو‌راتا + مانده مرخصی = خسارت اخراج (ماده ۲۷) یکجا محاسبه می‌شود.' },
+  'محاسبه-حقوق': { type: 'salary', title: META_TOOLS['محاسبه-حقوق'].title, desc: META_TOOLS['محاسبه-حقوق'].description },
+  'هزینه-استخدام': { type: 'hire', title: META_TOOLS['هزینه-استخدام'].title, desc: META_TOOLS['هزینه-استخدام'].description },
+  'سنوات': { type: 'severance', title: META_TOOLS['سنوات'].title, desc: META_TOOLS['سنوات'].description },
+  'بازنشستگی': { type: 'retirement', title: META_TOOLS['بازنشستگی'].title, desc: META_TOOLS['بازنشستگی'].description },
+  'اضافه-کاری': { type: 'overtime', title: META_TOOLS['اضافه-کاری'].title, desc: META_TOOLS['اضافه-کاری'].description },
+  'مالیات-مشاغل': { type: 'business-tax', title: META_TOOLS['مالیات-مشاغل'].title, desc: META_TOOLS['مالیات-مشاغل'].description },
+  'ارزش-افزوده': { type: 'vat', title: META_TOOLS['ارزش-افزوده'].title, desc: META_TOOLS['ارزش-افزوده'].description },
+  'مالیات-حقوق': { type: 'salary-tax', title: META_TOOLS['مالیات-حقوق'].title, desc: META_TOOLS['مالیات-حقوق'].description },
+  'عیدی-و-پاداش': { type: 'eydi', title: META_TOOLS['عیدی-و-پاداش'].title, desc: META_TOOLS['عیدی-و-پاداش'].description },
+  'بیمه-تامین-اجتماعی': { type: 'insurance', title: META_TOOLS['بیمه-تامین-اجتماعی'].title, desc: META_TOOLS['بیمه-تامین-اجتماعی'].description },
+  'مرخصی': { type: 'leave', title: META_TOOLS['مرخصی'].title, desc: META_TOOLS['مرخصی'].description },
+  'مزایای-پایان-همکاری': { type: 'termination', title: META_TOOLS['مزایای-پایان-همکاری'].title, desc: META_TOOLS['مزایای-پایان-همکاری'].description },
 };
 
 const faqJsonLd = {
@@ -183,7 +194,7 @@ export default function App() {
 
   if (route === '/' || segments.length === 0) {
     return (
-      <Page title="کاربان | بانک قرارداد تخصصی و ماشین‌حساب حقوق ۱۴۰۵" description="بیش از ۹۰ قرارداد تخصصی کارفرمایی و فریلنسر، ۱۰ ماشین‌حساب دقیق حقوق، سنوات و مالیات ۱۴۰۵، و دانشنامه حقوق کار با استناد قانون کار.">
+      <Page title={META_HOME.title} description={META_HOME.description}>
         <HomePage />
       </Page>
     );
@@ -191,14 +202,14 @@ export default function App() {
   if (segments[0] === 'درخواست‌های-اداری') {
     if (segments.length === 1) {
       return (
-        <Page title="درخواست‌های اداری آماده — استعفا، وام، مرخصی و…" description="متن رسمی و آماده برای درخواست‌های پرتکرار؛ کپی کن، جاهای خالی را پر کن و امضا کن." breadcrumb={['درخواست‌های اداری']}>
+        <Page title={META_ROUTES['/درخواست‌های-اداری'].title} description={META_ROUTES['/درخواست‌های-اداری'].description} image={META_ROUTES['/درخواست‌های-اداری'].image} breadcrumb={[{ name: 'درخواست‌های اداری', href: '/درخواست‌های-اداری' }]}>
           <RequestsListPage />
         </Page>
       );
     }
     if (segments[1]) {
       return (
-        <Page title="درخواست اداری" description="متن کامل درخواست اداری." breadcrumb={['درخواست‌های اداری']}>
+        <Page title="درخواست اداری" description="متن کامل درخواست اداری." breadcrumb={[{ name: 'درخواست‌های اداری', href: '/درخواست‌های-اداری' }]}>
           <RequestViewPage requestId={segments[1]} />
         </Page>
       );
@@ -206,21 +217,21 @@ export default function App() {
   }
 
     if (segments[0] === 'چک-لیست‌ها') {
+    const checklist = segments[1] ? checklistCatalog.find((c) => c.slug === segments[1]) : undefined;
     if (segments.length === 1) {
       return (
-        <Page title="چک‌لیست‌های طلایی مدیریت کسب‌وکار | کاربان" description="چک‌لیست استخدام، اخراج، تنظیم قرارداد، پایان همکاری و مالیاتی کسب‌وکار — با ذخیره پیشرفت و خروجی PDF." breadcrumb={['چک‌لیست‌های طلایی']} jsonLd={listJsonLd('/چک-لیست‌ها', [
-          { name: 'چک‌لیست استخدام نیروی جدید', href: '/چک-لیست‌ها/چک-لیست-استخدام' },
-          { name: 'چک‌لیست اخراج و فسخ', href: '/چک-لیست‌ها/چک-لیست-اخراج-و-فسخ' },
-          { name: 'چک‌لیست تنظیم قرارداد', href: '/چک-لیست‌ها/چک-لیست-تنظیم-قرارداد' },
-          { name: 'چک‌لیست پایان همکاری', href: '/چک-لیست‌ها/چک-لیست-پایان-همکاری' },
-          { name: 'چک‌لیست مالیاتی کسب‌وکار', href: '/چک-لیست‌ها/چک-لیست-مالیاتی-کسب-و-کار' },
-        ])}>
+        <Page title={META_ROUTES['/چک-لیست‌ها'].title} description={META_ROUTES['/چک-لیست‌ها'].description} image={META_ROUTES['/چک-لیست‌ها'].image} breadcrumb={[{ name: 'چک‌لیست‌های طلایی', href: '/چک-لیست‌ها' }]} jsonLd={listJsonLd('/چک-لیست‌ها', checklistCatalog.map((c) => ({ name: c.title, href: `/چک-لیست‌ها/${c.slug}` })))}>
           <ChecklistsListPage />
         </Page>
       );
     }
     return (
-      <Page title={`چک‌لیست ${segments[1]} | کاربان`} description="چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت." breadcrumb={['چک‌لیست‌های طلایی']}>
+      <Page
+        title={checklist ? `${checklist.title} | کاربان` : 'چک‌لیست | کاربان'}
+        description={checklist ? `${checklist.description} — ${checklist.items.length} گام عملی با ذخیره پیشرفت و خروجی PDF.` : 'چک‌لیست گام‌به‌گام کاربان با ذخیره پیشرفت.'}
+        image={META_ROUTES['/چک-لیست‌ها'].image}
+        breadcrumb={[{ name: 'چک‌لیست‌های طلایی', href: '/چک-لیست‌ها' }, ...(checklist ? [{ name: checklist.title, href: `/چک-لیست‌ها/${checklist.slug}` }] : [])]}
+      >
         <ChecklistViewPage slug={segments[1]} />
       </Page>
     );
@@ -229,7 +240,7 @@ export default function App() {
   if (segments[0] === 'کتابخانه-قوانین') {
     if (segments.length === 1) {
       return (
-        <Page title="کتابخانه قوانین — قانون کار، تأمین اجتماعی و مالیات به زبان ساده | کاربان" description="جست‌وجوی سریع بین مواد قانون کار، تأمین اجتماعی، مالیات‌های مستقیم و آیین‌نامه‌ها؛ خلاصه کاربردی هر ماده با برچسب موضوعی." breadcrumb={['کتابخانه قوانین']} jsonLd={listJsonLd('/کتابخانه-قوانین', [
+        <Page title={META_ROUTES['/کتابخانه-قوانین'].title} description={META_ROUTES['/کتابخانه-قوانین'].description} image={META_ROUTES['/کتابخانه-قوانین'].image} breadcrumb={[{ name: 'کتابخانه قوانین', href: '/کتابخانه-قوانین' }]} jsonLd={listJsonLd('/کتابخانه-قوانین', [
           { name: 'قانون کار', href: '/کتابخانه-قوانین/قانون-کار' },
           { name: 'تأمین اجتماعی', href: '/کتابخانه-قوانین/تأمین-اجتماعی' },
           { name: 'مالیات‌های مستقیم', href: '/کتابخانه-قوانین/مالیات‌های-مستقیم' },
@@ -239,8 +250,9 @@ export default function App() {
         </Page>
       );
     }
+    const lawCat = segments[1] ? lawCategoryBySlug(segments[1]) : undefined;
     return (
-      <Page title={`${segments[1]} — کتابخانه قوانین کاربان`} description="گزیده مواد پرکاربرد این قانون با زبان ساده و جست‌وجوی سریع." breadcrumb={['کتابخانه قوانین']}>
+      <Page title={`${lawCat || segments[1]} — گزیده مواد پرکاربرد به زبان ساده | کاربان`} description={`گزیده مواد پرکاربرد ${lawCat || segments[1]} با زبان ساده و برچسب موضوعی؛ بخشی از کتابخانه قوانین کاربان.`} image={META_ROUTES['/کتابخانه-قوانین'].image} breadcrumb={[{ name: 'کتابخانه قوانین', href: '/کتابخانه-قوانین' }, { name: lawCat || segments[1] || '', href: `/کتابخانه-قوانین/${segments[1]}` }]}>
         <LawLibraryPage category={segments[1]} />
       </Page>
     );
@@ -262,9 +274,17 @@ export default function App() {
     );
   }
 
+  if (segments[0] === 'پروفایل') {
+    return (
+      <Page title="پروفایل کاربری | کاربان" description="ویرایش نام، شماره تماس و نقش کاری حساب کاربری کاربان." breadcrumb={['پروفایل']} noindex>
+        <ProfilePage />
+      </Page>
+    );
+  }
+
   if (segments[0] === 'حریم-خصوصی') {
     return (
-           <Page title="حریم خصوصی کاربان" description="سیاست حریم خصوصی کاربان؛ چه داده‌هایی جمع می‌شود و چگونه محافظت می‌شود." breadcrumb={['حریم خصوصی']}>
+           <Page title={META_ROUTES['/حریم-خصوصی'].title} description={META_ROUTES['/حریم-خصوصی'].description} breadcrumb={[{ name: 'حریم خصوصی', href: '/حریم-خصوصی' }]}>
         <PrivacyPage />
       </Page>
     );
@@ -272,7 +292,7 @@ export default function App() {
 
   if (segments[0] === 'قوانین') {
     return (
-      <Page title="قوانین و شرایط استفاده از کاربان" description="شرایط شفاف استفاده از خدمات و ابزارهای کاربان؛ پیش از ثبت سفارش بخوانید." breadcrumb={['قوانین']}>
+      <Page title={META_ROUTES['/قوانین'].title} description={META_ROUTES['/قوانین'].description} breadcrumb={[{ name: 'قوانین', href: '/قوانین' }]}>
         <TermsPage />
       </Page>
     );
@@ -298,7 +318,7 @@ export default function App() {
   if (segments[0] === 'دانشنامه') {
     if (segments.length === 1) {
       return (
-        <Page title="دانشنامه حقوقی و مالیاتی کسب‌وکار | کاربان" description="مقالات کاربردی حقوق کار، بیمه و مالیات به زبان ساده و با استناد به مواد قانونی." breadcrumb={['دانشنامه']}>
+        <Page title={META_ROUTES['/دانشنامه'].title} description={META_ROUTES['/دانشنامه'].description} image={META_ROUTES['/دانشنامه'].image} breadcrumb={[{ name: 'دانشنامه', href: '/دانشنامه' }]}>
           <ContentPage kind="knowledge" title="راهنمای قانون کار و تأمین اجتماعی، به زبان ساده اما مستند" description="راهنمای مستند قانون کار، تأمین اجتماعی و مالیات به زبان ساده با ذکر ماده قانون؛ همیشه به‌روز." eyebrow="دانشنامه" />
         </Page>
       );
@@ -306,16 +326,23 @@ export default function App() {
 
     if (segments[1] === 'مقاله' && segments[2]) {
       return (
-        <Page title="مقاله دانشنامه کاربان" description="مقاله تخصصی با استناد قانونی." breadcrumb={['دانشنامه']}>
+        <Page title="مقاله دانشنامه کاربان" description="مقاله تخصصی با استناد قانونی." breadcrumb={[{ name: 'دانشنامه', href: '/دانشنامه' }]}>
           <ArticleViewPage articleId={segments[2]} />
         </Page>
       );
     }
 
-    const categoryIndex = Number(segments[1]) || 1;
+    /* دسته با URL اسلاگ (/دانشنامه/حقوقی-و-قانون-کار) یا عددی قدیمی (/دانشنامه/1) */
+    const bySlug = categoryFromSegment(segments[1] || '');
+    const categoryIndex = bySlug ? KNOWLEDGE_CATEGORIES.indexOf(bySlug) + 1 : Number(segments[1]) || 1;
     const categoryName = KNOWLEDGE_CATEGORIES[categoryIndex - 1] || 'دانشنامه';
     return (
-      <Page title={`مقالات ${categoryName} | دانشنامه کاربان`} description={`مقاله‌های تخصصی ${categoryName} برای کسب‌وکارها، با استناد به مواد قانونی.`} breadcrumb={['دانشنامه', categoryName]}>
+      <Page
+        title={`مقالات ${categoryName} | دانشنامه کاربان`}
+        description={`مقاله‌های تخصصی ${categoryName} برای کسب‌وکارها، با استناد به مواد قانونی.`}
+        image={META_ROUTES['/دانشنامه'].image}
+        breadcrumb={[{ name: 'دانشنامه', href: '/دانشنامه' }, { name: categoryName, href: `/دانشنامه/${categorySlug(categoryName)}` }]}
+      >
         <ArticlesListPage categoryIndex={categoryIndex} />
       </Page>
     );
@@ -324,14 +351,14 @@ export default function App() {
   if (segments[0] === 'قراردادها') {
     if (segments.length === 1) {
       return (
-        <Page title="بیش از ۸۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF" description="بیش از ۸۰ قرارداد تخصصی به تفکیک صنف؛ متن کامل و PDF." breadcrumb={['قراردادها']}>
-          <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۸۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" />
+        <Page title={META_ROUTES['/قراردادها'].title} description={META_ROUTES['/قراردادها'].description} image={META_ROUTES['/قراردادها'].image} breadcrumb={[{ name: 'قراردادها', href: '/قراردادها' }]}>
+          <ContentPage kind="contracts" title="بانک قراردادهای کاربان — دانلود نمونه قرارداد آماده" description="بیش از ۹۰ نمونه قرارداد استاندارد در ۵ نوع و اصناف مختلف؛ دانلود رایگان با موبایل، نسخه تخصصی صنف یا نگارش اختصاصی." eyebrow="قراردادها" />
         </Page>
       );
     }
 
     return (
-      <Page title={`قرارداد ${segments.slice(1).join(' ')}`} description="متن کامل قرارداد و فایل PDF." breadcrumb={['قراردادها']}>
+      <Page title={`قرارداد ${segments.slice(1).join(' ')}`} description="متن کامل قرارداد و فایل PDF." breadcrumb={[{ name: 'قراردادها', href: '/قراردادها' }]}>
         <ArticlePage title={`جزئیات قرارداد ${segments.slice(1).join(' ')}`} category="قراردادهای کاربان" contractId={segments[1]} />
       </Page>
     );
@@ -339,7 +366,7 @@ export default function App() {
 
   if (segments[0] === 'خدمات') {
     return (
-      <Page title="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین" description="مشاوره و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین." breadcrumb={['خدمات']}>
+      <Page title={META_ROUTES['/خدمات'].title} description={META_ROUTES['/خدمات'].description} image={META_ROUTES['/خدمات'].image} breadcrumb={[{ name: 'خدمات', href: '/خدمات' }]}>
         <ServicesPage />
       </Page>
     );
@@ -348,7 +375,7 @@ export default function App() {
   if (segments[0] === 'ابزارهای-هوش-مصنوعی') {
     if (segments[1] === 'تست-سلامت') {
       return (
-        <Page title="تست سلامت کسب‌وکار" description="نقاط قوت و ریسک‌های کسب‌وکار را بشناسید." breadcrumb={['ابزارهای هوش مصنوعی', 'تست سلامت']}>
+        <Page title={META_TOOLS['تست-سلامت'].title} description={META_TOOLS['تست-سلامت'].description} image={META_ROUTES['/ابزارهای-هوش-مصنوعی'].image} breadcrumb={['ابزارهای هوش مصنوعی', display(META_TOOLS['تست-سلامت'].title)]}>
           <BusinessHealthPage />
         </Page>
       );
@@ -356,7 +383,7 @@ export default function App() {
 
     if (segments[1] === 'ساخت-قرارداد') {
       return (
-        <Page title="ساخت قرارداد هوشمند" description="قرارداد متناسب با نیاز شما، در چند مرحله." breadcrumb={['ابزارهای هوش مصنوعی', 'ساخت قرارداد']}>
+        <Page title={META_TOOLS['ساخت-قرارداد'].title} description={META_TOOLS['ساخت-قرارداد'].description} image={META_ROUTES['/ابزارهای-هوش-مصنوعی'].image} breadcrumb={['ابزارهای هوش مصنوعی', display(META_TOOLS['ساخت-قرارداد'].title)]}>
           <ContractBuilderPage />
         </Page>
       );
@@ -366,14 +393,14 @@ export default function App() {
     const calc = calcSlug ? calcMap[calcSlug] : undefined;
     if (calc) {
       return (
-        <Page title={calc.title} description={calc.desc} breadcrumb={['ابزارهای هوش مصنوعی', calc.title]} jsonLd={calcJsonLd(calcSlug, calc.title, calc.desc)}>
-          <CalculatorPage type={calc.type} title={calc.title} description={calc.desc} />
+        <Page title={calc.title} description={calc.desc} breadcrumb={['ابزارهای هوش مصنوعی', display(calc.title)]} jsonLd={calcJsonLd(calcSlug, calc.title, calc.desc)}>
+          <CalculatorPage type={calc.type} title={display(calc.title)} description={calc.desc} />
         </Page>
       );
     }
 
     return (
-           <Page title="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵" description="ماشین‌حساب‌های دقیق حقوق، سنوات، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." breadcrumb={['ابزارهای هوش مصنوعی']} jsonLd={faqJsonLd}>
+           <Page title={META_ROUTES['/ابزارهای-هوش-مصنوعی'].title} description={META_ROUTES['/ابزارهای-هوش-مصنوعی'].description} image={META_ROUTES['/ابزارهای-هوش-مصنوعی'].image} breadcrumb={[{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }]} jsonLd={faqJsonLd}>
         <ContentPage kind="tools" title="ابزارهای هوش مصنوعی کاربان" description="ماشین‌حساب آنلاین حقوق و دستمزد، سنوات، بازنشستگی، هزینه استخدام، اضافه‌کاری و مالیات مطابق مقررات ۱۴۰۵." eyebrow="ابزارهای هوش مصنوعی" />
       </Page>
     );
@@ -381,7 +408,7 @@ export default function App() {
 
   if (segments[0] === 'درباره-ما') {
     return (
-      <Page title="درباره کاربان" description="کاربان؛ از قرارداد تا آرامش." breadcrumb={['درباره ما']}>
+      <Page title={META_ROUTES['/درباره-ما'].title} description={META_ROUTES['/درباره-ما'].description} breadcrumb={[{ name: 'درباره ما', href: '/درباره-ما' }]}>
         <section className="inner-page">
           <div className="container narrow-content">
             <span className="eyebrow">درباره ما</span>
@@ -395,7 +422,7 @@ export default function App() {
 
   if (segments[0] === 'تماس-با-ما') {
     return (
-      <Page title="تماس با کاربان" description="تهران، خیابان کریمخان، خیابان سنایی، پلاک ۶۱، طبقه سوم | hello@karbanapp.ir" breadcrumb={['تماس با ما']}>
+      <Page title={META_ROUTES['/تماس-با-ما'].title} description={META_ROUTES['/تماس-با-ما'].description} breadcrumb={[{ name: 'تماس با ما', href: '/تماس-با-ما' }]}>
         <section className="inner-page">
           <div className="container narrow-content">
             <span className="eyebrow">تماس با ما</span>

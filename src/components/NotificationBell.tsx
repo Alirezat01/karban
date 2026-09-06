@@ -8,6 +8,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
   const [pulse, setPulse] = useState(false);
   const [items, setItems] = useState<{ id: string; title: string; href: string | null; created_at: string }[]>([]);
   const prevUnread = useRef(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -41,20 +42,46 @@ export default function NotificationBell({ userId }: { userId: string }) {
     prevUnread.current = unread;
   }, [unread]);
 
+  /* پاپ‌آپ با کلیک بیرون یا Escape بسته می‌شود */
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   return (
-    <div className="notif-bell-wrap">
-      <a className={`notif-bell${pulse ? ' pulse' : ''}`} href="/داشبورد" aria-label={`اعلان‌ها${unread ? ` — ${unread} خوانده‌نشده` : ''}`} onClick={() => setOpen((v) => !v)}>
+    <div className="notif-bell-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={`notif-bell${pulse ? ' pulse' : ''}`}
+        aria-label={`اعلان‌ها${unread ? ` — ${unread} خوانده‌نشده` : ''}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
         <Bell size={19} />
         {unread > 0 && <span className="notif-badge">{unread > 9 ? '۹+' : unread.toLocaleString('fa-IR')}</span>}
-      </a>
-      {open && items.length > 0 && (
+      </button>
+      {open && (
         <div className="notif-pop" role="dialog" aria-label="اعلان‌های خوانده‌نشده">
-          {items.map((n) => (
-            <a key={n.id} href={n.href || '/داشبورد'} onClick={() => setOpen(false)}>
-              <strong>{n.title}</strong>
-              <small>{new Date(n.created_at).toLocaleDateString('fa-IR')}</small>
-            </a>
-          ))}
+          {items.length === 0 ? (
+            <span className="notif-empty">اعلان خوانده‌نشده نداری.</span>
+          ) : (
+            items.map((n) => (
+              <a key={n.id} href={n.href || '/داشبورد'} onClick={() => setOpen(false)}>
+                <strong>{n.title}</strong>
+                <small>{new Date(n.created_at).toLocaleDateString('fa-IR')}</small>
+              </a>
+            ))
+          )}
           <a className="notif-all" href="/داشبورد" onClick={() => setOpen(false)}>مشاهده همه اعلان‌ها</a>
         </div>
       )}

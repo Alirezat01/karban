@@ -26,7 +26,7 @@ const STATUS_FA: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { loading, userId, profile } = useAuth();
+  const { loading, userId, displayName } = useAuth();
   const [tab, setTab] = useState<Tab>('contracts');
 
   if (!loading && !userId) {
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   return (
     <section className="inner-page">
       <div className="container">
-        <DashHero name={profile?.full_name || 'کاربر کاربان'} />
+        <DashHero name={displayName} />
 
         <nav className="dash-tabs" aria-label="بخش‌های داشبورد">
           <button className={tab === 'contracts' ? 'active' : ''} onClick={() => setTab('contracts')}><FileText size={16} /> قراردادهای من</button>
@@ -98,7 +98,10 @@ function DashHero({ name }: { name: string }) {
 
   return (
     <div className="dash-hero">
-      <span className="eyebrow"><LayoutDashboard size={14} /> داشبورد کاربان</span>
+      <div className="dash-hero-top">
+        <span className="eyebrow"><LayoutDashboard size={14} /> داشبورد کاربان</span>
+        <a className="button button-small button-outline" href="/پروفایل"><User size={14} /> ویرایش پروفایل</a>
+      </div>
       <h1>سلام {name}</h1>
       <p className="lead">قراردادها، درخواست‌ها، تیکت‌ها و اعلان‌هایت همگی این‌جاست.</p>
       <div className="dash-stats">

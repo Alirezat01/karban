@@ -590,6 +590,32 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 /* ══════════ فاز ۱ و ۲: ورود/داشبورد/چک‌لیست/قوانین/امتیاز ══════════ */
 .header-auth { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .95rem; border-radius: 999px; border: 1px solid rgba(216,165,63,.4); background: rgba(216,165,63,.08); color: var(--gold2); font-size: .88rem; font-weight: 600; }
 .header-auth:hover { background: rgba(216,165,63,.16); }
+.header-auth.is-skeleton { width: 92px; height: 34px; opacity: .4; pointer-events: none; }
+
+/* ══════════ چیپ کاربر لاگین‌شده در هدر + منوی کشویی ══════════ */
+.header-user-wrap { position: relative; display: inline-flex; align-items: center; gap: .45rem; }
+.header-user { display: inline-flex; align-items: center; gap: .5rem; padding: .28rem .65rem .28rem .3rem; border-radius: 999px; border: 1px solid rgba(216,165,63,.35); background: rgba(216,165,63,.07); color: var(--text); font-size: .87rem; font-weight: 600; transition: border-color .25s ease, background .25s ease; max-width: 210px; }
+.header-user:hover, .header-user.is-open { border-color: rgba(216,165,63,.65); background: rgba(216,165,63,.13); }
+.header-user-avatar { width: 28px; height: 28px; min-width: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #14100a; font-weight: 800; font-size: .92rem; }
+.header-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-user-caret { color: var(--gold2); flex-shrink: 0; transition: transform .25s ease; }
+.header-user.is-open .header-user-caret { transform: rotate(180deg); }
+.header-user-menu { position: absolute; top: calc(100% + 10px); left: 0; min-width: 230px; background: rgba(10,15,28,.97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid rgba(216,165,63,.3); border-radius: 16px; padding: .45rem; z-index: 70; box-shadow: 0 18px 44px rgba(0,0,0,.5); display: flex; flex-direction: column; animation: menuIn .18s ease both; }
+@keyframes menuIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+.header-user-menu-head { display: flex; flex-direction: column; gap: .1rem; padding: .55rem .7rem .6rem; border-bottom: 1px solid var(--line); margin-bottom: .35rem; }
+.header-user-menu-head strong { color: var(--text); font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-user-menu-head small { color: var(--muted); font-size: .74rem; direction: ltr; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-user-menu a, .header-user-menu button { display: flex; align-items: center; gap: .55rem; padding: .6rem .7rem; border-radius: 11px; color: rgba(255,255,255,.82); font-size: .88rem; font-weight: 500; text-align: right; transition: color .2s ease, background .2s ease; }
+.header-user-menu a:hover, .header-user-menu button:hover { color: var(--gold2); background: rgba(216,165,63,.09); }
+.header-user-menu a svg, .header-user-menu button svg { color: var(--gold); flex-shrink: 0; }
+.header-user-menu button:hover { color: #ff9d94; }
+.header-user-menu button:hover svg { color: #ff9d94; }
+
+/* ناحیه کاربر در منوی موبایل */
+.mobile-nav-user { display: flex; align-items: center; gap: .6rem; padding: .7rem .75rem .3rem; color: var(--gold2); font-weight: 700; font-size: .95rem; }
+.mobile-nav a, .mobile-nav-logout { display: flex; align-items: center; gap: .5rem; }
+.mobile-nav-logout { padding: .7rem .75rem; border-radius: 12px; color: #ff9d94; font-size: .95rem; text-align: right; transition: background .2s; }
+.mobile-nav-logout:hover { background: rgba(179,38,30,.12); }
 .notif-bell-wrap { position: relative; display: inline-flex; }
 .notif-bell { position: relative; display: inline-flex; padding: .45rem; border-radius: 999px; color: var(--gold2); border: 1px solid rgba(216,165,63,.4); }
 .notif-badge { position: absolute; top: -6px; left: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 999px; background: var(--red); color: #fff; font-size: .68rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
@@ -599,6 +625,32 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .notif-pop a strong { font-size: .85rem; color: var(--text); }
 .notif-pop a small { color: var(--muted); font-size: .72rem; }
 .notif-pop .notif-all { color: var(--gold2); font-size: .8rem; font-weight: 600; text-align: center; border-top: 1px solid var(--line); border-radius: 0; }
+.notif-empty { padding: .7rem .6rem; color: var(--muted); font-size: .82rem; text-align: center; }
+
+/* ══════════ صفحه پروفایل ══════════ */
+.profile-head { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+.profile-avatar { width: 56px; height: 56px; min-width: 56px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #14100a; font-weight: 800; font-size: 1.5rem; box-shadow: 0 8px 22px -8px rgba(216,165,63,.5); }
+.profile-head-info { display: flex; flex-direction: column; gap: .15rem; flex: 1; min-width: 160px; }
+.profile-head-info strong { color: var(--text); font-size: 1.08rem; }
+.profile-head-info small { color: var(--muted); direction: ltr; text-align: right; }
+.profile-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .85rem; border-radius: 999px; background: rgba(216,165,63,.1); border: 1px solid rgba(216,165,63,.35); color: var(--gold2); font-size: .78rem; font-weight: 600; }
+.profile-actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1.2rem; }
+.profile-logout:hover { border-color: rgba(255,157,148,.5); color: #ff9d94; }
+
+/* ══════════ کلاس‌های مفقود (استفاده‌شده در صفحات بدون استایل) ══════════ */
+.feedback-success { text-align: center; padding: 2.25rem 1.75rem; border-radius: 18px; background: linear-gradient(135deg, rgba(125,219,154,.08), rgba(255,255,255,.02)); border: 1px solid rgba(125,219,154,.32); }
+.feedback-success svg { color: #7ddb9a; margin-bottom: .6rem; }
+.feedback-success h2 { color: var(--text); }
+.feedback-success p { margin-bottom: .75rem; }
+.category-intro { font-size: .92rem; color: var(--muted); line-height: 2; border-right: 3px solid rgba(216,165,63,.55); padding-right: 1rem; margin: -.9rem 0 1.5rem; }
+.article-author { display: block; color: var(--gold2); font-size: .85rem; margin: -1.2rem 0 1.6rem; }
+
+/* خط اعتبار محتوای حقوقی: نویسنده + آخرین به‌روزرسانی + منبع (E-E-A-T) */
+.article-meta { display: flex; flex-direction: column; gap: .3rem; padding: .9rem 1.1rem; margin: -1rem 0 1.6rem; border-radius: 14px; background: rgba(216,165,63,.06); border: 1px solid rgba(216,165,63,.22); }
+.article-meta small { color: var(--muted); font-size: .8rem; line-height: 1.8; }
+.article-meta .article-author { color: var(--gold2); font-weight: 600; margin: 0; }
+.article-meta .article-updated::before { content: '⟳ '; color: var(--gold2); }
+.article-meta .article-source::before { content: '§ '; color: var(--gold2); }
 
 /* چک‌لیست */
 .checklist-progress { display: flex; align-items: center; gap: .8rem; margin: 1.2rem 0; }
@@ -666,6 +718,7 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 /* ══════════ داشبورد پریمیوم کاربان ══════════ */
 .dash-hero { position: relative; overflow: hidden; border: 1px solid rgba(216,165,63,.28); border-radius: 20px; padding: 1.7rem 1.8rem 1.5rem; background: radial-gradient(560px 220px at 88% -30%, rgba(216,165,63,.16), transparent 65%), linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0)), var(--surface); max-width: 1200px; margin: 0 auto 1.4rem; }
 .dash-hero::after { content: ''; position: absolute; right: 0; left: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(216,165,63,.55), transparent); }
+.dash-hero-top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
 .dash-hero h1 { font-size: clamp(1.35rem, 3vw, 1.85rem); margin: .6rem 0 .3rem; }
 .dash-hero .lead { margin-bottom: 0; }
 .dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .7rem; margin-top: 1.3rem; }

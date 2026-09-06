@@ -21,6 +21,7 @@
     { "source": "/ورود", "destination": "/index.html" },
     { "source": "/داشبورد", "destination": "/index.html" },
     { "source": "/داشبورد/:path*", "destination": "/index.html" },
+    { "source": "/پروفایل", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/admin/:path*", "destination": "/index.html" },
     { "source": "/سفارش/:path*", "destination": "/index.html" },

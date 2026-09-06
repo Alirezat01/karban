@@ -12,20 +12,27 @@ const contractRelatedMap = contractRelated as Record<string, { href: string; lab
 
 type Props = { title: string; category: string; contractId?: string };
 
+type ContractData = { title?: string; summary?: string; body?: string; pdf_url?: string; type?: string | null; industry?: string | null; created_at?: string | null; updated_at?: string | null };
+
 export default function ArticlePage({ title, category, contractId }: Props) {
   const [mobile, setMobile] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [contractData, setContractData] = useState<{ title?: string; summary?: string; body?: string; pdf_url?: string; type?: string | null; industry?: string | null; created_at?: string | null } | null>(null);
+  const [contractData, setContractData] = useState<ContractData | null>(null);
   const isContract = category.includes('قرارداد');
 
   useEffect(() => {
     if (!contractId) return;
-    supabase
-      .from('contracts')
-      .select('title, summary, body, pdf_url, type, industry, created_at')
-      .eq('id', contractId)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    /* زنجیره fallback: ستون updated_at ممکن است هنوز اضافه نشده باشد (۴۰۰ = شکست کل صفحه) */
+    (async () => {
+      let data: ContractData | null = null;
+      let error: { message: string } | null = null;
+      for (const select of ['title, summary, body, pdf_url, type, industry, created_at, updated_at', 'title, summary, body, pdf_url, type, industry, created_at']) {
+        const res = await supabase.from('contracts').select(select).eq('id', contractId).maybeSingle();
+        if (!res.error) { data = (res.data as ContractData | null) ?? null; error = null; break; }
+        error = res.error as unknown as { message: string };
+        if (!/updated_at|column/i.test(res.error.message || '')) break;
+      }
+      {
         if (!data && !error) {
           /* قرارداد وجود ندارد: از ایندکس خارج شود (با ۴۰۴ واقعی سرور هم پوشش دارد) */
           applySEO({
@@ -44,25 +51,30 @@ export default function ArticlePage({ title, category, contractId }: Props) {
           const contractDesc =
             summary.length >= 60
               ? summary
-              : `متن کامل «${contractTitle}» با بندهای استاندارد و دانلود رایگان PDF مطابق مقررات جاری ایران.`;
+              : `متن کامل «${contractTitle}» با بندهای استاندارد و دانلود رایگان PDF${data.industry ? ` — نسخهٔ مناسب صنف «${data.industry}»` : ''} مطابق مقررات جاری ایران.`;
+          const modified = data.updated_at || data.created_at || null;
           const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
           applySEO({
             title: `${contractTitle} | کاربان`,
             description: contractDesc,
             path: contractPath,
+            image: '/images/og-contracts.png',
             ogType: 'article',
+            published: data.created_at || null,
+            modified,
             jsonLd: [
               {
                 '@context': 'https://schema.org',
                 '@type': 'Article',
                 headline: contractTitle,
                 description: contractDesc,
-                image: ['https://karbanapp.ir/images/og-cover.jpg'],
-                author: { '@type': 'Organization', name: 'کاربان' },
+                image: ['https://karbanapp.ir/images/og-contracts.png'],
+                author: { '@type': 'Organization', name: 'کاربان', '@id': 'https://karbanapp.ir/#organization' },
                 publisher: { '@id': 'https://karbanapp.ir/#organization' },
                 mainEntityOfPage: u(contractPath),
                 inLanguage: 'fa-IR',
-                ...(data.created_at ? { datePublished: data.created_at, dateModified: data.created_at } : {}),
+                ...(data.created_at ? { datePublished: data.created_at } : {}),
+                ...(modified ? { dateModified: modified } : {}),
                 ...((data.type || data.industry)
                   ? { about: [data.type, data.industry].filter(Boolean).map((n) => ({ '@type': 'Thing', name: n })) }
                   : {}),
@@ -79,7 +91,8 @@ export default function ArticlePage({ title, category, contractId }: Props) {
             ],
           });
         }
-      });
+      }
+    })();
   }, [contractId, title]);
 
   const submitDownload = async (event: React.FormEvent<HTMLFormElement>) => {

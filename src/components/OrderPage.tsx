@@ -5,6 +5,7 @@ import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin, sendEmail } from '@/lib/notify';
 import { formatRial, toNumericValue } from '@/lib/format';
+import KarbanLoader from '@/components/KarbanLoader';
 
 type Service = {
   id: string;
@@ -59,7 +60,7 @@ export default function OrderPage({ serviceId }: Props) {
       return;
     }
     if (!mobileOk) {
-      setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۲۳۴۵۶۷۸۹');
+      setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹');
       return;
     }
     if (!terms) {
@@ -102,7 +103,7 @@ export default function OrderPage({ serviceId }: Props) {
     return (
       <section className="inner-page">
         <div className="container narrow-content">
-          <p>در حال بارگذاری خدمت…</p>
+          <KarbanLoader label="در حال بازکردن خدمت…" />
         </div>
       </section>
     );

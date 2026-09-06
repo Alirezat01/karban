@@ -10,11 +10,23 @@ export type Profile = {
   company_name: string | null;
 };
 
+/* نام واقعی کاربر از متادیتای گوگل (full_name / name / given_name+family_name) */
+type AuthUserMeta = { full_name?: string; name?: string; given_name?: string; family_name?: string };
+
+export function metaDisplayName(meta?: AuthUserMeta | null): string | null {
+  if (!meta) return null;
+  const direct = meta.full_name || meta.name;
+  if (direct && direct.trim()) return direct.trim();
+  const composed = [meta.given_name, meta.family_name].filter(Boolean).join(' ').trim();
+  return composed || null;
+}
+
 export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [metaName, setMetaName] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -22,13 +34,41 @@ export function useAuth() {
       const user = data.session?.user || null;
       setUserId(user?.id ?? null);
       setEmail(user?.email ?? null);
+      const derived = metaDisplayName(user?.user_metadata as AuthUserMeta | undefined);
+      setMetaName(derived);
+
       if (user) {
         const { data: p } = await supabase
           .from('profiles')
           .select('id,role,full_name,phone,user_role,company_name')
           .eq('id', user.id)
           .maybeSingle();
-        setProfile((p as Profile) || null);
+
+        let row = (p as Profile) || null;
+
+        if (!row) {
+          /* ردیف پروفایل وجود ندارد (کاربر قدیمی قبل از trigger) → یک‌بار بساز */
+          const { data: created, error } = await supabase
+            .from('profiles')
+            .insert({ id: user.id, role: 'user', full_name: derived ?? null })
+            .select('id,role,full_name,phone,user_role,company_name')
+            .maybeSingle();
+          if (!error && created) row = created as Profile;
+          else if (error) console.warn('profile create skipped:', error.message);
+        } else if (derived && !row.full_name) {
+          /* full_name خالی است → یک‌بار از نام گوگل پر کن */
+          const { data: updated, error } = await supabase
+            .from('profiles')
+            .update({ full_name: derived })
+            .eq('id', user.id)
+            .select('id,role,full_name,phone,user_role,company_name')
+            .maybeSingle();
+          if (!error && updated) row = updated as Profile;
+          else if (error) console.warn('profile name sync skipped:', error.message);
+          else row = { ...row, full_name: derived };
+        }
+
+        setProfile(row);
       } else {
         setProfile(null);
       }
@@ -50,7 +90,10 @@ export function useAuth() {
     return { error: error ? error.message : null } as const;
   }, [userId]);
 
-  return { loading, userId, email, profile, saveProfile, reload: load };
+  /* زنجیره نمایش نام: پروفایل دیتابیس → نام گوگل → «کاربر کاربان» */
+  const displayName = profile?.full_name?.trim() || metaName || 'کاربر کاربان';
+
+  return { loading, userId, email, profile, displayName, saveProfile, reload: load };
 }
 
 export async function signInWithGoogle() {

@@ -4,6 +4,11 @@ import { contractCatalog, calculatorItems, CONTRACT_TYPES, INDUSTRIES } from '@/
 import { supabase } from '@/lib/supabase';
 import { applySEO } from '@/lib/seo';
 import { formatRial, toNumericValue } from '@/lib/format';
+import routeMeta from '@/data/route-meta.json';
+import { categorySlug, KNOWLEDGE_CATEGORIES } from '@/lib/slug';
+import KarbanLoader from '@/components/KarbanLoader';
+
+const SERVICES_META = (routeMeta.routes as Record<string, { title: string; description: string; image?: string }>)['/خدمات'];
 
 const icons = [Scale, FileText, BriefcaseBusiness, Calculator, Sun, HeartHandshake];
 const toolIcons: Record<string, typeof Calculator> = { file: FileText, calculator: Calculator, sun: Sun, heart: HeartHandshake, briefcase: BriefcaseBusiness, scale: Scale, clock: Clock, chart: TrendingUp, coins: Coins };
@@ -97,10 +102,10 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
 
         {kind === 'knowledge' && (
           <div className="category-grid">
-            {['حقوقی و قانون کار', 'مالیات', 'حسابداری', 'منابع انسانی', 'مدیریت'].map((item, index) => {
+            {KNOWLEDGE_CATEGORIES.map((item, index) => {
               const Icon = icons[index];
               return (
-                <a href={`/دانشنامه/${index + 1}`} className="category-card" key={item}>
+                <a href={`/دانشنامه/${categorySlug(item)}`} className="category-card" key={item}>
                   <Icon />
                   <h2>{item}</h2>
                   <p>راهنماها و مقاله‌های کاربردی برای تصمیم‌های مطمئن‌تر.</p>
@@ -134,7 +139,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
             </div>
 
             {loadingContracts ? (
-              <p style={{ textAlign: 'center', marginTop: '2rem' }}>در حال بارگذاری قراردادها...</p>
+              <KarbanLoader label="در حال دریافت قراردادها…" />
             ) : (
               <div className="contract-grid">
                 {filteredContracts.map((item) => {
@@ -226,9 +231,10 @@ export function ServicesPage() {
         if (list.length) {
           const u = (p: string) => `https://karbanapp.ir${encodeURI(p)}`;
           applySEO({
-            title: 'مشاوره و قرارداد اختصاصی برای هر صنف | کاربان',
-            description: 'مشاوره حقوقی، مالی و قرارداد اختصاصی برای هر صنف؛ از پزشکان تا فروشگاه آنلاین.',
+            title: SERVICES_META.title,
+            description: SERVICES_META.description,
             path: '/خدمات',
+            image: SERVICES_META.image,
             jsonLd: [
               {
                 '@context': 'https://schema.org',

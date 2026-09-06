@@ -1,20 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth, signInWithGoogle, signOutUser } from '@/lib/auth';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 
 export default function LoginPage() {
-  const { loading, userId, email, profile, saveProfile } = useAuth();
+  const { loading, userId, email, profile, displayName, saveProfile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [form, setForm] = useState({
-    full_name: profile?.full_name || '',
-    phone: profile?.phone || '',
-    user_role: (profile?.user_role || '') as '' | 'employer' | 'employee',
-    company_name: profile?.company_name || '',
+    full_name: '',
+    phone: '',
+    user_role: '' as '' | 'employer' | 'employee',
+    company_name: '',
   });
+  const [touched, setTouched] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  /* پری‌فیل یک‌باره وقتی پروفایل از دیتابیس رسید (بدون خراب‌کردن تایپ کاربر) */
+  useEffect(() => {
+    if (profile && !touched) {
+      setForm({
+        full_name: profile.full_name || '',
+        phone: profile.phone || '',
+        user_role: profile.user_role || '',
+        company_name: profile.company_name || '',
+      });
+    }
+  }, [profile, touched]);
+
+  const patch = (next: Partial<typeof form>) => {
+    setTouched(true);
+    setForm((prev) => ({ ...prev, ...next }));
+  };
 
   const google = async () => {
     setBusy(true);
@@ -70,7 +88,7 @@ export default function LoginPage() {
           <>
             <div className="contact-card calc-card auth-card">
               <div className="auth-user">
-                <strong>{profile?.full_name || 'کاربر کاربان'}</strong>
+                <strong>{displayName}</strong>
                 <small>{email}</small>
               </div>
               <button className="button button-outline" onClick={() => signOutUser()}>
@@ -81,13 +99,13 @@ export default function LoginPage() {
             <div className="contact-card calc-card auth-card">
               <h2>اطلاعات شخصی و کاری</h2>
               <label>نام و نام خانوادگی
-                <input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="مثلاً: علی رضایی" />
+                <input value={form.full_name} onChange={(e) => patch({ full_name: e.target.value })} placeholder="مثلاً: علی رضایی" />
               </label>
               <label>شماره موبایل
-                <input type="tel" inputMode="numeric" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="۰۹۱۲…" />
+                <input type="tel" inputMode="numeric" value={form.phone} onChange={(e) => patch({ phone: e.target.value })} placeholder="۰۹۱۲…" />
               </label>
               <label>نقش من
-                <select value={form.user_role} onChange={(e) => setForm({ ...form, user_role: e.target.value as '' | 'employer' | 'employee' })}>
+                <select value={form.user_role} onChange={(e) => patch({ user_role: e.target.value as '' | 'employer' | 'employee' })}>
                   <option value="">انتخاب کن…</option>
                   <option value="employer">کارفرما هستم</option>
                   <option value="employee">کارمند هستم</option>
@@ -95,7 +113,7 @@ export default function LoginPage() {
               </label>
               {form.user_role === 'employer' && (
                 <label>نام کسب‌وکار / شرکت
-                  <input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} placeholder="مثلاً: شرکت …" />
+                  <input value={form.company_name} onChange={(e) => patch({ company_name: e.target.value })} placeholder="مثلاً: شرکت …" />
                 </label>
               )}
               <button className="button" onClick={save}>

@@ -11,6 +11,9 @@ type SEOProps = {
   jsonLd?: JsonLd;
   noindex?: boolean;
   ogType?: 'website' | 'article';
+  /** فقط برای ogType:'article' — متاهای article:published_time / article:modified_time (هماهنگ با prerender) */
+  published?: string | null;
+  modified?: string | null;
 };
 
 const ORIGIN = 'https://karbanapp.ir';
@@ -48,7 +51,7 @@ function setLink(rel: string, href: string) {
  * Safe to call from async callbacks (e.g. after fetching an article/contract),
  * in addition to the declarative useSEO hook used by Layout.
  */
-export function applySEO({ title, description, path, image, jsonLd, noindex, ogType }: SEOProps) {
+export function applySEO({ title, description, path, image, jsonLd, noindex, ogType, published, modified }: SEOProps) {
   const ogImage = image ? (image.startsWith('http') ? image : `${ORIGIN}${image}`) : DEFAULT_OG_IMAGE;
   const canonicalUrl = normalizePath(path);
 
@@ -71,6 +74,13 @@ export function applySEO({ title, description, path, image, jsonLd, noindex, ogT
   setMeta('name', 'twitter:description', description);
   setMeta('name', 'twitter:image', ogImage);
 
+  /* متاهای مقاله — همان چیزی که prerender می‌نویسد تا متا بعد از هیدریشن عوض نشود */
+  if (ogType === 'article') {
+    if (published) setMeta('property', 'article:published_time', published);
+    const mod = modified || published;
+    if (mod) setMeta('property', 'article:modified_time', mod);
+  }
+
   setLink('canonical', canonicalUrl);
 
   const old = document.getElementById('page-jsonld');
@@ -88,5 +98,5 @@ export function useSEO(props: SEOProps) {
   useEffect(() => {
     applySEO(props);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.title, props.description, props.path, props.image, props.noindex, props.ogType, props.jsonLd]);
+  }, [props.title, props.description, props.path, props.image, props.noindex, props.ogType, props.published, props.modified, props.jsonLd]);
 }

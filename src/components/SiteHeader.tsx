@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { LayoutDashboard, LogIn, Menu, X } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { useAuth, signOutUser } from '@/lib/auth';
 import NotificationBell from '@/components/NotificationBell';
 
 const links = [
@@ -14,18 +14,31 @@ const links = [
 
 export default function SiteHeader({ path }: { path?: string }) {
   const [open, setOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const ticking = useRef(false);
+  const userWrapRef = useRef<HTMLDivElement>(null);
+  const { loading, userId, email, displayName } = useAuth();
   /* مسیر فعلی برای خط طلایی زیر آیتم فعال منو */
   const current = path || (typeof window !== 'undefined' ? window.location.pathname : '');
 
+  /* بستن منوی کاربر با کلیک بیرون یا Escape */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user?.id ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setUserId(session?.user?.id ?? null));
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (userWrapRef.current && !userWrapRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('click', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => { setMenuOpen(false); }, [current]);
 
   /* هدر هنگام اسکرول + نوار پیشرفت — با rAF برای پرفورمنس */
   useEffect(() => {
@@ -46,13 +59,64 @@ export default function SiteHeader({ path }: { path?: string }) {
 
   const isActive = (href: string) => current === href || current.startsWith(`${href}/`);
 
-  const authArea = userId ? (
-    <>
+  const doSignOut = async () => {
+    setMenuOpen(false);
+    setOpen(false);
+    await signOutUser();
+    window.location.assign('/');
+  };
+
+  const initial = displayName.trim().charAt(0) || 'ک';
+
+  /* ناحیه احراز هویت در منوی دسکتاپ: ورود | زنگ + چیپ کاربر با منوی کشویی */
+  const authArea = loading ? (
+    <span className="header-auth is-skeleton" aria-hidden="true" />
+  ) : userId ? (
+    <div className="header-user-wrap" ref={userWrapRef}>
       <NotificationBell userId={userId} />
-      <a className="header-auth" href="/داشبورد"><LayoutDashboard size={16} /> داشبورد</a>
-    </>
+      <button
+        type="button"
+        className={`header-user${menuOpen ? ' is-open' : ''}`}
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-label={`حساب کاربری ${displayName}`}
+      >
+        <span className="header-user-avatar" aria-hidden="true">{initial}</span>
+        <span className="header-user-name">{displayName}</span>
+        <ChevronDown size={14} aria-hidden="true" className="header-user-caret" />
+      </button>
+      {menuOpen && (
+        <div className="header-user-menu" role="menu" aria-label="منوی حساب کاربری">
+          <div className="header-user-menu-head">
+            <strong>{displayName}</strong>
+            {email && <small>{email}</small>}
+          </div>
+          <a role="menuitem" href="/داشبورد"><LayoutDashboard size={15} /> داشبورد</a>
+          <a role="menuitem" href="/پروفایل"><UserRound size={15} /> پروفایل من</a>
+          <button type="button" role="menuitem" onClick={doSignOut}><LogOut size={15} /> خروج از حساب</button>
+        </div>
+      )}
+    </div>
   ) : (
     <a className="header-auth" href="/ورود"><LogIn size={16} /> ورود</a>
+  );
+
+  /* ناحیه احراز هویت در منوی موبایل: بدون کشویی، لینک‌های مستقیم */
+  const mobileAuthArea = loading ? null : userId ? (
+    <>
+      <div className="mobile-nav-user">
+        <span className="header-user-avatar" aria-hidden="true">{initial}</span>
+        <span>{displayName}</span>
+      </div>
+      <a href="/داشبورد" onClick={() => setOpen(false)}><LayoutDashboard size={16} /> داشبورد</a>
+      <a href="/پروفایل" onClick={() => setOpen(false)}><UserRound size={16} /> پروفایل من</a>
+      <button type="button" className="mobile-nav-logout" onClick={doSignOut}>
+        <LogOut size={16} /> خروج از حساب
+      </button>
+    </>
+  ) : (
+    <a href="/ورود" onClick={() => setOpen(false)}><LogIn size={16} /> ورود</a>
   );
 
   return (
@@ -80,7 +144,7 @@ export default function SiteHeader({ path }: { path?: string }) {
               {label}
             </a>
           ))}
-          {authArea}
+          {mobileAuthArea}
         </nav>
       )}
       <span className="scroll-progress" style={{ width: `${progress}%` }} aria-hidden="true" />

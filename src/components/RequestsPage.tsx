@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { applySEO } from '@/lib/seo';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
+import KarbanLoader from '@/components/KarbanLoader';
 
 export const REQUEST_CATEGORIES = ['روابط کار', 'مالی و بانکی', 'اداری و عمومی'];
 
@@ -55,7 +56,7 @@ export function RequestsListPage() {
         </div>
 
         {loading ? (
-          <p style={{ textAlign: 'center', marginTop: '2rem' }}>در حال بارگذاری...</p>
+          <KarbanLoader label="در حال دریافت درخواست‌ها…" />
         ) : (
           <div className="contract-grid">
             {filtered.map((r) => (
@@ -190,7 +191,7 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
     return (
       <section className="inner-page">
         <div className="container narrow-content">
-          <p>در حال بارگذاری…</p>
+          <KarbanLoader label="در حال بازکردن درخواست…" />
         </div>
       </section>
     );

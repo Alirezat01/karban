@@ -1,52 +1,46 @@
 import { createClient } from '@supabase/supabase-js';
+import routeMeta from '../src/data/route-meta.json';
+import checklists from '../src/data/checklists.json';
+import lawsData from '../src/data/laws.json';
 
 const BASE = 'https://karbanapp.ir';
 
+/* ── منبع واحد متا: صفحات ثابت از route-meta.json (مشترک با App و prerender) ── */
+type MetaRoute = { title?: string; description?: string; image?: string; priority?: string };
+const META_ROUTES = routeMeta.routes as Record<string, MetaRoute>;
+const META_TOOLS = routeMeta.tools as Record<string, MetaRoute>;
+const KNOWLEDGE_CATEGORIES = (routeMeta as { knowledgeCategories?: string[] }).knowledgeCategories || [];
+
 type Row = { path: string; priority: string; lastmod?: string };
 
-/* مسیرهای استاتیک عمومی (هاب‌ها، ابزارها، چک‌لیست‌ها، کتابخانه قوانین) */
+/* صفحات ثابت: هاب‌ها + ابزارها + دسته‌های دانشنامه + چک‌لیست‌ها + کتابخانه قوانین —
+   همه از همان JSONهایی که prerender صفحه می‌سازد تا هیچ‌وقت از بیلد عقب نیفتد */
 const STATIC_ROWS: Row[] = [
-  { path: '/', priority: '1.0' },
-  { path: '/خدمات', priority: '0.9' },
-  { path: '/قراردادها', priority: '0.9' },
-  { path: '/دانشنامه', priority: '0.9' },
-  { path: '/ابزارهای-هوش-مصنوعی', priority: '0.9' },
-  { path: '/درخواست‌های-اداری', priority: '0.8' },
-  { path: '/چک-لیست‌ها', priority: '0.7' },
-  { path: '/کتابخانه-قوانین', priority: '0.7' },
-  { path: '/درباره-ما', priority: '0.5' },
-  { path: '/تماس-با-ما', priority: '0.5' },
-  { path: '/قوانین', priority: '0.4' },
-  { path: '/حریم-خصوصی', priority: '0.4' },
-  { path: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/هزینه-استخدام', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/سنوات', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/بازنشستگی', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/اضافه-کاری', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/مالیات-مشاغل', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/ارزش-افزوده', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/مالیات-حقوق', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/عیدی-و-پاداش', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/بیمه-تامین-اجتماعی', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/مرخصی', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/مزایای-پایان-همکاری', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/تست-سلامت', priority: '0.8' },
-  { path: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد', priority: '0.8' },
-  { path: '/چک-لیست‌ها/چک-لیست-استخدام', priority: '0.6' },
-  { path: '/چک-لیست‌ها/چک-لیست-اخراج-و-فسخ', priority: '0.6' },
-  { path: '/چک-لیست‌ها/چک-لیست-تنظیم-قرارداد', priority: '0.6' },
-  { path: '/چک-لیست‌ها/چک-لیست-پایان-همکاری', priority: '0.6' },
-  { path: '/چک-لیست‌ها/چک-لیست-مالیاتی-کسب-و-کار', priority: '0.6' },
-  { path: '/کتابخانه-قوانین/قانون-کار', priority: '0.6' },
-  { path: '/کتابخانه-قوانین/تأمین-اجتماعی', priority: '0.6' },
-  { path: '/کتابخانه-قوانین/مالیات‌های-مستقیم', priority: '0.6' },
-  { path: '/کتابخانه-قوانین/آیین‌نامه‌ها', priority: '0.6' },
-  { path: '/دانشنامه/1', priority: '0.7' },
-  { path: '/دانشنامه/2', priority: '0.7' },
-  { path: '/دانشنامه/3', priority: '0.7' },
-  { path: '/دانشنامه/4', priority: '0.7' },
-  { path: '/دانشنامه/5', priority: '0.7' },
+  { path: '/', priority: routeMeta.home.priority || '1.0' },
+  ...Object.entries(META_ROUTES).map(([path, m]) => ({ path, priority: m.priority || '0.6' })),
+  ...Object.entries(META_TOOLS).map(([key, m]) => ({ path: `/ابزارهای-هوش-مصنوعی/${key}`, priority: m.priority || '0.8' })),
+  ...KNOWLEDGE_CATEGORIES.map((c) => ({ path: `/دانشنامه/${c.replace(/ /g, '-')}`, priority: '0.7' })),
+  ...(checklists as { slug: string }[]).map((c) => ({ path: `/چک-لیست‌ها/${c.slug}`, priority: '0.6' })),
+  ...(lawsData.categories as string[]).map((c) => ({ path: `/کتابخانه-قوانین/${c.replace(/ /g, '-')}`, priority: '0.6' })),
 ];
+
+/* دسته‌های دانشنامه از route-meta (منبع واحد) — اسلاگ = نام با خط تیره */
+
+const MAX_SLUG_CHARS = 40;
+function slugifyTitle(title: string): string {
+  let s = String(title || '').trim()
+    .replace(/[\s\u200c]+/g, '-')
+    .replace(/[?؟!:؛،«»"'.()\[\]{}+*&%=#$@_|~^<>,؛]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  if (s.length > MAX_SLUG_CHARS) {
+    s = s.slice(0, MAX_SLUG_CHARS);
+    const cut = s.lastIndexOf('-');
+    if (cut > 15) s = s.slice(0, cut);
+  }
+  return s || 'مقاله';
+}
+const articleSlugPath = (title: string, id: unknown) => `/دانشنامه/مقاله/${slugifyTitle(title)}-${String(id)}`;
 
 const day = (v: unknown): string | undefined => {
   if (!v) return undefined;
@@ -57,47 +51,85 @@ const day = (v: unknown): string | undefined => {
 type VercelReq = { method?: string };
 type VercelRes = { setHeader: (k: string, v: string) => void; status: (c: number) => { send: (b: string) => void } };
 
+/**
+ * مسیرهای prerender‌شده از manifest بیلد — تنها منبع حقیقت برای «کدام URL فایل استاتیک دارد».
+ * اگر manifest در دسترس نبود (deploy خیلی قدیم)، null برمی‌گردد و فیلتر غیرفعال می‌شود.
+ */
+async function fetchPrerendered(): Promise<Set<string> | null> {
+  try {
+    const res = await fetch(`${BASE}/prerender-manifest.json`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { routes?: string[] };
+    return json.routes ? new Set(json.routes) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req: VercelReq, res: VercelRes) {
   const supabase = createClient(
     'https://rocjeanizzhfvhnuhnms.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g',
   );
 
-  /* lastmod از updated_at؛ نبود ستون/مقدار → fallback منطقی: created_at */
-  async function fetchRows(
-    table: string,
-    pathPrefix: string,
-    priority: string,
-    publishedOnly = false,
-  ): Promise<Row[]> {
-    for (const select of ['id,updated_at,created_at', 'id,created_at', 'id']) {
-      let q = supabase.from(table).select(select).order('id');
-      if (publishedOnly) q = q.eq('is_published', true);
-      const { data, error } = await q;
+  const prerendered = await fetchPrerendered();
+  /* فقط URLهایی که فایل prerender دارند → هماهنگی کامل sitemap با بیلد */
+  const inBuild = (path: string) => !prerendered || prerendered.has(path);
+
+  /* قراردادها: فقط منتشرشده‌ها (وقتی ستون is_published موجود است).
+     زنجیره fallback برای نبودن ستون‌های اختیاری (updated_at/is_published)؛
+     خطای واقعی دیتابیس ⇒ خروجی خالی — هیچ‌وقت انتشار کورکورانه */
+  async function fetchContracts(): Promise<Row[]> {
+    for (const select of ['id,updated_at,created_at,is_published', 'id,created_at,is_published', 'id,created_at']) {
+      const { data, error } = await supabase.from('contracts').select(select).order('id');
       if (error) {
-        console.error(`[sitemap] ${table} select(${select}) failed:`, error.message);
-        continue; /* ستون بعدی را امتحان کن */
+        console.error(`[sitemap] contracts select(${select}) failed:`, error.message);
+        continue;
+      }
+      return ((data || []) as Record<string, unknown>[]) /* اگر ستون باشد: فقط منتشرشده */
+        .filter((r) => r.is_published === undefined ? true : r.is_published !== false)
+        .map((r) => ({ path: `/قراردادها/${r.id}`, priority: '0.8', lastmod: day(r.updated_at) || day(r.created_at) }));
+    }
+    return [];
+  }
+
+  /* مقاله‌ها: URL اسلاگ (عنوان-شناسه)؛ زنجیره fallback برای نبود ستون‌های اختیاری */
+  async function fetchArticles(): Promise<Row[]> {
+    for (const select of ['id,title,updated_at,created_at', 'id,title,created_at']) {
+      const { data, error } = await supabase.from('articles').select(select).order('id');
+      if (error) {
+        console.error(`[sitemap] articles select(${select}) failed:`, error.message);
+        continue;
       }
       return ((data || []) as Record<string, unknown>[]).map((r) => ({
-        path: `${pathPrefix}${r.id}`,
-        priority,
+        path: r.title ? articleSlugPath(String(r.title), r.id as string) : `/دانشنامه/مقاله/${r.id}`,
+        priority: '0.7',
         lastmod: day(r.updated_at) || day(r.created_at),
       }));
     }
-    /* هیچ کوئری‌ای جواب نداد → خطای صریح، نه سایلنت ناقص */
-    throw new Error(`[sitemap] Supabase query failed for ${table}`);
+    return [];
+  }
+
+  async function fetchRequests(): Promise<Row[]> {
+    for (const select of ['id,updated_at,created_at', 'id,created_at', 'id']) {
+      const { data, error } = await supabase.from('admin_requests').select(select).order('id');
+      if (error) {
+        console.error(`[sitemap] admin_requests select(${select}) failed:`, error.message);
+        continue;
+      }
+      return ((data || []) as Record<string, unknown>[]).map((r) => ({
+        path: `/درخواست‌های-اداری/${r.id}`,
+        priority: '0.6',
+        lastmod: day(r.updated_at) || day(r.created_at),
+      }));
+    }
+    return [];
   }
 
   try {
-    /* فقط قراردادهای منتشرشده؛ ستون is_published نبود → کل جدول */
-    const contracts = await fetchRows('contracts', '/قراردادها/', '0.8', true).catch(() =>
-      fetchRows('contracts', '/قراردادها/', '0.8'),
-    );
+    const [contracts, articles, requests] = await Promise.all([fetchContracts(), fetchArticles(), fetchRequests()]);
 
-    const articles = await fetchRows('articles', '/دانشنامه/مقاله/', '0.7');
-    const requests = await fetchRows('admin_requests', '/درخواست‌های-اداری/', '0.6');
-
-    const rows = [...STATIC_ROWS, ...contracts, ...articles, ...requests];
+    const rows = [...STATIC_ROWS, ...contracts, ...articles, ...requests].filter((r) => inBuild(r.path));
 
     /* dedupe بر اساس مسیر (حفظ آخرین = با lastmod) */
     const byPath = new Map<string, Row>();

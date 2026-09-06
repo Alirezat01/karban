@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 import { useCountUp } from '@/lib/reveal';
+import KarbanLoader from '@/components/KarbanLoader';
 
 type Tab = 'overview' | 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
@@ -190,7 +191,7 @@ export default function AdminPage() {
     setPassword('');
   };
 
-  if (session === 'loading') return <div className="admin-loading">در حال بررسی...</div>;
+  if (session === 'loading') return <div className="admin-loading"><KarbanLoader label="در حال بررسی نشست…" /></div>;
 
   if (session === 'unauthenticated') {
     return (
@@ -459,7 +460,7 @@ function ServicesTab() {
     setServices((current) => current.map((service) => (service.id === id ? { ...service, [field]: value } : service)));
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
@@ -628,7 +629,7 @@ function SettingsTab() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
 
   return (
     <div className="admin-settings">
@@ -745,7 +746,7 @@ function ContractsTab() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
 
   return (
     <div className="admin-table-wrap">
@@ -917,7 +918,7 @@ function ArticlesTab() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
@@ -1047,7 +1048,7 @@ function RequestsTab() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
@@ -1150,7 +1151,7 @@ function LeadsTab() {
 
   const sourceLabel = (source: string) => (source === 'contract_download' ? 'دانلود قرارداد' : source);
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-table-wrap">
       <h2>شماره‌های دانلود (کسانی که قرارداد/درخواست دانلود کرده‌اند)</h2>
@@ -1220,7 +1221,7 @@ function OrdersTab() {
 
   const statusLabels: Record<string, string> = { pending: 'در انتظار', processing: 'در حال انجام', completed: 'تکمیل شد', cancelled: 'لغو شد' };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-table-wrap">
       <h2>سفارش‌ها</h2>
@@ -1308,7 +1309,7 @@ function ConsultationsTab() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   const hasDetail = items.some((i) => 'topic' in i || 'description' in i);
   return (
     <div className="admin-table-wrap">
@@ -1432,7 +1433,7 @@ function TicketsTab() {
     if (data?.signedUrl) window.open(data.signedUrl, '_blank', 'noopener');
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div>
       <h2>تیکت‌های پشتیبانی</h2>
@@ -1503,7 +1504,7 @@ function FeedbackTab() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   const avg = items.length ? (items.reduce((s, i) => s + i.rating, 0) / items.length).toFixed(1) : '—';
   return (
     <div className="admin-table-wrap">
@@ -1634,7 +1635,7 @@ function UsersTab() {
     load();
   };
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-settings">
       <h2>مدیریت کاربران</h2>
@@ -1715,7 +1716,7 @@ function NewsletterTab() {
     };
   }, []);
 
-  if (loading) return <p>در حال بارگذاری...</p>;
+  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
   return (
     <div className="admin-table-wrap">
       <h2>اعضای خبرنامه</h2>
