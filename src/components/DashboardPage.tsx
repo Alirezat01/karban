@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { formatFaDate } from '@/lib/format';
 import { useCountUp } from '@/lib/reveal';
+import { notifyAdmin } from '@/lib/notify';
 import KarbanLoader from '@/components/KarbanLoader';
 
 type SavedContract = {
@@ -251,6 +252,7 @@ function MyConsults() {
       status: 'new',
     });
     if (error) { setState('error'); return; }
+    void notifyAdmin(`🧭 درخواست مشاوره جدید: ${form.topic} | اولویت: ${form.priority} | ${form.description.trim().slice(0, 60)}`);
     setState('done');
     setForm({ ...form, description: '' });
     load();
@@ -350,6 +352,7 @@ function MyTickets() {
       .single();
     if (error || !data) { setState('error'); return; }
     await supabase.from('ticket_messages').insert({ ticket_id: data.id, sender: 'user', body: form.subject.trim() });
+    void notifyAdmin(`🎫 تیکت جدید #${data.id}: ${form.subject.trim()} | اولویت: ${form.priority}`);
     setForm({ subject: '', priority: 'معمولی' });
     setState('idle');
     load();

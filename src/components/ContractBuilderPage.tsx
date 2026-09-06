@@ -3,6 +3,7 @@ import { Copy, FileText, Printer, Save, Wand2 } from 'lucide-react';
 import { CONTRACT_TYPES, INDUSTRIES, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { notifyAdmin } from '@/lib/notify';
 
 const laborTypes = ['کار', 'کارآموزی'];
 
@@ -93,7 +94,10 @@ export default function ContractBuilderPage() {
         content: { type, industry, partyA, partyB, duration, amount, extra, __root: root },
       });
       setSaveState(error ? 'error' : 'saved');
-      if (!error) setRootId(root);
+      if (!error) {
+        setRootId(root);
+        void notifyAdmin(`📄 قرارداد جدید در سازنده: قرارداد ${type} — ${industry} (نسخه ${version})`);
+      }
       setTimeout(() => setSaveState('idle'), 2500);
     } catch {
       setSaveState('error');

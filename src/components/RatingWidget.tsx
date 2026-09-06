@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { notifyAdmin } from '@/lib/notify';
 
 type Props = { targetType: 'contract' | 'service' | 'article'; targetId: string; title?: string };
 
@@ -44,6 +45,7 @@ export default function RatingWidget({ targetType, targetId, title }: Props) {
     });
     setState(error ? 'error' : 'done');
     if (!error) {
+      void notifyAdmin(`⭐ امتیاز ${rating} از ۵ برای ${targetType}${comment.trim() ? ` | ${comment.trim().slice(0, 60)}` : ''}`);
       setAgg((prev) => {
         const count = (prev?.count || 0) + 1;
         const avg = Math.round((((prev?.avg || 0) * (count - 1) + rating) / count) * 10) / 10;

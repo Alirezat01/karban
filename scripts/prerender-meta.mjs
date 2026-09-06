@@ -858,6 +858,80 @@ p{color:#4a5b6a;line-height:2;font-size:.95rem;margin-bottom:1.6rem}
     JSON.stringify({ generatedAt: new Date().toISOString(), count: manifestRoutes.size, routes: [...manifestRoutes].sort() }, null, 0),
     'utf8',
   );
+
+  /* ── sitemap.xml استاتیک در زمان بیلد ─────────────────────────────
+     چرا استاتیک؟ تابع api/sitemap.xml.ts روی Vercel به‌خاطر محدودیت
+     tracing فایل‌های JSON بیرون api/ کرش می‌کند (FUNCTION_INVOCATION_FAILED).
+     اینجا همان منطق است + intersect با manifest واقعی همین بیلد؛ فایل
+     استاتیک در روتینگ Vercel از rewrite به API جلو می‌زند (filesystem اول). */
+  try {
+    const day = (v) => {
+      const s = String(v || '');
+      return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : undefined;
+    };
+    const KNOWLEDGE_CATS = /** @type {string[]} */ (routeMeta.knowledgeCategories || []);
+    const rows = [
+      { path: '/', priority: routeMeta.home.priority || '1.0' },
+      ...Object.entries(META_ROUTES).map(([p, m]) => ({ path: p, priority: /** @type {any} */ (m).priority || '0.6' })),
+      ...Object.entries(META_TOOLS).map(([k, m]) => ({ path: `/ابزارهای-هوش-مصنوعی/${k}`, priority: /** @type {any} */ (m).priority || '0.8' })),
+      ...KNOWLEDGE_CATS.map((c) => ({ path: categoryPath(c), priority: '0.7' })),
+      ...checklists.map((c) => ({ path: `/چک-لیست‌ها/${c.slug}`, priority: '0.6' })),
+      ...lawsData.categories.map((c) => ({ path: `/کتابخانه-قوانین/${categorySlug(c)}`, priority: '0.6' })),
+    ];
+    /* داینامیک‌ها — fetch سبک جدا با fallback ستون‌ها؛ خطا ⇒ skip آن بخش */
+    try {
+      const arts = await supabaseFetch('articles', 'id,title,updated_at,created_at', 'id,title,created_at');
+      for (const a of arts) {
+        rows.push({
+          path: a.title ? articleSlugPath(String(a.title), a.id) : `/دانشنامه/مقاله/${a.id}`,
+          priority: '0.7',
+          lastmod: day(a.updated_at) || day(a.created_at),
+        });
+      }
+    } catch (e) {
+      console.warn(`sitemap: articles skipped (${String(e).slice(0, 80)})`);
+    }
+    try {
+      const cons = (await supabaseFetch('contracts', 'id,updated_at,created_at,is_published', 'id,created_at,is_published'))
+        .filter((c) => c.is_published !== false);
+      for (const c of cons) {
+        rows.push({ path: `/قراردادها/${c.id}`, priority: '0.8', lastmod: day(c.updated_at) || day(c.created_at) });
+      }
+    } catch (e) {
+      console.warn(`sitemap: contracts skipped (${String(e).slice(0, 80)})`);
+    }
+    try {
+      const reqs = await supabaseFetch('admin_requests', 'id,updated_at,created_at', 'id,created_at');
+      for (const r of reqs) {
+        rows.push({ path: `/درخواست‌های-اداری/${r.id}`, priority: '0.6', lastmod: day(r.updated_at) || day(r.created_at) });
+      }
+    } catch (e) {
+      console.warn(`sitemap: requests skipped (${String(e).slice(0, 80)})`);
+    }
+    /* فقط URLهایی که واقعاً در همین بیلد فایل دارند + dedupe (حفظ آخرین) */
+    const byPath = new Map();
+    for (const r of rows) {
+      if (r.path !== '/' && !manifestRoutes.has(r.path)) continue;
+      byPath.set(r.path, r);
+    }
+    const sitemapXml =
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+      [...byPath.values()]
+        .map(
+          (r) =>
+            `  <url><loc>${ORIGIN}${encodeURI(r.path)}</loc>${
+              r.lastmod ? `<lastmod>${r.lastmod}</lastmod>` : ''
+            }<priority>${r.priority}</priority></url>`,
+        )
+        .join('\n') +
+      `\n</urlset>`;
+    await writeFile(resolve(distDir, 'sitemap.xml'), sitemapXml, 'utf8');
+    console.log(`prerender: sitemap.xml written (${byPath.size} URLs, intersected with manifest).`);
+  } catch (e) {
+    console.warn(`sitemap generation skipped (${String(e).slice(0, 120)})`);
+  }
+
   console.log(`prerender: ${count} route HTML files written (full-content mode). manifest: ${manifestRoutes.size} routes.`);
 }
 

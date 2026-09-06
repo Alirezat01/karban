@@ -3,6 +3,7 @@ import { CheckCircle2, Instagram, Mail, Phone } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
+import { notifyAdmin } from '@/lib/notify';
 
 const toEnDigits = (value: string) => value.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
 
@@ -25,6 +26,7 @@ export default function SiteFooter() {
       return;
     }
     setState('ok');
+    void notifyAdmin(`📰 عضویت جدید خبرنامه: ${normalizeMobile(cleaned)}`);
     setMobile('');
   }
 

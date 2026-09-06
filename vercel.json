@@ -19,15 +19,23 @@
       "destination": "/api/sitemap.xml"
     },
     { "source": "/ورود", "destination": "/index.html" },
+    { "source": "/%D9%88%D8%B1%D9%88%D8%AF", "destination": "/index.html" },
     { "source": "/داشبورد", "destination": "/index.html" },
     { "source": "/داشبورد/:path*", "destination": "/index.html" },
+    { "source": "/%D8%AF%D8%A7%D8%B4%D8%A8%D9%88%D8%B1%D8%AF", "destination": "/index.html" },
+    { "source": "/%D8%AF%D8%A7%D8%B4%D8%A8%D9%88%D8%B1%D8%AF/:path*", "destination": "/index.html" },
     { "source": "/پروفایل", "destination": "/index.html" },
+    { "source": "/%D9%BE%D8%B1%D9%88%D9%81%D8%A7%DB%8C%D9%84", "destination": "/index.html" },
     { "source": "/admin", "destination": "/index.html" },
     { "source": "/admin/:path*", "destination": "/index.html" },
     { "source": "/سفارش/:path*", "destination": "/index.html" },
+    { "source": "/%D8%B3%D9%81%D8%A7%D8%B1%D8%B4/:path*", "destination": "/index.html" },
     { "source": "/کارفرما", "destination": "/index.html" },
+    { "source": "/%DA%A9%D8%A7%D8%B1%D9%81%D8%B1%D9%85%D8%A7", "destination": "/index.html" },
     { "source": "/کارمند", "destination": "/index.html" },
-    { "source": "/فریلنسر", "destination": "/index.html" }
+    { "source": "/%DA%A9%D8%A7%D8%B1%D9%85%D9%86%D8%AF", "destination": "/index.html" },
+    { "source": "/فریلنسر", "destination": "/index.html" },
+    { "source": "/%D9%81%D8%B1%DB%8C%D9%84%D9%86%D8%B3%D8%B1", "destination": "/index.html" }
   ],
   "headers": [
     {

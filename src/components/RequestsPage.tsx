@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { applySEO } from '@/lib/seo';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
+import { notifyAdmin } from '@/lib/notify';
 import KarbanLoader from '@/components/KarbanLoader';
 
 export const REQUEST_CATEGORIES = ['روابط کار', 'مالی و بانکی', 'اداری و عمومی'];
@@ -181,6 +182,7 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
       setStatus('error');
       return;
     }
+    void notifyAdmin(`🖨️ دریافت قالب درخواست رسمی | ${normalizeMobile(mobile)}`);
     setStatus('idle');
     setGateOpen(false);
     setMobile('');
