@@ -6,8 +6,10 @@ import { supabase } from '@/lib/supabase';
 import type { AccBusiness } from '@/lib/acc/types';
 import { updateBusiness, uploadAccMedia } from '@/lib/acc/api';
 import { Field, Modal, confirmAction, toast } from './ui';
+import { featureEnabled } from '@/lib/acc/plan';
+import { Lock } from 'lucide-react';
 
-export default function SettingsPage({ business, role, reloadAccess }: { business: AccBusiness; role: string; reloadAccess: () => Promise<void> | void }) {
+export default function SettingsPage({ business, role, plan, reloadAccess }: { business: AccBusiness; role: string; plan?: string; reloadAccess: () => Promise<void> | void }) {
   const [form, setForm] = useState<AccBusiness>(business);
   const [busy, setBusy] = useState(false);
   const [accesses, setAccesses] = useState<{ id: string; email: string | null; role: string; status: string; user_id: string | null }[]>([]);
@@ -192,7 +194,7 @@ export default function SettingsPage({ business, role, reloadAccess }: { busines
         />
       </div>
 
-      {isOwner && (
+      {isOwner && featureEnabled(plan, 'accountant_access') && (
         <div className="acc-card">
           <h3><Shield size={16} /> دسترسی کاربران</h3>
           <p className="acc-hint" style={{ marginBottom: '.8rem' }}>حسابدار یا مشاور مالیاتی خود را دعوت کنید؛ فقط با ایمیل کاربری که در کاربان ثبت‌نام کرده است.</p>
@@ -212,6 +214,14 @@ export default function SettingsPage({ business, role, reloadAccess }: { busines
             </table>
           </div>
           <button className="acc-btn acc-btn-outline" style={{ marginTop: '.8rem' }} onClick={() => setInvite({ email: '', role: 'accountant' })}><UserPlus size={15} /> دعوت حسابدار</button>
+        </div>
+      )}
+
+      {isOwner && !featureEnabled(plan, 'accountant_access') && (
+        <div className="acc-card">
+          <h3><Lock size={16} /> دسترسی کاربران — پیشرفته</h3>
+          <p className="acc-hint">دعوت حسابدار و مدیریت نقش‌ها مخصوص نسخه پیشرفته است؛ با ارتقای پلن فعال می‌شود.</p>
+          <a className="acc-btn acc-btn-primary" href="/حسابداری">مشاهده و ارتقای پلن</a>
         </div>
       )}
 

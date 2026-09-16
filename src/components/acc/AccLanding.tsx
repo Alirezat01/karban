@@ -1,11 +1,15 @@
 /* صفحه فرود عمومی «نرم‌افزار حسابداری هوشمند کاربان» — معرفی، پلن‌ها و ثبت سفارش */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BadgeCheck, BarChart3, BookOpen, CheckCircle2, FileText, Printer, ShieldCheck, Sparkles, Stamp, Users, Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { notifyAdmin } from '@/lib/notify';
+import { fetchAccConfig, DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/config';
+import { formatMoney } from '@/lib/acc/money';
+import { toFaDigits } from '@/lib/acc/jalali';
+import { PRO_FEATURES } from '@/lib/acc/plan';
 import { Field, Modal, toast } from './ui';
 
 const FEATURES = [
@@ -19,32 +23,55 @@ const FEATURES = [
   { icon: ShieldCheck, title: 'دسترسی کنترل‌شده', text: 'دعوت حسابدار با نقش محدود، ثبت امن در دیتابیس ابری و گزارش کامل عملکرد مالی.' },
 ];
 
-const PLANS = [
-  {
-    key: 'trial', name: 'نسخه آزمایشی', price: 'رایگان', note: '۱۴ روز کامل — بدون نیاز به کارت',
-    items: ['۱ کسب‌وکار', 'تا ۲۰ صورتحساب رسمی', 'فاکتور رسمی استاندارد مالیاتی', 'دفترخانه و تراز آزمایشی خودکار', 'بدون لوگو و امضای اختصاصی', 'بدون دعوت حسابدار'],
-    cta: 'شروع رایگان', href: '/حسابداری/پنل', featured: false,
-  },
-  {
-    key: 'monthly', name: 'اشتراک ماهانه', price: '۲۹۰٬۰۰۰', note: 'تومان در ماه',
-    items: ['۳ کسب‌وکار', 'صورتحساب نامحدود', 'لوگو، امضا و مهر اختصاصی روی فاکتور', 'گزارش‌های مالیاتی کامل (ارزش افزوده + ماده ۱۶۹)', 'دعوت حسابدار با نقش محدود', 'پشتیبانی کاربان'],
-    cta: 'خرید اشتراک ماهانه', featured: true,
-  },
-  {
-    key: 'yearly', name: 'اشتراک سالانه', price: '۲٬۹۰۰٬۰۰۰', note: 'تومان در سال — ۲ ماه هدیه',
-    items: ['۵ کسب‌وکار', 'همه امکانات پلن ماهانه', 'اولویت پشتیبانی', 'قیمت ثابت تا پایان دوره', 'آماده‌سازی اتصال به سامانه مودیان', 'مشاوره راه‌اندازی اولیه'],
-    cta: 'خرید اشتراک سالانه', featured: false,
-  },
-];
+/* پلن‌ها از تنظیمات ادمین خوانده می‌شوند — همه مبالغ به ریال */
+function buildPlans(cfg: AccConfig) {
+  return [
+    {
+      key: 'trial', name: 'نسخه معمولی (آزمایشی)', price: 'رایگان', note: `${toFaDigits(cfg.trial_days)} روز کامل — بدون نیاز به کارت`,
+      items: [
+        '۱ کسب‌وکار', `تا ${formatMoney(cfg.trial_invoice_limit)} صورتحساب رسمی`, 'فاکتور رسمی استاندارد مالیاتی',
+        'مشتریان، کالا/خدمات، بانک و صندوق', 'ثبت هزینه‌های روزانه', '۱۷ امکان پیشرفته خاموش',
+      ],
+      cta: 'شروع رایگان', href: '/حسابداری/پنل', featured: false,
+    },
+    {
+      key: 'monthly', name: 'اشتراک ماهانه', price: formatMoney(cfg.price_monthly), note: 'ریال در ماه — نسخه پیشرفته',
+      items: [
+        `${formatMoney(cfg.business_limit_monthly)} کسب‌وکار`, 'صورتحساب نامحدود + خرید و برگشت', 'دفترخانه، تراز چهارستونی و سود و زیان',
+        'گزارش ارزش افزوده و معاملات فصلی + CSV', 'خروجی اکسل، ورد و PDF', 'دفتر چک‌ها، انبار و یادآوری‌ها',
+        'لوگو، امضا و مهر اختصاصی', 'دعوت حسابدار و صورت‌حساب طرف‌حساب', 'پشتیبانی کاربان',
+      ],
+      cta: 'خرید اشتراک ماهانه', featured: true,
+    },
+    {
+      key: 'yearly', name: 'اشتراک سالانه', price: formatMoney(cfg.price_yearly), note: 'ریال در سال — ۲ ماه هدیه',
+      items: [
+        `${formatMoney(cfg.business_limit_yearly)} کسب‌وکار`, 'همه امکانات پلن ماهانه', 'اولویت پشتیبانی', 'قیمت ثابت تا پایان دوره',
+        'آماده‌سازی اتصال به سامانه مودیان', 'مشاوره راه‌اندازی اولیه',
+      ],
+      cta: 'خرید اشتراک سالانه', featured: false,
+    },
+  ];
+}
 
-/* جدول مقایسه — تفکیک شفاف امکانات بین پلن‌ها */
+/* جدول مقایسه — تفکیک شفاف معمولی/پیشرفته (از ۱۷ امکان انحصاری) */
 const COMPARE: { label: string; trial: string; monthly: string; yearly: string }[] = [
   { label: 'تعداد کسب‌وکار', trial: '۱', monthly: '۳', yearly: '۵' },
   { label: 'سقف صورتحساب رسمی', trial: '۲۰ عدد', monthly: 'نامحدود', yearly: 'نامحدود' },
-  { label: 'فاکتور رسمی مطابق فرم مالیاتی', trial: '✓', monthly: '✓', yearly: '✓' },
-  { label: 'دفترخانه، تراز و سود و زیان', trial: '✓', monthly: '✓', yearly: '✓' },
-  { label: 'لوگو، امضا و مهر اختصاصی', trial: '—', monthly: '✓', yearly: '✓' },
-  { label: 'گزارش ارزش افزوده و معاملات فصلی', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'فاکتور فروش و پیش‌فاکتور رسمی', trial: '✓', monthly: '✓', yearly: '✓' },
+  { label: 'مشتریان، کالا/خدمات، بانک و صندوق', trial: '✓', monthly: '✓', yearly: '✓' },
+  { label: 'ثبت هزینه روزانه', trial: '✓', monthly: '✓', yearly: '✓' },
+  { label: 'فاکتور خرید و برگشت از فروش', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'دفترخانه، تراز آزمایشی چهارستونی، سود و زیان', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'گزارش ارزش افزوده و معاملات فصلی ماده ۱۶۹', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'تحلیل فروش و مشتریان', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'خروجی اکسل، ورد و PDF', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'اعتبارسنجی مالیاتی هزینه + آپلود سند', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'شناسه کالا و خدمات مودیان', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'چاپ با لوگو، امضا و مهر شخصی', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'دفتر چک‌ها + یادآوری سررسید', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'انبار و موجودی خودکار', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'صورت‌حساب و گردش طرف‌حساب', trial: '—', monthly: '✓', yearly: '✓' },
   { label: 'دعوت حسابدار', trial: '—', monthly: '✓', yearly: '✓' },
   { label: 'پشتیبانی', trial: 'پایه', monthly: 'عادی', yearly: 'اولویت‌دار' },
 ];
@@ -61,20 +88,27 @@ export default function AccLanding() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
+  const [cfg, setCfg] = useState<AccConfig>(DEFAULT_ACC_CONFIG);
+
+  useEffect(() => {
+    fetchAccConfig().then(setCfg).catch(() => {});
+  }, []);
+
+  const plans = buildPlans(cfg);
 
   async function submitOrder() {
     if (!phone.trim()) { toast('شماره تماس را وارد کنید', 'error'); return; }
     setBusy(true);
     try {
-      const amount = order?.plan === 'monthly' ? '290000 تومان' : order?.plan === 'yearly' ? '2900000 تومان' : '0';
+      const amountRial = order?.plan === 'monthly' ? cfg.price_monthly : order?.plan === 'yearly' ? cfg.price_yearly : 0;
       const { error } = await supabase.from('orders').insert({
         mobile: phone.trim(),
         service: `نرم‌افزار حسابداری هوشمند کاربان — ${order?.label || ''}`,
-        amount,
+        amount: `${amountRial} ریال`,
         status: 'pending',
       });
       if (error) throw error;
-      notifyAdmin(`🧾 سفارش حسابداری کاربان\nپلن: ${order?.label}\nنام: ${name || '—'}\nتماس: ${phone}`);
+      notifyAdmin(`🧾 سفارش حسابداری کاربان\nپلن: ${order?.label}\nنام: ${name || '—'}\nتماس: ${phone}\nمبلغ: ${formatMoney(amountRial)} ریال`);
       toast('سفارش شما ثبت شد؛ کارشناسان کاربان تماس می‌گیرند');
       setOrder(null);
       setName('');
@@ -149,11 +183,11 @@ export default function AccLanding() {
       <section id="acc-plans" style={{ paddingTop: '3.5rem' }}>
         <div className="container">
           <div className="lux-heading"><span className="line" /><h2>پلن‌های اشتراک</h2><span className="line" /></div>
-          <p style={{ textAlign: 'center', maxWidth: 620, margin: '-1rem auto 2.2rem', fontSize: '.9rem' }}>
-            با نسخه آزمایشی رایگان شروع کنید (۱ کسب‌وکار، تا ۲۰ صورتحساب)؛ هر زمان خواستید کسب‌وکار دوم و سوم را اضافه کنید یا امکانات اختصاصی بگیرید، پلن بخرید.
+          <p style={{ textAlign: 'center', maxWidth: 640, margin: '-1rem auto 2.2rem', fontSize: '.9rem' }}>
+            با نسخه معمولی (آزمایشی) شروع کنید و ابزارهای پایه فروش را رایگان استفاده کنید؛ نسخه پیشرفته {PRO_FEATURES.length} امکان حرفه‌ای اضافه دارد — دفترخانه، گزارش مالیاتی، چک‌ها، انبار، خروجی چندفرمتی و… همه مبالغ به ریال.
           </p>
           <div className="acc-plans">
-            {PLANS.map((p) => (
+            {plans.map((p) => (
               <div className={`acc-plan${p.featured ? ' is-featured' : ''}`} key={p.key}>
                 {p.featured ? <span className="plan-tag">پیشنهاد کاربان</span> : null}
                 <h3>{p.name}</h3>

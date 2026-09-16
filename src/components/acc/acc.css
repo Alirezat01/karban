@@ -301,3 +301,10 @@
 
 @keyframes acc-rot { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .acc-spin { animation: acc-rot 1s linear infinite; }
+
+/* گیت امکانات پیشرفته (ProGate) */
+.pro-feature-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .5rem; margin-top: .7rem; }
+.pro-feature-row { display: flex; gap: .5rem; align-items: flex-start; border: 1px solid var(--line); border-radius: 12px; padding: .55rem .7rem; background: var(--bg2); }
+.pro-feature-row svg { color: var(--gold); flex-shrink: 0; margin-top: 3px; }
+.pro-feature-row b { display: block; font-size: .78rem; color: var(--text); }
+.pro-feature-row span { display: block; font-size: .7rem; color: var(--muted); line-height: 1.7; margin-top: .15rem; }

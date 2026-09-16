@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ArrowLeft, Bell, FileText, Headphones, LayoutDashboard, LifeBuoy,
-  MessageSquare, Paperclip, Plus, Send, Trash2, User,
+  ArrowLeft, Bell, Calculator, Crown, FileText, Headphones, LayoutDashboard, LifeBuoy,
+  Lock, MessageSquare, Paperclip, Plus, Send, Sparkles, Trash2, User,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { formatFaDate } from '@/lib/format';
+import { formatFaDate, formatFaNumber } from '@/lib/format';
 import { useCountUp } from '@/lib/reveal';
 import { notifyAdmin } from '@/lib/notify';
+import { PRO_FEATURES, PLAN_TIER_LABEL, planTier } from '@/lib/acc/plan';
 import KarbanLoader from '@/components/KarbanLoader';
 
 type SavedContract = {
@@ -19,7 +20,7 @@ type Ticket = { id: string; subject: string; status: string; priority: string; c
 type TicketMsg = { id: string; ticket_id: string; sender: 'user' | 'admin'; body: string; attachment_path: string | null; created_at: string };
 type Notif = { id: string; title: string; body: string | null; href: string | null; is_read: boolean; created_at: string };
 
-type Tab = 'contracts' | 'consults' | 'tickets' | 'notifs';
+type Tab = 'contracts' | 'accounting' | 'consults' | 'tickets' | 'notifs';
 
 const STATUS_FA: Record<string, string> = {
   new: 'جدید', in_progress: 'در حال انجام', done: 'انجام شد', rejected: 'رد شد',
@@ -58,6 +59,7 @@ export default function DashboardPage() {
 
         <nav className="dash-tabs" aria-label="بخش‌های داشبورد">
           <button className={tab === 'contracts' ? 'active' : ''} onClick={() => setTab('contracts')}><FileText size={16} /> قراردادهای من</button>
+          <button className={tab === 'accounting' ? 'active' : ''} onClick={() => setTab('accounting')}><Calculator size={16} /> حسابداری من</button>
           <button className={tab === 'consults' ? 'active' : ''} onClick={() => setTab('consults')}><MessageSquare size={16} /> مشاوره‌های من</button>
           <button className={tab === 'tickets' ? 'active' : ''} onClick={() => setTab('tickets')}><LifeBuoy size={16} /> پشتیبانی و تیکت</button>
           <button className={tab === 'notifs' ? 'active' : ''} onClick={() => setTab('notifs')}><Bell size={16} /> اعلان‌ها</button>
@@ -65,6 +67,7 @@ export default function DashboardPage() {
 
         <div className="dash-content">
           {tab === 'contracts' && <MyContracts />}
+          {tab === 'accounting' && <MyAccounting />}
           {tab === 'consults' && <MyConsults />}
           {tab === 'tickets' && <MyTickets />}
           {tab === 'notifs' && <MyNotifs />}
@@ -211,6 +214,97 @@ function MyContracts() {
         })
       )}
       <a className="button" href="/ابزارهای-هوش-مصنوعی/ساخت-قرارداد">ساخت قرارداد جدید <ArrowLeft size={15} /></a>
+    </div>
+  );
+}
+
+/* ── حسابداری من: وضعیت اشتراک نرم‌افزار حسابداری + ورود به پنل ── */
+function MyAccounting() {
+  const { userId } = useAuth();
+  const [state, setState] = useState<'loading' | 'none' | 'has'>('loading');
+  const [acc, setAcc] = useState<{ plan: string; status: string; expires_at: string | null; businessId: string | null } | null>(null);
+  const [bizCount, setBizCount] = useState(0);
+
+  useEffect(() => {
+    if (!userId) return;
+    let alive = true;
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const email = userData.user?.email || '';
+      let q = supabase.from('acc_access').select('business_id,plan,status,expires_at').in('status', ['active', 'trial']);
+      q = email ? q.or(`user_id.eq.${userId},email.eq.${email}`) : q.eq('user_id', userId);
+      const { data } = await q;
+      if (!alive) return;
+      const rows = (data || []) as { business_id: string | null; plan: string | null; status: string; expires_at: string | null }[];
+      const now = Date.now();
+      const valid = rows.filter((r) => !r.expires_at || new Date(r.expires_at).getTime() > now);
+      if (!valid.length) { setState('none'); return; }
+      const rank: Record<string, number> = { founder: 1, yearly: 2, monthly: 3, trial: 4, active: 5 };
+      valid.sort((a, b) => (rank[a.plan || 'active'] || 9) - (rank[b.plan || 'active'] || 9));
+      setAcc({ plan: valid[0].plan || 'active', status: valid[0].status, expires_at: valid[0].expires_at, businessId: valid[0].business_id });
+      setBizCount(new Set(valid.map((v) => v.business_id).filter(Boolean)).size);
+      setState('has');
+    })();
+    return () => { alive = false; };
+  }, [userId]);
+
+  if (state === 'loading') return <KarbanLoader label="در حال بررسی وضعیت حسابداری…" />;
+
+  const PLAN_FA: Record<string, string> = { founder: 'بنیان‌گذار', yearly: 'اشتراک سالانه', monthly: 'اشتراک ماهانه', trial: 'نسخه آزمایشی', active: 'اشتراک فعال' };
+
+  return (
+    <div className="contact-card calc-card dash-card">
+      <h2><Calculator size={17} /> نرم‌افزار حسابداری هوشمند کاربان</h2>
+      {state === 'none' ? (
+        <>
+          <p className="muted-note">
+            هنوز اشتراک حسابداری فعال نداری. با نسخه رایگان شروع کن: فاکتور رسمی استاندارد مالیاتی، مشتریان، کالا و خدمات، بانک و صندوق و ثبت هزینه‌های روزانه — بدون نیاز به کارت بانکی.
+          </p>
+          <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <a className="button button-green" href="/حسابداری/پنل">شروع رایگان ۱۴ روزه <Sparkles size={15} /></a>
+            <a className="button button-outline" href="/حسابداری">معرفی و پلن‌ها</a>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="dash-item">
+            <div className="dash-item-head">
+              <div>
+                <strong>وضعیت اشتراک: {PLAN_FA[acc?.plan || ''] || 'فعال'}
+                  <span style={{ marginInlineStart: '.5rem', fontSize: '.78rem', color: acc?.plan === 'trial' ? 'var(--muted)' : 'var(--gold, #c9962e)' }}>
+                    ({acc?.plan === 'trial' ? 'نسخه معمولی' : 'نسخه پیشرفته'})
+                  </span>
+                </strong>
+                <small>
+                  {bizCount > 0 ? `${formatFaNumber(bizCount)} کسب‌وکار فعال` : 'کسب‌وکار ثبت نشده'}
+                  {acc?.expires_at ? ` · اعتبار تا ${formatFaDate(acc.expires_at)}` : ''}
+                </small>
+              </div>
+              {acc?.plan === 'trial' ? <Sparkles size={18} /> : <Crown size={18} color="var(--gold, #c9962e)" />}
+            </div>
+          </div>
+          {acc?.plan === 'trial' && (
+            <p className="muted-note" style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
+              <Lock size={13} /> نسخه معمولی هستی — {formatFaNumber(PRO_FEATURES.length)} امکان پیشرفته (دفترخانه، گزارش مالیاتی، چک‌ها، انبار، خروجی اکسل/ورد/PDF و…) خاموش است.
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+            <a className="button button-green" href="/حسابداری/پنل">ورود به پنل حسابداری <ArrowLeft size={15} /></a>
+            {acc?.plan === 'trial' && <a className="button button-outline" href="/حسابداری">ارتقا به نسخه پیشرفته</a>}
+          </div>
+        </>
+      )}
+
+      <details style={{ marginTop: '.8rem' }}>
+        <summary>تفاوت نسخه معمولی و پیشرفته ({formatFaNumber(PRO_FEATURES.length)} امکان پیشرفته)</summary>
+        <ul className="dash-versions" style={{ lineHeight: 2 }}>
+          {PRO_FEATURES.map((f) => (
+            <li key={f.key}>
+              <b>{f.title}</b> — {f.desc} <small style={{ color: 'var(--muted)' }}>({PLAN_TIER_LABEL[planTier('monthly')]})</small>
+            </li>
+          ))}
+        </ul>
+      </details>
     </div>
   );
 }

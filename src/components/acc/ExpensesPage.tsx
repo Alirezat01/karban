@@ -16,6 +16,8 @@ import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, jalaliMonthLength, toGregorian, todayJalali, dateToISO, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, brandLogoUrl } from '@/lib/acc/export';
+import { featureEnabled } from '@/lib/acc/plan';
+import { Lock } from 'lucide-react';
 
 interface AccountLite { id: string; name: string; kind: string; balance?: number }
 
@@ -57,6 +59,10 @@ export default function ExpensesPage({ business, access }: {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const months = useMemo(() => monthOptions(), []);
+
+  /* تفکیک پلن: ثبت هزینه پایه برای همه؛ سند مالیاتی و خروجی‌ها پیشرفته */
+  const canTax = featureEnabled(access?.plan, 'expense_tax_validation');
+  const canExport = featureEnabled(access?.plan, 'export_multiformat');
 
   async function load() {
     setLoading(true);
@@ -223,11 +229,15 @@ export default function ExpensesPage({ business, access }: {
           </button>
         ))}
         <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: '.4rem' }}>
-          <button className="acc-btn acc-btn-outline" onClick={doExcel} title="خروجی اکسل"><FileSpreadsheet size={15} /> اکسل</button>
-          <button className="acc-btn acc-btn-outline" onClick={doWord} title="خروجی ورد"><FileText size={15} /> ورد</button>
-          <button className="acc-btn acc-btn-outline" onClick={doPdf} title="چاپ / PDF"><Receipt size={15} /> PDF</button>
-        </div>
+        {canExport ? (
+          <div style={{ display: 'flex', gap: '.4rem' }}>
+            <button className="acc-btn acc-btn-outline" onClick={doExcel} title="خروجی اکسل"><FileSpreadsheet size={15} /> اکسل</button>
+            <button className="acc-btn acc-btn-outline" onClick={doWord} title="خروجی ورد"><FileText size={15} /> ورد</button>
+            <button className="acc-btn acc-btn-outline" onClick={doPdf} title="چاپ / PDF"><Receipt size={15} /> PDF</button>
+          </div>
+        ) : (
+          <span className="acc-badge draft" style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}><Lock size={12} /> خروجی اکسل/ورد/PDF — پیشرفته</span>
+        )}
       </div>
 
       {/* جدول */}
@@ -311,50 +321,64 @@ export default function ExpensesPage({ business, access }: {
               </Field>
             </div>
 
-            {/* پیوست سند */}
-            <Field label="پیوست سند (عکس فاکتور / رسید)" hint="با پیوست سند، هزینه از نظر ممیز مالیاتی قابل قبول می‌شود">
-              {editing.receipt_url ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
-                  {isImage(editing.receipt_url)
-                    ? <img src={editing.receipt_url} alt="سند هزینه" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)' }} />
-                    : <div className="acc-icon-btn" style={{ width: 84, height: 84, display: 'grid', placeItems: 'center' }}><ImageIcon size={26} /></div>}
-                  <div style={{ display: 'grid', gap: '.4rem' }}>
-                    <a className="acc-btn acc-btn-outline" href={editing.receipt_url} target="_blank" rel="noreferrer"><Link2 size={14} /> مشاهده سند</a>
-                    <button className="acc-btn acc-btn-outline" onClick={() => setEditing({ ...editing, receipt_url: null })}><X size={14} /> حذف پیوست</button>
+            {/* پیوست سند + اعتبارسنجی — پیشرفته */}
+            {canTax ? (
+              <>
+                <Field label="پیوست سند (عکس فاکتور / رسید)" hint="با پیوست سند، هزینه از نظر ممیز مالیاتی قابل قبول می‌شود">
+                  {editing.receipt_url ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
+                      {isImage(editing.receipt_url)
+                        ? <img src={editing.receipt_url} alt="سند هزینه" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)' }} />
+                        : <div className="acc-icon-btn" style={{ width: 84, height: 84, display: 'grid', placeItems: 'center' }}><ImageIcon size={26} /></div>}
+                      <div style={{ display: 'grid', gap: '.4rem' }}>
+                        <a className="acc-btn acc-btn-outline" href={editing.receipt_url} target="_blank" rel="noreferrer"><Link2 size={14} /> مشاهده سند</a>
+                        <button className="acc-btn acc-btn-outline" onClick={() => setEditing({ ...editing, receipt_url: null })}><X size={14} /> حذف پیوست</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="acc-btn acc-btn-outline" style={{ justifyContent: 'center', cursor: uploading ? 'wait' : 'pointer' }}>
+                      {uploading ? <><Loader2 size={15} className="acc-spin" /> در حال آپلود…</> : <><Upload size={15} /> آپلود عکس/فایل سند</>}
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        style={{ display: 'none' }}
+                        disabled={uploading}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void uploadReceipt(f);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  )}
+                </Field>
+
+                <Field label="توضیحات"><textarea className="acc-input" rows={2} value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></Field>
+
+                {liveTax && (
+                  <div className={`acc-tax-panel is-${liveTax.status}`}>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                      {TAX_BADGE[liveTax.status].icon} وضعیت مالیاتی: {TAX_STATUS_LABEL[liveTax.status]}
+                    </strong>
+                    {liveTax.notes.length > 0 && (
+                      <ul style={{ margin: '.4rem 0 0', paddingRight: '1.1rem', lineHeight: 1.9 }}>
+                        {liveTax.notes.map((note, i) => <li key={i}>{note}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <Field label="توضیحات"><textarea className="acc-input" rows={2} value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></Field>
+                <div className="acc-upsell" style={{ margin: 0 }}>
+                  <Lock size={16} />
+                  <div>
+                    <b>اعتبارسنجی مالیاتی و آپلود سند — پیشرفته</b>
+                    <p>کنترل هزینه طبق مواد ۱۴۷، ۱۴۸ و ۱۶۹ ق.م.م + آپلود عکس فاکتور برای قبولی هزینه نزد ممیز، با ارتقا فعال می‌شود.</p>
                   </div>
                 </div>
-              ) : (
-                <label className="acc-btn acc-btn-outline" style={{ justifyContent: 'center', cursor: uploading ? 'wait' : 'pointer' }}>
-                  {uploading ? <><Loader2 size={15} className="acc-spin" /> در حال آپلود…</> : <><Upload size={15} /> آپلود عکس/فایل سند</>}
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    style={{ display: 'none' }}
-                    disabled={uploading}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void uploadReceipt(f);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              )}
-            </Field>
-
-            <Field label="توضیحات"><textarea className="acc-input" rows={2} value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></Field>
-
-            {/* اعتبارسنجی زنده */}
-            {liveTax && (
-              <div className={`acc-tax-panel is-${liveTax.status}`}>
-                <strong style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
-                  {TAX_BADGE[liveTax.status].icon} وضعیت مالیاتی: {TAX_STATUS_LABEL[liveTax.status]}
-                </strong>
-                {liveTax.notes.length > 0 && (
-                  <ul style={{ margin: '.4rem 0 0', paddingRight: '1.1rem', lineHeight: 1.9 }}>
-                    {liveTax.notes.map((note, i) => <li key={i}>{note}</li>)}
-                  </ul>
-                )}
-              </div>
+              </>
             )}
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.84rem', color: 'var(--text)' }}>

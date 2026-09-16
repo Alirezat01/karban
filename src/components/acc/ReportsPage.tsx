@@ -6,6 +6,7 @@ import type { AccBusiness, ProfitAndLoss, VatReport } from '@/lib/acc/types';
 import { currentSeasonRange, downloadCsv, profitAndLoss, salesByItem, salesByPartner, seasonalReport, vatReport, type SeasonalRow } from '@/lib/acc/api';
 import { SEASON_NAMES, currentJalaliMonthRange, formatJalali, jalaliSeasonOf, jalaliYearOf, jalaliYearRange, todayJalali } from '@/lib/acc/jalali';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
+import { toFaDigits } from '@/lib/acc/jalali';
 import { JalaliDateInput, EmptyState } from './ui';
 
 type Tab = 'pl' | 'vat' | 'seasonal' | 'sales';
@@ -193,7 +194,7 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
             <div className="acc-table-wrap">
               <table className="acc-table" style={{ minWidth: 320 }}>
                 <thead><tr><th>مشتری</th><th>تعداد فاکتور</th><th>جمع فروش</th></tr></thead>
-                <tbody>{byPartner.map((r) => <tr key={r.name}><td style={{ fontWeight: 600 }}>{r.name}</td><td className="num">{r.count}</td><td className="num" style={{ color: 'var(--gold2)' }}>{formatMoney(r.total)}</td></tr>)}</tbody>
+                <tbody>{byPartner.map((r) => <tr key={r.name}><td style={{ fontWeight: 600 }}>{r.name}</td><td className="num">{toFaDigits(r.count)}</td><td className="num" style={{ color: 'var(--gold2)' }}>{formatMoney(r.total)}</td></tr>)}</tbody>
               </table>
               {byPartner.length === 0 && <EmptyState title="داده‌ای نیست" />}
             </div>

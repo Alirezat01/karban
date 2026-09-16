@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FileSpreadsheet, FileText, Plus, Printer, Trash2 } from 'lucide-react';
 import { formatMoney, numberToWords } from '@/lib/acc/money';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, KARBAN_LOGO_URL, escapeHtml } from '@/lib/acc/export';
-import { todayJalali, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
+import { todayJalali, toFaDigits, toEnDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
 import KarbanLoader from '@/components/KarbanLoader';
 
 interface Party { name: string; economic_code: string; national_id: string; address: string; phone: string }
@@ -18,6 +18,21 @@ const DRAFT_KEY = 'karban-invoicemaker-draft';
 
 const newRow = (): Row => ({ key: Date.now() + Math.random(), title: '', unit: 'عدد', qty: 1, price: 0, discount: 0 });
 
+/* ورودی عددی با ارقام فارسی — نمایش فارسی، ذخیره عددی */
+function FaNumInput({ value, onChange, placeholder, decimal }: { value: number; onChange: (n: number) => void; placeholder?: string; decimal?: boolean }) {
+  return (
+    <input
+      inputMode="decimal"
+      placeholder={placeholder}
+      value={value ? toFaDigits(String(value)) : ''}
+      onChange={(e) => {
+        const cleaned = toEnDigits(e.target.value).replace(decimal ? /[^\d.]/g : /[^\d]/g, '');
+        onChange(decimal ? Number(cleaned) || 0 : Number(cleaned.replace(/\./g, '')) || 0);
+      }}
+    />
+  );
+}
+
 function todayJalaliText(): string {
   const t = todayJalali();
   return `${toFaDigits(String(t.jd))} ${JALALI_MONTHS[t.jm - 1]} ${toFaDigits(String(t.jy))}`;
@@ -25,6 +40,7 @@ function todayJalaliText(): string {
 
 export default function InvoiceMakerPage() {
   const [ready, setReady] = useState(false);
+  const [disabled, setDisabled] = useState(false);
   const [seller, setSeller] = useState<Party>(EMPTY_PARTY);
   const [buyer, setBuyer] = useState<Party>(EMPTY_PARTY);
   const [rows, setRows] = useState<Row[]>([newRow()]);
@@ -50,6 +66,10 @@ export default function InvoiceMakerPage() {
         if (typeof d.number === 'string') setNumber(d.number);
       }
     } catch { /* پیش‌نویس خراب — نادیده */ }
+    import('@/lib/acc/config').then((m) => m.fetchAccConfig()).then((cfg) => {
+      setVatRate(cfg.vat_rate || 10);
+      if (!cfg.public_invoice_maker) setDisabled(true);
+    }).catch(() => {});
     setReady(true);
   }, []);
 
@@ -169,7 +189,13 @@ export default function InvoiceMakerPage() {
           خروجی چاپ/PDF با سربرگ لوگوی کاربان، به‌همراه فایل اکسل و ورد. ثبت‌نام لازم نیست و پیش‌نویس در همین مرورگر می‌ماند.
         </p>
 
-        {!ready ? <KarbanLoader label="در حال آماده‌سازی فاکتورساز…" /> : (
+        {!ready ? <KarbanLoader label="در حال آماده‌سازی فاکتورساز…" /> : disabled ? (
+          <div className="contact-card calc-card" style={{ textAlign: 'center', padding: '2.5rem' }}>
+            <h2 style={{ justifyContent: 'center' }}>فاکتورساز موقتاً غیرفعال است</h2>
+            <p className="muted-note">این ابزار به‌صورت موقت توسط مدیریت کاربان غیرفعال شده است. برای صدور فاکتور رسمی، نرم‌افزار حسابداری کاربان همیشه در دسترس است.</p>
+            <a className="button button-green" href="/حسابداری">نرم‌افزار حسابداری کاربان</a>
+          </div>
+        ) : (
           <>
             {/* طرفین */}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.4rem' }}>
@@ -223,9 +249,9 @@ export default function InvoiceMakerPage() {
                           {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                         </select>
                       </td>
-                      <td style={{ padding: '.25rem' }}><input inputMode="decimal" value={r.qty} onChange={(e) => setRow(r.key, { qty: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} /></td>
-                      <td style={{ padding: '.25rem' }}><input inputMode="numeric" value={r.price ? r.price.toLocaleString('fa-IR') : ''} onChange={(e) => setRow(r.key, { price: Number(e.target.value.replace(/[^\d]/g, '')) || 0 })} placeholder="۰" /></td>
-                      <td style={{ padding: '.25rem' }}><input inputMode="numeric" value={r.discount ? r.discount.toLocaleString('fa-IR') : ''} onChange={(e) => setRow(r.key, { discount: Number(e.target.value.replace(/[^\d]/g, '')) || 0 })} placeholder="۰" /></td>
+                      <td style={{ padding: '.25rem' }}><FaNumInput decimal value={r.qty} onChange={(n) => setRow(r.key, { qty: n })} /></td>
+                      <td style={{ padding: '.25rem' }}><FaNumInput value={r.price} onChange={(n) => setRow(r.key, { price: n })} placeholder="۰" /></td>
+                      <td style={{ padding: '.25rem' }}><FaNumInput value={r.discount} onChange={(n) => setRow(r.key, { discount: n })} placeholder="۰" /></td>
                       <td style={{ padding: '.25rem' }}>
                         <button type="button" className="button button-outline" style={{ padding: '.4rem .55rem' }} title="حذف ردیف"
                           onClick={() => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.key !== r.key) : [newRow()]))}>

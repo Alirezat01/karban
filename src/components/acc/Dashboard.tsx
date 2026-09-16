@@ -1,14 +1,16 @@
-/* داشبورد حسابداری — KPI، نمودار فروش، آخرین اسناد */
+/* داشبورد حسابداری — KPI، نمودار فروش، یادآوری‌ها، آخرین اسناد */
 
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowDownLeft, ArrowUpRight, BarChart3, FileText, Plus, Receipt, TrendingUp,
+  ArrowDownLeft, ArrowUpRight, BarChart3, BellRing, Boxes, FileText, Landmark,
+  Plus, Receipt, TrendingUp,
 } from 'lucide-react';
 import type { AccBusiness, AccInvoice } from '@/lib/acc/types';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { formatJalali, currentJalaliMonthRange } from '@/lib/acc/jalali';
 import { INVOICE_STATUSES, INVOICE_TYPES } from '@/lib/acc/constants';
-import { listInvoices, listTransactions, salesSeries6Months, vatReport } from '@/lib/acc/api';
+import { gatherReminders, listInvoices, listTransactions, salesSeries6Months, vatReport } from '@/lib/acc/api';
+import { featureEnabled } from '@/lib/acc/plan';
 import { Badge, EmptyState } from './ui';
 
 function SalesChart({ data }: { data: { label: string; total: number }[] }) {
@@ -54,13 +56,77 @@ function Kpi({ icon, label, value, sub }: { icon: React.ReactNode; label: string
   );
 }
 
-export default function Dashboard({ business }: { business: AccBusiness }) {
+interface Reminders {
+  dueInvoices: { id: string; number: string; partner: string; remain: number; due: string; overdue: boolean }[];
+  dueChecks: { id: string; kind: string; amount: number; due: string; bank: string | null; serial: string | null; partner: string }[];
+  lowStock: { id: string; name: string; stock: number; unit: string }[];
+}
+
+function RemindersCard({ r }: { r: Reminders | null }) {
+  if (!r) return <p style={{ color: 'var(--muted)', fontSize: '.85rem' }}>در حال بررسی سررسیدها…</p>;
+  const empty = r.dueInvoices.length === 0 && r.dueChecks.length === 0 && r.lowStock.length === 0;
+  if (empty) {
+    return (
+      <EmptyState
+        icon={<BellRing size={20} />}
+        title="سررسید فوری ندارید"
+        hint="فاکتور وصول‌نشده، چک نزدیک و کالای رو به اتمام وجود ندارد"
+      />
+    );
+  }
+  return (
+    <div style={{ display: 'grid', gap: '.7rem', alignContent: 'start' }}>
+      {r.dueInvoices.length > 0 && (
+        <div>
+          <div className="acc-hint" style={{ fontWeight: 700, marginBottom: '.35rem' }}>فاکتورهای وصول‌نشده</div>
+          {r.dueInvoices.map((i) => (
+            <a key={i.id} href={`/حسابداری/پنل/چاپ/${i.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.5rem', padding: '.45rem .6rem', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', marginBottom: '.35rem' }}>
+              <span style={{ fontSize: '.78rem' }}>{i.overdue ? <Badge tone="bad">سررسید گذشته</Badge> : <Badge tone="warn">در جریان</Badge>} {i.number} — {i.partner}</span>
+              <span className="num" style={{ fontSize: '.75rem', color: 'var(--gold2)' }}>{formatMoney(i.remain)}</span>
+            </a>
+          ))}
+        </div>
+      )}
+      {r.dueChecks.length > 0 && (
+        <div>
+          <div className="acc-hint" style={{ fontWeight: 700, marginBottom: '.35rem' }}>چک‌های ۷ روز آینده</div>
+          {r.dueChecks.map((c) => (
+            <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '.5rem', padding: '.45rem .6rem', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--bg2)', marginBottom: '.35rem' }}>
+              <span style={{ fontSize: '.78rem' }}>
+                <Badge tone={c.kind === 'received' ? 'ok' : 'warn'}>{c.kind === 'received' ? 'دریافتی' : 'پرداختی'}</Badge>
+                {' '}{formatJalali(c.due)} {c.bank ? `— ${c.bank}` : ''} {c.partner ? `— ${c.partner}` : ''}
+              </span>
+              <span className="num" style={{ fontSize: '.75rem', color: 'var(--gold2)' }}>{formatMoney(c.amount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {r.lowStock.length > 0 && (
+        <div>
+          <div className="acc-hint" style={{ fontWeight: 700, marginBottom: '.35rem' }}>موجودی رو به اتمام</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem' }}>
+            {r.lowStock.map((s) => (
+              <span key={s.id} style={{ fontSize: '.72rem', border: '1px solid rgba(239,68,68,.35)', color: '#f87171', borderRadius: 999, padding: '.2rem .6rem' }}>
+                {s.name}: {formatMoney(s.stock)} {s.unit}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Dashboard({ business, plan }: { business: AccBusiness; plan?: string }) {
   const [series, setSeries] = useState<{ label: string; total: number }[]>([]);
   const [recent, setRecent] = useState<AccInvoice[]>([]);
   const [receivable, setReceivable] = useState(0);
   const [monthReceipts, setMonthReceipts] = useState(0);
   const [monthVat, setMonthVat] = useState(0);
+  const [reminders, setReminders] = useState<Reminders | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const showReminders = featureEnabled(plan, 'reminders');
 
   useEffect(() => {
     (async () => {
@@ -83,10 +149,14 @@ export default function Dashboard({ business }: { business: AccBusiness }) {
         ]);
         setMonthReceipts(txs.reduce((sum, t) => sum + t.amount, 0));
         setMonthVat(vat.payable);
+        if (featureEnabled(plan, 'reminders')) {
+          gatherReminders(business.id).then(setReminders).catch(() => setReminders(null));
+        }
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [business.id]);
 
   const monthSales = series.length ? series[series.length - 1].total : 0;
@@ -107,8 +177,10 @@ export default function Dashboard({ business }: { business: AccBusiness }) {
         </div>
 
         <div className="acc-card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3><FileText size={16} /> آخرین صورتحساب‌ها</h3>
-          {recent.length === 0 && !loading ? (
+          <h3>{showReminders ? <><BellRing size={16} /> یادآوری‌ها</> : <><FileText size={16} /> آخرین صورتحساب‌ها</>}</h3>
+          {showReminders ? (
+            <RemindersCard r={reminders} />
+          ) : recent.length === 0 && !loading ? (
             <EmptyState title="هنوز صورتحسابی صادر نکرده‌اید" hint="اولین فاکتور رسمی خود را صادر کنید" />
           ) : (
             <div style={{ display: 'grid', gap: '.5rem', alignContent: 'start', flex: 1 }}>
@@ -139,6 +211,56 @@ export default function Dashboard({ business }: { business: AccBusiness }) {
           </div>
         </div>
       </div>
+
+      {showReminders && (
+        <div className="acc-card">
+          <h3><FileText size={16} /> آخرین صورتحساب‌ها</h3>
+          {recent.length === 0 && !loading ? (
+            <EmptyState title="هنوز صورتحسابی صادر نکرده‌اید" hint="اولین فاکتور رسمی خود را صادر کنید" />
+          ) : (
+            <div style={{ display: 'grid', gap: '.5rem' }}>
+              {recent.map((i) => (
+                <a
+                  key={i.id}
+                  href={i.type === 'proforma' || i.status === 'draft' ? `/حسابداری/پنل/فاکتور/${i.id}` : `/حسابداری/پنل/چاپ/${i.id}`}
+                  style={{ display: 'flex', alignItems: 'center', gap: '.6rem', padding: '.55rem .7rem', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg2)' }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '.82rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {INVOICE_TYPES[i.type].short} {i.number} — {i.partner?.name || 'متفرقه'}
+                    </div>
+                    <div style={{ fontSize: '.7rem', color: 'var(--muted)', marginTop: 2 }}>{formatJalali(i.date_g)}</div>
+                  </div>
+                  <div style={{ textAlign: 'left' }}>
+                    <div className="num" style={{ fontSize: '.78rem', color: 'var(--gold2)' }}>{formatMoney(i.total)}</div>
+                    <Badge tone={INVOICE_STATUSES[i.status].tone}>{INVOICE_STATUSES[i.status].label}</Badge>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {featureEnabled(plan, 'inventory') && reminders && reminders.lowStock.length > 0 && (
+        <a className="acc-upsell" href="/حسابداری/پنل/کالا-و-خدمات" style={{ textDecoration: 'none' }}>
+          <Boxes size={18} />
+          <div>
+            <b>انبار نیازمند توجه است</b>
+            <p>{reminders.lowStock.length} کالا به آستانه موجودی رسیده؛ از صفحه کالا و خدمات موجودی اولیه را اصلاح کنید.</p>
+          </div>
+        </a>
+      )}
+
+      {plan === 'trial' && (
+        <a className="acc-upsell" href="/حسابداری" style={{ textDecoration: 'none' }}>
+          <Landmark size={18} />
+          <div>
+            <b>نسخه معمولی هستید — ۱۷ امکان پیشرفته خاموش است</b>
+            <p>دفترخانه، گزارش مالیاتی، چک‌ها، انبار، خروجی اکسل/ورد/PDF و… با ارتقا فوراً فعال می‌شود.</p>
+          </div>
+        </a>
+      )}
     </div>
   );
 }

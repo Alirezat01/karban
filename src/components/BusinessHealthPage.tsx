@@ -64,7 +64,7 @@ export default function BusinessHealthPage() {
             </div>
 
             <div className="health-actions">
-              <p className="muted-note">{answeredCount} از {healthQuestions.length} سؤال پاسخ داده شد</p>
+              <p className="muted-note">{answeredCount.toLocaleString('fa-IR')} از {healthQuestions.length.toLocaleString('fa-IR')} سؤال پاسخ داده شد</p>
               <button
                 type="button"
                 className="button"

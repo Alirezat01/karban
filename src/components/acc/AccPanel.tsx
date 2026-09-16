@@ -4,12 +4,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeftRight, BarChart3, BookOpen, Building2, CheckCircle2, Crown, FileText,
-  LayoutDashboard, LogOut, Menu, Package, Plus, Receipt, Settings, ShieldAlert,
-  Sparkles, Users, Wallet, X,
+  Landmark, LayoutDashboard, LogOut, Lock, Menu, Package, Plus, Receipt, Settings,
+  ShieldAlert, Sparkles, Users, Wallet, X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAccAccess } from '@/lib/acc/access';
 import { createBusiness, startTrial, submitTrialRequest } from '@/lib/acc/api';
+import { featureEnabled, PLAN_TIER_LABEL, planTier, type FeatureKey } from '@/lib/acc/plan';
 import { Field, ToastHost, ConfirmHost, Modal, toast } from "./ui";
 import Dashboard from './Dashboard';
 import PartnersPage from './PartnersPage';
@@ -23,6 +24,8 @@ import TransactionsPage from './TransactionsPage';
 import BooksPage from './BooksPage';
 import ReportsPage from './ReportsPage';
 import SettingsPage from './SettingsPage';
+import ChecksPage from './ChecksPage';
+import ProGate from './ProGate';
 import KarbanLoader from '@/components/KarbanLoader';
 import type { AccBusiness, InvoiceType } from '@/lib/acc/types';
 
@@ -38,29 +41,32 @@ export const PAGE_TITLES: Record<string, string> = {
   'حساب‌ها': 'بانک و صندوق',
   'دریافت-و-پرداخت': 'دریافت و پرداخت',
   'هزینه‌ها': 'هزینه‌ها',
+  'چک‌ها': 'دفتر چک‌ها',
   'دفترخانه': 'دفترخانه',
   'گزارش‌ها': 'گزارش‌ها',
   'تنظیمات': 'تنظیمات کسب‌وکار',
 };
 
+/* آیتم‌های سایدبار — پیشرفته: فقط با پلن پولی در دسترس است */
 const NAV = [
   { label: 'نمای کلی', items: [
-    { seg: 'داشبورد', title: 'داشبورد', icon: LayoutDashboard },
+    { seg: 'داشبورد', title: 'داشبورد', icon: LayoutDashboard, pro: false },
   ] },
   { label: 'عملیات روزانه', items: [
-    { seg: 'فاکتورها', title: 'صورتحساب‌ها', icon: FileText },
-    { seg: 'مشتریان', title: 'مشتریان و طرف‌حساب‌ها', icon: Users },
-    { seg: 'کالا-و-خدمات', title: 'کالا و خدمات', icon: Package },
-    { seg: 'دریافت-و-پرداخت', title: 'دریافت و پرداخت', icon: ArrowLeftRight },
-    { seg: 'هزینه‌ها', title: 'هزینه‌ها', icon: Receipt },
-    { seg: 'حساب‌ها', title: 'بانک و صندوق', icon: Wallet },
+    { seg: 'فاکتورها', title: 'صورتحساب‌ها', icon: FileText, pro: false },
+    { seg: 'مشتریان', title: 'مشتریان و طرف‌حساب‌ها', icon: Users, pro: false },
+    { seg: 'کالا-و-خدمات', title: 'کالا و خدمات', icon: Package, pro: false },
+    { seg: 'دریافت-و-پرداخت', title: 'دریافت و پرداخت', icon: ArrowLeftRight, pro: false },
+    { seg: 'هزینه‌ها', title: 'هزینه‌ها', icon: Receipt, pro: false },
+    { seg: 'حساب‌ها', title: 'بانک و صندوق', icon: Wallet, pro: false },
+    { seg: 'چک‌ها', title: 'دفتر چک‌ها', icon: Landmark, pro: true },
   ] },
   { label: 'حسابداری و تحلیل', items: [
-    { seg: 'دفترخانه', title: 'دفترخانه (روزنامه و کل)', icon: BookOpen },
-    { seg: 'گزارش‌ها', title: 'گزارش‌ها و مالیات', icon: BarChart3 },
+    { seg: 'دفترخانه', title: 'دفترخانه (روزنامه و کل)', icon: BookOpen, pro: true },
+    { seg: 'گزارش‌ها', title: 'گزارش‌ها و مالیات', icon: BarChart3, pro: true },
   ] },
   { label: 'سیستم', items: [
-    { seg: 'تنظیمات', title: 'تنظیمات کسب‌وکار', icon: Settings },
+    { seg: 'تنظیمات', title: 'تنظیمات کسب‌وکار', icon: Settings, pro: false },
   ] },
 ];
 
@@ -279,6 +285,7 @@ function Sidebar({ path, open, onClose }: { path: string; open: boolean; onClose
                 <a key={it.seg} href={href} className={active ? 'is-active' : ''} onClick={onClose}>
                   <it.icon size={17} />
                   {it.title}
+                  {it.pro ? <Lock size={11} style={{ marginInlineStart: 'auto', opacity: .55 }} aria-label="امکان پیشرفته" /> : null}
                 </a>
               );
             })}
@@ -330,9 +337,10 @@ function Layout({
             <span className="acc-biz-chip"><Building2 size={13} />{business.brand || business.name}</span>
           )}
           <button className="acc-icon-btn" title="کسب‌وکار جدید" onClick={onAddBusiness}><Plus size={16} /></button>
-          <span className={`acc-plan-chip${trialBadge ? ' is-trial' : ''}`} title={`پلن فعلی: ${PLAN_LABEL[plan] || plan} — سقف ${businessLimit} کسب‌وکار`}>
+          <span className={`acc-plan-chip${trialBadge ? ' is-trial' : ''}`} title={`پلن فعلی: ${PLAN_LABEL[plan] || plan} — نسخه ${PLAN_TIER_LABEL[planTier(plan)]} — سقف ${businessLimit} کسب‌وکار`}>
             {trialBadge ? <Sparkles size={12} /> : <Crown size={12} />}
             {PLAN_LABEL[plan] || plan}
+            <span style={{ opacity: .65 }}>· {PLAN_TIER_LABEL[planTier(plan)]}</span>
           </span>
           <a className="acc-btn acc-btn-ghost" href="/" title="بازگشت به سایت">سایت کاربان</a>
           <button
@@ -378,23 +386,45 @@ export default function AccPanel({ sub }: { sub: string[] }) {
   const { business, role, businesses, plan, businessLimit, status } = state;
 
   const page = (() => {
+    /* گیت امکانات پیشرفته — نسخه معمولی (آزمایشی) فقط ابزار پایه دارد */
+    const proBlocked = (key: FeatureKey, title: string, hint?: string) =>
+      featureEnabled(plan, key) ? null : <ProGate feature={key} plan={plan} title={title} hint={hint} />;
+
     switch (seg) {
-      case 'داشبورد': return <Dashboard business={business} />;
-      case 'فاکتورها': return <InvoicesPage business={business} />;
+      case 'داشبورد': return <Dashboard business={business} plan={plan} />;
+      case 'فاکتورها': return <InvoicesPage business={business} plan={plan} />;
       case 'فاکتور-جدید': {
         const typeMap: Record<string, InvoiceType> = { 'فروش': 'sale', 'پیش-فاکتور': 'proforma', 'خرید': 'purchase' };
-        return <InvoiceEditor business={business} invoiceId={null} presetType={typeMap[sub[1] || ''] || 'sale'} />;
+        const t = typeMap[sub[1] || ''] || 'sale';
+        if (t === 'purchase') {
+          const gate = proBlocked('invoice_purchase', 'صورتحساب خرید', 'ثبت خرید از تامین‌کننده‌ها و برگشت از فروش، مخصوص نسخه پیشرفته است.');
+          if (gate) return gate;
+        }
+        return <InvoiceEditor business={business} invoiceId={null} presetType={t} />;
       }
       case 'فاکتور': return <InvoiceEditor business={business} invoiceId={sub[1] || null} />;
-      case 'مشتریان': return <PartnersPage business={business} />;
-      case 'کالا-و-خدمات': return <ItemsPage business={business} />;
+      case 'مشتریان': return <PartnersPage business={business} plan={plan} />;
+      case 'کالا-و-خدمات': return <ItemsPage business={business} plan={plan} />;
       case 'هزینه‌ها': return <ExpensesPage business={business} access={{ status, plan }} />;
       case 'حساب‌ها': return <AccountsPage business={business} />;
       case 'دریافت-و-پرداخت': return <TransactionsPage business={business} />;
-      case 'دفترخانه': return <BooksPage business={business} />;
-      case 'گزارش‌ها': return <ReportsPage business={business} />;
-      case 'تنظیمات': return <SettingsPage business={business} role={role} reloadAccess={reload} />;
-      default: return <Dashboard business={business} />;
+      case 'چک‌ها': {
+        const gate = proBlocked('checks', 'دفتر چک‌ها', 'ثبت و پیگیری چک‌های دریافتی و پرداختی با یادآوری سررسید، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <ChecksPage business={business} access={{ status, plan }} />;
+      }
+      case 'دفترخانه': {
+        const gate = proBlocked('books', 'دفترخانه (روزنامه، کل و تراز)', 'دفترنامه دوطرفه خودکار مطابق اصول حسابداری، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <BooksPage business={business} />;
+      }
+      case 'گزارش‌ها': {
+        const gate = proBlocked('report_pl', 'گزارش‌ها و مالیات', 'سود و زیان، ارزش افزوده، معاملات فصلی و تحلیل فروش، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <ReportsPage business={business} />;
+      }
+      case 'تنظیمات': return <SettingsPage business={business} role={role} plan={plan} reloadAccess={reload} />;
+      default: return <Dashboard business={business} plan={plan} />;
     }
   })();
 

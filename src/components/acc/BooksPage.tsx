@@ -9,7 +9,7 @@ import { currentJalaliMonthRange, formatJalali, jalaliYearRange, todayJalali } f
 import { CHART_KINDS } from '@/lib/acc/constants';
 import { JalaliDateInput, EmptyState } from './ui';
 
-type Tab = 'journal' | 'ledger' | 'trial';
+type Tab = 'journal' | 'ledger' | 'trial' | 'trial4';
 
 export default function BooksPage({ business }: { business: AccBusiness }) {
   const [tab, setTab] = useState<Tab>('journal');
@@ -66,7 +66,7 @@ export default function BooksPage({ business }: { business: AccBusiness }) {
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '.35rem', flex: 1, flexWrap: 'wrap' }}>
-          {([['journal', 'دفتر روزنامه'], ['ledger', 'دفتر کل'], ['trial', 'تراز آزمایشی']] as const).map(([k, label]) => (
+          {([['journal', 'دفتر روزنامه'], ['ledger', 'دفتر کل'], ['trial', 'تراز آزمایشی'], ['trial4', 'تراز چهارستونی']] as const).map(([k, label]) => (
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
@@ -151,6 +151,45 @@ export default function BooksPage({ business }: { business: AccBusiness }) {
             </div>
           )}
           {!ledgerCode && <EmptyState icon={<BookOpen size={34} />} title="یک سرفصل انتخاب کنید" hint="گردش و مانده تدریجی هر حساب در دفتر کل نمایش داده می‌شود" />}
+        </div>
+      )}
+
+      {tab === 'trial4' && (
+        <div className="acc-table-wrap">
+          <p className="acc-hint" style={{ marginBottom: '.6rem' }}>
+            تراز آزمایشی چهارستونی — گردش بدهکار و بستانکار هر سرفصل به همراه مانده دوطرفه؛ مطابق فرم استاندارد حسابداری ایران.
+          </p>
+          <table className="acc-table">
+            <thead>
+              <tr>
+                <th>کد</th><th>سرفصل</th>
+                <th>گردش بدهکار</th><th>گردش بستانکار</th>
+                <th>مانده بدهکار</th><th>مانده بستانکار</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trial.map((r) => (
+                <tr key={r.code}>
+                  <td className="num">{r.code}</td>
+                  <td>{r.title}</td>
+                  <td className="num">{r.debit ? formatMoney(r.debit) : '—'}</td>
+                  <td className="num">{r.credit ? formatMoney(r.credit) : '—'}</td>
+                  <td className="num" style={r.balance > 0 ? { color: 'var(--gold2)', fontWeight: 700 } : undefined}>{r.balance > 0 ? formatMoney(r.balance) : '—'}</td>
+                  <td className="num" style={r.balance < 0 ? { color: '#ef9a94', fontWeight: 700 } : undefined}>{r.balance < 0 ? formatMoney(-r.balance) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={2}><Scale size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> جمع کل</td>
+                <td className="num">{formatMoney(trialTotals.debit)}</td>
+                <td className="num">{formatMoney(trialTotals.credit)}</td>
+                <td className="num">{formatMoney(trial.filter((r) => r.balance > 0).reduce((s, r) => s + r.balance, 0))}</td>
+                <td className="num">{formatMoney(trial.filter((r) => r.balance < 0).reduce((s, r) => s - r.balance, 0))}</td>
+              </tr>
+            </tfoot>
+          </table>
+          {!loading && trial.length === 0 && <EmptyState title="ترازی برای این بازه وجود ندارد" />}
         </div>
       )}
 

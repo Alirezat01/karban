@@ -5,6 +5,7 @@ import type {
   AccAccount, AccBusiness, AccChartRow, AccExpense, AccInvoice,
   AccJournalEntry, AccPartner, AccItem, AccTransaction, InvoiceType, ProfitAndLoss,
   TrialBalanceRow, VatReport, PlRow, InvoiceStatus, AccStuffCatalogRow,
+  AccCheck, CheckKind, CheckStatus, PartnerStatement,
 } from './types';
 import { SYSTEM_CHART } from './constants';
 import { jalaliMonthLength, toGregorian, todayJalali, dateToISO } from './jalali';
@@ -812,6 +813,123 @@ export function downloadCsv(filename: string, headers: string[], rows: (string |
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ═══════════════════════ نسخه ۴: دفتر چک‌ها ═══════════════════════ */
+
+export async function listChecks(businessId: string, opts: { kind?: CheckKind; status?: CheckStatus } = {}): Promise<AccCheck[]> {
+  let q = supabase
+    .from('acc_checks')
+    .select('*, partner:acc_partners(id,name), account:acc_accounts(id,name)')
+    .eq('business_id', businessId)
+    .order('due_date_g', { ascending: true });
+  if (opts.kind) q = q.eq('kind', opts.kind);
+  if (opts.status) q = q.eq('status', opts.status);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as unknown as AccCheck[];
+}
+
+export async function saveCheck(businessId: string, row: Partial<AccCheck> & { kind: CheckKind; amount: number; due_date_g: string }): Promise<string> {
+  const payload = {
+    kind: row.kind,
+    partner_id: row.partner_id || null,
+    account_id: row.account_id || null,
+    invoice_id: row.invoice_id || null,
+    amount: Math.max(0, Math.round(row.amount || 0)),
+    serial_no: row.serial_no || null,
+    bank_name: row.bank_name || null,
+    branch: row.branch || null,
+    issue_date_g: row.issue_date_g || null,
+    due_date_g: row.due_date_g,
+    status: row.status || 'in_hand',
+    description: row.description || null,
+  };
+  if (row.id) {
+    const { error } = await supabase.from('acc_checks').update(payload).eq('id', row.id);
+    if (error) throw error;
+    return row.id;
+  }
+  const { data, error } = await supabase
+    .from('acc_checks')
+    .insert({ ...payload, business_id: businessId })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id;
+}
+
+export async function setCheckStatus(id: string, status: CheckStatus) {
+  const { error } = await supabase.from('acc_checks').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteCheck(id: string) {
+  const { error } = await supabase.from('acc_checks').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ═══════════════ صورت‌حساب طرف‌حساب (گردش + سررسید) ═══════════════ */
+
+export async function partnerStatement(businessId: string, partnerId: string): Promise<PartnerStatement> {
+  const [partners, invoices, txs] = await Promise.all([
+    listPartners(businessId),
+    listInvoices(businessId, {}),
+    listTransactions(businessId, {}),
+  ]);
+  const partner = partners.find((p) => p.id === partnerId);
+  if (!partner) throw new Error('طرف‌حساب یافت نشد');
+  const relInv = invoices.filter((i) => i.partner_id === partnerId && i.status !== 'cancelled' && i.status !== 'draft');
+  const relTx = txs.filter((t) => t.partner_id === partnerId);
+  /* فاکتور فروش/برگشت بستانکار، خرید بدهکارِ تامین‌کننده — مانده از دید کسب‌وکار */
+  const sign = (t: InvoiceType) => (t === 'purchase' ? -1 : 1);
+  const totalInvoiced = relInv.reduce((s, i) => s + sign(i.type) * i.total, 0);
+  const totalSettled = relTx.reduce((s, t) => s + (t.kind === 'receipt' ? t.amount : -t.amount), 0);
+  const balance = totalInvoiced - totalSettled;
+  /* تحلیل سررسید: فاکتورهای وصول‌نشده بر اساس روزهای گذشته از سررسید */
+  const now = Date.now();
+  const buckets = [
+    { label: 'سررسید نرسیده', amount: 0 },
+    { label: '۱ تا ۳۰ روز گذشته', amount: 0 },
+    { label: '۳۱ تا ۹۰ روز گذشته', amount: 0 },
+    { label: 'بیش از ۹۰ روز', amount: 0 },
+  ];
+  for (const i of relInv) {
+    const remain = i.total - i.paid_total;
+    if (remain <= 0) continue;
+    const due = i.due_date_g ? new Date(i.due_date_g).getTime() : new Date(i.date_g).getTime();
+    const days = Math.floor((now - due) / 86_400_000);
+    const idx = days <= 0 ? 0 : days <= 30 ? 1 : days <= 90 ? 2 : 3;
+    buckets[idx].amount += remain;
+  }
+  return { partner, invoices: relInv, transactions: relTx, totalInvoiced, totalSettled, balance, agingBuckets: buckets };
+}
+
+/* یادآوری‌ها: فاکتورهای سررسیدگذشته، چک‌های نزدیک، کالای رو به اتمام */
+export async function gatherReminders(businessId: string) {
+  const today = dateToISO(new Date());
+  const in7 = dateToISO(new Date(Date.now() + 7 * 86_400_000));
+  const [invs, checks, items] = await Promise.all([
+    listInvoices(businessId, {}),
+    listChecks(businessId, {}).catch(() => [] as AccCheck[]),
+    listItems(businessId),
+  ]);
+  const dueInvoices = invs
+    .filter((i) => ['issued', 'partial'].includes(i.status) && i.total - i.paid_total > 0)
+    .map((i) => ({
+      id: i.id, number: i.number, partner: i.partner?.name || 'متفرقه',
+      remain: i.total - i.paid_total,
+      due: i.due_date_g || i.date_g,
+      overdue: (i.due_date_g || i.date_g) < today,
+    }))
+    .sort((a, b) => a.due.localeCompare(b.due))
+    .slice(0, 8);
+  const dueChecks = checks
+    .filter((c) => !['cleared', 'canceled', 'returned'].includes(c.status) && c.due_date_g <= in7)
+    .map((c) => ({ id: c.id, kind: c.kind, amount: c.amount, due: c.due_date_g, bank: c.bank_name, serial: c.serial_no, partner: c.partner?.name || '' }))
+    .slice(0, 8);
+  const lowStock = items.filter((i) => i.track_stock && i.stock <= 3).map((i) => ({ id: i.id, name: i.name, stock: i.stock, unit: i.unit })).slice(0, 8);
+  return { dueInvoices, dueChecks, lowStock };
 }
 
 /* کمک‌گیرنده فصل شمسی جاری */

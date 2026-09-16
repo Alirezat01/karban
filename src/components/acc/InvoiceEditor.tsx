@@ -8,8 +8,8 @@ import {
   nextInvoiceNumber, saveInvoice, savePartner,
 } from '@/lib/acc/api';
 import { INVOICE_TYPES, UNITS } from '@/lib/acc/constants';
-import { formatMoney } from '@/lib/acc/money';
-import { isoToJalaliInput, dateToISO } from '@/lib/acc/jalali';
+import { formatMoney, amountToWords } from '@/lib/acc/money';
+import { isoToJalaliInput, dateToISO, toFaDigits, toEnDigits } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, toast } from './ui';
 
 interface Row extends Partial<Omit<AccInvoiceItem, 'row_total' | 'position' | 'invoice_id' | 'business_id' | 'id'>> {
@@ -249,18 +249,19 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
 
       <div className="acc-card">
         <h3>ردیف‌های صورتحساب</h3>
-        <div className="acc-table-wrap">
-          <table className="acc-table" style={{ minWidth: 860 }}>
+          <div className="acc-table-wrap">
+          <table className="acc-table" style={{ minWidth: 960 }}>
             <thead>
               <tr>
                 <th style={{ width: 34 }}>#</th>
-                <th style={{ minWidth: 200 }}>شرح کالا / خدمت</th>
-                <th style={{ width: 90 }}>واحد</th>
-                <th style={{ width: 80 }}>مقدار</th>
-                <th style={{ width: 130 }}>مبلغ واحد (ریال)</th>
-                <th style={{ width: 110 }}>تخفیف (ریال)</th>
-                <th style={{ width: 80 }}>مالیات ٪</th>
-                <th style={{ width: 130 }}>جمع ردیف (ریال)</th>
+                <th style={{ minWidth: 190 }}>شرح کالا / خدمت</th>
+                <th style={{ width: 84 }}>واحد</th>
+                <th style={{ width: 76 }}>مقدار</th>
+                <th style={{ width: 122 }}>مبلغ واحد (ریال)</th>
+                <th style={{ width: 104 }}>تخفیف (ریال)</th>
+                <th style={{ width: 68 }}>مالیات ٪</th>
+                <th style={{ width: 116 }}>مبلغ مالیات (ریال)</th>
+                <th style={{ width: 118 }}>جمع ردیف (ریال)</th>
                 <th style={{ width: 44 }}></th>
               </tr>
             </thead>
@@ -270,7 +271,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
                 const vat = Math.round((base * (Number(r.vat_rate) || 0)) / 100);
                 return (
                   <tr key={r.key}>
-                    <td className="num">{idx + 1}</td>
+                    <td className="num">{toFaDigits(idx + 1)}</td>
                     <td>
                       <input className="acc-input" style={{ minHeight: 40 }} placeholder="شرح…" value={r.title || ''} onChange={(e) => onRowTitle(r.key, e.target.value)} list="acc-items-list" />
                       <datalist id="acc-items-list">
@@ -282,11 +283,12 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
                         {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
-                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="decimal" value={r.quantity} onChange={(e) => patchRow(r.key, { quantity: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} /></td>
+                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="decimal" value={r.quantity ? toFaDigits(String(r.quantity)) : ''} onChange={(e) => patchRow(r.key, { quantity: Number(toEnDigits(e.target.value).replace(/[^\d.]/g, '')) || 0 })} /></td>
                     <td><MoneyInput value={Number(r.unit_price) || 0} onChange={(n) => patchRow(r.key, { unit_price: n })} /></td>
                     <td><MoneyInput value={Number(r.discount) || 0} onChange={(n) => patchRow(r.key, { discount: n })} /></td>
-                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="numeric" value={r.vat_rate} onChange={(e) => patchRow(r.key, { vat_rate: Number(e.target.value) || 0 })} /></td>
-                    <td className="num" style={{ color: 'var(--gold2)' }}>{formatMoney(base + vat)}</td>
+                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="numeric" value={toFaDigits(String(r.vat_rate ?? 0))} onChange={(e) => patchRow(r.key, { vat_rate: Number(toEnDigits(e.target.value).replace(/[^\d]/g, '')) || 0 })} /></td>
+                    <td className="num" style={{ color: 'var(--muted)' }}>{formatMoney(vat)}</td>
+                    <td className="num" style={{ color: 'var(--gold2)', fontWeight: 700 }}>{formatMoney(base + vat)}</td>
                     <td>
                       <button className="acc-icon-btn danger" title="حذف ردیف" onClick={() => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.key !== r.key) : rs))}><Trash2 size={14} /></button>
                     </td>
@@ -298,7 +300,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.8rem', flexWrap: 'wrap', gap: '.6rem' }}>
           <button className="acc-btn acc-btn-outline" onClick={() => setRows((rs) => [...rs, newRow(business.default_vat_rate ?? 10)])}><Plus size={14} /> افزودن ردیف</button>
-          <div className="acc-hint">برای پرکردن سریع، شرح را از فهرست کالاها انتخاب کنید؛ قیمت و مالیات خودکار پر می‌شود.</div>
+          <div className="acc-hint">کافیست مبلغ را وارد کنید — مالیات و جمع ردیف فوراً و خودکار پر می‌شوند؛ شرح را از فهرست کالاها انتخاب کنید تا قیمت هم خودکار بیاید.</div>
         </div>
       </div>
 
@@ -315,6 +317,9 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>مالیات و عوارض ارزش افزوده</span><span className="num">{formatMoney(totals.vatTotal)} ریال</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', paddingTop: '.6rem', fontWeight: 800, fontSize: '1.05rem', color: 'var(--gold2)' }}>
               <span>مبلغ قابل پرداخت</span><span className="num">{formatMoney(totals.total)} ریال</span>
+            </div>
+            <div style={{ borderTop: '1px dashed var(--line)', paddingTop: '.5rem', fontSize: '.78rem', color: 'var(--muted)', lineHeight: 1.9 }}>
+              به حروف: {amountToWords(totals.total)}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '.5rem', marginTop: '1.1rem', flexWrap: 'wrap' }}>

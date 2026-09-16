@@ -135,7 +135,7 @@ export default function ContentPage({ kind, title, description, eyebrow = 'کا�
                   ))}
                 </select>
               </div>
-              <small>{filteredContracts.length} قرارداد متناسب با انتخاب شما</small>
+              <small>{filteredContracts.length.toLocaleString('fa-IR')} قرارداد متناسب با انتخاب شما</small>
             </div>
 
             {loadingContracts ? (

@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowLeft, Bell, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
+  ArrowLeft, Bell, Calculator, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
   Mail, MessagesSquare, Newspaper, Phone, Plus, Save, ShieldCheck, ShoppingCart, SlidersHorizontal,
   Star, Trash2, Users, Wrench,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
+import { DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/config';
 import { useCountUp } from '@/lib/reveal';
 import KarbanLoader from '@/components/KarbanLoader';
 
-type Tab = 'overview' | 'services' | 'settings' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
+type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -232,6 +233,7 @@ export default function AdminPage() {
     ['overview', 'نمای کلی', LayoutDashboard],
     ['services', 'خدمات', Wrench],
     ['settings', 'تنظیمات', SlidersHorizontal],
+    ['accounting', 'حسابداری', Calculator],
     ['contracts', 'قراردادها', FileSignature],
     ['articles', 'مقاله‌ها', Newspaper],
     ['requests', 'درخواست‌های اداری', FileText],
@@ -271,6 +273,7 @@ export default function AdminPage() {
           {tab === 'overview' && <OverviewTab go={setTab} />}
           {tab === 'services' && <ServicesTab />}
           {tab === 'settings' && <SettingsTab />}
+          {tab === 'accounting' && <AccountingTab />}
           {tab === 'contracts' && <ContractsTab />}
           {tab === 'articles' && <ArticlesTab />}
           {tab === 'requests' && <RequestsTab />}
@@ -683,6 +686,101 @@ function SettingsTab() {
         <Save size={16} /> ذخیره تنظیمات
       </button>
       {saved && <small className="admin-success">✓ تنظیمات ذخیره شد و در همه ماشین‌حساب‌ها اعمال می‌شود.</small>}
+    </div>
+  );
+}
+
+/* ── تب حسابداری: تنظیمات ماژول + آمار زنده ── */
+function AccountingTab() {
+  const [cfg, setCfg] = useState<AccConfig>(DEFAULT_ACC_CONFIG);
+  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [stats, setStats] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const cnt = async (p: PromiseLike<{ count: number | null }>) => {
+      try { return (await p).count || 0; } catch { return 0; }
+    };
+    (async () => {
+      const [conf, businesses, licenses, trials, invoices, expenses, checks, stuff] = await Promise.all([
+        supabase.from('app_settings').select('value').eq('key', 'acc_config').maybeSingle(),
+        cnt(supabase.from('acc_businesses').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('acc_access').select('id', { count: 'exact', head: true }).in('status', ['active', 'trial'])),
+        cnt(supabase.from('acc_trial_requests').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('acc_invoices').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('acc_expenses').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('acc_checks').select('id', { count: 'exact', head: true })),
+        cnt(supabase.from('acc_stuff_catalog').select('id', { count: 'exact', head: true })),
+      ]);
+      if (!active) return;
+      if (conf.data?.value) setCfg({ ...DEFAULT_ACC_CONFIG, ...(conf.data.value as Partial<AccConfig>) });
+      setStats({
+        businesses: businesses || 0, licenses: licenses || 0, trials: trials || 0,
+        invoices: invoices || 0, expenses: expenses || 0, checks: checks || 0, stuff: stuff || 0,
+      });
+      setLoading(false);
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const save = async () => {
+    await supabase.from('app_settings').upsert({ key: 'acc_config', value: cfg, updated_at: new Date().toISOString() });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  if (loading) return <KarbanLoader label="در حال بارگذاری تنظیمات حسابداری…" />;
+
+  return (
+    <div className="admin-settings">
+      <h2>نرم‌افزار حسابداری هوشمند کاربان</h2>
+      <p>تنظیمات سراسری ماژول حسابداری — بلافاصله در پنل کاربران و صفحه فرود اعمال می‌شود. همه مبالغ به <b>ریال</b> است.</p>
+
+      <h3>وضعیت ماژول</h3>
+      <div className="admin-stat-grid">
+        <AdminStat icon={Layers} label="کسب‌وکارهای ثبت‌شده" value={stats?.businesses ?? 0} ready={!!stats} />
+        <AdminStat icon={ShieldCheck} label="لایسنس فعال/آزمایشی" value={stats?.licenses ?? 0} ready={!!stats} />
+        <AdminStat icon={Users} label="درخواست‌های تریال" value={stats?.trials ?? 0} ready={!!stats} />
+        <AdminStat icon={FileText} label="صورتحساب‌ها" value={stats?.invoices ?? 0} ready={!!stats} />
+        <AdminStat icon={Wrench} label="هزینه‌های ثبت‌شده" value={stats?.expenses ?? 0} ready={!!stats} />
+        <AdminStat icon={FileSignature} label="چک‌های ثبت‌شده" value={stats?.checks ?? 0} ready={!!stats} />
+      </div>
+
+      <h3>مالیات و دوره آزمایشی</h3>
+      <div className="settings-grid">
+        <NumField label="نرخ پیش‌فرض ارزش افزوده (٪)" value={cfg.vat_rate} onChange={(n) => setCfg({ ...cfg, vat_rate: n })} />
+        <NumField label="روزهای تریال رایگان" value={cfg.trial_days} onChange={(n) => setCfg({ ...cfg, trial_days: n })} />
+        <NumField label="سقف صورتحساب تریال" value={cfg.trial_invoice_limit} onChange={(n) => setCfg({ ...cfg, trial_invoice_limit: n })} />
+        <NumField label="ردیف‌های کاتالوگ شناسه مودیان (نمایش)" value={stats?.stuff ?? 0} onChange={() => { /* فقط نمایش */ }} />
+      </div>
+
+      <h3>قیمت پلن‌ها (ریال)</h3>
+      <div className="settings-grid">
+        <NumField label="اشتراک ماهانه (ریال)" value={cfg.price_monthly} onChange={(n) => setCfg({ ...cfg, price_monthly: n })} />
+        <NumField label="اشتراک سالانه (ریال)" value={cfg.price_yearly} onChange={(n) => setCfg({ ...cfg, price_yearly: n })} />
+        <NumField label="سقف کسب‌وکار — تریال" value={cfg.business_limit_trial} onChange={(n) => setCfg({ ...cfg, business_limit_trial: n })} />
+        <NumField label="سقف کسب‌وکار — ماهانه" value={cfg.business_limit_monthly} onChange={(n) => setCfg({ ...cfg, business_limit_monthly: n })} />
+        <NumField label="سقف کسب‌وکار — سالانه" value={cfg.business_limit_yearly} onChange={(n) => setCfg({ ...cfg, business_limit_yearly: n })} />
+        <NumField label="سقف کسب‌وکار — بنیان‌گذار" value={cfg.business_limit_founder} onChange={(n) => setCfg({ ...cfg, business_limit_founder: n })} />
+      </div>
+
+      <h3>سایر</h3>
+      <div className="settings-grid">
+        <label className="settings-field" style={{ gridColumn: 'span 2' }}>
+          پیام برند زیر فاکتورهای بدون لوگو
+          <input value={cfg.brand_tagline} onChange={(e) => setCfg({ ...cfg, brand_tagline: e.target.value })} />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.9rem' }}>
+          <input type="checkbox" checked={cfg.public_invoice_maker} onChange={(e) => setCfg({ ...cfg, public_invoice_maker: e.target.checked })} />
+          فاکتورساز عمومی سایت فعال باشد
+        </label>
+      </div>
+
+      <button className="button button-green" onClick={save}>
+        <Save size={16} /> ذخیره تنظیمات حسابداری
+      </button>
+      {saved && <small className="admin-success">✓ ذخیره شد — در پنل کاربران و صفحه فرود حسابداری اعمال می‌شود.</small>}
     </div>
   );
 }
@@ -1508,7 +1606,7 @@ function FeedbackTab() {
   const avg = items.length ? (items.reduce((s, i) => s + i.rating, 0) / items.length).toFixed(1) : '—';
   return (
     <div className="admin-table-wrap">
-      <h2>بازخورد کاربران — میانگین {avg} از ۵ ({items.length} نظر)</h2>
+      <h2>بازخورد کاربران — میانگین {avg.toLocaleString('fa-IR')} از ۵ ({items.length.toLocaleString('fa-IR')} نظر)</h2>
       <table className="admin-table">
         <thead><tr><th>نوع</th><th>مقصد</th><th>امتیاز</th><th>نظر</th><th>تاریخ</th><th></th></tr></thead>
         <tbody>

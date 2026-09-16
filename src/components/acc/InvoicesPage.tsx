@@ -6,18 +6,20 @@ import type { AccBusiness, AccInvoice, InvoiceType } from '@/lib/acc/types';
 import { cancelInvoice, deleteDraftInvoice, issueInvoice, listInvoices, nextInvoiceNumber, saveInvoice } from '@/lib/acc/api';
 import { INVOICE_STATUSES, INVOICE_TYPES } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
-import { formatJalali } from '@/lib/acc/jalali';
+import { formatJalali, toFaDigits } from '@/lib/acc/jalali';
+import { featureEnabled } from '@/lib/acc/plan';
+import { exportExcel, htmlTable, printHtml, exportWord, exportFilename, brandLogoUrl, type BrandAccess } from '@/lib/acc/export';
 import { Badge, EmptyState, confirmAction, toast } from './ui';
 
-const TABS: { key: InvoiceType | 'all'; label: string }[] = [
+const TABS: { key: InvoiceType | 'all'; label: string; pro?: boolean }[] = [
   { key: 'all', label: 'همه' },
   { key: 'sale', label: 'فروش' },
   { key: 'proforma', label: 'پیش‌فاکتور' },
-  { key: 'purchase', label: 'خرید' },
-  { key: 'return_sale', label: 'برگشت از فروش' },
+  { key: 'purchase', label: 'خرید', pro: true },
+  { key: 'return_sale', label: 'برگشت از فروش', pro: true },
 ];
 
-export default function InvoicesPage({ business }: { business: AccBusiness }) {
+export default function InvoicesPage({ business, plan }: { business: AccBusiness; plan?: string }) {
   const [rows, setRows] = useState<AccInvoice[]>([]);
   const [tab, setTab] = useState<InvoiceType | 'all'>('all');
   const [query, setQuery] = useState('');
@@ -95,11 +97,30 @@ export default function InvoicesPage({ business }: { business: AccBusiness }) {
     }
   }
 
+  const canExport = featureEnabled(plan, 'export_multiformat');
+
+  function doExport(kind: 'xlsx' | 'doc' | 'print') {
+    const headers = ['شماره', 'نوع', 'تاریخ', 'طرف‌حساب', 'جمع کل', 'مالیات', 'تسویه شده', 'وضعیت'];
+    const rowsOut = filtered.map((r) => [
+      r.number, INVOICE_TYPES[r.type].label, formatJalali(r.date_g),
+      r.partner?.name || 'متفرقه', r.total, r.vat_total, r.paid_total,
+      INVOICE_STATUSES[r.status].label,
+    ]);
+    const title = 'صورتحساب‌ها';
+    if (kind === 'xlsx') {
+      void exportExcel(exportFilename('invoices', undefined, 'xlsx'), [{ name: 'صورتحساب‌ها', headers, rows: rowsOut }], { business: business.brand || business.name, title });
+      return;
+    }
+    const html = `<h2>${title} — ${business.brand || business.name}</h2>${htmlTable(headers, rowsOut)}`;
+    if (kind === 'doc') exportWord(exportFilename('invoices', undefined, 'doc'), title, html, brandLogoUrl(business, { status: plan } as BrandAccess));
+    else printHtml(title, html, { logoUrl: brandLogoUrl(business, { status: plan } as BrandAccess) });
+  }
+
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap', flex: 1 }}>
-          {TABS.map((t) => (
+          {TABS.filter((t) => !t.pro || featureEnabled(plan, 'invoice_purchase')).map((t) => (
             <button
               key={t.key}
               className={`acc-btn ${tab === t.key ? 'acc-btn-primary' : 'acc-btn-outline'}`}
@@ -114,6 +135,13 @@ export default function InvoicesPage({ business }: { business: AccBusiness }) {
           <Search size={15} style={{ position: 'absolute', top: 13, right: 12, color: 'var(--muted)' }} />
           <input className="acc-input" placeholder="شماره یا مشتری…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ paddingRight: '2.3rem', minHeight: 42 }} />
         </div>
+        {canExport && (
+          <>
+            <button className="acc-btn acc-btn-outline" onClick={() => doExport('xlsx')}>اکسل</button>
+            <button className="acc-btn acc-btn-outline" onClick={() => doExport('doc')}>ورد</button>
+            <button className="acc-btn acc-btn-outline" onClick={() => doExport('print')}>چاپ</button>
+          </>
+        )}
         <a className="acc-btn acc-btn-primary" href="/حسابداری/پنل/فاکتور-جدید/فروش"><Plus size={15} /> صورتحساب جدید</a>
       </div>
 
@@ -127,7 +155,7 @@ export default function InvoicesPage({ business }: { business: AccBusiness }) {
           <tbody>
             {filtered.map((r) => (
               <tr key={r.id}>
-                <td className="num" style={{ fontWeight: 700, color: 'var(--gold2)' }}>{r.number}</td>
+                <td className="num" style={{ fontWeight: 700, color: 'var(--gold2)' }}>{toFaDigits(r.number)}</td>
                 <td>{INVOICE_TYPES[r.type].short}</td>
                 <td className="num">{formatJalali(r.date_g)}</td>
                 <td>{r.partner?.name || 'متفرقه'}</td>

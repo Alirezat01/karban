@@ -5,6 +5,7 @@ import { Building, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { AccBusiness, AccAccount } from '@/lib/acc/types';
 import { deleteAccount, listAccounts, saveAccount } from '@/lib/acc/api';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
+import { toFaDigits } from '@/lib/acc/jalali';
 import { Field, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
 
 type AccountWithBalance = AccAccount & { balance?: number };
@@ -56,7 +57,7 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
         </div>
         <div className="acc-kpi">
           <div className="k-label"><Landmark size={15} /> تعداد حساب‌ها</div>
-          <div className="k-value">{rows.length}</div>
+          <div className="k-value">{toFaDigits(rows.length)}</div>
         </div>
       </div>
 

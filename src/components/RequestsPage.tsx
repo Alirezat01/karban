@@ -53,7 +53,7 @@ export function RequestsListPage() {
               </button>
             ))}
           </div>
-          <small>{filtered.length} درخواست آماده</small>
+          <small>{filtered.length.toLocaleString('fa-IR')} درخواست آماده</small>
         </div>
 
         {loading ? (

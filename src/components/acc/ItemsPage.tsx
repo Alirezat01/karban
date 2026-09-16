@@ -12,6 +12,9 @@ import { parseStuffFile } from '@/lib/acc/stuff-file';
 import { UNITS, VAT_DEFAULT_RATE } from '@/lib/acc/constants';
 import { Field, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
 import { formatMoney } from '@/lib/acc/money';
+import { toFaDigits } from '@/lib/acc/jalali';
+import { featureEnabled } from '@/lib/acc/plan';
+import { Lock } from 'lucide-react';
 
 /* ───────────── انتخابگر شناسه کالا و خدمات ───────────── */
 function StuffPicker({ value, onPick }: {
@@ -149,13 +152,16 @@ function ImportCatalogModal({ open, onClose, onDone }: {
 }
 
 /* ───────────── صفحه اصلی ───────────── */
-export default function ItemsPage({ business }: { business: AccBusiness }) {
+export default function ItemsPage({ business, plan }: { business: AccBusiness; plan?: string }) {
   const [rows, setRows] = useState<AccItem[]>([]);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Partial<AccItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [catalogCount, setCatalogCount] = useState(0);
+
+  const canStuff = featureEnabled(plan, 'stuff_catalog');
+  const canInventory = featureEnabled(plan, 'inventory');
 
   async function load() {
     setLoading(true);
@@ -208,10 +214,14 @@ export default function ItemsPage({ business }: { business: AccBusiness }) {
           <Search size={15} style={{ position: 'absolute', top: 14, right: 12, color: 'var(--muted)' }} />
           <input className="acc-input" placeholder="جست‌وجوی کالا یا خدمت…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ paddingRight: '2.3rem' }} />
         </div>
-        <button className="acc-btn acc-btn-outline" onClick={() => setImportOpen(true)} title="واردات شناسه‌های رسمی مالیات">
-          <FileUp size={15} /> شناسه‌های مودیان
-          {catalogCount > 0 ? <span className="acc-badge ok">{catalogCount.toLocaleString('fa-IR')}</span> : null}
-        </button>
+        {canStuff ? (
+          <button className="acc-btn acc-btn-outline" onClick={() => setImportOpen(true)} title="واردات شناسه‌های رسمی مالیات">
+            <FileUp size={15} /> شناسه‌های مودیان
+            {catalogCount > 0 ? <span className="acc-badge ok">{catalogCount.toLocaleString('fa-IR')}</span> : null}
+          </button>
+        ) : (
+          <span className="acc-badge draft" style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}><Lock size={12} /> شناسه‌های مودیان — پیشرفته</span>
+        )}
         <button className="acc-btn acc-btn-primary" onClick={() => setEditing({ kind: 'service', unit: 'عدد', vat_rate: business.default_vat_rate ?? VAT_DEFAULT_RATE })}><Plus size={15} /> کالا / خدمت جدید</button>
       </div>
 
@@ -238,8 +248,10 @@ export default function ItemsPage({ business }: { business: AccBusiness }) {
                 <td>{r.unit}</td>
                 <td className="num">{formatMoney(r.sale_price)}</td>
                 <td className="num">{formatMoney(r.purchase_price)}</td>
-                <td>{r.vat_exempt ? <span className="acc-badge draft">معاف</span> : `${r.vat_rate}٪`}</td>
-                <td className="num">{r.track_stock ? formatMoney(r.stock) : '—'}</td>
+                <td>{r.vat_exempt ? <span className="acc-badge draft">معاف</span> : `${toFaDigits(r.vat_rate)}٪`}</td>
+                <td className="num" style={canInventory && r.track_stock && r.stock <= 3 ? { color: '#f87171', fontWeight: 700 } : undefined}>
+                  {r.track_stock ? formatMoney(r.stock) : '—'}
+                </td>
                 <td>
                   <div className="row-actions">
                     <button className="acc-icon-btn" title="ویرایش" onClick={() => setEditing(r)}><Pencil size={14} /></button>
@@ -267,19 +279,25 @@ export default function ItemsPage({ business }: { business: AccBusiness }) {
                 </select>
               </Field>
             </div>
-            <Field label="شناسه کالا و خدمات (سامانه مودیان)" hint="از فهرست رسمی مالیات جست‌وجو و انتخاب کنید — روی صورتحساب رسمی چاپ می‌شود">
-              <StuffPicker
-                value={editing.stuff_id || null}
-                onPick={(row) => {
-                  if (!row) { setEditing({ ...editing, stuff_id: null }); return; }
-                  const patch: Partial<AccItem> = { ...editing, stuff_id: row.id };
-                  /* اگر کالا معاف نیست و نرخ رسمی دارد، پیشنهاد بده */
-                  if (!editing.vat_exempt && row.vat && row.vat > 0) patch.vat_rate = row.vat;
-                  if (!editing.name?.trim()) patch.name = row.description.slice(0, 60);
-                  setEditing(patch);
-                }}
-              />
-            </Field>
+            {canStuff ? (
+              <Field label="شناسه کالا و خدمات (سامانه مودیان)" hint="از فهرست رسمی مالیات جست‌وجو و انتخاب کنید — روی صورتحساب رسمی چاپ می‌شود">
+                <StuffPicker
+                  value={editing.stuff_id || null}
+                  onPick={(row) => {
+                    if (!row) { setEditing({ ...editing, stuff_id: null }); return; }
+                    const patch: Partial<AccItem> = { ...editing, stuff_id: row.id };
+                    /* اگر کالا معاف نیست و نرخ رسمی دارد، پیشنهاد بده */
+                    if (!editing.vat_exempt && row.vat && row.vat > 0) patch.vat_rate = row.vat;
+                    if (!editing.name?.trim()) patch.name = row.description.slice(0, 60);
+                    setEditing(patch);
+                  }}
+                />
+              </Field>
+            ) : (
+              <Field label="شناسه کالا و خدمات (سامانه مودیان)" hint="انتخاب شناسه رسمی مخصوص نسخه پیشرفته است">
+                <input className="acc-input" value={editing.stuff_id || ''} disabled placeholder="با ارتقای پلن فعال می‌شود" />
+              </Field>
+            )}
             <div className="acc-form-grid">
               <Field label="کد کالای داخلی (اختیاری)" hint="کد دلخواه خودتان — جدا از شناسه مودیان"><input className="acc-input" value={editing.code || ''} onChange={(e) => setEditing({ ...editing, code: e.target.value })} /></Field>
               <Field label="واحد شمارش">
@@ -316,14 +334,20 @@ export default function ItemsPage({ business }: { business: AccBusiness }) {
             </div>
             <div className="acc-form-grid">
               <Field label="مدیریت موجودی انبار">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.84rem', color: 'var(--text)', minHeight: 46 }}>
-                  <input type="checkbox" checked={!!editing.track_stock} onChange={(e) => setEditing({ ...editing, track_stock: e.target.checked })} />
-                  موجودی به‌صورت خودکار با فروش کم شود
-                </label>
+                {canInventory ? (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.84rem', color: 'var(--text)', minHeight: 46 }}>
+                    <input type="checkbox" checked={!!editing.track_stock} onChange={(e) => setEditing({ ...editing, track_stock: e.target.checked })} />
+                    موجودی به‌صورت خودکار با فروش کم شود
+                  </label>
+                ) : (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.84rem', color: 'var(--muted)', minHeight: 46 }}>
+                    <Lock size={13} /> انبار و موجودی — مخصوص نسخه پیشرفته
+                  </label>
+                )}
               </Field>
-              {editing.track_stock ? (
+              {canInventory && editing.track_stock ? (
                 <Field label="موجودی فعلی">
-                  <input className="acc-input" inputMode="numeric" value={editing.stock ?? 0} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value) || 0 })} />
+                  <input className="acc-input num" inputMode="numeric" value={toFaDigits(editing.stock ?? 0)} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value.replace(/[^\d]/g, '')) || 0 })} />
                 </Field>
               ) : null}
             </div>

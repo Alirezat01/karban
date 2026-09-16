@@ -268,3 +268,44 @@ export interface AccStuffCatalogRow {
   is_general: boolean | null;
   shamsi_date: string | null;
 }
+
+/* ───────────────── نسخه ۴: چک‌ها ───────────────── */
+export type CheckKind = 'received' | 'issued';
+export type CheckStatus = 'in_hand' | 'deposited' | 'cleared' | 'bounced' | 'returned' | 'canceled';
+
+export const CHECK_KINDS: Record<CheckKind, string> = {
+  received: 'چک دریافتی',
+  issued: 'چک پرداختی',
+};
+
+export interface AccCheck {
+  id: string;
+  business_id: string;
+  kind: CheckKind;
+  partner_id: string | null;
+  account_id: string | null;
+  invoice_id: string | null;
+  amount: number;
+  serial_no: string | null;
+  bank_name: string | null;
+  branch: string | null;
+  issue_date_g: string | null;
+  due_date_g: string;
+  status: CheckStatus;
+  description: string | null;
+  created_by: string | null;
+  created_at: string;
+  partner?: AccPartner | null;
+  account?: AccAccount | null;
+}
+
+/* مانده و گردش یک طرف‌حساب (صورت‌حساب) */
+export interface PartnerStatement {
+  partner: AccPartner;
+  invoices: AccInvoice[];
+  transactions: AccTransaction[];
+  totalInvoiced: number;
+  totalSettled: number;
+  balance: number;
+  agingBuckets: { label: string; amount: number }[];
+}

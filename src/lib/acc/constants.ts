@@ -49,6 +49,16 @@ export const PAYMENT_METHODS: Record<string, string> = {
   other: 'سایر',
 };
 
+/* وضعیت چک‌ها */
+export const CHECK_STATUS_LABEL: Record<string, string> = {
+  in_hand: 'در جریان',
+  deposited: 'در بانک',
+  cleared: 'وصول شد',
+  bounced: 'برگشت خورد',
+  returned: 'عودت شد',
+  canceled: 'ابطال شد',
+};
+
 export const CHART_KINDS: Record<string, string> = {
   asset: 'دارایی',
   liability: 'بدهی',
