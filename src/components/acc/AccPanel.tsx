@@ -77,7 +77,7 @@ function AnonGate() {
       <h2>برای ورود به پنل حسابداری، ابتدا وارد شوید</h2>
       <p>دسترسی به حسابداری هوشمند کاربان فقط برای حساب‌های دارای اشتراک فعال یا نسخه آزمایشی فراهم است. ثبت‌نام ساده به‌تنهایی دسترسی نمی‌دهد.</p>
       <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center', marginTop: '1.2rem', flexWrap: 'wrap' }}>
-        <a className="acc-btn acc-btn-primary" href="/ورود">ورود به کاربان</a>
+        <a className="acc-btn acc-btn-primary" href="/ورود?next=/حسابداری/پنل">ورود به کاربان</a>
         <a className="acc-btn acc-btn-outline" href="/حسابداری">معرفی و پلن‌ها <Sparkles size={15} /></a>
       </div>
     </GateShell>

@@ -18,6 +18,8 @@
       "source": "/sitemap.xml",
       "destination": "/api/sitemap.xml"
     },
+    { "source": "/auth/callback", "destination": "/index.html" },
+    { "source": "/auth/callback/:path*", "destination": "/index.html" },
     { "source": "/ورود", "destination": "/index.html" },
     { "source": "/%D9%88%D8%B1%D9%88%D8%AF", "destination": "/index.html" },
     { "source": "/داشبورد", "destination": "/index.html" },

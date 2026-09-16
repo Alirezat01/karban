@@ -1,13 +1,28 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
-import { useAuth, signInWithGoogle, signOutUser } from '@/lib/auth';
+import { useAuth, signInWithGoogle, signOutUser, sanitizeNext } from '@/lib/auth';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
+
+function nextFromQuery(): string | null {
+  try {
+    return sanitizeNext(new URLSearchParams(window.location.search).get('next'));
+  } catch {
+    return null;
+  }
+}
 
 export default function LoginPage() {
   const { loading, userId, email, profile, displayName, saveProfile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const next = nextFromQuery();
+
+  /* اگر با next آمده (مثلاً از پنل حسابداری) و لاگین است → مستقیم ببر به مقصد */
+  useEffect(() => {
+    if (!loading && userId && next) window.location.replace(next);
+  }, [loading, userId, next]);
+
   const [form, setForm] = useState({
     full_name: '',
     phone: '',
@@ -37,7 +52,7 @@ export default function LoginPage() {
   const google = async () => {
     setBusy(true);
     setErr('');
-    const { error } = await signInWithGoogle();
+    const { error } = await signInWithGoogle(next ?? undefined);
     if (error) {
       setErr('ورود با گوگل انجام نشد: ' + error.message);
       setBusy(false);

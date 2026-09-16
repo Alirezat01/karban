@@ -58,6 +58,7 @@ const RequestViewPage = React.lazy(() =>
 );
 const AccLanding = React.lazy(() => import('@/components/acc/AccLanding'));
 const AccPanel = React.lazy(() => import('@/components/acc/AccPanel'));
+const AuthCallbackPage = React.lazy(() => import('@/components/AuthCallbackPage'));
 
 function Page({ title, description, breadcrumb, children, jsonLd, noindex, image }: { title: string; description: string; breadcrumb?: (string | { name: string; href: string })[]; children: ReactNode; jsonLd?: JsonLd; noindex?: boolean; image?: string }) {
   return (
@@ -479,6 +480,17 @@ export default function App() {
       <div dir="rtl" className="app-root">
         <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><KarbanLoader label="در حال باز کردن پنل مدیریت…" /></div>}>
           <AdminShell />
+        </Suspense>
+      </div>
+    );
+  }
+
+  /* مقصد برگشت OAuth گوگل — مسیر ASCII پایدار، خارج از هدر/فوتر سایت */
+  if (segments[0] === 'auth' && segments[1] === 'callback') {
+    return (
+      <div dir="rtl" className="app-root">
+        <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><KarbanLoader label="در حال تکمیل ورود…" /></div>}>
+          <AuthCallbackPage />
         </Suspense>
       </div>
     );
