@@ -55,22 +55,29 @@ export async function fetchMyBusinesses() {
   return (data || []) as AccBusiness[];
 }
 
-export async function createBusiness(input: Partial<AccBusiness>) {
-  const { data: user } = await supabase.auth.getUser();
-  if (!user.user) throw new Error('وارد نشده‌اید');
-  const { data, error } = await supabase
-    .from('acc_businesses')
-    .insert({ ...input, owner_id: user.user.id })
-    .select('*')
-    .single();
+export async function createBusiness(input: Partial<AccBusiness> & { contact_name?: string; contact_phone?: string }) {
+  const { data, error } = await supabase.rpc('acc_create_business', { p_form: input as unknown as Record<string, unknown> });
   if (error) throw error;
-  // اتصال لایسنس آزاد (بدون کسب‌وکار) به این کسب‌وکار
-  await supabase
-    .from('acc_access')
-    .update({ business_id: data.id })
-    .eq('user_id', user.user.id)
-    .is('business_id', null);
-  return data as AccBusiness;
+  const { data: biz, error: bizErr } = await supabase
+    .from('acc_businesses')
+    .select('*')
+    .eq('id', data as string)
+    .single();
+  if (bizErr) throw bizErr;
+  return biz as AccBusiness;
+}
+
+/* شروع خودکار نسخه آزمایشی ۱۴ روزه — یک‌بار برای هر کاربر، بدون تایید ادمین */
+export async function startTrial(input: Partial<AccBusiness> & { contact_name?: string; contact_phone?: string }) {
+  const { data, error } = await supabase.rpc('acc_start_trial', { p_form: input as unknown as Record<string, unknown> });
+  if (error) throw error;
+  const { data: biz, error: bizErr } = await supabase
+    .from('acc_businesses')
+    .select('*')
+    .eq('id', data as string)
+    .single();
+  if (bizErr) throw bizErr;
+  return biz as AccBusiness;
 }
 
 export async function updateBusiness(id: string, patch: Partial<AccBusiness>) {
@@ -247,6 +254,7 @@ export interface InvoicePayload {
   due_date_g: string | null;
   description: string | null;
   payment_terms: string | null;
+  is_cash_sale: boolean | null;
   items: DraftItem[];
 }
 
@@ -261,6 +269,7 @@ export async function saveInvoice(businessId: string, payload: InvoicePayload) {
     due_date_g: payload.due_date_g,
     description: payload.description,
     payment_terms: payload.payment_terms,
+    is_cash_sale: payload.is_cash_sale ?? true,
     subtotal: totals.subtotal,
     discount_total: totals.discountTotal,
     vat_total: totals.vatTotal,

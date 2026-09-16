@@ -21,10 +21,12 @@ export interface AccBusiness {
   economic_code: string | null;
   registration_number: string | null;
   province: string | null;
+  county: string | null;
   city: string | null;
   address: string | null;
   postal_code: string | null;
   phone: string | null;
+  fax: string | null;
   default_vat_rate: number;
   currency: Currency;
   invoice_prefix: string | null;
@@ -55,8 +57,13 @@ export interface AccPartner {
   national_id: string | null;
   shenase_melli: string | null;
   economic_code: string | null;
+  registration_number: string | null;
+  province: string | null;
+  county: string | null;
+  city: string | null;
   postal_code: string | null;
   phone: string | null;
+  fax: string | null;
   address: string | null;
   notes: string | null;
   created_at: string;
@@ -107,6 +114,7 @@ export interface AccInvoice {
   paid_total: number;
   description: string | null;
   payment_terms: string | null;
+  is_cash_sale: boolean | null;
   moadian_uid: string | null;
   posted_at: string | null;
   reversed_at: string | null;

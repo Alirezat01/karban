@@ -21,20 +21,32 @@ const FEATURES = [
 
 const PLANS = [
   {
-    key: 'trial', name: 'نسخه آزمایشی', price: 'رایگان', note: '۱۴ روز کامل، بدون نیاز به کارت',
-    items: ['تمام امکانات نسخه کامل', 'تا ۲۰ صورتحساب', 'بدون تعهد خرید', 'فعال‌سازی پس از تایید'],
+    key: 'trial', name: 'نسخه آزمایشی', price: 'رایگان', note: '۱۴ روز کامل — بدون نیاز به کارت',
+    items: ['۱ کسب‌وکار', 'تا ۲۰ صورتحساب رسمی', 'فاکتور رسمی استاندارد مالیاتی', 'دفترخانه و تراز آزمایشی خودکار', 'بدون لوگو و امضای اختصاصی', 'بدون دعوت حسابدار'],
     cta: 'شروع رایگان', href: '/حسابداری/پنل', featured: false,
   },
   {
     key: 'monthly', name: 'اشتراک ماهانه', price: '۲۹۰٬۰۰۰', note: 'تومان در ماه',
-    items: ['صورتحساب نامحدود', 'دفترخانه و گزارش‌های کامل', 'لوگو، امضا و مهر اختصاصی', 'دعوت حسابدار', 'پشتیبانی کاربان'],
+    items: ['۳ کسب‌وکار', 'صورتحساب نامحدود', 'لوگو، امضا و مهر اختصاصی روی فاکتور', 'گزارش‌های مالیاتی کامل (ارزش افزوده + ماده ۱۶۹)', 'دعوت حسابدار با نقش محدود', 'پشتیبانی کاربان'],
     cta: 'خرید اشتراک ماهانه', featured: true,
   },
   {
     key: 'yearly', name: 'اشتراک سالانه', price: '۲٬۹۰۰٬۰۰۰', note: 'تومان در سال — ۲ ماه هدیه',
-    items: ['همه امکانات پلن ماهانه', '۲ ماه رایگان', 'اولویت پشتیبانی', 'قیمت ثابت تا پایان دوره'],
+    items: ['۵ کسب‌وکار', 'همه امکانات پلن ماهانه', 'اولویت پشتیبانی', 'قیمت ثابت تا پایان دوره', 'آماده‌سازی اتصال به سامانه مودیان', 'مشاوره راه‌اندازی اولیه'],
     cta: 'خرید اشتراک سالانه', featured: false,
   },
+];
+
+/* جدول مقایسه — تفکیک شفاف امکانات بین پلن‌ها */
+const COMPARE: { label: string; trial: string; monthly: string; yearly: string }[] = [
+  { label: 'تعداد کسب‌وکار', trial: '۱', monthly: '۳', yearly: '۵' },
+  { label: 'سقف صورتحساب رسمی', trial: '۲۰ عدد', monthly: 'نامحدود', yearly: 'نامحدود' },
+  { label: 'فاکتور رسمی مطابق فرم مالیاتی', trial: '✓', monthly: '✓', yearly: '✓' },
+  { label: 'دفترخانه، تراز و سود و زیان', trial: '✓', monthly: '✓', yearly: '✓' },
+  { label: 'لوگو، امضا و مهر اختصاصی', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'گزارش ارزش افزوده و معاملات فصلی', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'دعوت حسابدار', trial: '—', monthly: '✓', yearly: '✓' },
+  { label: 'پشتیبانی', trial: 'پایه', monthly: 'عادی', yearly: 'اولویت‌دار' },
 ];
 
 const FAQ = [
@@ -137,8 +149,8 @@ export default function AccLanding() {
       <section id="acc-plans" style={{ paddingTop: '3.5rem' }}>
         <div className="container">
           <div className="lux-heading"><span className="line" /><h2>پلن‌های اشتراک</h2><span className="line" /></div>
-          <p style={{ textAlign: 'center', maxWidth: 560, margin: '-1rem auto 2.2rem', fontSize: '.9rem' }}>
-            ابتدا رایگان امتحان کنید؛ هر زمان خواستید ارتقا دهید. فعال‌سازی پس از تایید کارشناس کاربان انجام می‌شود.
+          <p style={{ textAlign: 'center', maxWidth: 620, margin: '-1rem auto 2.2rem', fontSize: '.9rem' }}>
+            با نسخه آزمایشی رایگان شروع کنید (۱ کسب‌وکار، تا ۲۰ صورتحساب)؛ هر زمان خواستید کسب‌وکار دوم و سوم را اضافه کنید یا امکانات اختصاصی بگیرید، پلن بخرید.
           </p>
           <div className="acc-plans">
             {PLANS.map((p) => (
@@ -153,6 +165,30 @@ export default function AccLanding() {
                   : <button className="button button-green full-button" onClick={() => setOrder({ plan: p.key, label: p.name })}>{p.cta}</button>}
               </div>
             ))}
+          </div>
+
+          {/* جدول مقایسه امکانات */}
+          <div className="acc-compare">
+            <table>
+              <thead>
+                <tr>
+                  <th>امکانات</th>
+                  <th>نسخه آزمایشی</th>
+                  <th>اشتراک ماهانه</th>
+                  <th>اشتراک سالانه</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE.map((row) => (
+                  <tr key={row.label}>
+                    <td>{row.label}</td>
+                    <td className={row.trial === '—' ? 'cmp-off' : 'cmp-on'}>{row.trial}</td>
+                    <td className="cmp-on">{row.monthly}</td>
+                    <td className="cmp-on">{row.yearly}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>

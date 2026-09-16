@@ -118,10 +118,19 @@ export default function PartnersPage({ business }: { business: AccBusiness }) {
             </div>
             <div className="acc-form-grid">
               <Field label="شماره اقتصادی طرف‌حساب"><input className="acc-input" value={editing.economic_code || ''} onChange={(e) => setEditing({ ...editing, economic_code: e.target.value })} /></Field>
-              <Field label="کد پستی"><input className="acc-input" value={editing.postal_code || ''} onChange={(e) => setEditing({ ...editing, postal_code: e.target.value })} /></Field>
+              <Field label="شماره ثبت (حقوقی)"><input className="acc-input" value={editing.registration_number || ''} onChange={(e) => setEditing({ ...editing, registration_number: e.target.value })} /></Field>
+            </div>
+            <div className="acc-form-grid-3">
+              <Field label="استان"><input className="acc-input" value={editing.province || ''} onChange={(e) => setEditing({ ...editing, province: e.target.value })} /></Field>
+              <Field label="شهرستان"><input className="acc-input" value={editing.county || ''} onChange={(e) => setEditing({ ...editing, county: e.target.value })} /></Field>
+              <Field label="شهر"><input className="acc-input" value={editing.city || ''} onChange={(e) => setEditing({ ...editing, city: e.target.value })} /></Field>
             </div>
             <div className="acc-form-grid">
+              <Field label="کد پستی"><input className="acc-input" inputMode="numeric" value={editing.postal_code || ''} onChange={(e) => setEditing({ ...editing, postal_code: e.target.value })} /></Field>
               <Field label="تلفن"><input className="acc-input" value={editing.phone || ''} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} /></Field>
+            </div>
+            <div className="acc-form-grid">
+              <Field label="نمابر"><input className="acc-input" value={editing.fax || ''} onChange={(e) => setEditing({ ...editing, fax: e.target.value })} /></Field>
               <Field label="آدرس"><input className="acc-input" value={editing.address || ''} onChange={(e) => setEditing({ ...editing, address: e.target.value })} /></Field>
             </div>
             <div style={{ display: 'flex', gap: '.6rem' }}>

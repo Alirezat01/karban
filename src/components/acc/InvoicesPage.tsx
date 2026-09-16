@@ -82,6 +82,7 @@ export default function InvoicesPage({ business }: { business: AccBusiness }) {
         due_date_g: row.due_date_g,
         description: `تبدیل از پیش‌فاکتور ${row.number}`,
         payment_terms: row.payment_terms,
+        is_cash_sale: row.is_cash_sale !== false,
         items: full.acc_invoice_items.map((it) => ({
           item_id: it.item_id, title: it.title, unit: it.unit, quantity: Number(it.quantity),
           unit_price: it.unit_price, discount: it.discount, vat_rate: it.vat_rate,

@@ -34,6 +34,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
   const [dueDate, setDueDate] = useState<string>('');
   const [description, setDescription] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
+  const [isCash, setIsCash] = useState(true);
   const [rows, setRows] = useState<Row[]>([newRow(business.default_vat_rate ?? 10)]);
   const [partners, setPartners] = useState<AccPartner[]>([]);
   const [items, setItems] = useState<AccItem[]>([]);
@@ -58,6 +59,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           setDueDate(inv.due_date_g || '');
           setDescription(inv.description || '');
           setPaymentTerms(inv.payment_terms || '');
+          setIsCash(inv.is_cash_sale !== false);
           setPosted(!!inv.posted_at);
           setRows((inv.acc_invoice_items || []).map((it2) => ({
             key: Date.now() + Math.random(), item_id: it2.item_id, title: it2.title, unit: it2.unit,
@@ -126,6 +128,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
       due_date_g: dueDate || null,
       description: description || null,
       payment_terms: paymentTerms || null,
+      is_cash_sale: isCash,
       items: rows
         .filter((r) => r.title?.trim())
         .map((r) => ({
@@ -217,6 +220,13 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           <Field label="شرایط پرداخت">
             <input className="acc-input" placeholder="مثلاً: نصف نقد، بقیه تا پایان ماه" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
           </Field>
+        </div>
+        <div style={{ marginTop: '.9rem', display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap' }}>
+          <span className="acc-hint" style={{ fontSize: '.78rem' }}>نحوه فروش (چاپ در فرم رسمی):</span>
+          <div style={{ display: 'flex', gap: '.4rem' }}>
+            <button type="button" className={`acc-btn ${isCash ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 38, fontSize: '.8rem' }} onClick={() => setIsCash(true)}>نقدی</button>
+            <button type="button" className={`acc-btn ${!isCash ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 38, fontSize: '.8rem' }} onClick={() => setIsCash(false)}>غیر نقدی</button>
+          </div>
         </div>
       </div>
 

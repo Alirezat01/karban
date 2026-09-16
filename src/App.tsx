@@ -107,6 +107,9 @@ function AccPanelShell({ sub }: { sub: string[] }) {
   }, []);
   return <AccPanel sub={sub} />;
 }
+
+/* هشدار: AccPanel و AdminPage هر دو React.lazy هستند؛ بدون مرز Suspense،
+   ناوبری SPA (کلیک داخلی) حین suspend خطای React #426 می‌دهد و صفحه کاملاً سیاه می‌شود. */
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination'; title: string; desc: string }> = {
   'محاسبه-حقوق': { type: 'salary', title: META_TOOLS['محاسبه-حقوق'].title, desc: META_TOOLS['محاسبه-حقوق'].description },
   'هزینه-استخدام': { type: 'hire', title: META_TOOLS['هزینه-استخدام'].title, desc: META_TOOLS['هزینه-استخدام'].description },
@@ -458,7 +461,9 @@ export default function App() {
     if (segments[1] === 'پنل') {
       return (
         <div dir="rtl" className="app-root">
-          <AccPanelShell sub={segments.slice(2)} />
+          <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><KarbanLoader label="در حال باز کردن پنل حسابداری…" /></div>}>
+            <AccPanelShell sub={segments.slice(2)} />
+          </Suspense>
         </div>
       );
     }
@@ -472,7 +477,9 @@ export default function App() {
   if (segments[0] === 'admin') {
     return (
       <div dir="rtl" className="app-root">
-        <AdminShell />
+        <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><KarbanLoader label="در حال باز کردن پنل مدیریت…" /></div>}>
+          <AdminShell />
+        </Suspense>
       </div>
     );
   }

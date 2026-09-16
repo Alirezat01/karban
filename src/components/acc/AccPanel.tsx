@@ -1,14 +1,16 @@
-/* پنل حسابداری هوشمند کاربان — گیت دسترسی، چیدمان و روتر داخلی */
+/* پنل حسابداری هوشمند کاربان — گیت دسترسی، چیدمان و روتر داخلی
+   نسخه ۲: شروع خودکار تریال ۱۴روزه + کسب‌وکار دوم/سوم فقط با پلن */
 
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowLeftRight, BarChart3, BookOpen, FileText, LayoutDashboard, LogOut, Menu,
-  Package, Receipt, Settings, ShieldAlert, Users, Wallet, X, Building2, Sparkles,
+  ArrowLeftRight, BarChart3, BookOpen, Building2, CheckCircle2, Crown, FileText,
+  LayoutDashboard, LogOut, Menu, Package, Plus, Receipt, Settings, ShieldAlert,
+  Sparkles, Users, Wallet, X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAccAccess } from '@/lib/acc/access';
-import { createBusiness, submitTrialRequest } from '@/lib/acc/api';
-import { Field, ToastHost, ConfirmHost, toast } from "./ui";
+import { createBusiness, startTrial, submitTrialRequest } from '@/lib/acc/api';
+import { Field, ToastHost, ConfirmHost, Modal, toast } from "./ui";
 import Dashboard from './Dashboard';
 import PartnersPage from './PartnersPage';
 import ItemsPage from './ItemsPage';
@@ -82,84 +84,57 @@ function AnonGate() {
   );
 }
 
-function NoAccessGate({ onRequested }: { onRequested: () => void }) {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [bizName, setBizName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+/* ── فرم کامل راه‌اندازی کسب‌وکار (تریال و پلن‌دار) ── */
 
-  async function submit() {
-    if (!phone.trim()) { toast('شماره تماس را وارد کنید', 'error'); return; }
-    setBusy(true);
-    try {
-      await submitTrialRequest({ name: name.trim(), phone: phone.trim(), business_name: bizName.trim(), plan: 'trial' });
-      setDone(true);
-      onRequested();
-    } catch {
-      toast('ثبت درخواست ناموفق بود؛ دوباره تلاش کنید', 'error');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (done) {
-    return (
-      <GateShell>
-        <div className="gate-icon"><Sparkles size={26} /></div>
-        <h2>درخواست شما ثبت شد</h2>
-        <p>تیم کاربان درخواست نسخه آزمایشی شما را بررسی و فعال می‌کند. پس از فعال‌سازی، همین صفحه پنل شما را باز می‌کند.</p>
-        <a className="acc-btn acc-btn-outline" href="/حسابداری" style={{ marginTop: '1rem' }}>بازگشت به صفحه معرفی</a>
-      </GateShell>
-    );
-  }
-
-  return (
-    <GateShell>
-      <div className="gate-icon"><ShieldAlert size={26} /></div>
-      <h2>دسترسی به پنل حسابداری فعال نیست</h2>
-      <p>حساب شما اشتراک فعال ندارد. برای فعال‌سازی، اشتراک را از صفحه معرفی تهیه کنید یا درخواست نسخه آزمایشی رایگان بدهید.</p>
-      <div style={{ display: 'grid', gap: '.7rem', marginTop: '1.2rem', textAlign: 'right' }}>
-        <Field label="نام و نام خانوادگی"><input className="acc-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-        <Field label="شماره تماس *"><input className="acc-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
-        <Field label="نام کسب‌وکار"><input className="acc-input" value={bizName} onChange={(e) => setBizName(e.target.value)} /></Field>
-        <button className="acc-btn acc-btn-primary" disabled={busy} onClick={submit}>{busy ? 'در حال ثبت…' : 'درخواست نسخه آزمایشی رایگان'}</button>
-        <a className="acc-btn acc-btn-outline" href="/حسابداری">مشاهده پلن‌های اشتراک</a>
-      </div>
-    </GateShell>
-  );
+interface BizForm {
+  name: string; brand: string; person_type: 'real' | 'legal';
+  shenase_melli: string; national_id: string; economic_code: string; registration_number: string;
+  province: string; county: string; city: string; address: string; postal_code: string;
+  phone: string; fax: string; default_vat_rate: number;
+  contact_name: string; contact_phone: string;
 }
 
-function BusinessWizard({ onCreated }: { onCreated: () => void }) {
-  const [form, setForm] = useState({
-    name: '', person_type: 'legal' as 'real' | 'legal', shenase_melli: '', national_id: '',
-    economic_code: '', postal_code: '', phone: '', province: '', city: '', address: '', default_vat_rate: 10,
-  });
+const EMPTY_BIZ: BizForm = {
+  name: '', brand: '', person_type: 'legal', shenase_melli: '', national_id: '',
+  economic_code: '', registration_number: '', province: '', county: '', city: '',
+  address: '', postal_code: '', phone: '', fax: '', default_vat_rate: 10,
+  contact_name: '', contact_phone: '',
+};
+
+function BusinessWizard({
+  mode, onCreated, onCancel,
+}: { mode: 'trial' | 'licensed'; onCreated: () => void; onCancel?: () => void }) {
+  const [form, setForm] = useState<BizForm>(EMPTY_BIZ);
   const [busy, setBusy] = useState(false);
-  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: keyof BizForm, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
   async function submit() {
     if (!form.name.trim()) { toast('نام کسب‌وکار را وارد کنید', 'error'); return; }
     setBusy(true);
     try {
-      await createBusiness(form);
-      toast('کسب‌وکار شما ساخته شد');
+      if (mode === 'trial') await startTrial(form);
+      else await createBusiness(form);
+      toast(mode === 'trial' ? 'نسخه آزمایشی شما فعال شد 🎉' : 'کسب‌وکار جدید ساخته شد');
       onCreated();
-    } catch {
-      toast('ساخت کسب‌وکار ناموفق بود', 'error');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'عملیات ناموفق بود؛ دوباره تلاش کنید', 'error');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <GateShell>
-      <div className="gate-icon"><Building2 size={26} /></div>
-      <h2>کسب‌وکار خود را راه‌اندازی کنید</h2>
-      <p>لایسنس حسابداری شما فعال است؛ فقط مشخصات کسب‌وکار را برای صدور صورتحساب رسمی کامل کنید.</p>
-      <div style={{ display: 'grid', gap: '.7rem', marginTop: '1.2rem', textAlign: 'right' }}>
-        <Field label="نام کسب‌وکار / شرکت *"><input className="acc-input" value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.7rem' }}>
+    <div style={{ textAlign: 'right' }}>
+      <div style={{ display: 'grid', gap: '.7rem', marginTop: '1rem' }}>
+        <div className="acc-form-grid">
+          <Field label="نام کسب‌وکار / شرکت *">
+            <input className="acc-input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثلاً: شرکت بازرگانی نمونه" />
+          </Field>
+          <Field label="نام نمایشی / برند" hint="روی سربرگ فاکتور چاپ می‌شود">
+            <input className="acc-input" value={form.brand} onChange={(e) => set('brand', e.target.value)} />
+          </Field>
+        </div>
+        <div className="acc-form-grid">
           <Field label="نوع شخصیت">
             <select className="acc-select" value={form.person_type} onChange={(e) => set('person_type', e.target.value)}>
               <option value="legal">حقوقی (شرکت)</option>
@@ -170,18 +145,112 @@ function BusinessWizard({ onCreated }: { onCreated: () => void }) {
             <input className="acc-input" inputMode="numeric" value={form.default_vat_rate} onChange={(e) => set('default_vat_rate', Number(e.target.value) || 0)} />
           </Field>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.7rem' }}>
+        <div className="acc-form-grid">
           {form.person_type === 'legal'
             ? <Field label="شناسه ملی"><input className="acc-input" value={form.shenase_melli} onChange={(e) => set('shenase_melli', e.target.value)} /></Field>
             : <Field label="کد ملی"><input className="acc-input" value={form.national_id} onChange={(e) => set('national_id', e.target.value)} /></Field>}
           <Field label="شماره اقتصادی"><input className="acc-input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} /></Field>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.7rem' }}>
-          <Field label="کد پستی"><input className="acc-input" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} /></Field>
-          <Field label="تلفن"><input className="acc-input" value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+        <div className="acc-form-grid">
+          <Field label="شماره ثبت"><input className="acc-input" value={form.registration_number} onChange={(e) => set('registration_number', e.target.value)} /></Field>
+          <Field label="کد پستی (۱۰ رقمی)"><input className="acc-input" inputMode="numeric" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} /></Field>
         </div>
-        <button className="acc-btn acc-btn-primary" disabled={busy} onClick={submit}>{busy ? 'در حال ساخت…' : 'راه‌اندازی کسب‌وکار'}</button>
+        <div className="acc-form-grid-3">
+          <Field label="استان"><input className="acc-input" value={form.province} onChange={(e) => set('province', e.target.value)} /></Field>
+          <Field label="شهرستان"><input className="acc-input" value={form.county} onChange={(e) => set('county', e.target.value)} /></Field>
+          <Field label="شهر"><input className="acc-input" value={form.city} onChange={(e) => set('city', e.target.value)} /></Field>
+        </div>
+        <Field label="نشانی کامل"><input className="acc-input" value={form.address} onChange={(e) => set('address', e.target.value)} /></Field>
+        <div className="acc-form-grid">
+          <Field label="تلفن"><input className="acc-input" inputMode="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+          <Field label="نمابر"><input className="acc-input" value={form.fax} onChange={(e) => set('fax', e.target.value)} /></Field>
+        </div>
+        {mode === 'trial' && (
+          <div className="acc-form-grid">
+            <Field label="نام و نام خانوادگی"><input className="acc-input" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} /></Field>
+            <Field label="شماره تماس پیگیری"><input className="acc-input" inputMode="tel" value={form.contact_phone} onChange={(e) => set('contact_phone', e.target.value)} /></Field>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '.6rem', marginTop: '.4rem' }}>
+          <button className="acc-btn acc-btn-primary" disabled={busy} onClick={submit} style={{ flex: 1 }}>
+            {busy ? 'در حال انجام…' : mode === 'trial' ? 'فعال‌سازی رایگان ۱۴ روزه' : 'ساخت کسب‌وکار'}
+          </button>
+          {onCancel && <button className="acc-btn acc-btn-outline" onClick={onCancel} disabled={busy}>انصراف</button>}
+        </div>
       </div>
+    </div>
+  );
+}
+
+/* ── گیت بدون دسترسی: پیشنهاد فعال‌سازی سلف‌سرویس تریال ── */
+
+function NoAccessGate() {
+  const [showWizard, setShowWizard] = useState(false);
+  const [contactMode, setContactMode] = useState(false);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submitRequest() {
+    if (!phone.trim()) { toast('شماره تماس را وارد کنید', 'error'); return; }
+    setBusy(true);
+    try {
+      await submitTrialRequest({ name: name.trim(), phone: phone.trim(), plan: 'contact' });
+      toast('درخواست شما ثبت شد؛ کارشناسان کاربان تماس می‌گیرند');
+      setContactMode(false);
+    } catch {
+      toast('ثبت درخواست ناموفق بود؛ دوباره تلاش کنید', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <GateShell>
+      <div className="gate-icon"><Sparkles size={26} /></div>
+      {showWizard ? (
+        <>
+          <h2>فعال‌سازی نسخه آزمایشی رایگان</h2>
+          <p>۱۴ روز کامل، بدون نیاز به کارت بانکی — ۱ کسب‌وکار و تا ۲۰ صورتحساب رسمی. فقط مشخصات کسب‌وکارتان را وارد کنید تا فاکتور رسمی آماده باشد.</p>
+          <BusinessWizard mode="trial" onCreated={() => window.location.reload()} />
+        </>
+      ) : (
+        <>
+          <h2>حسابداری کاربان را رایگان امتحان کنید</h2>
+          <p>حساب شما هنوز اشتراک فعال ندارد. همین حالا نسخه آزمایشی ۱۴ روزه را بدون کارت بانکی فعال کنید یا پلن‌های اشتراک را ببینید.</p>
+          <div className="gate-perks">
+            <span><CheckCircle2 size={14} /> ۱۴ روز کامل و رایگان</span>
+            <span><CheckCircle2 size={14} /> فاکتور رسمی با استاندارد مالیاتی</span>
+            <span><CheckCircle2 size={14} /> دفترخانه و گزارش خودکار</span>
+          </div>
+          <div style={{ display: 'grid', gap: '.6rem', marginTop: '1.2rem' }}>
+            <button className="acc-btn acc-btn-primary" onClick={() => setShowWizard(true)}>شروع رایگان ۱۴ روزه</button>
+            <a className="acc-btn acc-btn-outline" href="/حسابداری">مشاهده پلن‌های اشتراک</a>
+            {contactMode ? (
+              <div style={{ display: 'grid', gap: '.6rem', textAlign: 'right', marginTop: '.4rem' }}>
+                <Field label="نام و نام خانوادگی"><input className="acc-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+                <Field label="شماره تماس *"><input className="acc-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+                <button className="acc-btn acc-btn-outline" disabled={busy} onClick={submitRequest}>{busy ? 'در حال ثبت…' : 'ثبت درخواست مشاوره خرید'}</button>
+              </div>
+            ) : (
+              <button className="acc-btn-plain" onClick={() => setContactMode(true)}>ترجیح می‌دهم کارشناسان تماس بگیرند</button>
+            )}
+          </div>
+        </>
+      )}
+    </GateShell>
+  );
+}
+
+/* ── راه‌اندازی کسب‌وکار برای کاربر پلن‌دار (کسب‌وکار اول) ── */
+
+function FirstBusinessGate() {
+  return (
+    <GateShell>
+      <div className="gate-icon"><Building2 size={26} /></div>
+      <h2>کسب‌وکار خود را راه‌اندازی کنید</h2>
+      <p>لایسنس حسابداری شما فعال است؛ فقط مشخصات رسمی کسب‌وکار را برای صدور صورتحساب کامل کنید. همه فیلدها روی فاکتور رسمی چاپ می‌شوند.</p>
+      <BusinessWizard mode="licensed" onCreated={() => window.location.reload()} />
     </GateShell>
   );
 }
@@ -221,9 +290,25 @@ function Sidebar({ path, open, onClose }: { path: string; open: boolean; onClose
   );
 }
 
-function Layout({ business, path, children }: { business: AccBusiness; path: string; children: React.ReactNode }) {
+const PLAN_LABEL: Record<string, string> = {
+  founder: 'بنیان‌گذار', yearly: 'اشتراک سالانه', monthly: 'اشتراک ماهانه', trial: 'نسخه آزمایشی',
+};
+
+function Layout({
+  business, businesses, plan, businessLimit, path, onSelect, onAddBusiness, children,
+}: {
+  business: AccBusiness;
+  businesses: AccBusiness[];
+  plan: string;
+  businessLimit: number;
+  path: string;
+  onSelect: (id: string) => void;
+  onAddBusiness: () => void;
+  children: React.ReactNode;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => { setMenuOpen(false); }, [path]);
+  const trialBadge = plan === 'trial';
   return (
     <div className="acc-shell">
       <Sidebar path={path} open={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -232,7 +317,23 @@ function Layout({ business, path, children }: { business: AccBusiness; path: str
           <button className="acc-icon-btn acc-menu-btn" onClick={() => setMenuOpen(true)} aria-label="منو"><Menu size={17} /></button>
           <h1>{PAGE_TITLES[path] || 'پنل حسابداری'}</h1>
           <div className="spacer" />
-          <span className="acc-biz-chip"><Building2 size={13} />{business.brand || business.name}</span>
+          {businesses.length > 1 ? (
+            <select
+              className="acc-select acc-biz-switcher"
+              value={business.id}
+              onChange={(e) => onSelect(e.target.value)}
+              aria-label="انتخاب کسب‌وکار"
+            >
+              {businesses.map((b) => <option key={b.id} value={b.id}>{b.brand || b.name}</option>)}
+            </select>
+          ) : (
+            <span className="acc-biz-chip"><Building2 size={13} />{business.brand || business.name}</span>
+          )}
+          <button className="acc-icon-btn" title="کسب‌وکار جدید" onClick={onAddBusiness}><Plus size={16} /></button>
+          <span className={`acc-plan-chip${trialBadge ? ' is-trial' : ''}`} title={`پلن فعلی: ${PLAN_LABEL[plan] || plan} — سقف ${businessLimit} کسب‌وکار`}>
+            {trialBadge ? <Sparkles size={12} /> : <Crown size={12} />}
+            {PLAN_LABEL[plan] || plan}
+          </span>
           <a className="acc-btn acc-btn-ghost" href="/" title="بازگشت به سایت">سایت کاربان</a>
           <button
             className="acc-icon-btn"
@@ -253,7 +354,8 @@ function Layout({ business, path, children }: { business: AccBusiness; path: str
 /* ───────────────── روت اصلی پنل ───────────────── */
 
 export default function AccPanel({ sub }: { sub: string[] }) {
-  const { state, reload } = useAccAccess();
+  const { state, reload, selectBusiness } = useAccAccess();
+  const [addOpen, setAddOpen] = useState(false);
   const seg = sub[0] || 'داشبورد';
 
   if (seg === 'چاپ') {
@@ -270,10 +372,10 @@ export default function AccPanel({ sub }: { sub: string[] }) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><KarbanLoader label="در حال بررسی دسترسی…" /></div>;
   }
   if (state.phase === 'anon') return (<><AnonGate /><ToastHost /><ConfirmHost /></>);
-  if (state.phase === 'no-access') return (<><NoAccessGate onRequested={reload} /><ToastHost /><ConfirmHost /></>);
-  if (state.phase === 'needs-business') return (<><BusinessWizard onCreated={reload} /><ToastHost /><ConfirmHost /></>);
+  if (state.phase === 'no-access') return (<><NoAccessGate /><ToastHost /><ConfirmHost /></>);
+  if (state.phase === 'needs-business') return (<><FirstBusinessGate /><ToastHost /><ConfirmHost /></>);
 
-  const { business, role } = state;
+  const { business, role, businesses, plan, businessLimit } = state;
 
   const page = (() => {
     switch (seg) {
@@ -298,9 +400,43 @@ export default function AccPanel({ sub }: { sub: string[] }) {
 
   return (
     <>
-      <Layout business={business} path={seg}>
+      <Layout
+        business={business}
+        businesses={businesses}
+        plan={plan}
+        businessLimit={businessLimit}
+        path={seg}
+        onSelect={selectBusiness}
+        onAddBusiness={() => setAddOpen(true)}
+      >
         {page}
       </Layout>
+
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="افزودن کسب‌وکار جدید">
+        <div style={{ display: 'grid', gap: '.9rem' }}>
+          <p className="acc-hint" style={{ fontSize: '.8rem', lineHeight: 1.9 }}>
+            پلن فعلی شما: <b style={{ color: 'var(--gold2)' }}>{PLAN_LABEL[plan] || plan}</b> — سقف {businessLimit} کسب‌وکار.
+            {businesses.length >= businessLimit
+              ? ' سقف پلن شما تکمیل است؛ برای کسب‌وکار بیشتر، پلن بالاتر را تهیه کنید.'
+              : ` می‌توانید ${businessLimit - businesses.length} کسب‌وکار دیگر بسازید.`}
+          </p>
+          {businesses.length >= businessLimit ? (
+            <div style={{ display: 'grid', gap: '.6rem' }}>
+              <div className="acc-upsell">
+                <Crown size={18} />
+                <div>
+                  <b>ارتقای پلن</b>
+                  <p>اشتراک ماهانه: ۳ کسب‌وکار — اشتراک سالانه: ۵ کسب‌وکار. با ارتقا، همه امکانات پلن روی کسب‌وکارهای جدید فعال می‌شود.</p>
+                </div>
+              </div>
+              <a className="acc-btn acc-btn-primary" href="/حسابداری" onClick={() => setAddOpen(false)}>مشاهده و ارتقای پلن</a>
+            </div>
+          ) : (
+            <BusinessWizard mode="licensed" onCreated={() => { setAddOpen(false); reload(); }} onCancel={() => setAddOpen(false)} />
+          )}
+        </div>
+      </Modal>
+
       <ToastHost />
       <ConfirmHost />
     </>

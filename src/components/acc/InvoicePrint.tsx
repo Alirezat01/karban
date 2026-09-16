@@ -1,15 +1,70 @@
-/* چاپ صورتحساب — ساختار و ظاهر مطابق صورتحساب الکترونیکی سامانه مودیان
-   (سه بخش: مشخصات فروشنده، مشخصات خریدار، جدول کالا/خدمات) */
+/* چاپ صورتحساب رسمی — بازسازی دقیق فرم «صورتحساب فروش کالا و خدمات»
+   (پیش‌نویس رسمی درگاه مالیاتی) با فونت و هویت سایت کاربان:
+   سه بخش مشخصات فروشنده / مشخصات خریدار / مشخصات کالا یا خدمات
+   + جدول ۱۱ ستونه استاندارد + جمع کل قابل پرداخت + نحوه فروش + مهر و امضا */
 
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Printer } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import type { AccBusiness, AccInvoice } from '@/lib/acc/types';
+import type { AccBusiness, AccInvoice, AccPartner } from '@/lib/acc/types';
 import { getInvoice } from '@/lib/acc/api';
 import { amountToWords, formatMoney } from '@/lib/acc/money';
 import { formatJalali } from '@/lib/acc/jalali';
-import { INVOICE_TYPES } from '@/lib/acc/constants';
 import { EmptyState } from './ui';
+
+const DASH = '—';
+
+function Cell({ label, value, span }: { label: string; value: string | null | undefined; span?: number }) {
+  return (
+    <td className="fr-cell" colSpan={span}>
+      <span className="fr-cell-label">{label}</span>
+      <span className="fr-cell-value">{value || DASH}</span>
+    </td>
+  );
+}
+
+/* عرض ستون‌های پایه فرم مشخصات (۶ ستون) — نزدیک به چیدمان فرم کاغذی */
+const FR_COLGROUP = (
+  <colgroup>
+    <col style={{ width: '23%' }} /><col style={{ width: '15%' }} /><col style={{ width: '15%' }} />
+    <col style={{ width: '16%' }} /><col style={{ width: '15%' }} /><col style={{ width: '16%' }} />
+  </colgroup>
+);
+
+function PartyTable({ title, p, isSeller }: { title: string; p: Partial<AccPartner> | AccBusiness | null; isSeller: boolean }) {
+  const personLegal = isSeller
+    ? (p as AccBusiness)?.person_type !== 'real'
+    : (p as AccPartner)?.person_type === 'legal';
+  const idLabel = personLegal ? 'شناسه ملی' : 'کد ملی';
+  const idValue = personLegal ? ((p as AccBusiness)?.shenase_melli || (p as AccPartner)?.shenase_melli) : ((p as AccBusiness)?.national_id || (p as AccPartner)?.national_id);
+  return (
+    <div className="fr-section">
+      <div className="fr-section-head">{title}</div>
+      <table className="fr-grid">
+        {FR_COLGROUP}
+        <tbody>
+        <tr className="fr-row">
+          <Cell label="نام شخص حقیقی / حقوقی:" value={isSeller ? ((p as AccBusiness)?.brand || (p as AccBusiness)?.name) : (p as AccPartner)?.name} span={3} />
+          <Cell label="شماره اقتصادی:" value={(p as AccBusiness)?.economic_code || (p as AccPartner)?.economic_code} span={2} />
+          <Cell label="شماره ثبت:" value={(p as AccBusiness)?.registration_number || (p as AccPartner)?.registration_number} />
+        </tr>
+        <tr className="fr-row">
+          <Cell label="استان:" value={(p as AccBusiness)?.province || (p as AccPartner)?.province} span={2} />
+          <Cell label="شهرستان:" value={(p as AccBusiness)?.county || (p as AccPartner)?.county} />
+          <Cell label="کد پستی ۱۰ رقمی:" value={(p as AccBusiness)?.postal_code || (p as AccPartner)?.postal_code} span={2} />
+          <Cell label="شهر:" value={(p as AccBusiness)?.city || (p as AccPartner)?.city} />
+        </tr>
+        <tr className="fr-row">
+          <Cell label="نشانی:" value={(p as AccBusiness)?.address || (p as AccPartner)?.address} span={3} />
+          <Cell label={idLabel + ':'} value={idValue} />
+          <Cell label="تلفن:" value={(p as AccBusiness)?.phone || (p as AccPartner)?.phone} />
+          <Cell label="نمابر:" value={(p as AccBusiness)?.fax || (p as AccPartner)?.fax} />
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
   const [inv, setInv] = useState<AccInvoice | null>(null);
@@ -28,7 +83,7 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
             supabase.from('acc_items').select('id, code').eq('business_id', data.business_id),
           ]);
           setBiz((b as AccBusiness) || null);
-          setItemMap(Object.fromEntries((items || []).map((i: { id: string; code: string | null }) => [i.id, i.code || '—'])));
+          setItemMap(Object.fromEntries((items || []).map((i: { id: string; code: string | null }) => [i.id, i.code || DASH])));
         }
       } finally {
         setLoading(false);
@@ -51,9 +106,22 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
   const items = inv.acc_invoice_items || [];
   const isProforma = inv.type === 'proforma';
   const isPurchase = inv.type === 'purchase';
-  const base = inv.subtotal - inv.discount_total;
+  const isReturn = inv.type === 'return_sale';
   const cancelled = inv.status === 'cancelled';
-  const sellerName = biz ? (biz.brand || biz.name) : '—';
+  const title = isProforma
+    ? 'پیش‌فاکتور فروش کالا و خدمات'
+    : isPurchase
+      ? 'صورتحساب خرید کالا و خدمات'
+      : isReturn
+        ? 'صورتحساب برگشت از فروش کالا و خدمات'
+        : 'صورتحساب فروش کالا و خدمات';
+  const buyer: Partial<AccPartner> | null = inv.partner
+    ? inv.partner
+    : null;
+  const isCash = inv.is_cash_sale !== false;
+  const notes = [inv.description, inv.payment_terms ? `شرایط پرداخت: ${inv.payment_terms}` : ''].filter(Boolean).join('\n');
+  /* ردیف‌های خالی تا حداقل ۸ ردیف — مطابق فرم کاغذی */
+  const pad = Math.max(0, 8 - items.length);
 
   return (
     <div className="acc-print-page" dir="rtl">
@@ -62,118 +130,108 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
         <a className="acc-btn acc-btn-outline" href="/حسابداری/پنل/فاکتورها"><ArrowRight size={15} /> بازگشت</a>
       </div>
 
-      <div className="inv-sheet" style={{ position: 'relative' }}>
-        {biz?.logo_url ? <img className="inv-logo" src={biz.logo_url} alt="لوگوی فروشنده" /> : null}
+      <div className="fr-sheet" style={{ position: 'relative' }}>
+        {biz?.logo_url ? <img className="fr-logo" src={biz.logo_url} alt="لوگوی فروشنده" /> : null}
 
-        <div className="inv-besmellah">به نام خدا</div>
-        <div className="inv-title">
-          {isProforma ? 'پیش‌فاکتور فروش کالا و خدمات' : isPurchase ? 'صورتحساب خرید کالا و خدمات' : 'صورتحساب فروش کالا و خدمات'}
-        </div>
-        <div className="inv-subtitle">
-          ساختار مطابق صورتحساب الکترونیکی سازمان امور مالیاتی — {INVOICE_TYPES[inv.type].label}
-          {' '}شماره {inv.number} — تاریخ {formatJalali(inv.date_g, 'long')}
-          {inv.due_date_g ? ` — مهلت تسویه ${formatJalali(inv.due_date_g, 'long')}` : ''}
-        </div>
+        {/* سربرگ فرم: عنوان + شماره سریال + تاریخ */}
+        <table className="fr-head"><tbody>
+          <tr>
+            <td className="fr-head-side">{isProforma ? 'اعتبار پیش‌فاکتور:' : 'شماره سریال:'} <b>{isProforma ? (inv.due_date_g ? formatJalali(inv.due_date_g, 'long') : '۱۰ روز') : inv.number}</b></td>
+            <td className="fr-head-title">{title}</td>
+            <td className="fr-head-side">تاریخ: <b>{formatJalali(inv.date_g, 'long')}</b></td>
+          </tr>
+        </tbody></table>
 
-        <div className="inv-parties">
-          <div className="inv-party">
-            <div className="inv-party-head">مشخصات فروشنده</div>
-            <div className="inv-party-body">
-              <div style={{ gridColumn: 'span 2' }}><b>نام:</b>{sellerName}</div>
-              <div><b>{biz?.person_type === 'real' ? 'کد ملی' : 'شناسه ملی'}:</b>{biz?.person_type === 'real' ? (biz?.national_id || '—') : (biz?.shenase_melli || '—')}</div>
-              <div><b>شماره اقتصادی:</b>{biz?.economic_code || '—'}</div>
-              <div style={{ gridColumn: 'span 2' }}><b>آدرس:</b>{[biz?.province, biz?.city, biz?.address].filter(Boolean).join('، ') || '—'}</div>
-              <div><b>کد پستی:</b>{biz?.postal_code || '—'}</div>
-              <div><b>تلفن:</b>{biz?.phone || '—'}</div>
-            </div>
-          </div>
-          <div className="inv-party">
-            <div className="inv-party-head">مشخصات خریدار</div>
-            <div className="inv-party-body">
-              <div style={{ gridColumn: 'span 2' }}><b>نام:</b>{inv.partner?.name || 'متفرقه'}</div>
-              <div><b>{inv.partner?.person_type === 'legal' ? 'شناسه ملی' : 'کد ملی'}:</b>{inv.partner ? (inv.partner.person_type === 'legal' ? (inv.partner.shenase_melli || '—') : (inv.partner.national_id || '—')) : '—'}</div>
-              <div><b>شماره اقتصادی:</b>{inv.partner?.economic_code || '—'}</div>
-              <div style={{ gridColumn: 'span 2' }}><b>آدرس:</b>{inv.partner?.address || '—'}</div>
-              <div><b>کد پستی:</b>{inv.partner?.postal_code || '—'}</div>
-              <div><b>تلفن:</b>{inv.partner?.phone || '—'}</div>
-            </div>
-          </div>
-        </div>
+        <PartyTable title="مشخصات فروشنده" p={biz} isSeller />
+        <PartyTable title="مشخصات خریدار" p={buyer} isSeller={false} />
 
-        <table className="inv-table">
-          <thead>
-            <tr>
-              <th style={{ width: 30 }}>ردیف</th>
-              <th>شرح کالا / خدمت</th>
-              <th style={{ width: 80 }}>شناسه کالا</th>
-              <th style={{ width: 55 }}>مقدار</th>
-              <th style={{ width: 55 }}>واحد</th>
-              <th style={{ width: 90 }}>مبلغ واحد</th>
-              <th style={{ width: 75 }}>تخفیف</th>
-              <th style={{ width: 95 }}>مبلغ کل</th>
-              <th style={{ width: 85 }}>مالیات و عوارض</th>
-              <th style={{ width: 100 }}>جمع کل با مالیات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it, i) => {
-              const rowBase = Math.round(Number(it.quantity) * it.unit_price) - it.discount;
-              return (
-                <tr key={it.id}>
-                  <td>{i + 1}</td>
-                  <td className="right">{it.title}</td>
-                  <td>{it.item_id ? (itemMap[it.item_id] || '—') : '—'}</td>
-                  <td>{formatMoney(it.quantity)}</td>
-                  <td>{it.unit}</td>
-                  <td>{formatMoney(it.unit_price)}</td>
-                  <td>{formatMoney(it.discount)}</td>
-                  <td>{formatMoney(rowBase)}</td>
-                  <td>{formatMoney(it.vat_amount)}{it.vat_rate ? ` (${it.vat_rate}٪)` : ''}</td>
-                  <td>{formatMoney(rowBase + it.vat_amount)}</td>
+        {/* جدول کالا یا خدمات */}
+        <div className="fr-section">
+          <div className="fr-section-head">مشخصات کالا یا خدمات</div>
+          <table className="fr-items">
+            <thead>
+              <tr>
+                <th style={{ width: 32 }}>ردیف</th>
+                <th style={{ width: 62 }}>کد کالا</th>
+                <th>شرح کالا یا خدمات</th>
+                <th style={{ width: 48 }}>مقدار</th>
+                <th style={{ width: 48 }}>واحد</th>
+                <th style={{ width: 78 }}>مبلغ واحد (ریال)</th>
+                <th style={{ width: 74 }}>مبلغ کل (ریال)</th>
+                <th style={{ width: 62 }}>مبلغ تخفیف</th>
+                <th style={{ width: 74 }}>مبلغ کل پس از تخفیف (ریال)</th>
+                <th style={{ width: 74 }}>جمع مالیات و عوارض (ریال)</th>
+                <th style={{ width: 84 }}>جمع کل بعلاوه مالیات و عوارض (ریال)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it, i) => {
+                const gross = Math.round(Number(it.quantity) * it.unit_price);
+                const afterDiscount = gross - it.discount;
+                return (
+                  <tr key={it.id}>
+                    <td>{i + 1}</td>
+                    <td className="fr-code">{it.item_id ? (itemMap[it.item_id] || DASH) : DASH}</td>
+                    <td className="right">{it.title}</td>
+                    <td>{formatMoney(it.quantity)}</td>
+                    <td>{it.unit}</td>
+                    <td>{formatMoney(it.unit_price)}</td>
+                    <td>{formatMoney(gross)}</td>
+                    <td>{formatMoney(it.discount)}</td>
+                    <td>{formatMoney(afterDiscount)}</td>
+                    <td>{formatMoney(it.vat_amount)}{it.vat_rate ? <span className="fr-vat-rate"> ({it.vat_rate}٪)</span> : null}</td>
+                    <td>{formatMoney(afterDiscount + it.vat_amount)}</td>
+                  </tr>
+                );
+              })}
+              {Array.from({ length: pad }).map((_, i) => (
+                <tr key={`pad-${i}`} className="fr-pad-row">
+                  {Array.from({ length: 11 }).map((__, j) => <td key={j}>&nbsp;</td>)}
                 </tr>
-              );
-            })}
-            {items.length === 0 && <tr><td colSpan={10}>ردیفی ثبت نشده</td></tr>}
-          </tbody>
-        </table>
-
-        <div className="inv-totals">
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div className="inv-words">
-              <b>مبلغ به حروف:</b> {amountToWords(inv.total)}
+              ))}
+            </tbody>
+          </table>
+          {/* جمع کل قابل پرداخت */}
+          <div className="fr-grand">
+            <div className="fr-grand-words">
+              <b>جمع کل قابل پرداخت:</b> {amountToWords(inv.total)} ریال
             </div>
-            {inv.description || inv.payment_terms ? (
-              <div className="inv-notes">
-                {inv.description}
-                {inv.payment_terms ? `\nشرایط پرداخت: ${inv.payment_terms}` : ''}
-              </div>
-            ) : null}
-            <div className="inv-meta">
-              این صورتحساب توسط «نرم‌افزار حسابداری هوشمند کاربان» صادر شده است — karbanapp.ir
-              {isProforma ? ` — اعتبار پیش‌فاکتور: ${inv.due_date_g ? formatJalali(inv.due_date_g, 'long') : '۱۰ روز'}` : ''}
-            </div>
-          </div>
-          <div className="inv-totals-table">
-            <div><span>جمع کل</span><span className="num">{formatMoney(inv.subtotal)} ریال</span></div>
-            <div><span>تخفیف</span><span className="num">{formatMoney(inv.discount_total)} ریال</span></div>
-            <div><span>مبلغ پس از تخفیف</span><span className="num">{formatMoney(base)} ریال</span></div>
-            <div><span>مالیات و عوارض ارزش افزوده</span><span className="num">{formatMoney(inv.vat_total)} ریال</span></div>
-            <div className="grand"><span>مبلغ قابل پرداخت</span><span className="num">{formatMoney(inv.total)} ریال</span></div>
-            {inv.status === 'partial' || inv.status === 'paid' ? (
-              <div><span>تسویه‌شده</span><span className="num">{formatMoney(inv.paid_total)} ریال</span></div>
-            ) : null}
+            <div className="fr-grand-amount">{formatMoney(inv.total)} ریال</div>
           </div>
         </div>
 
-        <div className="inv-sign-row">
-          <div className="inv-sign">
-            {biz?.signature_url ? <img className="sign-img" src={biz.signature_url} alt="امضای فروشنده" /> : null}
-            {biz?.stamp_url ? <img className="sign-img inv-stamp" style={{ maxHeight: 76 }} src={biz.stamp_url} alt="مهر فروشنده" /> : null}
-            <div className="sign-line">امضا و مهر فروشنده</div>
+        {/* نحوه فروش + توضیحات */}
+        <div className="fr-terms">
+          <div className="fr-terms-right">
+            <b>شرایط و نحوه فروش:</b>
+            <span className={`fr-check${isCash ? ' on' : ''}`}>{isCash ? '☑' : '☐'} نقدی</span>
+            <span className={`fr-check${!isCash ? ' on' : ''}`}>{!isCash ? '☑' : '☐'} غیر نقدی</span>
           </div>
-          <div className="inv-sign">
-            <div className="sign-line" style={{ marginTop: '2.2rem' }}>امضای خریدار</div>
+          <div className="fr-terms-notes">
+            <b>توضیحات:</b>
+            {notes ? <span style={{ whiteSpace: 'pre-line' }}>{notes}</span> : null}
+            {isProforma ? <span>این سند پیش‌فاکتور است و سند حسابداری ثبت نمی‌کند.</span> : null}
           </div>
+        </div>
+
+        {/* مهر و امضا */}
+        <div className="fr-sign-row">
+          <div className="fr-sign">
+            <div className="fr-sign-imgs">
+              {biz?.signature_url ? <img src={biz.signature_url} alt="امضای فروشنده" /> : null}
+              {biz?.stamp_url ? <img className="fr-stamp" src={biz.stamp_url} alt="مهر فروشنده" /> : null}
+            </div>
+            <div className="fr-sign-line">مهر و امضاء فروشنده</div>
+          </div>
+          <div className="fr-sign">
+            <div className="fr-sign-imgs" />
+            <div className="fr-sign-line">مهر و امضاء خریدار</div>
+          </div>
+        </div>
+
+        <div className="fr-foot">
+          صادرشده توسط «نرم‌افزار حسابداری هوشمند کاربان» — karbanapp.ir
+          {' '}| شماره صورتحساب: {inv.number}
         </div>
 
         {cancelled && (

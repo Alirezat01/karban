@@ -60,8 +60,8 @@ export default function SettingsPage({ business, role, reloadAccess }: { busines
         name: form.name, brand: form.brand, person_type: form.person_type,
         shenase_melli: form.shenase_melli, national_id: form.national_id,
         economic_code: form.economic_code, registration_number: form.registration_number,
-        province: form.province, city: form.city, address: form.address,
-        postal_code: form.postal_code, phone: form.phone,
+        province: form.province, county: form.county, city: form.city, address: form.address,
+        postal_code: form.postal_code, phone: form.phone, fax: form.fax,
         default_vat_rate: form.default_vat_rate, currency: form.currency, invoice_prefix: form.invoice_prefix,
       });
       toast('تنظیمات ذخیره شد');
@@ -134,17 +134,24 @@ export default function SettingsPage({ business, role, reloadAccess }: { busines
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           <Field label="استان"><input className="acc-input" value={form.province || ''} onChange={(e) => set('province', e.target.value)} /></Field>
-          <Field label="شهر"><input className="acc-input" value={form.city || ''} onChange={(e) => set('city', e.target.value)} /></Field>
+          <Field label="شهرستان"><input className="acc-input" value={form.county || ''} onChange={(e) => set('county', e.target.value)} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
-          <Field label="آدرس"><input className="acc-input" value={form.address || ''} onChange={(e) => set('address', e.target.value)} /></Field>
-          <Field label="کد پستی"><input className="acc-input" value={form.postal_code || ''} onChange={(e) => set('postal_code', e.target.value)} /></Field>
+          <Field label="شهر"><input className="acc-input" value={form.city || ''} onChange={(e) => set('city', e.target.value)} /></Field>
+          <Field label="کد پستی (۱۰ رقمی)"><input className="acc-input" inputMode="numeric" value={form.postal_code || ''} onChange={(e) => set('postal_code', e.target.value)} /></Field>
+        </div>
+        <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
+          <Field label="آدرس کامل"><input className="acc-input" value={form.address || ''} onChange={(e) => set('address', e.target.value)} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           <Field label="تلفن"><input className="acc-input" value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} /></Field>
-          <Field label="نرخ پیش‌فرض مالیات ارزش افزوده (٪)" hint={`نرخ مصوب ۱۴۰۵: ۱۰٪`}>
+          <Field label="نمابر"><input className="acc-input" value={form.fax || ''} onChange={(e) => set('fax', e.target.value)} /></Field>
+        </div>
+        <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
+          <Field label="نرخ پیش‌فرض مالیات ارزش افزوده (٪)" hint="نرخ مصوب ۱۴۰۵: ۱۰٪ — خودکار روی هر ردیف فاکتور اعمال می‌شود">
             <input className="acc-input" inputMode="numeric" value={form.default_vat_rate} onChange={(e) => set('default_vat_rate', Number(e.target.value) || 0)} />
           </Field>
+          <Field label="پیشوند شماره فاکتور"><input className="acc-input" value={form.invoice_prefix || ''} onChange={(e) => set('invoice_prefix', e.target.value)} /></Field>
         </div>
         <div style={{ marginTop: '.9rem' }}>
           <button className="acc-btn acc-btn-primary" disabled={busy} onClick={save}>ذخیره تنظیمات</button>
