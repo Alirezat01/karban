@@ -600,6 +600,7 @@ async function main() {
       `${shell('/خدمات', [{ name: 'خدمات', path: '/خدمات' }])}` +
       `${pageOpen('خدمات تخصصی کاربان', false)}` +
       `<div class="narrow-content"><h1>خدمات قراردادی و تخصصی</h1><p class="lead">روی هر خدمت بزنید تا توضیح کامل را ببینید و همان‌جا سفارش بدهید.</p></div>` +
+      `<section><h2>نرم‌افزار حسابداری هوشمند کاربان</h2><div class="plans-grid"><a class="plan-card plan-featured" href="${url('/حسابداری')}"><span class="plan-badge">تازه در کاربان</span><h2>حسابداری هوشمند کاربان — فاکتور رسمی مطابق قوانین مالیاتی</h2><p>صدور فاکتور رسمی با ساختار صورتحساب الکترونیکی مودیان، دفترخانه خودکار، گزارش ارزش افزوده و معاملات فصلی ماده ۱۶۹، لوگو و امضای اختصاصی شرکت. نسخه آزمایشی ۱۴ روزه رایگان.</p><span class="plan-cta">شروع رایگان / مشاهده پلن‌ها ←</span></a></div></section>` +
       groups.filter(([, items]) => items.length).map(([t, items]) => `<section><h2>${esc(t)}</h2><div class="plans-grid">${items.map(card).join('')}</div></section>`).join('') +
       `<div class="guarantee"><span><strong>پیش از هر سفارش،</strong> قوانین و شرایط کاربان را در صفحه «قوانین» بخوانید؛ شفافیت، اصل اول ماست.</span></div>` +
       relatedBox('صفحات مرتبط', [
@@ -636,6 +637,76 @@ async function main() {
     }));
   } catch (e) {
     console.warn(`prerender: services skipped (${String(e).slice(0, 120)})`);
+  }
+
+  /* 7.5) Accounting landing — نرم‌افزار حسابداری هوشمند کاربان */
+  try {
+    const accFeatures = [
+      ['صدور فاکتور رسمی', 'فاکتور فروش، پیش‌فاکتور، خرید و برگشت از فروش با شماره‌گذاری خودکار سالانه و مبلغ به حروف.'],
+      ['خروجی استاندارد مودیان', 'چاپ و PDF با ساختار و ظاهر صورتحساب الکترونیکی سازمان امور مالیاتی.'],
+      ['دفترخانه خودکار', 'هر سند، قید دوطرفه در دفتر روزنامه؛ دفتر کل و تراز آزمایشی بدون دانش حسابداری.'],
+      ['گزارش مالیاتی دقیق', 'اظهارنامه ارزش افزوده دوره، صورت معاملات فصلی ماده ۱۶۹ با خروجی Excel و نرخ مصوب ۱۴۰۵.'],
+      ['لوگو، امضا و مهر', 'آپلود لوگوی شرکت، امضای مجاز و مهر؛ فاکتور کاملاً شخصی‌سازی‌شده با برند خودتان.'],
+      ['مشتریان و بدهی‌ها', 'پرونده کامل طرف‌حساب‌ها با کد ملی و شماره اقتصادی؛ پیگیری مانده و تسویه هر مشتری.'],
+      ['نقدینگی و هزینه', 'بانک، صندوق، دریافت و پرداخت با مانده زنده؛ ثبت هزینه با اعتبار مالیاتی ارزش افزوده.'],
+      ['دسترسی کنترل‌شده', 'دعوت حسابدار با نقش محدود، ثبت امن در دیتابیس ابری و گزارش کامل عملکرد مالی.'],
+    ];
+    const accPlans = [
+      ['نسخه آزمایشی', 'رایگان', '۱۴ روز کامل، بدون نیاز به کارت', ['تمام امکانات نسخه کامل', 'تا ۲۰ صورتحساب', 'بدون تعهد خرید']],
+      ['اشتراک ماهانه', '۲۹۰٬۰۰۰', 'تومان در ماه', ['صورتحساب نامحدود', 'دفترخانه و گزارش‌های کامل', 'لوگو، امضا و مهر اختصاصی', 'دعوت حسابدار']],
+      ['اشتراک سالانه', '۲٬۹۰۰٬۰۰۰', 'تومان در سال — ۲ ماه هدیه', ['همه امکانات پلن ماهانه', '۲ ماه رایگان', 'اولویت پشتیبانی']],
+    ];
+    const accFaq = [
+      ['فاکتورهای این سیستم از نظر مالیاتی معتبرند؟', 'سیستم فاکتور را دقیقاً با ساختار و ظاهر صورتحساب الکترونیکی سازمان امور مالیاتی صادر می‌کند و اطلاعات رسمی (شناسه ملی، شماره اقتصادی، کد پستی) را استاندارد نگه می‌دارد؛ اتصال مستقیم به سامانه مودیان در نقشه راه نسخه بعدی است.'],
+      ['برای استفاده باید حسابداری بلد باشم؟', 'خیر. شما فقط فاکتور بزنید و هزینه و دریافتی‌ها را ثبت کنید؛ قیدهای دوطرفه، دفتر روزنامه، دفتر کل، تراز آزمایشی و گزارش سود و زیان به‌صورت خودکار ساخته می‌شود.'],
+      ['داده‌های مالی من کجا ذخیره می‌شود؟', 'روی زیرساخت ابری Supabase با قوانین دسترسی سطح ردیف (RLS)؛ هیچ کاربر دیگری به کسب‌وکار شما دسترسی ندارد و تنها حساب‌هایی که خودتان مجاز می‌کنید وارد می‌شوند.'],
+      ['نرخ مالیات ارزش افزوده چقدر است؟', 'نرخ مصوب سال ۱۴۰۵ برای عموم کالاها و خدمات ۱۰ درصد است؛ کالاهای معاف یا با نرخ خاص به‌تفکیک قابل تنظیم‌اند.'],
+    ];
+    const accInner =
+      `${shell('/حسابداری', [{ name: 'حسابداری', path: '/حسابداری' }])}` +
+      `<section class="acc-landing-hero"><div class="container acc-landing-grid"><div>` +
+      `<h1>نرم‌افزار حسابداری هوشمند کاربان</h1>` +
+      `<p class="lead">حسابداری کامل و دقیق بر اساس قوانین سازمان امور مالیاتی ایران — به سادگی چند کلیک. فاکتور رسمی با ظاهر استاندارد مودیان بزنید، دفترخانه و گزارش‌ها را خودکار بگیرید و با لوگو و امضای اختصاصی، برند خودتان را روی اسناد بگذارید.</p>` +
+      `<a class="button button-green" href="${url('/حسابداری/پنل')}">شروع رایگان ۱۴ روزه</a> <a class="button" href="#acc-plans">مشاهده پلن‌ها</a>` +
+      `</div><div class="acc-landing-mock">` +
+      [['فروش این ماه', '۴۸٬۲۰۰٬۰۰۰ ریال'], ['دریافتی این ماه', '۳۹٬۵۰۰٬۰۰۰ ریال'], ['مطالبات از مشتریان', '۱۲٬۷۰۰٬۰۰۰ ریال'], ['مالیات ارزش افزوده دوره', '۴٬۸۲۰٬۰۰۰ ریال'], ['سود خالص فصل', '۹٬۱۴۰٬۰۰۰ ریال']]
+        .map(([k, v]) => `<div class="mock-row"><b>${esc(k)}</b><span>${esc(v)}</span></div>`).join('') +
+      `</div></div></section>` +
+      `<section style="background: var(--bg2)"><div class="container acc-features">` +
+      accFeatures.map(([t, d]) => `<div class="acc-feature"><h3>${esc(t)}</h3><p>${esc(d)}</p></div>`).join('') +
+      `</div></section>` +
+      `<section id="acc-plans" style="padding-top: 3.5rem"><div class="container"><div class="lux-heading"><span class="line"></span><h2>پلن‌های اشتراک</h2><span class="line"></span></div><div class="acc-plans">` +
+      accPlans.map(([n, price, note, items], i) =>
+        `<div class="acc-plan${i === 1 ? ' is-featured' : ''}">${i === 1 ? '<span class="plan-tag">پیشنهاد کاربان</span>' : ''}<h3>${esc(n)}</h3><div class="price">${esc(price)}</div><div class="price-note">${esc(note)}</div><ul>${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><a class="button button-green full-button" href="${url('/حسابداری/پنل')}">${i === 0 ? 'شروع رایگان' : 'خرید اشتراک'}</a></div>`
+      ).join('') +
+      `</div></div></section>` +
+      `<section><div class="container"><div class="lux-heading"><span class="line"></span><h2>سوالات متداول</h2><span class="line"></span></div><div class="acc-faq">` +
+      accFaq.map(([q, a]) => `<div class="acc-faq-item"><h3>${esc(q)}</h3><p>${esc(a)}</p></div>`).join('') +
+      `</div></div></section>` +
+      `${pageClose()}`;
+    await write('/حسابداری', transformHtml(template, {
+      title: META_ROUTES['/حسابداری'].title,
+      description: META_ROUTES['/حسابداری'].description,
+      image: META_ROUTES['/حسابداری'].image,
+      path: '/حسابداری',
+      jsonLd: [
+        breadcrumbLd([{ name: 'خانه', href: `${ORIGIN}/` }, { name: 'حسابداری', path: '/حسابداری' }]),
+        {
+          '@context': 'https://schema.org',
+          '@type': 'WebApplication',
+          name: 'نرم‌افزار حسابداری هوشمند کاربان',
+          applicationCategory: 'FinanceApplication',
+          operatingSystem: 'Web',
+          inLanguage: 'fa-IR',
+          url: url('/حسابداری'),
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'IRR' },
+          publisher: { '@id': `${ORIGIN}/#organization` },
+        },
+      ],
+      inner: accInner,
+    }));
+  } catch (e) {
+    console.warn(`prerender: accounting landing skipped (${String(e).slice(0, 120)})`);
   }
 
   /* 8) Administrative requests — hub + detail pages */

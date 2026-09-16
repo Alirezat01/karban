@@ -311,6 +311,18 @@ export function ServicesPage() {
           <p className="lead">روی هر خدمت بزنید تا توضیح کامل را ببینید و همان‌جا سفارش بدهید.</p>
         </div>
 
+        <section>
+          <h2>نرم‌افزار حسابداری هوشمند کاربان</h2>
+          <div className="plans-grid">
+            <a className="plan-card plan-featured" href="/حسابداری">
+              <span className="plan-badge">تازه در کاربان</span>
+              <h2>حسابداری هوشمند کاربان — فاکتور رسمی مطابق قوانین مالیاتی</h2>
+              <p>صدور فاکتور رسمی با ساختار صورتحساب الکترونیکی مودیان، دفتر روزنامه و کل خودکار، گزارش ارزش افزوده و معاملات فصلی ماده ۱۶۹، لوگو و امضای اختصاصی شرکت. نسخه آزمایشی ۱۴ روزه رایگان.</p>
+              <span className="plan-cta">شروع رایگان / مشاهده پلن‌ها <ArrowLeft size={15} /></span>
+            </a>
+          </div>
+        </section>
+
         {laborItems.length > 0 && (
           <section>
             <h2>مشاوره روابط کار</h2>

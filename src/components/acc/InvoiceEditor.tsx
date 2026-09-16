@@ -1,0 +1,326 @@
+/* صدور و ویرایش صورتحساب — فروش / پیش‌فاکتور / خرید */
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { Plus, Printer, Save, Send, Trash2 } from 'lucide-react';
+import type { AccBusiness, AccInvoice, AccInvoiceItem, AccItem, AccPartner, InvoiceType } from '@/lib/acc/types';
+import {
+  computeInvoiceTotals, getInvoice, issueInvoice, listItems, listPartners,
+  nextInvoiceNumber, saveInvoice, savePartner,
+} from '@/lib/acc/api';
+import { INVOICE_TYPES, UNITS } from '@/lib/acc/constants';
+import { formatMoney } from '@/lib/acc/money';
+import { isoToJalaliInput, dateToISO } from '@/lib/acc/jalali';
+import { Field, JalaliDateInput, Modal, MoneyInput, toast } from './ui';
+
+interface Row extends Partial<Omit<AccInvoiceItem, 'row_total' | 'position' | 'invoice_id' | 'business_id' | 'id'>> {
+  key: number;
+  quantity: number;
+  unit_price: number;
+  discount: number;
+  vat_rate: number;
+}
+
+const newRow = (vat: number): Row => ({
+  key: Date.now() + Math.random(), item_id: null, title: '', unit: 'عدد',
+  quantity: 1, unit_price: 0, discount: 0, vat_rate: vat,
+});
+
+export default function InvoiceEditor({ business, invoiceId, presetType }: { business: AccBusiness; invoiceId: string | null; presetType?: InvoiceType }) {
+  const isEdit = !!invoiceId;
+  const [type, setType] = useState<InvoiceType>(presetType || 'sale');
+  const [number, setNumber] = useState('');
+  const [partnerId, setPartnerId] = useState<string>('');
+  const [dateInput, setDateInput] = useState(dateToISO(new Date()));
+  const [dueDate, setDueDate] = useState<string>('');
+  const [description, setDescription] = useState('');
+  const [paymentTerms, setPaymentTerms] = useState('');
+  const [rows, setRows] = useState<Row[]>([newRow(business.default_vat_rate ?? 10)]);
+  const [partners, setPartners] = useState<AccPartner[]>([]);
+  const [items, setItems] = useState<AccItem[]>([]);
+  const [posted, setPosted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [quickPartner, setQuickPartner] = useState<{ name: string; phone: string; national_id: string; person_type: 'real' | 'legal'; shenase_melli: string } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [p, it] = await Promise.all([listPartners(business.id), listItems(business.id)]);
+        setPartners(p);
+        setItems(it);
+        if (invoiceId) {
+          const inv = await getInvoice(invoiceId);
+          if (!inv) { toast('صورتحساب یافت نشد', 'error'); return; }
+          setType(inv.type);
+          setNumber(inv.number);
+          setPartnerId(inv.partner_id || '');
+          setDateInput(inv.date_g);
+          setDueDate(inv.due_date_g || '');
+          setDescription(inv.description || '');
+          setPaymentTerms(inv.payment_terms || '');
+          setPosted(!!inv.posted_at);
+          setRows((inv.acc_invoice_items || []).map((it2) => ({
+            key: Date.now() + Math.random(), item_id: it2.item_id, title: it2.title, unit: it2.unit,
+            quantity: Number(it2.quantity), unit_price: it2.unit_price, discount: it2.discount,
+            vat_rate: it2.vat_rate,
+          })));
+        } else {
+          setNumber(await nextInvoiceNumber(business.id, presetType || 'sale'));
+        }
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [business.id, invoiceId]);
+
+  const totals = useMemo(
+    () => computeInvoiceTotals(rows.map((r) => ({
+      item_id: r.item_id || null, title: r.title || '', unit: r.unit || 'عدد',
+      quantity: Number(r.quantity) || 0, unit_price: Number(r.unit_price) || 0,
+      discount: Number(r.discount) || 0, vat_rate: Number(r.vat_rate) || 0,
+    }))),
+    [rows],
+  );
+
+  const partnerKind = type === 'purchase' ? 'supplier' : 'customer';
+  const partnerOptions = partners.filter((p) => p.kind === 'both' || p.kind === partnerKind);
+
+  function patchRow(key: number, patch: Partial<Row>) {
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  async function quickAddPartner() {
+    if (!quickPartner?.name.trim()) { toast('نام را وارد کنید', 'error'); return; }
+    try {
+      const id = await savePartner(business.id, {
+        name: quickPartner.name.trim(),
+        phone: quickPartner.phone || null,
+        person_type: quickPartner.person_type,
+        national_id: quickPartner.person_type === 'real' ? quickPartner.national_id : null,
+        shenase_melli: quickPartner.person_type === 'legal' ? quickPartner.shenase_melli : null,
+        kind: type === 'purchase' ? 'supplier' : 'customer',
+      });
+      const fresh = await listPartners(business.id);
+      setPartners(fresh);
+      setPartnerId(id);
+      setQuickPartner(null);
+      toast('طرف‌حساب اضافه شد');
+    } catch {
+      toast('ثبت طرف‌حساب ناموفق بود', 'error');
+    }
+  }
+
+  function buildPayload(saveStatus: AccInvoice['status']) {
+    if (!rows.some((r) => r.title?.trim() && (Number(r.quantity) || 0) > 0)) {
+      throw new Error('حداقل یک ردیف با شرح و مقدار کامل کنید');
+    }
+    if (!number.trim()) throw new Error('شماره صورتحساب الزامی است');
+    return {
+      id: invoiceId || undefined,
+      number: number.trim(),
+      type,
+      status: saveStatus,
+      partner_id: partnerId || null,
+      date_g: dateInput,
+      due_date_g: dueDate || null,
+      description: description || null,
+      payment_terms: paymentTerms || null,
+      items: rows
+        .filter((r) => r.title?.trim())
+        .map((r) => ({
+          item_id: r.item_id || null, title: r.title!.trim(), unit: r.unit || 'عدد',
+          quantity: Number(r.quantity) || 0, unit_price: Number(r.unit_price) || 0,
+          discount: Number(r.discount) || 0, vat_rate: Number(r.vat_rate) || 0,
+        })),
+    };
+  }
+
+  async function persist(saveStatus: AccInvoice['status'], thenPrint = false) {
+    setBusy(true);
+    try {
+      const payload = buildPayload(saveStatus);
+      const id = await saveInvoice(business.id, payload);
+      if (saveStatus === 'issued') {
+        await issueInvoice(id);
+      }
+      toast(saveStatus === 'issued' ? 'صورتحساب صادر و سند حسابداری ثبت شد' : 'پیش‌نویس ذخیره شد');
+      if (thenPrint && saveStatus === 'issued') {
+        window.location.href = `/حسابداری/پنل/چاپ/${id}`;
+      } else if (!invoiceId) {
+        window.location.href = `/حسابداری/پنل/فاکتور/${id}`;
+      } else {
+        window.location.href = '/حسابداری/پنل/فاکتورها';
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'ذخیره ناموفق بود', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <p style={{ color: 'var(--muted)' }}>در حال بارگذاری…</p>;
+
+  if (posted) {
+    return (
+      <div className="acc-card" style={{ textAlign: 'center', padding: '2.5rem' }}>
+        <h3 style={{ justifyContent: 'center' }}>این صورتحساب صادر شده است</h3>
+        <p style={{ color: 'var(--muted)', fontSize: '.88rem', marginBottom: '1.2rem' }}>
+          طبق اصول حسابداری، سند صادره‌شده قابل ویرایش نیست. برای اصلاح، فاکتور را ابطال و صورتحساب جدید صادر کنید.
+        </p>
+        <div style={{ display: 'flex', gap: '.6rem', justifyContent: 'center' }}>
+          <a className="acc-btn acc-btn-primary" href={`/حسابداری/پنل/چاپ/${invoiceId}`}>مشاهده و چاپ</a>
+          <a className="acc-btn acc-btn-outline" href="/حسابداری/پنل/فاکتورها">بازگشت به فهرست</a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: '1rem' }}>
+      <div className="acc-card">
+        <div className="acc-form-grid-3">
+          {!isEdit ? (
+            <Field label="نوع سند">
+              <select className="acc-select" value={type} onChange={async (e) => {
+                const t = e.target.value as InvoiceType;
+                setType(t);
+                setNumber(await nextInvoiceNumber(business.id, t));
+              }}>
+                <option value="sale">صورتحساب فروش</option>
+                <option value="proforma">پیش‌فاکتور (استعلام قیمت)</option>
+                <option value="purchase">صورتحساب خرید</option>
+              </select>
+            </Field>
+          ) : (
+            <Field label="نوع سند"><input className="acc-input" value={INVOICE_TYPES[type].label} disabled /></Field>
+          )}
+          <Field label="شماره صورتحساب"><input className="acc-input" value={number} onChange={(e) => setNumber(e.target.value)} /></Field>
+          <Field label="تاریخ" hint={isoToJalaliInput(dateInput)}>
+            <JalaliDateInput value={dateInput} onChange={setDateInput} />
+          </Field>
+        </div>
+
+        <div className="acc-form-grid-3" style={{ marginTop: '.9rem' }}>
+          <Field label={type === 'purchase' ? 'تامین‌کننده' : 'خریدار / مشتری'}>
+            <div style={{ display: 'flex', gap: '.4rem' }}>
+              <select className="acc-select" value={partnerId} onChange={(e) => setPartnerId(e.target.value)}>
+                <option value="">متفرقه / بدون ثبت</option>
+                {partnerOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <button type="button" className="acc-icon-btn" title="طرف‌حساب جدید" onClick={() => setQuickPartner({ name: '', phone: '', national_id: '', person_type: 'real', shenase_melli: '' })}><Plus size={15} /></button>
+            </div>
+          </Field>
+          <Field label="مهلت تسویه (اختیاری)">
+            <JalaliDateInput value={dueDate} onChange={setDueDate} />
+          </Field>
+          <Field label="شرایط پرداخت">
+            <input className="acc-input" placeholder="مثلاً: نصف نقد، بقیه تا پایان ماه" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+          </Field>
+        </div>
+      </div>
+
+      <div className="acc-card">
+        <h3>ردیف‌های صورتحساب</h3>
+        <div className="acc-table-wrap">
+          <table className="acc-table" style={{ minWidth: 860 }}>
+            <thead>
+              <tr>
+                <th style={{ width: 34 }}>#</th>
+                <th style={{ minWidth: 200 }}>شرح کالا / خدمت</th>
+                <th style={{ width: 90 }}>واحد</th>
+                <th style={{ width: 80 }}>مقدار</th>
+                <th style={{ width: 130 }}>مبلغ واحد (ریال)</th>
+                <th style={{ width: 110 }}>تخفیف (ریال)</th>
+                <th style={{ width: 80 }}>مالیات ٪</th>
+                <th style={{ width: 130 }}>جمع ردیف (ریال)</th>
+                <th style={{ width: 44 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => {
+                const base = Math.round((Number(r.quantity) || 0) * (Number(r.unit_price) || 0)) - (Number(r.discount) || 0);
+                const vat = Math.round((base * (Number(r.vat_rate) || 0)) / 100);
+                return (
+                  <tr key={r.key}>
+                    <td className="num">{idx + 1}</td>
+                    <td>
+                      <input className="acc-input" style={{ minHeight: 40 }} placeholder="شرح…" value={r.title || ''} onChange={(e) => patchRow(r.key, { title: e.target.value })} list="acc-items-list" />
+                      <datalist id="acc-items-list">
+                        {items.map((i) => <option key={i.id} value={i.name} />)}
+                      </datalist>
+                    </td>
+                    <td>
+                      <select className="acc-select" style={{ minHeight: 40 }} value={r.unit || 'عدد'} onChange={(e) => patchRow(r.key, { unit: e.target.value })}>
+                        {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </td>
+                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="decimal" value={r.quantity} onChange={(e) => patchRow(r.key, { quantity: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 })} /></td>
+                    <td><MoneyInput value={Number(r.unit_price) || 0} onChange={(n) => patchRow(r.key, { unit_price: n })} /></td>
+                    <td><MoneyInput value={Number(r.discount) || 0} onChange={(n) => patchRow(r.key, { discount: n })} /></td>
+                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="numeric" value={r.vat_rate} onChange={(e) => patchRow(r.key, { vat_rate: Number(e.target.value) || 0 })} /></td>
+                    <td className="num" style={{ color: 'var(--gold2)' }}>{formatMoney(base + vat)}</td>
+                    <td>
+                      <button className="acc-icon-btn danger" title="حذف ردیف" onClick={() => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.key !== r.key) : rs))}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '.8rem', flexWrap: 'wrap', gap: '.6rem' }}>
+          <button className="acc-btn acc-btn-outline" onClick={() => setRows((rs) => [...rs, newRow(business.default_vat_rate ?? 10)])}><Plus size={14} /> افزودن ردیف</button>
+          <div className="acc-hint">برای پرکردن سریع، شرح را از فهرست کالاها انتخاب کنید؛ قیمت و مالیات خودکار پر می‌شود.</div>
+        </div>
+      </div>
+
+      <div className="acc-grid-2-eq">
+        <div className="acc-card">
+          <h3>توضیحات</h3>
+          <textarea className="acc-textarea" rows={5} placeholder="توضیحات روی فاکتور…" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <div className="acc-card">
+          <h3>جمع‌بندی مالی</h3>
+          <div style={{ display: 'grid', gap: '.55rem', fontSize: '.9rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>جمع کل</span><span className="num">{formatMoney(totals.subtotal)} ریال</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>تخفیف</span><span className="num">− {formatMoney(totals.discountTotal)} ریال</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--muted)' }}>مالیات و عوارض ارزش افزوده</span><span className="num">{formatMoney(totals.vatTotal)} ریال</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', paddingTop: '.6rem', fontWeight: 800, fontSize: '1.05rem', color: 'var(--gold2)' }}>
+              <span>مبلغ قابل پرداخت</span><span className="num">{formatMoney(totals.total)} ریال</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '1.1rem', flexWrap: 'wrap' }}>
+            <button className="acc-btn acc-btn-outline" disabled={busy} onClick={() => persist('draft').catch(() => {})}><Save size={14} /> ذخیره پیش‌نویس</button>
+            <button className="acc-btn acc-btn-primary" disabled={busy} onClick={() => persist('issued').catch(() => {})}><Send size={14} /> صدور نهایی</button>
+            <button className="acc-btn acc-btn-outline" disabled={busy} onClick={() => persist('issued', true).catch(() => {})}><Printer size={14} /> صدور و چاپ</button>
+          </div>
+          {type === 'proforma' && <p className="acc-hint" style={{ marginTop: '.6rem' }}>پیش‌فاکتور سند حسابداری ثبت نمی‌کند؛ پس از توافق، آن را به فاکتور فروش تبدیل کنید.</p>}
+        </div>
+      </div>
+
+      <Modal open={!!quickPartner} onClose={() => setQuickPartner(null)} title="ثبت سریع طرف‌حساب">
+        {quickPartner && (
+          <div style={{ display: 'grid', gap: '.8rem' }}>
+            <div className="acc-form-grid">
+              <Field label="نام *"><input className="acc-input" value={quickPartner.name} onChange={(e) => setQuickPartner({ ...quickPartner, name: e.target.value })} /></Field>
+              <Field label="شخصیت">
+                <select className="acc-select" value={quickPartner.person_type} onChange={(e) => setQuickPartner({ ...quickPartner, person_type: e.target.value as 'real' | 'legal' })}>
+                  <option value="real">حقیقی</option>
+                  <option value="legal">حقوقی</option>
+                </select>
+              </Field>
+            </div>
+            <div className="acc-form-grid">
+              <Field label={quickPartner.person_type === 'legal' ? 'شناسه ملی' : 'کد ملی'}>
+                <input className="acc-input" value={quickPartner.person_type === 'legal' ? quickPartner.shenase_melli : quickPartner.national_id} onChange={(e) => setQuickPartner(quickPartner.person_type === 'legal' ? { ...quickPartner, shenase_melli: e.target.value } : { ...quickPartner, national_id: e.target.value })} />
+              </Field>
+              <Field label="تلفن"><input className="acc-input" value={quickPartner.phone} onChange={(e) => setQuickPartner({ ...quickPartner, phone: e.target.value })} /></Field>
+            </div>
+            <button className="acc-btn acc-btn-primary" onClick={quickAddPartner}>ثبت و انتخاب</button>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}

@@ -56,6 +56,8 @@ const RequestsListPage = React.lazy(() =>
 const RequestViewPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestViewPage })),
 );
+const AccLanding = React.lazy(() => import('@/components/acc/AccLanding'));
+const AccPanel = React.lazy(() => import('@/components/acc/AccPanel'));
 
 function Page({ title, description, breadcrumb, children, jsonLd, noindex, image }: { title: string; description: string; breadcrumb?: (string | { name: string; href: string })[]; children: ReactNode; jsonLd?: JsonLd; noindex?: boolean; image?: string }) {
   return (
@@ -91,6 +93,19 @@ function AdminShell() {
     });
   }, []);
   return <AdminPage />;
+}
+
+/** پنل حسابداری: بدون هدر/فوتر سایت و از ایندکس خارج */
+function AccPanelShell({ sub }: { sub: string[] }) {
+  useEffect(() => {
+    applySEO({
+      title: 'پنل حسابداری | کاربان',
+      description: 'حسابداری هوشمند کاربان.',
+      path: window.location.pathname,
+      noindex: true,
+    });
+  }, []);
+  return <AccPanel sub={sub} />;
 }
 const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination'; title: string; desc: string }> = {
   'محاسبه-حقوق': { type: 'salary', title: META_TOOLS['محاسبه-حقوق'].title, desc: META_TOOLS['محاسبه-حقوق'].description },
@@ -435,6 +450,21 @@ export default function App() {
             </div>
           </div>
         </section>
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'حسابداری') {
+    if (segments[1] === 'پنل') {
+      return (
+        <div dir="rtl" className="app-root">
+          <AccPanelShell sub={segments.slice(2)} />
+        </div>
+      );
+    }
+    return (
+      <Page title={META_ROUTES['/حسابداری'].title} description={META_ROUTES['/حسابداری'].description} image={META_ROUTES['/حسابداری'].image} breadcrumb={[{ name: 'حسابداری', href: '/حسابداری' }]}>
+        <AccLanding />
       </Page>
     );
   }

@@ -1,0 +1,720 @@
+/* لایه داده ماژول حسابداری — همه کوئری‌ها از همین فایل */
+
+import { supabase } from '@/lib/supabase';
+import type {
+  AccAccount, AccBusiness, AccChartRow, AccExpense, AccInvoice,
+  AccJournalEntry, AccPartner, AccItem, AccTransaction, InvoiceType, ProfitAndLoss,
+  TrialBalanceRow, VatReport, PlRow, InvoiceStatus,
+} from './types';
+import { SYSTEM_CHART } from './constants';
+import { jalaliMonthLength, toGregorian, todayJalali, dateToISO } from './jalali';
+import { roundVat } from './money';
+
+/* ═══════════════════════ محاسبات فاکتور ═══════════════════════ */
+
+export interface DraftItem {
+  item_id: string | null;
+  title: string;
+  unit: string;
+  quantity: number;
+  unit_price: number;
+  discount: number;
+  vat_rate: number;
+}
+
+export function computeInvoiceTotals(items: DraftItem[]) {
+  let subtotal = 0;
+  let discountTotal = 0;
+  let vatTotal = 0;
+  for (const it of items) {
+    const base = Math.round(it.quantity * it.unit_price) - (it.discount || 0);
+    subtotal += Math.round(it.quantity * it.unit_price);
+    discountTotal += it.discount || 0;
+    vatTotal += roundVat(base, it.vat_rate);
+  }
+  return { subtotal, discountTotal, vatTotal, total: subtotal - discountTotal + vatTotal };
+}
+
+/* ═══════════════════════ کسب‌وکار و لایسنس ═══════════════════════ */
+
+export async function fetchMyAccess() {
+  const { data, error } = await supabase
+    .from('acc_access')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data || []) as import('./types').AccAccess[];
+}
+
+export async function fetchMyBusinesses() {
+  const { data, error } = await supabase
+    .from('acc_businesses')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data || []) as AccBusiness[];
+}
+
+export async function createBusiness(input: Partial<AccBusiness>) {
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) throw new Error('وارد نشده‌اید');
+  const { data, error } = await supabase
+    .from('acc_businesses')
+    .insert({ ...input, owner_id: user.user.id })
+    .select('*')
+    .single();
+  if (error) throw error;
+  // اتصال لایسنس آزاد (بدون کسب‌وکار) به این کسب‌وکار
+  await supabase
+    .from('acc_access')
+    .update({ business_id: data.id })
+    .eq('user_id', user.user.id)
+    .is('business_id', null);
+  return data as AccBusiness;
+}
+
+export async function updateBusiness(id: string, patch: Partial<AccBusiness>) {
+  const { error } = await supabase.from('acc_businesses').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
+export async function submitTrialRequest(input: { name?: string; phone?: string; email?: string; business_name?: string; message?: string; plan?: string }) {
+  const { data: user } = await supabase.auth.getUser();
+  const { error } = await supabase.from('acc_trial_requests').insert({ ...input, user_id: user.user?.id ?? null });
+  if (error) throw error;
+}
+
+/* ═══════════════════════ طرف‌حساب‌ها ═══════════════════════ */
+
+export async function listPartners(businessId: string) {
+  const { data, error } = await supabase
+    .from('acc_partners')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('name');
+  if (error) throw error;
+  return (data || []) as AccPartner[];
+}
+
+export async function savePartner(businessId: string, row: Partial<AccPartner>) {
+  if (row.id) {
+    const { error } = await supabase.from('acc_partners').update(row).eq('id', row.id);
+    if (error) throw error;
+    return row.id;
+  }
+  const { data, error } = await supabase
+    .from('acc_partners')
+    .insert({ ...row, business_id: businessId })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deletePartner(id: string) {
+  const { error } = await supabase.from('acc_partners').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ═══════════════════════ کالا و خدمات ═══════════════════════ */
+
+export async function listItems(businessId: string) {
+  const { data, error } = await supabase
+    .from('acc_items')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []) as AccItem[];
+}
+
+export async function saveItem(businessId: string, row: Partial<AccItem>) {
+  if (row.id) {
+    const { error } = await supabase.from('acc_items').update(row).eq('id', row.id);
+    if (error) throw error;
+    return row.id;
+  }
+  const { data, error } = await supabase
+    .from('acc_items')
+    .insert({ ...row, business_id: businessId })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deleteItem(id: string) {
+  const { error } = await supabase.from('acc_items').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ═══════════════════════ حساب‌های بانک/صندوق ═══════════════════════ */
+
+export async function listAccounts(businessId: string) {
+  const { data, error } = await supabase
+    .from('acc_accounts')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('created_at');
+  if (error) throw error;
+  const accounts = (data || []) as AccAccount[];
+  // مانده هر حساب = مانده اولیه + دریافت‌ها − پرداخت‌ها
+  const { data: txs, error: txErr } = await supabase
+    .from('acc_transactions')
+    .select('account_id, kind, amount')
+    .eq('business_id', businessId);
+  if (txErr) throw txErr;
+  const balances = new Map<string, number>();
+  for (const a of accounts) balances.set(a.id, a.initial_balance || 0);
+  for (const t of txs || []) {
+    if (!t.account_id) continue;
+    const cur = balances.get(t.account_id) || 0;
+    balances.set(t.account_id, cur + (t.kind === 'receipt' ? t.amount : -t.amount));
+  }
+  return accounts.map((a) => ({ ...a, balance: balances.get(a.id) || 0 }));
+}
+
+export async function saveAccount(businessId: string, row: Partial<AccAccount>) {
+  if (row.id) {
+    const { error } = await supabase.from('acc_accounts').update(row).eq('id', row.id);
+    if (error) throw error;
+    return row.id;
+  }
+  const { data, error } = await supabase
+    .from('acc_accounts')
+    .insert({ ...row, business_id: businessId })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deleteAccount(id: string) {
+  const { error } = await supabase.from('acc_accounts').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ═══════════════════════ صورتحساب‌ها ═══════════════════════ */
+
+export async function nextInvoiceNumber(businessId: string, type: InvoiceType): Promise<string> {
+  const jy = todayJalali().jy;
+  const { count, error } = await supabase
+    .from('acc_invoices')
+    .select('id', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+    .eq('type', type)
+    .like('number', `${jy}-%`);
+  if (error) throw error;
+  const seq = (count || 0) + 1;
+  return `${jy}-${String(seq).padStart(3, '0')}`;
+}
+
+export async function listInvoices(businessId: string, opts: { type?: InvoiceType; from?: string; to?: string } = {}) {
+  let q = supabase
+    .from('acc_invoices')
+    .select('*, partner:acc_partners(id, name, national_id, economic_code, person_type, postal_code, address)')
+    .eq('business_id', businessId)
+    .order('date_g', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (opts.type) q = q.eq('type', opts.type);
+  if (opts.from) q = q.gte('date_g', opts.from);
+  if (opts.to) q = q.lte('date_g', opts.to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as AccInvoice[];
+}
+
+export async function getInvoice(id: string) {
+  const { data, error } = await supabase
+    .from('acc_invoices')
+    .select('*, partner:acc_partners(*), acc_invoice_items(*)')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const inv = data as AccInvoice;
+  inv.acc_invoice_items = (inv.acc_invoice_items || []).sort((a, b) => a.position - b.position);
+  return inv;
+}
+
+export interface InvoicePayload {
+  id?: string;
+  number: string;
+  type: InvoiceType;
+  status: InvoiceStatus;
+  partner_id: string | null;
+  date_g: string;
+  due_date_g: string | null;
+  description: string | null;
+  payment_terms: string | null;
+  items: DraftItem[];
+}
+
+export async function saveInvoice(businessId: string, payload: InvoicePayload) {
+  const totals = computeInvoiceTotals(payload.items);
+  const row = {
+    number: payload.number,
+    type: payload.type,
+    status: payload.status,
+    partner_id: payload.partner_id,
+    date_g: payload.date_g,
+    due_date_g: payload.due_date_g,
+    description: payload.description,
+    payment_terms: payload.payment_terms,
+    subtotal: totals.subtotal,
+    discount_total: totals.discountTotal,
+    vat_total: totals.vatTotal,
+    total: totals.total,
+  };
+
+  let invoiceId = payload.id;
+  if (invoiceId) {
+    const { error } = await supabase.from('acc_invoices').update(row).eq('id', invoiceId);
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase
+      .from('acc_invoices')
+      .insert({ ...row, business_id: businessId })
+      .select('id')
+      .single();
+    if (error) throw error;
+    invoiceId = data.id as string;
+  }
+
+  // بازنویسی ردیف‌ها (فقط برای پیش‌نویس — تریگر دیتابیس صادره‌شده‌ها را قفل می‌کند)
+  const { error: delErr } = await supabase.from('acc_invoice_items').delete().eq('invoice_id', invoiceId);
+  if (delErr) throw delErr;
+  if (payload.items.length) {
+    const rows = payload.items.map((it, i) => {
+      const base = Math.round(it.quantity * it.unit_price) - (it.discount || 0);
+      return {
+        invoice_id: invoiceId,
+        business_id: businessId,
+        item_id: it.item_id,
+        title: it.title,
+        unit: it.unit,
+        quantity: it.quantity,
+        unit_price: it.unit_price,
+        discount: it.discount || 0,
+        vat_rate: it.vat_rate,
+        vat_amount: roundVat(base, it.vat_rate),
+        row_total: base + roundVat(base, it.vat_rate),
+        position: i,
+      };
+    });
+    const { error: insErr } = await supabase.from('acc_invoice_items').insert(rows);
+    if (insErr) throw insErr;
+  }
+  return invoiceId;
+}
+
+export async function setInvoiceStatus(invoiceId: string, status: InvoiceStatus) {
+  const { error } = await supabase.from('acc_invoices').update({ status }).eq('id', invoiceId);
+  if (error) throw error;
+}
+
+export async function issueInvoice(invoiceId: string) {
+  await setInvoiceStatus(invoiceId, 'issued');
+  await adjustStockForInvoice(invoiceId, -1);
+}
+
+export async function cancelInvoice(invoiceId: string) {
+  await adjustStockForInvoice(invoiceId, +1);
+  await setInvoiceStatus(invoiceId, 'cancelled');
+}
+
+/** کسر/بازگرداندن موجودی کالا هنگام صدور و ابطال */
+async function adjustStockForInvoice(invoiceId: string, sign: 1 | -1) {
+  const inv = await getInvoice(invoiceId);
+  if (!inv || inv.type !== 'sale') return;
+  for (const line of inv.acc_invoice_items || []) {
+    if (!line.item_id) continue;
+    const { data: item } = await supabase
+      .from('acc_items')
+      .select('track_stock, stock')
+      .eq('id', line.item_id)
+      .maybeSingle();
+    if (!item || !item.track_stock) continue;
+    const delta = sign < 0 ? Number(line.quantity) : -Number(line.quantity);
+    await supabase
+      .from('acc_items')
+      .update({ stock: Number(item.stock || 0) + delta })
+      .eq('id', line.item_id);
+  }
+}
+
+export async function deleteDraftInvoice(invoiceId: string) {
+  const { error } = await supabase.from('acc_invoices').delete().eq('id', invoiceId);
+  if (error) throw error;
+}
+
+/** محاسبه مجدد مبلغ تسویه‌شده فاکتور بر اساس دریافت/پرداخت‌های مرتبط */
+export async function recomputeInvoicePaid(invoiceId: string) {
+  const { data: inv } = await supabase
+    .from('acc_invoices')
+    .select('total, type, status')
+    .eq('id', invoiceId)
+    .maybeSingle();
+  if (!inv) return;
+  if (inv.status === 'draft' || inv.status === 'cancelled') return;
+  const wantKind = inv.type === 'purchase' ? 'payment' : 'receipt';
+  const { data: txs } = await supabase
+    .from('acc_transactions')
+    .select('kind, amount')
+    .eq('invoice_id', invoiceId);
+  const paid = (txs || []).filter((t) => t.kind === wantKind).reduce((s, t) => s + (t.amount || 0), 0);
+  const status: InvoiceStatus = paid <= 0 ? 'issued' : paid >= (inv.total || 0) ? 'paid' : 'partial';
+  await supabase.from('acc_invoices').update({ paid_total: paid, status }).eq('id', invoiceId);
+}
+
+/* ═══════════════════════ هزینه‌ها ═══════════════════════ */
+
+export async function listExpenses(businessId: string, from?: string, to?: string) {
+  let q = supabase
+    .from('acc_expenses')
+    .select('*, account:acc_accounts(id, name, kind)')
+    .eq('business_id', businessId)
+    .order('date_g', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (from) q = q.gte('date_g', from);
+  if (to) q = q.lte('date_g', to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as AccExpense[];
+}
+
+export async function saveExpense(businessId: string, row: Partial<AccExpense>) {
+  const payload = {
+    category: row.category || 'اداری و عمومی',
+    title: row.title,
+    amount: row.amount || 0,
+    vat_amount: row.vat_amount || 0,
+    date_g: row.date_g,
+    account_id: row.account_id,
+    partner_id: row.partner_id,
+    is_paid: row.is_paid ?? true,
+    description: row.description,
+  };
+  if (row.id) {
+    const { error } = await supabase.from('acc_expenses').update(payload).eq('id', row.id);
+    if (error) throw error;
+    return row.id;
+  }
+  const { data, error } = await supabase
+    .from('acc_expenses')
+    .insert({ ...payload, business_id: businessId })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deleteExpense(id: string) {
+  const { error } = await supabase.from('acc_expenses').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ═══════════════════════ دریافت / پرداخت ═══════════════════════ */
+
+export async function listTransactions(businessId: string, opts: { kind?: 'receipt' | 'payment'; from?: string; to?: string } = {}) {
+  let q = supabase
+    .from('acc_transactions')
+    .select('*, account:acc_accounts(id, name, kind), partner:acc_partners(id, name), invoice:acc_invoices(id, number, type)')
+    .eq('business_id', businessId)
+    .order('date_g', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (opts.kind) q = q.eq('kind', opts.kind);
+  if (opts.from) q = q.gte('date_g', opts.from);
+  if (opts.to) q = q.lte('date_g', opts.to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as AccTransaction[];
+}
+
+export async function saveTransaction(businessId: string, row: Partial<AccTransaction> & { kind: 'receipt' | 'payment'; amount: number }) {
+  const payload = {
+    kind: row.kind,
+    amount: row.amount,
+    date_g: row.date_g,
+    method: row.method || 'transfer',
+    account_id: row.account_id,
+    invoice_id: row.invoice_id,
+    partner_id: row.partner_id,
+    description: row.description,
+  };
+  let id = row.id;
+  if (id) {
+    const { error } = await supabase.from('acc_transactions').update(payload).eq('id', id);
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase
+      .from('acc_transactions')
+      .insert({ ...payload, business_id: businessId })
+      .select('id')
+      .single();
+    if (error) throw error;
+    id = data.id as string;
+  }
+  if (payload.invoice_id) await recomputeInvoicePaid(payload.invoice_id);
+  return id;
+}
+
+export async function deleteTransaction(row: Pick<AccTransaction, 'id' | 'invoice_id'>) {
+  const { error } = await supabase.from('acc_transactions').delete().eq('id', row.id);
+  if (error) throw error;
+  if (row.invoice_id) await recomputeInvoicePaid(row.invoice_id);
+}
+
+/* ═══════════════════════ دفترخانه ═══════════════════════ */
+
+export async function listJournal(businessId: string, from?: string, to?: string) {
+  let q = supabase
+    .from('acc_journal')
+    .select('*, acc_journal_lines(*)')
+    .eq('business_id', businessId)
+    .order('date_g', { ascending: false })
+    .order('entry_no', { ascending: false });
+  if (from) q = q.gte('date_g', from);
+  if (to) q = q.lte('date_g', to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as AccJournalEntry[];
+}
+
+export async function listChart(businessId: string) {
+  const { data, error } = await supabase
+    .from('acc_chart')
+    .select('*')
+    .or(`business_id.is.null,business_id.eq.${businessId}`)
+    .order('code');
+  if (error) throw error;
+  return (data || []) as AccChartRow[];
+}
+
+/* ═══════════════════════ گزارش‌ها ═══════════════════════ */
+
+interface RawLine { account_code: string; account_title: string; debit: number; credit: number }
+
+async function fetchLinesInRange(businessId: string, from?: string, to?: string): Promise<RawLine[]> {
+  let q = supabase
+    .from('acc_journal_lines')
+    .select('account_code, account_title, debit, credit, acc_journal!inner(date_g)')
+    .eq('business_id', businessId);
+  if (from) q = q.gte('acc_journal.date_g', from);
+  if (to) q = q.lte('acc_journal.date_g', to);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []) as unknown as RawLine[];
+}
+
+const chartKind = (code: string): AccChartRow['kind'] =>
+  SYSTEM_CHART.find((c) => c.code === code)?.kind || (code.startsWith('4') ? 'income' : code.startsWith('5') ? 'expense' : 'asset');
+
+export async function trialBalance(businessId: string, from?: string, to?: string): Promise<TrialBalanceRow[]> {
+  const lines = await fetchLinesInRange(businessId, from, to);
+  const map = new Map<string, { title: string; debit: number; credit: number }>();
+  for (const l of lines) {
+    const cur = map.get(l.account_code) || { title: l.account_title, debit: 0, credit: 0 };
+    cur.debit += l.debit || 0;
+    cur.credit += l.credit || 0;
+    map.set(l.account_code, cur);
+  }
+  const rows: TrialBalanceRow[] = [];
+  for (const [code, v] of [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const kind = chartKind(code);
+    const debitLike = kind === 'asset' || kind === 'expense';
+    const balance = debitLike ? v.debit - v.credit : v.credit - v.debit;
+    rows.push({ code, title: v.title, kind, debit: v.debit, credit: v.credit, balance });
+  }
+  return rows;
+}
+
+export async function profitAndLoss(businessId: string, from: string, to: string): Promise<ProfitAndLoss> {
+  const lines = await fetchLinesInRange(businessId, from, to);
+  const revMap = new Map<string, number>();
+  const expMap = new Map<string, number>();
+  for (const l of lines) {
+    const kind = chartKind(l.account_code);
+    if (kind === 'income') {
+      revMap.set(l.account_code, (revMap.get(l.account_code) || 0) + (l.credit - l.debit));
+    } else if (kind === 'expense') {
+      expMap.set(l.account_code, (expMap.get(l.account_code) || 0) + (l.debit - l.credit));
+    }
+  }
+  const title = (code: string) => SYSTEM_CHART.find((c) => c.code === code)?.title || code;
+  const revenues: PlRow[] = [...revMap.entries()].filter(([, v]) => v !== 0).map(([code, v]) => ({ code, title: title(code), amount: v }));
+  const expenses: PlRow[] = [...expMap.entries()].filter(([, v]) => v !== 0).map(([code, v]) => ({ code, title: title(code), amount: v }));
+  const totalRevenue = revenues.reduce((s, r) => s + r.amount, 0);
+  const totalExpense = expenses.reduce((s, r) => s + r.amount, 0);
+  return { revenues, totalRevenue, expenses, totalExpense, netProfit: totalRevenue - totalExpense };
+}
+
+export async function vatReport(businessId: string, from: string, to: string): Promise<VatReport> {
+  const invoices = await listInvoices(businessId, { from, to });
+  const partners = await listPartners(businessId);
+  const partnerName = (id: string | null) => partners.find((p) => p.id === id)?.name || '—';
+  const sales = invoices.filter((i) => i.type === 'sale' && i.status === 'issued');
+  const purchases = invoices.filter((i) => i.type === 'purchase' && i.status === 'issued');
+  const { data: exps } = await supabase
+    .from('acc_expenses')
+    .select('vat_amount')
+    .eq('business_id', businessId)
+    .eq('is_paid', true)
+    .gte('date_g', from)
+    .lte('date_g', to);
+  const expensesVat = (exps || []).reduce((s, e) => s + (e.vat_amount || 0), 0);
+  const salesBase = sales.reduce((s, i) => s + (i.subtotal - i.discount_total), 0);
+  const salesVat = sales.reduce((s, i) => s + i.vat_total, 0);
+  const purchasesBase = purchases.reduce((s, i) => s + (i.subtotal - i.discount_total), 0);
+  const purchasesVat = purchases.reduce((s, i) => s + i.vat_total, 0);
+  return {
+    salesBase,
+    salesVat,
+    purchasesBase,
+    purchasesVat,
+    expensesVat,
+    totalCredit: purchasesVat + expensesVat,
+    payable: Math.max(0, salesVat - purchasesVat - expensesVat),
+    saleRows: sales.map((i) => ({ number: i.number, date: i.date_g, partner: partnerName(i.partner_id), base: i.subtotal - i.discount_total, vat: i.vat_total })),
+    purchaseRows: purchases.map((i) => ({ number: i.number, date: i.date_g, partner: partnerName(i.partner_id), base: i.subtotal - i.discount_total, vat: i.vat_total })),
+  };
+}
+
+export interface SeasonalRow {
+  date: string;
+  number: string;
+  partner: string;
+  personType: string;
+  nationalId: string;
+  economicCode: string;
+  postalCode: string;
+  total: number;
+  vat: number;
+}
+
+/** فهرست معاملات فصلی (ماده ۱۶۹ ق.م.م) — فروش و خرید با مشخصات کامل طرف‌حساب */
+export async function seasonalReport(businessId: string, from: string, to: string): Promise<{ sales: SeasonalRow[]; purchases: SeasonalRow[] }> {
+  const invoices = await listInvoices(businessId, { from, to });
+  const mapRow = (i: AccInvoice): SeasonalRow => ({
+    date: i.date_g,
+    number: i.number,
+    partner: i.partner?.name || '—',
+    personType: i.partner?.person_type || 'real',
+    nationalId: i.partner?.national_id || '',
+    economicCode: i.partner?.economic_code || '',
+    postalCode: i.partner?.postal_code || '',
+    total: i.total,
+    vat: i.vat_total,
+  });
+  return {
+    sales: invoices.filter((i) => i.type === 'sale' && i.status === 'issued').map(mapRow),
+    purchases: invoices.filter((i) => i.type === 'purchase' && i.status === 'issued').map(mapRow),
+  };
+}
+
+export async function salesByPartner(businessId: string, from: string, to: string) {
+  const invoices = await listInvoices(businessId, { type: 'sale', from, to });
+  const map = new Map<string, { name: string; count: number; total: number }>();
+  for (const i of invoices) {
+    if (i.status === 'cancelled' || i.status === 'draft') continue;
+    const key = i.partner_id || '—';
+    const cur = map.get(key) || { name: i.partner?.name || 'متفرقه', count: 0, total: 0 };
+    cur.count += 1;
+    cur.total += i.total;
+    map.set(key, cur);
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
+}
+
+export async function salesByItem(businessId: string, from: string, to: string) {
+  const { data, error } = await supabase
+    .from('acc_invoice_items')
+    .select('title, quantity, row_total, acc_invoices!inner(type, status, date_g, business_id)')
+    .eq('acc_invoices.business_id', businessId)
+    .eq('acc_invoices.type', 'sale')
+    .eq('acc_invoices.status', 'issued')
+    .gte('acc_invoices.date_g', from)
+    .lte('acc_invoices.date_g', to);
+  if (error) throw error;
+  const map = new Map<string, { title: string; qty: number; total: number }>();
+  for (const r of (data || []) as unknown as { title: string; quantity: number; row_total: number }[]) {
+    const cur = map.get(r.title) || { title: r.title, qty: 0, total: 0 };
+    cur.qty += Number(r.quantity);
+    cur.total += Number(r.row_total);
+    map.set(r.title, cur);
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total);
+}
+
+/** مجموع ۶ ماه اخیر فروش صادره — برای نمودار داشبورد */
+export async function salesSeries6Months(businessId: string): Promise<{ label: string; total: number }[]> {
+  const t = todayJalali();
+  const froms: string[] = [];
+  const labels: string[] = [];
+  const spans: { from: string; to: string }[] = [];
+  for (let back = 5; back >= 0; back -= 1) {
+    let jm = t.jm - back;
+    let jy = t.jy;
+    while (jm <= 0) { jm += 12; jy -= 1; }
+    const gF = toGregorian(jy, jm, 1);
+    const gT = toGregorian(jy, jm, jalaliMonthLength(jy, jm));
+    spans.push({ from: dateToISO(new Date(gF.gy, gF.gm - 1, gF.gd)), to: dateToISO(new Date(gT.gy, gT.gm - 1, gT.gd)) });
+    froms.push(spans[spans.length - 1].from);
+    labels.push(['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'][jm - 1]);
+  }
+  const { data, error } = await supabase
+    .from('acc_invoices')
+    .select('date_g, total')
+    .eq('business_id', businessId)
+    .eq('type', 'sale')
+    .eq('status', 'issued')
+    .gte('date_g', spans[0].from);
+  if (error) throw error;
+  return spans.map((s, idx) => ({
+    label: labels[idx],
+    total: (data || [])
+      .filter((r: { date_g: string }) => r.date_g >= s.from && r.date_g <= s.to)
+      .reduce((sum: number, r: { total: number }) => sum + (r.total || 0), 0),
+  }));
+}
+
+/* ═══════════════════════ رسانه (لوگو/امضا/مهر) ═══════════════════════ */
+
+export async function uploadAccMedia(businessId: string, file: File, kind: 'logo' | 'signature' | 'stamp'): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const path = `${businessId}/${kind}-${Date.now()}.${ext || 'png'}`;
+  const { error } = await supabase.storage.from('acc-media').upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from('acc-media').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/* ═══════════════════════ خروجی CSV (معاملات فصلی) ═══════════════════════ */
+
+export function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]) {
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+  const content = '\uFEFF' + [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\r\n');
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* کمک‌گیرنده فصل شمسی جاری */
+export function currentSeasonRange(): { from: string; to: string; season: number } {
+  const t = todayJalali();
+  const season = Math.ceil(t.jm / 3);
+  const startMonth = (season - 1) * 3 + 1;
+  const gF = toGregorian(t.jy, startMonth, 1);
+  const gT = toGregorian(t.jy, startMonth + 2, jalaliMonthLength(t.jy, startMonth + 2));
+  return {
+    from: dateToISO(new Date(gF.gy, gF.gm - 1, gF.gd)),
+    to: dateToISO(new Date(gT.gy, gT.gm - 1, gT.gd)),
+    season,
+  };
+}
+
+
