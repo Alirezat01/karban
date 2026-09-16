@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import type {
   AccAccount, AccBusiness, AccChartRow, AccExpense, AccInvoice,
   AccJournalEntry, AccPartner, AccItem, AccTransaction, InvoiceType, ProfitAndLoss,
-  TrialBalanceRow, VatReport, PlRow, InvoiceStatus,
+  TrialBalanceRow, VatReport, PlRow, InvoiceStatus, AccStuffCatalogRow,
 } from './types';
 import { SYSTEM_CHART } from './constants';
 import { jalaliMonthLength, toGregorian, todayJalali, dateToISO } from './jalali';
@@ -14,6 +14,7 @@ import { roundVat } from './money';
 
 export interface DraftItem {
   item_id: string | null;
+  stuff_id?: string | null;
   title: string;
   unit: string;
   quantity: number;
@@ -300,6 +301,7 @@ export async function saveInvoice(businessId: string, payload: InvoicePayload) {
         invoice_id: invoiceId,
         business_id: businessId,
         item_id: it.item_id,
+        stuff_id: it.stuff_id ?? null,
         title: it.title,
         unit: it.unit,
         quantity: it.quantity,
@@ -403,6 +405,11 @@ export async function saveExpense(businessId: string, row: Partial<AccExpense>) 
     partner_id: row.partner_id,
     is_paid: row.is_paid ?? true,
     description: row.description,
+    vendor_name: row.vendor_name ?? null,
+    receipt_no: row.receipt_no ?? null,
+    receipt_url: row.receipt_url ?? null,
+    tax_status: row.tax_status || 'incomplete',
+    tax_note: row.tax_note ?? null,
   };
   if (row.id) {
     const { error } = await supabase.from('acc_expenses').update(payload).eq('id', row.id);
@@ -687,9 +694,104 @@ export async function salesSeries6Months(businessId: string): Promise<{ label: s
   }));
 }
 
-/* ═══════════════════════ رسانه (لوگو/امضا/مهر) ═══════════════════════ */
+/* ═══════════════════════ کاتالوگ شناسه کالا و خدمات (مودیان) ═══════════════════════
+   منبع رسمی: فایل XML سامانه stuffid.tax.gov.ir — یک‌بار توسط کاربر وارد می‌شود
+   و برای همه کسب‌وکارها قابل استفاده است. */
 
-export async function uploadAccMedia(businessId: string, file: File, kind: 'logo' | 'signature' | 'stamp'): Promise<string> {
+export async function searchStuffCatalog(query: string, limit = 25): Promise<AccStuffCatalogRow[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const digits = q.replace(/[^0-9]/g, '');
+  let req = supabase.from('acc_stuff_catalog').select('*').limit(limit);
+  if (digits.length >= 4 && /^\d+$/.test(q.replace(/\s/g, ''))) {
+    /* جست‌وجوی عددی → شناسه */
+    req = req.ilike('id', `%${digits}%`);
+  } else {
+    req = req.ilike('description', `%${q}%`);
+  }
+  const { data, error } = await req.order('id', { ascending: true });
+  if (error) throw error;
+  return (data || []) as AccStuffCatalogRow[];
+}
+
+export async function stuffCatalogCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from('acc_stuff_catalog')
+    .select('id', { count: 'exact', head: true });
+  if (error) return 0;
+  return count || 0;
+}
+
+/** درج دسته‌ای شناسه‌ها (چانک ۵۰۰تایی، upsert روی id) */
+export async function importStuffCatalog(rows: AccStuffCatalogRow[]): Promise<number> {
+  const CHUNK = 500;
+  let done = 0;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK).map((r) => ({
+      id: r.id,
+      description: r.description,
+      type_name: r.type_name ?? null,
+      vat: r.vat ?? 0,
+      taxable: r.taxable ?? true,
+      is_general: r.is_general ?? true,
+      shamsi_date: r.shamsi_date ?? null,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabase
+      .from('acc_stuff_catalog')
+      .upsert(chunk, { onConflict: 'id' });
+    if (error) throw error;
+    done += chunk.length;
+  }
+  return done;
+}
+
+/* ═══════════════════════ اعتبارسنجی مالیاتی هزینه ═══════════════════════
+   مبنای قواعد: مواد ۱۴۷ و ۱۴۸ و ۱۶۹ قانون مالیات‌های مستقیم —
+   هزینه باید واقعی، مربوط به کسب‌وکار و مستند به سند معتبر باشد. */
+
+export const TAX_STATUS_LABEL: Record<AccExpense['tax_status'], string> = {
+  valid: 'قابل قبول',
+  incomplete: 'نیازمند سند',
+  invalid: 'غیرقابل قبول',
+};
+
+export function computeExpenseTax(row: Partial<AccExpense>): {
+  status: AccExpense['tax_status'];
+  notes: string[];
+} {
+  const notes: string[] = [];
+  const hasReceipt = !!row.receipt_url;
+  const hasNo = !!row.receipt_no?.trim();
+  const hasVendor = !!row.vendor_name?.trim();
+  const amount = row.amount || 0;
+
+  if (!hasReceipt && !hasNo && !hasVendor) {
+    notes.push('هیچ سند و مدرکی ثبت نشده — این هزینه در مالیات قابل قبول نیست.');
+    return { status: 'invalid', notes };
+  }
+
+  let score = 0;
+  if (hasReceipt) score += 2;
+  if (hasNo) score += 1;
+  if (hasVendor) score += 1;
+
+  if (!hasReceipt) notes.push('عکس/فایل فاکتور پیوست نشده — بدون سند، هزینه از نظر ممیز مالیاتی مشکوک تلقی می‌شود.');
+  if (!hasNo) notes.push('شماره فاکتور/سند هزینه ثبت نشده است.');
+  if (!hasVendor) notes.push('فروشنده / طرف‌حساب مشخص نشده است.');
+  if ((row.vat_amount || 0) > 0 && !hasReceipt) {
+    notes.push('اعتبار ارزش افزوده بدون فاکتور رسمی قابل استفاده نیست.');
+  }
+  if (amount > 50_000_000 && !row.account_id) {
+    notes.push('پرداخت‌های بزرگ بهتر است از طریق بانک/کارت‌خوان باشد (ماده ۱۶۹ ق.م.م).');
+  }
+
+  return { status: score >= 3 ? 'valid' : 'incomplete', notes };
+}
+
+
+
+export async function uploadAccMedia(businessId: string, file: File, kind: 'logo' | 'signature' | 'stamp' | 'expense'): Promise<string> {
   const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
   const path = `${businessId}/${kind}-${Date.now()}.${ext || 'png'}`;
   const { error } = await supabase.storage.from('acc-media').upload(path, file, { upsert: true });

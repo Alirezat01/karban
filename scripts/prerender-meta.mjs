@@ -419,6 +419,9 @@ async function main() {
 
     const privacyInner = `${shell('/حریم-خصوصی', [{ name: 'حریم خصوصی', path: '/حریم-خصوصی' }])}${pageOpen(null)}<h1>سیاست حریم خصوصی کاربان</h1><p class="lead">در کاربان فقط داده‌ای که خودتان وارد می‌کنید ذخیره می‌شود و فقط برای همان خدمت استفاده می‌شود.</p>${privacySections.map(([t, d]) => `<h2>${esc(t)}</h2><p>${esc(d)}</p>`).join('')}${pageClose()}`;
     await write('/حریم-خصوصی', transformHtml(template, { title: META_ROUTES['/حریم-خصوصی'].title, description: META_ROUTES['/حریم-خصوصی'].description, path: '/حریم-خصوصی', jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'حریم خصوصی', path: '/حریم-خصوصی' }])], inner: privacyInner }));
+
+    const invoiceMakerInner = `${shell('/فاکتورساز', [{ name: 'فاکتورساز', path: '/فاکتورساز' }])}${pageOpen('فاکتورساز', false)}<h1>فاکتورساز آنلاین</h1><p class="lead">فاکتور فروش ساده را آنلاین بساز؛ محاسبه خودکار تخفیف و ۱۰٪ ارزش افزوده، خروجی چاپ و PDF با لوگوی کاربان، اکسل و ورد — بدون ثبت‌نام. برای فاکتور رسمی مالیاتی، حسابداری هوشمند کاربان را ببینید.</p>${pageClose()}`;
+    await write('/فاکتورساز', transformHtml(template, { title: META_ROUTES['/فاکتورساز'].title, description: META_ROUTES['/فاکتورساز'].description, path: '/فاکتورساز', jsonLd: [breadcrumbLd([{ name: 'خانه', href: '/' }, { name: 'فاکتورساز', path: '/فاکتورساز' }])], inner: invoiceMakerInner }));
   }
   console.log(`prerender: static + tools sections done (${count} so far).`);
 

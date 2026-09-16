@@ -44,6 +44,7 @@ export default function SiteFooter() {
         </div>
         <div>
           <h3>دسترسی سریع</h3>
+          <a href="/فاکتورساز">فاکتورساز آنلاین</a>
           <a href="/دانشنامه">دانشنامه</a>
           <a href="/قراردادها">قراردادها</a>
           <a href="/خدمات">خدمات</a>

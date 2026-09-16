@@ -375,7 +375,7 @@ export default function AccPanel({ sub }: { sub: string[] }) {
   if (state.phase === 'no-access') return (<><NoAccessGate /><ToastHost /><ConfirmHost /></>);
   if (state.phase === 'needs-business') return (<><FirstBusinessGate /><ToastHost /><ConfirmHost /></>);
 
-  const { business, role, businesses, plan, businessLimit } = state;
+  const { business, role, businesses, plan, businessLimit, status } = state;
 
   const page = (() => {
     switch (seg) {
@@ -388,7 +388,7 @@ export default function AccPanel({ sub }: { sub: string[] }) {
       case 'فاکتور': return <InvoiceEditor business={business} invoiceId={sub[1] || null} />;
       case 'مشتریان': return <PartnersPage business={business} />;
       case 'کالا-و-خدمات': return <ItemsPage business={business} />;
-      case 'هزینه‌ها': return <ExpensesPage business={business} />;
+      case 'هزینه‌ها': return <ExpensesPage business={business} access={{ status, plan }} />;
       case 'حساب‌ها': return <AccountsPage business={business} />;
       case 'دریافت-و-پرداخت': return <TransactionsPage business={business} />;
       case 'دفترخانه': return <BooksPage business={business} />;

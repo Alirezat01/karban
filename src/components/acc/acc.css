@@ -277,3 +277,27 @@
   .acc-features { grid-template-columns: repeat(2, 1fr); }
   .acc-plans { grid-template-columns: 1fr; }
 }
+
+/* ═════════ v3: هزینه‌های روزانه + شناسه مودیان ═════════ */
+.acc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .7rem; }
+.acc-summary-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: .9rem 1.1rem; display: grid; gap: .3rem; }
+.acc-summary-card span { font-size: .74rem; color: var(--muted); }
+.acc-summary-card strong { font-size: 1.05rem; color: var(--text); }
+.acc-summary-card strong small { font-size: .7rem; color: var(--muted); font-weight: 400; }
+.acc-summary-card.good strong { color: #2f9e6e; }
+
+.acc-tax-hint { background: rgba(216,165,63,.08); border: 1px dashed rgba(216,165,63,.4); border-radius: 12px; padding: .7rem .95rem; font-size: .8rem; color: var(--text); }
+.acc-tax-hint svg { color: var(--gold); flex-shrink: 0; }
+
+.acc-tax-panel { border-radius: 14px; padding: .8rem 1rem; font-size: .8rem; border: 1px solid; }
+.acc-tax-panel.is-valid { background: rgba(47,158,110,.08); border-color: rgba(47,158,110,.4); color: #2f9e6e; }
+.acc-tax-panel.is-incomplete { background: rgba(216,165,63,.08); border-color: rgba(216,165,63,.4); color: var(--gold); }
+.acc-tax-panel.is-invalid { background: rgba(220,80,80,.08); border-color: rgba(220,80,80,.4); color: #d05050; }
+.acc-tax-panel ul { color: var(--muted); font-size: .76rem; }
+
+.acc-chip { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: .35rem .9rem; font-size: .78rem; cursor: pointer; transition: all .15s; font-family: inherit; }
+.acc-chip:hover { border-color: var(--gold); color: var(--text); }
+.acc-chip.active { background: var(--gold); border-color: var(--gold); color: #10131a; font-weight: 700; }
+
+@keyframes acc-rot { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.acc-spin { animation: acc-rot 1s linear infinite; }

@@ -99,6 +99,7 @@ export const calculatorItems = [
   { title: 'بیمه تأمین اجتماعی', description: 'سهم دقیق کارگر و کارفرما را تفکیک کنید.', href: '/ابزارهای-هوش-مصنوعی/بیمه-تامین-اجتماعی', icon: 'shield' },
   { title: 'مرخصی', description: 'مانده مرخصی و ارزش ریالی آن را ببینید.', href: '/ابزارهای-هوش-مصنوعی/مرخصی', icon: 'calendar' },
   { title: 'تسویه حساب پایان همکاری', description: 'سنوات، عیدی و مرخصی را یکجا تسویه کنید.', href: '/ابزارهای-هوش-مصنوعی/مزایای-پایان-همکاری', icon: 'wallet' },
+  { title: 'فاکتورساز آنلاین', description: 'فاکتور فروش ساده با محاسبه خودکار ۱۰٪ ارزش افزوده؛ خروجی چاپ، PDF، اکسل و ورد.', href: '/فاکتورساز', icon: 'file' },
 ] as const;
 
 import checklistData from './checklists.json';

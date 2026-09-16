@@ -62,7 +62,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           setIsCash(inv.is_cash_sale !== false);
           setPosted(!!inv.posted_at);
           setRows((inv.acc_invoice_items || []).map((it2) => ({
-            key: Date.now() + Math.random(), item_id: it2.item_id, title: it2.title, unit: it2.unit,
+            key: Date.now() + Math.random(), item_id: it2.item_id, stuff_id: it2.stuff_id, title: it2.title, unit: it2.unit,
             quantity: Number(it2.quantity), unit_price: it2.unit_price, discount: it2.discount,
             vat_rate: it2.vat_rate,
           })));
@@ -90,6 +90,23 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
 
   function patchRow(key: number, patch: Partial<Row>) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  }
+
+  /* انتخاب کالا از فهرست (تایپ نام یا انتخاب datalist) → پرکردن خودکار ردیف */
+  function onRowTitle(key: number, title: string) {
+    const found = items.find((i) => i.name === title);
+    if (found) {
+      patchRow(key, {
+        title,
+        item_id: found.id,
+        stuff_id: found.stuff_id ?? null,
+        unit: found.unit || 'عدد',
+        unit_price: found.sale_price || 0,
+        vat_rate: found.vat_exempt ? 0 : (found.vat_rate ?? 0),
+      });
+    } else {
+      patchRow(key, { title, item_id: null, stuff_id: null });
+    }
   }
 
   async function quickAddPartner() {
@@ -132,7 +149,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
       items: rows
         .filter((r) => r.title?.trim())
         .map((r) => ({
-          item_id: r.item_id || null, title: r.title!.trim(), unit: r.unit || 'عدد',
+          item_id: r.item_id || null, stuff_id: r.stuff_id || null, title: r.title!.trim(), unit: r.unit || 'عدد',
           quantity: Number(r.quantity) || 0, unit_price: Number(r.unit_price) || 0,
           discount: Number(r.discount) || 0, vat_rate: Number(r.vat_rate) || 0,
         })),
@@ -255,7 +272,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
                   <tr key={r.key}>
                     <td className="num">{idx + 1}</td>
                     <td>
-                      <input className="acc-input" style={{ minHeight: 40 }} placeholder="شرح…" value={r.title || ''} onChange={(e) => patchRow(r.key, { title: e.target.value })} list="acc-items-list" />
+                      <input className="acc-input" style={{ minHeight: 40 }} placeholder="شرح…" value={r.title || ''} onChange={(e) => onRowTitle(r.key, e.target.value)} list="acc-items-list" />
                       <datalist id="acc-items-list">
                         {items.map((i) => <option key={i.id} value={i.name} />)}
                       </datalist>

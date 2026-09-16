@@ -74,6 +74,8 @@ export interface AccItem {
   business_id: string;
   name: string;
   code: string | null;
+  /** شناسه کالا و خدمات سامانه مودیان (از فایل رسمی مالیات) */
+  stuff_id: string | null;
   unit: string;
   category: string | null;
   kind: ItemKind;
@@ -129,6 +131,8 @@ export interface AccInvoiceItem {
   invoice_id: string;
   business_id: string;
   item_id: string | null;
+  /** شناسه کالا و خدمات مودیان */
+  stuff_id: string | null;
   title: string;
   unit: string;
   quantity: number;
@@ -139,6 +143,8 @@ export interface AccInvoiceItem {
   row_total: number;
   position: number;
 }
+
+export type ExpenseTaxStatus = 'valid' | 'incomplete' | 'invalid';
 
 export interface AccExpense {
   id: string;
@@ -152,6 +158,15 @@ export interface AccExpense {
   partner_id: string | null;
   is_paid: boolean;
   description: string | null;
+  /** فروشنده / محل خرج */
+  vendor_name: string | null;
+  /** شماره فاکتور / سند هزینه */
+  receipt_no: string | null;
+  /** پیوست سند (عکس فاکتور/رسید) در storage */
+  receipt_url: string | null;
+  /** اعتبار مالیاتی: valid قابل قبول | incomplete نیازمند تکمیل سند | invalid بدون سند */
+  tax_status: ExpenseTaxStatus;
+  tax_note: string | null;
   created_by: string | null;
   created_at: string;
   account?: AccAccount | null;
@@ -241,4 +256,15 @@ export interface VatReport {
   payable: number;
   saleRows: { number: string; date: string; partner: string; base: number; vat: number }[];
   purchaseRows: { number: string; date: string; partner: string; base: number; vat: number }[];
+}
+
+/* شناسه کالا و خدمات — ردیف کاتالوگ رسمی مالیات */
+export interface AccStuffCatalogRow {
+  id: string;
+  description: string;
+  type_name: string | null;
+  vat: number | null;
+  taxable: boolean | null;
+  is_general: boolean | null;
+  shamsi_date: string | null;
 }

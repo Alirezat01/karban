@@ -10,6 +10,7 @@ import type { AccBusiness, AccInvoice, AccPartner } from '@/lib/acc/types';
 import { getInvoice } from '@/lib/acc/api';
 import { amountToWords, formatMoney } from '@/lib/acc/money';
 import { formatJalali } from '@/lib/acc/jalali';
+import { KARBAN_LOGO_URL } from '@/lib/acc/export';
 import { EmptyState } from './ui';
 
 const DASH = '—';
@@ -131,7 +132,8 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
       </div>
 
       <div className="fr-sheet" style={{ position: 'relative' }}>
-        {biz?.logo_url ? <img className="fr-logo" src={biz.logo_url} alt="لوگوی فروشنده" /> : null}
+        {/* لوگو: لوگوی کسب‌وکار؛ اگر آپلود نشده باشد لوگوی کاربان */}
+        <img className="fr-logo" src={biz?.logo_url || KARBAN_LOGO_URL} alt={biz?.logo_url ? 'لوگوی فروشنده' : 'لوگوی کاربان'} />
 
         {/* سربرگ فرم: عنوان + شماره سریال + تاریخ */}
         <table className="fr-head"><tbody>
@@ -171,7 +173,7 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
                 return (
                   <tr key={it.id}>
                     <td>{i + 1}</td>
-                    <td className="fr-code">{it.item_id ? (itemMap[it.item_id] || DASH) : DASH}</td>
+                    <td className="fr-code">{it.stuff_id || (it.item_id ? (itemMap[it.item_id] || DASH) : DASH)}</td>
                     <td className="right">{it.title}</td>
                     <td>{formatMoney(it.quantity)}</td>
                     <td>{it.unit}</td>

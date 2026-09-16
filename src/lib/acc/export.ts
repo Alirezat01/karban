@@ -1,0 +1,157 @@
+/* خروجی‌های اکسل / ورد / PDF برای ماژول حسابداری
+   — لوگو: اگر کسب‌وکار اشتراک فعال داشته باشد و لوگو آپلود کرده باشد
+     لوگوی خودش؛ در غیر این صورت لوگوی کاربان روی خروجی‌ها می‌نشیند. */
+
+import type { AccBusiness } from './types';
+
+export const KARBAN_LOGO_URL = '/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png';
+
+export type BrandAccess = { status: string; plan?: string | null } | null | undefined;
+
+/** آیا اشتراک فعال (پلن‌دار یا آزمایشی در حال اعتبار) دارد؟ */
+export function hasActiveSubscription(access: BrandAccess): boolean {
+  if (!access) return false;
+  return ['active', 'trial'].includes(access.status);
+}
+
+/** لوگوی مؤثر برای سربرگ خروجی‌ها */
+export function brandLogoUrl(business: Pick<AccBusiness, 'logo_url'>, access: BrandAccess): string {
+  if (business.logo_url && hasActiveSubscription(access)) return business.logo_url;
+  return KARBAN_LOGO_URL;
+}
+
+export function brandName(business: Pick<AccBusiness, 'brand' | 'name'>): string {
+  return business.brand || business.name;
+}
+
+/* ───────────────── اکسل (xlsx واقعی با SheetJS) ───────────────── */
+
+export interface ExcelSheet {
+  name: string;
+  headers: string[];
+  rows: (string | number)[][];
+  /** ردیف‌های اضافی بعد از جدول (مثل جمع‌ها) */
+  footerRows?: (string | number)[][];
+}
+
+export async function exportExcel(filename: string, sheets: ExcelSheet[], meta?: { business?: string; title?: string }) {
+  const XLSX = await import('xlsx');
+  const wb = XLSX.utils.book_new();
+  wb.Workbook = { Views: [{ RTL: true }] };
+  for (const sheet of sheets) {
+    const aoa: (string | number)[][] = [];
+    if (meta?.title) aoa.push([meta.title]);
+    if (meta?.business) aoa.push([`کسب‌وکار: ${meta.business}`]);
+    if (meta?.title || meta?.business) aoa.push([]);
+    aoa.push(sheet.headers, ...sheet.rows, ...(sheet.footerRows || []));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = sheet.headers.map(() => ({ wch: 16 }));
+    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
+  }
+  XLSX.writeFile(wb, filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`);
+}
+
+/* ───────────────── ورد (doc از HTML) ───────────────── */
+
+const DOC_CSS = `
+  body { font-family: 'Vazirmatn', Tahoma, sans-serif; direction: rtl; }
+  h1 { font-size: 15pt; } h2 { font-size: 13pt; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #444; padding: 4px 6px; font-size: 10pt; text-align: right; }
+  th { background: #f3f4f6; }
+  .muted { color: #666; font-size: 9pt; }
+  .brand-line { margin-top: 14px; font-size: 9pt; color: #666; }
+`;
+
+export function exportWord(filename: string, title: string, bodyHtml: string, logoUrl?: string) {
+  const logo = logoUrl
+    ? `<div><img src="${logoUrl}" width="90" alt="logo" /></div>`
+    : '';
+  const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" lang="fa" dir="rtl">
+<head><meta charset="utf-8" /><title>${escapeHtml(title)}</title>
+<style>${DOC_CSS}</style></head>
+<body>
+  ${logo}
+  <h1>${escapeHtml(title)}</h1>
+  ${bodyHtml}
+  <p class="brand-line">ساخته‌شده با حسابداری هوشمند کاربان — karbanapp.ir</p>
+</body></html>`;
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword;charset=utf-8' });
+  downloadBlob(blob, filename.endsWith('.doc') ? filename : `${filename}.doc`);
+}
+
+/* ───────────────── PDF (چاپ مرورگر → ذخیره PDF) ───────────────── */
+
+export function printHtml(title: string, bodyHtml: string, opts: { logoUrl?: string; landscape?: boolean } = {}) {
+  const w = window.open('', '_blank', 'width=980,height=720');
+  if (!w) {
+    alert('پنجره چاپ باز نشد — لطفاً مسدودکننده پاپ‌آپ را غیرفعال کنید.');
+    return;
+  }
+  const logo = opts.logoUrl
+    ? `<img class="print-logo" src="${opts.logoUrl}" alt="logo" />`
+    : '';
+  w.document.write(`<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8" /><title>${escapeHtml(title)}</title>
+<style>
+  @page { size: ${opts.landscape ? 'A4 landscape' : 'A4'}; margin: 12mm; }
+  body { font-family: Vazirmatn, Tahoma, sans-serif; direction: rtl; color: #111; margin: 0; }
+  .print-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 2px solid #0a0f1c; padding-bottom: 10px; margin-bottom: 14px; }
+  .print-logo { max-height: 64px; max-width: 170px; object-fit: contain; }
+  .print-title { font-size: 16pt; font-weight: 800; }
+  .print-sub { color: #555; font-size: 10pt; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; }
+  th, td { border: 1px solid #999; padding: 5px 7px; font-size: 9.5pt; text-align: right; }
+  th { background: #eef1f6; }
+  tfoot td { font-weight: 700; background: #f7f8fa; }
+  .muted { color: #555; font-size: 9pt; }
+  .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .summary .box { border: 1px solid #ccc; border-radius: 8px; padding: 7px 12px; font-size: 10pt; }
+  .brand-line { margin-top: 18px; padding-top: 8px; border-top: 1px dashed #aaa; color: #666; font-size: 9pt; text-align: center; }
+</style></head>
+<body>
+  <div class="print-head">
+    <div><div class="print-title">${escapeHtml(title)}</div>
+    <div class="print-sub">تاریخ چاپ: ${new Date().toLocaleDateString('fa-IR')}</div></div>
+    ${logo}
+  </div>
+  ${bodyHtml}
+  <div class="brand-line">ساخته‌شده با حسابداری هوشمند کاربان — karbanapp.ir</div>
+</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 350);
+}
+
+/* ───────────────── کمکی‌ها ───────────────── */
+
+export function escapeHtml(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+export function htmlTable(headers: string[], rows: (string | number)[][], footer?: (string | number)[]): string {
+  const thead = `<thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(String(c ?? ''))}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  const tfoot = footer ? `<tfoot><tr>${footer.map((c) => `<td>${escapeHtml(String(c ?? ''))}</td>`).join('')}</tr></tfoot>` : '';
+  return `<table>${thead}${tbody}${tfoot}</table>`;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** نام فایل خروجی: فاکتور-۱۲۳-۱۴۰۵۰۷۰۱.xlsx */
+export function exportFilename(prefix: string, suffix?: string, ext?: string): string {
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const parts = [prefix, suffix, date].filter(Boolean).join('-');
+  return ext ? `${parts}.${ext}` : parts;
+}

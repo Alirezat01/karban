@@ -50,6 +50,7 @@ const LawLibraryPage = React.lazy(() =>
 const LoginPage = React.lazy(() => import('@/components/LoginPage'));
 const DashboardPage = React.lazy(() => import('@/components/DashboardPage'));
 const ProfilePage = React.lazy(() => import('@/components/ProfilePage'));
+const InvoiceMakerPage = React.lazy(() => import('@/components/InvoiceMakerPage'));
 const RequestsListPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestsListPage })),
 );
@@ -281,6 +282,14 @@ export default function App() {
     return (
       <Page title="ورود به حساب کاربری کاربان" description="با حساب گوگل وارد کاربان شو؛ قراردادها، درخواست‌ها و اعلان‌هایت در داشبورد می‌ماند." breadcrumb={['ورود']} noindex>
         <LoginPage />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'فاکتورساز') {
+    return (
+      <Page title="فاکتورساز آنلاین رایگان | کاربان" description="فاکتور فروش ساده را آنلاین بساز؛ محاسبه خودکار تخفیف و ۱۰٪ ارزش افزوده، خروجی چاپ و PDF با لوگوی کاربان، اکسل و ورد — بدون ثبت‌نام." breadcrumb={['فاکتورساز']}>
+        <InvoiceMakerPage />
       </Page>
     );
   }
