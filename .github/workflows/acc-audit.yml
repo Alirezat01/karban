@@ -1,0 +1,30 @@
+name: acc-audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/audit-full.mjs'
+      - '.github/workflows/acc-audit.yml'
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run full accounting audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/audit-full.mjs
+      - name: Commit report back
+        run: |
+          git config user.name "audit-bot"
+          git config user.email "audit@karbanapp.ir"
+          git add audit-report.json
+          git commit -m "audit: گزارش حسابرسی خودکار حسابداری [skip ci]" || echo "nothing to commit"
+          git pull --rebase origin main || true
+          git push
