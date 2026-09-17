@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { formatFaDate, formatFaNumber } from '@/lib/format';
 import { useCountUp } from '@/lib/reveal';
 import { notifyAdmin } from '@/lib/notify';
+import { notifyTelegram } from '@/lib/acc/telegram';
 import { PRO_FEATURES, PLAN_TIER_LABEL, planTier } from '@/lib/acc/plan';
 import KarbanLoader from '@/components/KarbanLoader';
 
@@ -446,7 +447,7 @@ function MyTickets() {
       .single();
     if (error || !data) { setState('error'); return; }
     await supabase.from('ticket_messages').insert({ ticket_id: data.id, sender: 'user', body: form.subject.trim() });
-    void notifyAdmin(`🎫 تیکت جدید #${data.id}: ${form.subject.trim()} | اولویت: ${form.priority}`);
+    void notifyTelegram(`🎫 تیکت جدید #${data.id}: ${form.subject.trim()} | اولویت: ${form.priority}`, 'ticket');
     setForm({ subject: '', priority: 'معمولی' });
     setState('idle');
     load();

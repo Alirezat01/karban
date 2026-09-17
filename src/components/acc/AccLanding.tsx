@@ -5,7 +5,7 @@ import {
   BadgeCheck, BarChart3, BookOpen, CheckCircle2, FileText, Printer, ShieldCheck, Sparkles, Stamp, Users, Wallet,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { notifyAdmin } from '@/lib/notify';
+import { notifyTelegram } from '@/lib/acc/telegram';
 import { fetchAccConfig, DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/config';
 import { formatMoney } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
@@ -108,7 +108,7 @@ export default function AccLanding() {
         status: 'pending',
       });
       if (error) throw error;
-      notifyAdmin(`🧾 سفارش حسابداری کاربان\nپلن: ${order?.label}\nنام: ${name || '—'}\nتماس: ${phone}\nمبلغ: ${formatMoney(amountRial)} ریال`);
+      void notifyTelegram(`🧾 سفارش حسابداری کاربان\nپلن: ${order?.label}\nنام: ${name || '—'}\nتماس: ${phone}\nمبلغ: ${formatMoney(amountRial)} ریال`, 'order');
       toast('سفارش شما ثبت شد؛ کارشناسان کاربان تماس می‌گیرند');
       setOrder(null);
       setName('');

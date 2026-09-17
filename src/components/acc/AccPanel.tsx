@@ -3,9 +3,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowLeftRight, BarChart3, BookOpen, Building2, CheckCircle2, Crown, FileText,
-  Landmark, LayoutDashboard, LogOut, Lock, Menu, Package, Plus, Receipt, Settings,
-  ShieldAlert, Sparkles, Users, Wallet, X,
+  ArrowLeftRight, BarChart3, BookOpen, Building2, CheckCircle2, Crown, FileSignature,
+  FileText, Landmark, LayoutDashboard, Lock, LogOut, Menu, Package, Plus, Receipt, RefreshCcw,
+  Search, Settings, ShieldAlert, Sparkles, TrendingUp, Users, Wallet, X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAccAccess } from '@/lib/acc/access';
@@ -25,8 +25,17 @@ import BooksPage from './BooksPage';
 import ReportsPage from './ReportsPage';
 import SettingsPage from './SettingsPage';
 import ChecksPage from './ChecksPage';
+import ProjectsPage from './ProjectsPage';
+import ContractsAccPage from './ContractsAccPage';
+import PayrollPage from './PayrollPage';
+import AssetsPage from './AssetsPage';
+import RecurringPage from './RecurringPage';
+import SystemPage from './SystemPage';
 import ProGate from './ProGate';
 import KarbanLoader from '@/components/KarbanLoader';
+import { globalSearch, type GlobalSearchResult } from '@/lib/acc/api6';
+import { formatMoney } from '@/lib/acc/money';
+import { formatJalali } from '@/lib/acc/jalali';
 import type { AccBusiness, InvoiceType } from '@/lib/acc/types';
 
 export const PAGE_TITLES: Record<string, string> = {
@@ -44,6 +53,12 @@ export const PAGE_TITLES: Record<string, string> = {
   'چک‌ها': 'دفتر چک‌ها',
   'دفترخانه': 'دفترخانه',
   'گزارش‌ها': 'گزارش‌ها',
+  'پروژه‌ها': 'پروژه‌ها و مراکز درآمد/هزینه',
+  'قراردادها': 'قراردادهای خدماتی',
+  'حقوق-و-دستمزد': 'حقوق و دستمزد',
+  'دارایی‌ها': 'دارایی‌های ثابت',
+  'هزینه-تکرارشونده': 'هزینه‌های تکرارشونده',
+  'سیستم': 'سیستم و ابزارهای پیشرفته',
   'تنظیمات': 'تنظیمات کسب‌وکار',
 };
 
@@ -64,6 +79,16 @@ const NAV = [
   { label: 'حسابداری و تحلیل', items: [
     { seg: 'دفترخانه', title: 'دفترخانه (روزنامه و کل)', icon: BookOpen, pro: true },
     { seg: 'گزارش‌ها', title: 'گزارش‌ها و مالیات', icon: BarChart3, pro: true },
+  ] },
+  { label: 'پروژه و منابع انسانی', items: [
+    { seg: 'پروژه‌ها', title: 'پروژه‌ها و مراکز هزینه', icon: TrendingUp, pro: true },
+    { seg: 'قراردادها', title: 'قراردادهای خدماتی', icon: FileSignature, pro: true },
+    { seg: 'حقوق-و-دستمزد', title: 'حقوق و دستمزد و بیمه', icon: Users, pro: true },
+    { seg: 'دارایی‌ها', title: 'دارایی‌های ثابت شرکت', icon: Building2, pro: true },
+  ] },
+  { label: 'ابزارهای پیشرفته', items: [
+    { seg: 'هزینه-تکرارشونده', title: 'هزینه‌های تکرارشونده', icon: RefreshCcw, pro: true },
+    { seg: 'سیستم', title: 'سیستم (قفل دوره، مغایرت، پشتیبان)', icon: Settings, pro: true },
   ] },
   { label: 'سیستم', items: [
     { seg: 'تنظیمات', title: 'تنظیمات کسب‌وکار', icon: Settings, pro: false },
@@ -314,8 +339,10 @@ function Layout({
   children: React.ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => { setMenuOpen(false); }, [path]);
   const trialBadge = plan === 'trial';
+  const canSearch = featureEnabled(plan, 'global_search');
   return (
     <div className="acc-shell">
       <Sidebar path={path} open={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -324,6 +351,9 @@ function Layout({
           <button className="acc-icon-btn acc-menu-btn" onClick={() => setMenuOpen(true)} aria-label="منو"><Menu size={17} /></button>
           <h1>{PAGE_TITLES[path] || 'پنل حسابداری'}</h1>
           <div className="spacer" />
+          {canSearch && (
+            <button className="acc-icon-btn" title="جست‌وجو در همه اسناد (Ctrl+K)" onClick={() => setSearchOpen(true)} aria-label="جست‌وجوی سراسری"><Search size={16} /></button>
+          )}
           {businesses.length > 1 ? (
             <select
               className="acc-select acc-biz-switcher"
@@ -355,7 +385,118 @@ function Layout({
           {children}
         </main>
       </div>
+      {searchOpen && <GlobalSearchModal business={business} onClose={() => setSearchOpen(false)} />}
     </div>
+  );
+}
+
+/* ── جست‌وجوی پیشرفته سراسری در همه اسناد ── */
+function GlobalSearchModal({ business, onClose }: { business: AccBusiness; onClose: () => void }) {
+  const [q, setQ] = useState('');
+  const [result, setResult] = useState<GlobalSearchResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!q.trim()) { setResult(null); return; }
+    setBusy(true);
+    const t = setTimeout(async () => {
+      try { setResult(await globalSearch(business.id, q)); } catch { setResult(null); } finally { setBusy(false); }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [q, business.id]);
+
+  return (
+    <Modal open onClose={onClose} title="جست‌وجوی پیشرفته در همه اسناد" wide>
+      <div style={{ display: 'grid', gap: '.9rem' }}>
+        <input
+          className="acc-input"
+          autoFocus
+          placeholder="شماره فاکتور، نام مشتری، شرح هزینه، شماره چک، کالا…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        {busy && <p className="acc-hint">در حال جست‌وجو…</p>}
+        {result && !busy && (
+          <div style={{ display: 'grid', gap: '.8rem' }}>
+            <p className="acc-hint" style={{ margin: 0 }}>{result.total === 0 ? 'نتیجه‌ای پیدا نشد' : `${result.total} نتیجه پیدا شد`}</p>
+            {result.invoices.length > 0 && (
+              <div className="acc-card">
+                <h3>صورتحساب‌ها</h3>
+                {result.invoices.map((r) => (
+                  <a key={r.id} href={`/حسابداری/پنل/فاکتور/${r.id}`} className="acc-search-row" onClick={onClose}>
+                    <b>{r.number}</b>
+                    <span>{r.type === 'sale' ? 'فروش' : r.type === 'purchase' ? 'خرید' : r.type === 'proforma' ? 'پیش‌فاکتور' : 'برگشتی'}</span>
+                    <span className="num">{formatMoney(r.total)} ریال</span>
+                    <span className="num">{formatJalali(r.date_g)}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            {result.partners.length > 0 && (
+              <div className="acc-card">
+                <h3>طرف‌حساب‌ها</h3>
+                {result.partners.map((r) => (
+                  <a key={r.id} href="/حسابداری/پنل/مشتریان" className="acc-search-row" onClick={onClose}>
+                    <b>{r.name}</b>
+                    <span>{r.kind === 'customer' ? 'مشتری' : r.kind === 'supplier' ? 'تامین‌کننده' : 'دو طرفه'}</span>
+                    <span className="num">{r.phone || ''}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            {result.expenses.length > 0 && (
+              <div className="acc-card">
+                <h3>هزینه‌ها</h3>
+                {result.expenses.map((r) => (
+                  <a key={r.id} href="/حسابداری/پنل/هزینه‌ها" className="acc-search-row" onClick={onClose}>
+                    <b>{r.title}</b>
+                    <span>{r.category}</span>
+                    <span className="num">{formatMoney(r.amount)} ریال</span>
+                    <span className="num">{formatJalali(r.date_g)}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            {result.checks.length > 0 && (
+              <div className="acc-card">
+                <h3>چک‌ها</h3>
+                {result.checks.map((r) => (
+                  <a key={r.id} href="/حسابداری/پنل/چک‌ها" className="acc-search-row" onClick={onClose}>
+                    <b className="num">{r.serial_no || '—'}</b>
+                    <span>{r.kind === 'received' ? 'دریافتی' : 'پرداختی'}</span>
+                    <span>{r.bank_name || ''}</span>
+                    <span className="num">{formatMoney(r.amount)} ریال</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            {result.items.length > 0 && (
+              <div className="acc-card">
+                <h3>کالا و خدمات</h3>
+                {result.items.map((r) => (
+                  <a key={r.id} href="/حسابداری/پنل/کالا-و-خدمات" className="acc-search-row" onClick={onClose}>
+                    <b>{r.name}</b>
+                    <span className="num">{formatMoney(r.sale_price)} ریال</span>
+                  </a>
+                ))}
+              </div>
+            )}
+            {result.transactions.length > 0 && (
+              <div className="acc-card">
+                <h3>دریافت و پرداخت</h3>
+                {result.transactions.map((r) => (
+                  <a key={r.id} href="/حسابداری/پنل/دریافت-و-پرداخت" className="acc-search-row" onClick={onClose}>
+                    <span>{r.kind === 'receipt' ? 'دریافت' : 'پرداخت'}</span>
+                    <span className="num">{formatMoney(r.amount)} ریال</span>
+                    <span>{r.description || ''}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -419,9 +560,39 @@ export default function AccPanel({ sub }: { sub: string[] }) {
         return <BooksPage business={business} />;
       }
       case 'گزارش‌ها': {
-        const gate = proBlocked('report_pl', 'گزارش‌ها و مالیات', 'سود و زیان، ارزش افزوده، معاملات فصلی و تحلیل فروش، مخصوص نسخه پیشرفته است.');
+        const gate = proBlocked('report_pl', 'گزارش‌ها و مالیات', 'سود و زیان، ترازنامه، ارزش افزوده، معاملات فصلی و تحلیل فروش، مخصوص نسخه پیشرفته است.');
         if (gate) return gate;
         return <ReportsPage business={business} />;
+      }
+      case 'پروژه‌ها': {
+        const gate = proBlocked('projects', 'پروژه‌ها و مراکز هزینه', 'تعریف پروژه، اتصال فاکتور و هزینه و گزارش سود هر پروژه، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <ProjectsPage business={business} />;
+      }
+      case 'قراردادها': {
+        const gate = proBlocked('contracts', 'قراردادهای خدماتی', 'ثبت قرارداد با مبلغ و سررسید و اتصال به پروژه، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <ContractsAccPage business={business} />;
+      }
+      case 'حقوق-و-دستمزد': {
+        const gate = proBlocked('payroll', 'حقوق و دستمزد', 'محاسبه خودکار حقوق، بیمه ۷٪ و ۲۳٪ و مالیات پله‌ای، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <PayrollPage business={business} />;
+      }
+      case 'دارایی‌ها': {
+        const gate = proBlocked('assets', 'دارایی‌های ثابت', 'ثبت دارایی و محاسبه استهلاک خط مستقیم، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <AssetsPage business={business} />;
+      }
+      case 'هزینه-تکرارشونده': {
+        const gate = proBlocked('recurring', 'هزینه‌های تکرارشونده', 'ثبت یک‌بار و تکرار خودکار اجاره و قسط‌ها، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <RecurringPage business={business} />;
+      }
+      case 'سیستم': {
+        const gate = proBlocked('period_lock', 'سیستم و ابزارهای پیشرفته', 'قفل دوره، بستن سال مالی، مغایرت‌گیری بانکی، پشتیبان‌گیری و لاگ فعالیت، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <SystemPage business={business} />;
       }
       case 'تنظیمات': return <SettingsPage business={business} role={role} plan={plan} reloadAccess={reload} />;
       default: return <Dashboard business={business} plan={plan} />;

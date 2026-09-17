@@ -92,6 +92,15 @@ export async function submitTrialRequest(input: { name?: string; phone?: string;
   const { data: user } = await supabase.auth.getUser();
   const { error } = await supabase.from('acc_trial_requests').insert({ ...input, user_id: user.user?.id ?? null });
   if (error) throw error;
+  try {
+    const { notifyTelegram } = await import('./telegram');
+    void notifyTelegram(
+      `✨ درخواست تریال/تماس حسابداری کاربان\nنام: ${input.name || '—'}\nتماس: ${input.phone || input.email || '—'}\nکسب‌وکار: ${input.business_name || '—'}`,
+      'trial',
+    );
+  } catch {
+    /* اعلان هرگز جریان اصلی را نمی‌شکند */
+  }
 }
 
 /* ═══════════════════════ طرف‌حساب‌ها ═══════════════════════ */

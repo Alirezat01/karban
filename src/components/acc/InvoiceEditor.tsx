@@ -11,6 +11,7 @@ import { INVOICE_TYPES, UNITS, BUYER_TYPES } from '@/lib/acc/constants';
 import { formatMoney, amountToWords } from '@/lib/acc/money';
 import { isoToJalaliInput, dateToISO, toFaDigits } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, QtyInput, toast } from './ui';
+import { notifyTelegram } from '@/lib/acc/telegram';
 
 interface Row extends Partial<Omit<AccInvoiceItem, 'row_total' | 'position' | 'invoice_id' | 'business_id' | 'id'>> {
   key: number;
@@ -174,6 +175,13 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
       const id = await saveInvoice(business.id, payload);
       if (saveStatus === 'issued') {
         await issueInvoice(id);
+        const totals = computeInvoiceTotals(
+          rows.filter((r) => r.title?.trim()).map((r) => ({ item_id: r.item_id || null, stuff_id: r.stuff_id || null, title: r.title!.trim(), unit: r.unit || 'عدد', quantity: Number(r.quantity) || 0, unit_price: Number(r.unit_price) || 0, discount: Number(r.discount) || 0, vat_rate: Number(r.vat_rate) || 0 })),
+        );
+        void notifyTelegram(
+          `📄 فاکتور رسمی صادر شد\nکسب‌وکار: ${business.brand || business.name}\nشماره: ${number.trim()}\nمبلغ کل: ${formatMoney(totals.total)} ریال`,
+          'invoice',
+        );
       }
       toast(saveStatus === 'issued' ? 'صورتحساب صادر و سند حسابداری ثبت شد' : 'پیش‌نویس ذخیره شد');
       if (thenPrint && saveStatus === 'issued') {

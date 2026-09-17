@@ -174,6 +174,8 @@ export interface AccExpense {
   /** اعتبار مالیاتی: valid قابل قبول | incomplete نیازمند تکمیل سند | invalid بدون سند */
   tax_status: ExpenseTaxStatus;
   tax_note: string | null;
+  /** پروژه مرتبط (نسخه ۶) */
+  project_id: string | null;
   created_by: string | null;
   created_at: string;
   account?: AccAccount | null;
@@ -337,4 +339,186 @@ export interface PartnerStatement {
   totalSettled: number;
   balance: number;
   agingBuckets: { label: string; amount: number }[];
+}
+
+/* ───────────────── نسخه ۶: پروژه، قرارداد، حقوق، دارایی، تکرارشونده، دوره، مغایرت، لاگ ───────────────── */
+
+export type ProjectStatus = 'active' | 'done' | 'archived';
+export interface AccProject {
+  id: string;
+  business_id: string;
+  name: string;
+  code: string | null;
+  partner_id: string | null;
+  status: ProjectStatus;
+  budget: number;
+  start_date_g: string | null;
+  end_date_g: string | null;
+  description: string | null;
+  created_at: string;
+  partner?: AccPartner | null;
+}
+
+export type ContractStatus = 'draft' | 'signed' | 'active' | 'done' | 'canceled';
+export interface AccContract {
+  id: string;
+  business_id: string;
+  title: string;
+  partner_id: string | null;
+  project_id: string | null;
+  amount: number;
+  vat_rate: number;
+  status: ContractStatus;
+  start_date_g: string | null;
+  end_date_g: string | null;
+  description: string | null;
+  created_at: string;
+  partner?: AccPartner | null;
+}
+
+export interface AccEmployee {
+  id: string;
+  business_id: string;
+  name: string;
+  national_id: string | null;
+  personnel_code: string | null;
+  position: string | null;
+  hire_date_g: string | null;
+  base_salary: number;
+  housing_allowance: number;
+  food_allowance: number;
+  child_allowance: number;
+  child_count: number;
+  insurance_number: string | null;
+  bank_account: string | null;
+  active: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface AccPayroll {
+  id: string;
+  business_id: string;
+  employee_id: string;
+  jyear: number;
+  jmonth: number;
+  work_days: number;
+  overtime_hours: number;
+  base_salary: number;
+  food_allowance: number;
+  housing_allowance: number;
+  family_allowance: number;
+  overtime_pay: number;
+  gross: number;
+  insurance_employee: number;
+  tax: number;
+  other_deductions: number;
+  net: number;
+  paid: boolean;
+  account_id: string | null;
+  pay_date_g: string | null;
+  description: string | null;
+  created_at: string;
+  employee?: AccEmployee | null;
+}
+
+export type AssetStatus = 'active' | 'sold' | 'disposed';
+export interface AccAsset {
+  id: string;
+  business_id: string;
+  name: string;
+  category: string | null;
+  purchase_date_g: string | null;
+  purchase_amount: number;
+  useful_life_years: number;
+  salvage_value: number;
+  account_id: string | null;
+  status: AssetStatus;
+  sell_amount: number | null;
+  sell_date_g: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export type RecurringFrequency = 'monthly' | 'quarterly' | 'yearly';
+export interface AccRecurring {
+  id: string;
+  business_id: string;
+  title: string;
+  category: string | null;
+  amount: number;
+  vat_amount: number;
+  frequency: RecurringFrequency;
+  next_date_g: string;
+  account_id: string | null;
+  partner_id: string | null;
+  auto_create: boolean;
+  active: boolean;
+  last_created_date_g: string | null;
+  description: string | null;
+  created_at: string;
+  account?: AccAccount | null;
+}
+
+export interface AccPeriod {
+  id: string;
+  business_id: string;
+  jyear: number;
+  jmonth: number;
+  locked: boolean;
+  locked_at: string | null;
+}
+
+export interface AccReconciliation {
+  id: string;
+  business_id: string;
+  account_id: string;
+  statement_date_g: string;
+  statement_balance: number;
+  book_balance: number;
+  difference: number;
+  reconciled: boolean;
+  notes: string | null;
+  created_at: string;
+  account?: AccAccount | null;
+}
+
+export interface AccActivityRow {
+  id: string;
+  business_id: string;
+  user_id: string | null;
+  user_email: string | null;
+  action: string;
+  entity: string | null;
+  entity_id: string | null;
+  detail: string | null;
+  created_at: string;
+}
+
+/* ترازنامه ساده */
+export interface BalanceSheet {
+  assets: PlRow[];
+  totalAssets: number;
+  liabilities: PlRow[];
+  totalLiabilities: number;
+  equity: PlRow[];
+  totalEquity: number;
+}
+
+/* نتیجه محاسبه حقوق یک کارمند */
+export interface PayrollCalc {
+  hourly: number;
+  overtimePay: number;
+  gross: number;
+  insurance: number;
+  tax: number;
+  net: number;
+  employerInsurance: number;
+}
+
+/* نتیجه مغایرت‌گیری یک حساب */
+export interface ReconcileResult {
+  bookBalance: number;
+  statementBalance: number;
+  difference: number;
 }

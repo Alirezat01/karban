@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin, sendEmail } from '@/lib/notify';
+import { notifyTelegram } from '@/lib/acc/telegram';
 import { formatRial, toNumericValue } from '@/lib/format';
 import KarbanLoader from '@/components/KarbanLoader';
 
@@ -88,7 +89,7 @@ export default function OrderPage({ serviceId }: Props) {
       return;
     }
     const code = String(data.id).slice(0, 8);
-    void notifyAdmin(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)}`);
+    void notifyTelegram(`🛒 سفارش جدید: ${service.title} | ${fullName} | ${normalizeMobile(mobile)} | ${formatRial(finalAmount)}`, 'order');
     if (email.trim()) {
       void sendEmail(
         email.trim(),

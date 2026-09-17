@@ -1,25 +1,46 @@
+/* هدر حرفه‌ای کاربان — منوی dropdown گروهی، دکمه CTA درخشان، نوار پیشرفت
+   نسخه ۳: بازطراحی کامل منوی بالای سایت */
+
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LayoutDashboard, LogIn, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, ChevronDown, FileSignature, FileText, LayoutDashboard, ListChecks, LogIn, LogOut, Menu, Receipt, Scale, Sparkles, UserRound, Wrench, X, Zap } from 'lucide-react';
 import { useAuth, signOutUser } from '@/lib/auth';
 import NotificationBell from '@/components/NotificationBell';
 
-const links = [
-  ['دانشنامه', '/دانشنامه'],
-  ['قراردادها', '/قراردادها'],
-  ['درخواست‌های اداری', '/درخواست‌های-اداری'],
-  ['چک‌لیست‌های طلایی', '/چک-لیست‌ها'],
-  ['خدمات', '/خدمات'],
-  ['حسابداری', '/حسابداری'],
-  ['ابزارهای هوش مصنوعی', '/ابزارهای-هوش-مصنوعی'],
-] as const;
+type NavItem = { label: string; href: string; icon?: typeof BookOpen; desc?: string };
+type NavGroup = { label: string; href?: string; badge?: string; items?: NavItem[] };
+
+/* ساختار منو: لینک‌های پرتکرار مستقیم، بقیه در دو dropdown مرتبط */
+const MENU: NavGroup[] = [
+  { label: 'حسابداری', href: '/حسابداری', badge: 'جدید' },
+  { label: 'خدمات', href: '/خدمات' },
+  {
+    label: 'ابزارهای رایگان',
+    items: [
+      { label: 'فاکتورساز آنلاین', href: '/فاکتورساز', icon: Receipt, desc: 'فاکتور سریع با محاسبه خودکار مالیات' },
+      { label: 'ماشین‌حساب‌های هوشمند', href: '/ابزارهای-هوش-مصنوعی', icon: Calculator, desc: 'حقوق، بیمه، مالیات، سنوات و…' },
+      { label: 'سازنده قرارداد', href: '/قراردادها', icon: FileSignature, desc: '۹۴ نمونه قرارداد آماده ویرایشی' },
+    ],
+  },
+  {
+    label: 'منابع',
+    items: [
+      { label: 'دانشنامه', href: '/دانشنامه', icon: BookOpen, desc: 'مقالات تخصصی مالی و قانون کار' },
+      { label: 'چک‌لیست‌های طلایی', href: '/چک-لیست‌ها', icon: ListChecks, desc: 'گام‌به‌گام استخدام و انحلال' },
+      { label: 'کتابخانه قوانین', href: '/کتابخانه-قوانین', icon: Scale, desc: 'متن کامل قوانین و آیین‌نامه‌ها' },
+      { label: 'درخواست‌های اداری', href: '/درخواست‌های-اداری', icon: FileText, desc: 'فرم‌های اداری آماده دانلود' },
+    ],
+  },
+];
 
 export default function SiteHeader({ path }: { path?: string }) {
   const [open, setOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null); /* dropdown دسکتاپ */
+  const [mobileExpand, setMobileExpand] = useState<string | null>(null); /* آکاردئون موبایل */
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const ticking = useRef(false);
   const userWrapRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { loading, userId, email, displayName } = useAuth();
   /* مسیر فعلی برای خط طلایی زیر آیتم فعال منو */
   const current = path || (typeof window !== 'undefined' ? window.location.pathname : '');
@@ -69,7 +90,7 @@ export default function SiteHeader({ path }: { path?: string }) {
 
   const initial = displayName.trim().charAt(0) || 'ک';
 
-  /* ناحیه احراز هویت در منوی دسکتاپ: ورود | زنگ + چیپ کاربر با منوی کشویی */
+  /* ناحیه احراز هویت در منوی دسکتاپ: زنگ + چیپ کاربر با منوی کشویی */
   const authArea = loading ? (
     <span className="header-auth is-skeleton" aria-hidden="true" />
   ) : userId ? (
@@ -126,25 +147,101 @@ export default function SiteHeader({ path }: { path?: string }) {
         <a className="brand" href="/" aria-label="کاربان">
           <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="لوگوی کاربان" />
         </a>
-        <nav className="desktop-nav" aria-label="منوی اصلی">
-          {links.map(([label, href]) => (
-            <a key={href} href={href} className={isActive(href) ? 'is-active' : ''} aria-current={isActive(href) ? 'page' : undefined}>
-              {label}
-            </a>
+
+        {/* منوی دسکتاپ */}
+        <nav className="desktop-nav" aria-label="منوی اصلی" onMouseLeave={() => setOpenGroup(null)}>
+          {MENU.map((group) => (
+            <div
+              key={group.label}
+              className="nav-item-wrap"
+              onMouseEnter={() => setOpenGroup(group.items ? group.label : null)}
+            >
+              {group.href ? (
+                <a
+                  href={group.href}
+                  className={`nav-link${isActive(group.href) ? ' is-active' : ''}${group.badge ? ' has-badge' : ''}`}
+                  aria-current={isActive(group.href) ? 'page' : undefined}
+                >
+                  {group.label}
+                  {group.badge && <span className="nav-badge">{group.badge}</span>}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  className={`nav-link nav-link-btn${openGroup === group.label ? ' is-open' : ''}${group.items?.some((i) => isActive(i.href)) ? ' is-active' : ''}`}
+                  aria-haspopup="true"
+                  aria-expanded={openGroup === group.label}
+                  onClick={() => setOpenGroup(openGroup === group.label ? null : group.label)}
+                >
+                  {group.label}
+                  <ChevronDown size={13} className="nav-caret" aria-hidden="true" />
+                </button>
+              )}
+              {group.items && openGroup === group.label && (
+                <div className="nav-dropdown" role="menu">
+                  {group.items.map((item) => (
+                    <a key={item.href} href={item.href} role="menuitem" className={`nav-dropdown-item${isActive(item.href) ? ' is-active' : ''}`}>
+                      {item.icon && <item.icon size={17} aria-hidden="true" />}
+                      <span>
+                        <b>{item.label}</b>
+                        {item.desc && <small>{item.desc}</small>}
+                      </span>
+                      <ArrowLeft size={13} className="nav-dropdown-arrow" aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
           {authArea}
+          {/* دکمه CTA درخشان — قلب بازاریابی هدر */}
+          <a className={`header-cta${userId ? ' is-member' : ''}`} href={userId ? '/حسابداری/پنل' : '/حسابداری'}>
+            <Zap size={15} aria-hidden="true" />
+            {userId ? 'پنل حسابداری' : 'شروع رایگان'}
+          </a>
         </nav>
+
         <button className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label="باز و بسته کردن منو">
           {open ? <X /> : <Menu />}
         </button>
       </div>
+
+      {/* منوی موبایل: آکاردئونی */}
       {open && (
         <nav className="mobile-nav">
-          {links.map(([label, href]) => (
-            <a key={href} href={href} onClick={() => setOpen(false)}>
-              {label}
-            </a>
-          ))}
+          <a className="mobile-cta" href={userId ? '/حسابداری/پنل' : '/حسابداری'} onClick={() => setOpen(false)}>
+            <Sparkles size={16} /> {userId ? 'ورود به پنل حسابداری' : 'شروع رایگان حسابداری'}
+          </a>
+          {MENU.map((group) =>
+            group.href ? (
+              <a key={group.label} href={group.href} onClick={() => setOpen(false)} className={isActive(group.href) ? 'is-active' : ''}>
+                {group.label}
+              </a>
+            ) : (
+              <div key={group.label} className="mobile-nav-group">
+                <button
+                  type="button"
+                  className={`mobile-nav-toggle${mobileExpand === group.label ? ' is-open' : ''}`}
+                  onClick={() => setMobileExpand(mobileExpand === group.label ? null : group.label)}
+                  aria-expanded={mobileExpand === group.label}
+                >
+                  {group.label}
+                  <ChevronDown size={15} aria-hidden="true" />
+                </button>
+                {mobileExpand === group.label && (
+                  <div className="mobile-nav-sub">
+                    {group.items!.map((item) => (
+                      <a key={item.href} href={item.href} onClick={() => setOpen(false)}>
+                        {item.icon && <item.icon size={15} />}
+                        {item.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ),
+          )}
+          <a href="/تماس-با-ما" onClick={() => setOpen(false)}><Wrench size={15} /> تماس و مشاوره</a>
           {mobileAuthArea}
         </nav>
       )}

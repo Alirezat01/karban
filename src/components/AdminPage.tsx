@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, Bell, Calculator, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
-  Mail, MessagesSquare, Newspaper, Phone, Plus, Save, ShieldCheck, ShoppingCart, SlidersHorizontal,
-  Star, Trash2, Users, Wrench,
+  Mail, MessagesSquare, Newspaper, Phone, Plus, Save, Send, ShieldCheck, ShoppingCart, SlidersHorizontal,
+  Star, Trash2, Users, Wrench, KeyRound, CreditCard,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
-import { formatFaDate, formatRial } from '@/lib/format';
+import { formatFaDate, formatRial, formatFaNumber } from '@/lib/format';
 import { DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/config';
 import { INVOICE_TEMPLATES } from '@/lib/acc/constants';
+import { fetchTelegramConfig, saveTelegramConfig, sendTelegramDirect, drainTelegramQueue, type TelegramConfig, DEFAULT_TELEGRAM_CONFIG } from '@/lib/acc/telegram';
 import { useCountUp } from '@/lib/reveal';
 import KarbanLoader from '@/components/KarbanLoader';
+import FaNumberInput from '@/components/FaNumberInput';
 
-type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
+type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -34,6 +36,11 @@ const ARTICLE_CATEGORIES = ['حقوقی و قانون کار', 'مالیات', '
 const REQUEST_CATEGORIES = ['روابط کار', 'مالی و بانکی', 'اداری و عمومی'];
 
 const fmtDate = (value: string) => formatFaDate(value);
+/* قیمت خدمات رشته است — اگر عددی باشد با ارقام فارسی و «ریال» نمایش داده می‌شود */
+const displayPrice = (price: string) => {
+  const numeric = Number(price);
+  return price && Number.isFinite(numeric) && numeric > 0 ? formatRial(price) : price || '—';
+};
 const loginLockKey = (email: string) => `karban-login-lock:${email.trim().toLowerCase()}`;
 const loginFailKey = (email: string) => `karban-login-fails:${email.trim().toLowerCase()}`;
 const sessionKey = 'karban-admin-session-start';
@@ -230,22 +237,35 @@ export default function AdminPage() {
     );
   }
 
-  const tabs: [Tab, string, typeof ShieldCheck][] = [
-    ['overview', 'نمای کلی', LayoutDashboard],
-    ['services', 'خدمات', Wrench],
-    ['settings', 'تنظیمات', SlidersHorizontal],
-    ['accounting', 'حسابداری', Calculator],
-    ['contracts', 'قراردادها', FileSignature],
-    ['articles', 'مقاله‌ها', Newspaper],
-    ['requests', 'درخواست‌های اداری', FileText],
-    ['leads', 'شماره‌های دانلود', Phone],
-    ['orders', 'سفارش‌ها', ShoppingCart],
-    ['consultations', 'درخواست‌های مشاوره', MessagesSquare],
-    ['tickets', 'تیکت‌ها', LifeBuoy],
-    ['feedback', 'بازخوردها', Star],
-    ['notifs', 'اعلان‌ها', Bell],
-    ['users', 'مدیریت کاربران', Users],
-    ['newsletter', 'خبرنامه', Mail],
+  /* منوی گروه‌بندی‌شده — هر بخش چند آیتم مرتبط */
+  const menu: { group: string; items: [Tab, string, typeof ShieldCheck][] }[] = [
+    { group: 'کلی', items: [['overview', 'نمای کلی', LayoutDashboard]] },
+    { group: 'فروش و مشتریان', items: [
+      ['orders', 'سفارش‌ها', ShoppingCart],
+      ['services', 'خدمات', Wrench],
+      ['consultations', 'مشاوره‌ها', MessagesSquare],
+      ['leads', 'شماره‌های دانلود', Phone],
+    ] },
+    { group: 'محتوا', items: [
+      ['contracts', 'قراردادها', FileSignature],
+      ['articles', 'مقاله‌ها', Newspaper],
+      ['requests', 'درخواست‌های اداری', FileText],
+    ] },
+    { group: 'مالی و حسابداری', items: [
+      ['accounting', 'تنظیمات حسابداری', Calculator],
+      ['licenses', 'لایسنس‌های اشتراک', CreditCard],
+      ['telegram', 'اتصال تلگرام', Send],
+    ] },
+    { group: 'پشتیبانی', items: [
+      ['tickets', 'تیکت‌ها', LifeBuoy],
+      ['feedback', 'بازخوردها', Star],
+      ['notifs', 'اعلان همگانی', Bell],
+    ] },
+    { group: 'سیستم', items: [
+      ['settings', 'پارامترهای محاسبات', SlidersHorizontal],
+      ['users', 'کاربران و مدیران', Users],
+      ['newsletter', 'خبرنامه', Mail],
+    ] },
   ];
 
   return (
@@ -262,30 +282,39 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <nav className="admin-tabs">
-          {tabs.map(([key, label, Icon]) => (
-            <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
-              <Icon size={15} aria-hidden /> {label}
-            </button>
-          ))}
-        </nav>
+        <div className="admin-shell">
+          <aside className="admin-side">
+            {menu.map((g) => (
+              <div className="admin-side-group" key={g.group}>
+                <div className="admin-side-label">{g.group}</div>
+                {g.items.map(([key, label, Icon]) => (
+                  <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
+                    <Icon size={15} aria-hidden /> {label}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </aside>
 
-        <div className="admin-content">
-          {tab === 'overview' && <OverviewTab go={setTab} />}
-          {tab === 'services' && <ServicesTab />}
-          {tab === 'settings' && <SettingsTab />}
-          {tab === 'accounting' && <AccountingTab />}
-          {tab === 'contracts' && <ContractsTab />}
-          {tab === 'articles' && <ArticlesTab />}
-          {tab === 'requests' && <RequestsTab />}
-          {tab === 'leads' && <LeadsTab />}
-          {tab === 'orders' && <OrdersTab />}
-          {tab === 'consultations' && <ConsultationsTab />}
-          {tab === 'tickets' && <TicketsTab />}
-          {tab === 'feedback' && <FeedbackTab />}
-          {tab === 'notifs' && <NotifsTab />}
-          {tab === 'users' && <UsersTab />}
-          {tab === 'newsletter' && <NewsletterTab />}
+          <div className="admin-content">
+            {tab === 'overview' && <OverviewTab go={setTab} />}
+            {tab === 'services' && <ServicesTab />}
+            {tab === 'settings' && <SettingsTab />}
+            {tab === 'accounting' && <AccountingTab />}
+            {tab === 'licenses' && <LicensesTab />}
+            {tab === 'telegram' && <TelegramTab />}
+            {tab === 'contracts' && <ContractsTab />}
+            {tab === 'articles' && <ArticlesTab />}
+            {tab === 'requests' && <RequestsTab />}
+            {tab === 'leads' && <LeadsTab />}
+            {tab === 'orders' && <OrdersTab />}
+            {tab === 'consultations' && <ConsultationsTab />}
+            {tab === 'tickets' && <TicketsTab />}
+            {tab === 'feedback' && <FeedbackTab />}
+            {tab === 'notifs' && <NotifsTab />}
+            {tab === 'users' && <UsersTab />}
+            {tab === 'newsletter' && <NewsletterTab />}
+          </div>
         </div>
       </div>
     </section>
@@ -397,11 +426,12 @@ function OverviewTab({ go }: { go: (tab: Tab) => void }) {
   );
 }
 
-function NumField({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+/* فیلد عددی ادمین — ارقام فارسی + جداکننده سه‌رقمی زنده (decimal برای ضرایب و نرخ‌ها) */
+function NumField({ label, value, onChange, decimal }: { label: string; value: number; onChange: (n: number) => void; decimal?: boolean }) {
   return (
     <label className="settings-field">
       {label}
-      <input type="number" value={value ?? 0} onChange={(e) => onChange(Number(e.target.value) || 0)} />
+      <FaNumberInput value={value ?? 0} onChange={onChange} decimal={decimal} />
     </label>
   );
 }
@@ -478,7 +508,7 @@ function ServicesTab() {
         <div className="admin-form">
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
           <input value={form.price} onChange={(e) => setForm({ ...form, price: safeAmount(e.target.value) })} placeholder="قیمت" />
-          <input value={form.discount_percent} onChange={(e) => setForm({ ...form, discount_percent: Number(e.target.value) })} type="number" min={0} max={90} placeholder="درصد تخفیف" />
+          <FaNumberInput value={form.discount_percent} onChange={(n) => setForm({ ...form, discount_percent: Math.max(0, Math.min(90, n)) })} placeholder="درصد تخفیف" />
           <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد" />
           <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="توضیح" />
           <select value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value as 'financial' | 'labor' })}>
@@ -511,7 +541,7 @@ function ServicesTab() {
         <tbody>
           {services.map((service, index) => (
             <tr key={service.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td>
                 {editing === service.id ? (
                   <input value={service.title} onChange={(e) => updateField(service.id, 'title', e.target.value)} />
@@ -521,22 +551,20 @@ function ServicesTab() {
               </td>
               <td>
                 {editing === service.id ? (
-                  <input value={service.price} onChange={(e) => updateField(service.id, 'price', safeAmount(e.target.value))} placeholder="قیمت" />
+                  <input value={service.price} onChange={(e) => updateField(service.id, 'price', safeAmount(e.target.value))} placeholder="قیمت" style={{ minWidth: 130 }} />
                 ) : (
-                  service.price
+                  displayPrice(service.price)
                 )}
               </td>
               <td>
                 {editing === service.id ? (
-                  <input
-                    type="number"
-                    min={0}
-                    max={90}
+                  <FaNumberInput
                     value={service.discount_percent || 0}
-                    onChange={(e) => updateField(service.id, 'discount_percent', Number(e.target.value))}
+                    onChange={(n) => updateField(service.id, 'discount_percent', Math.max(0, Math.min(90, n)))}
+                    style={{ minWidth: 90 }}
                   />
                 ) : (
-                  `${service.discount_percent || 0}%`
+                  `${(service.discount_percent || 0).toLocaleString('fa-IR')}٪`
                 )}
               </td>
               <td>
@@ -647,14 +675,14 @@ function SettingsTab() {
         <NumField label="کمک مسکن ماهانه (ریال)" value={p.salary.housing} onChange={(n) => setP({ ...p, salary: { ...p.salary, housing: n } })} />
         <NumField label="عائله‌مندی ماهانه (ریال)" value={p.salary.family} onChange={(n) => setP({ ...p, salary: { ...p.salary, family: n } })} />
         <NumField label="اولاد هر فرزند (ریال)" value={p.salary.child_per} onChange={(n) => setP({ ...p, salary: { ...p.salary, child_per: n } })} />
-        <NumField label="ضریب اضافه‌کاری" value={p.salary.overtime_coef} onChange={(n) => setP({ ...p, salary: { ...p.salary, overtime_coef: n } })} />
-        <NumField label="سهم بیمه کارگر (مثلاً 0.07)" value={p.salary.insurance_employee} onChange={(n) => setP({ ...p, salary: { ...p.salary, insurance_employee: n } })} />
+        <NumField label="ضریب اضافه‌کاری" decimal value={p.salary.overtime_coef} onChange={(n) => setP({ ...p, salary: { ...p.salary, overtime_coef: n } })} />
+        <NumField label="سهم بیمه کارگر (مثلاً ۰٫۰۷)" decimal value={p.salary.insurance_employee} onChange={(n) => setP({ ...p, salary: { ...p.salary, insurance_employee: n } })} />
         <NumField label="معافیت مالیات حقوق ماهانه (ریال)" value={p.salary.tax_exempt_monthly} onChange={(n) => setP({ ...p, salary: { ...p.salary, tax_exempt_monthly: n } })} />
       </div>
 
       <h3>هزینه استخدام</h3>
       <div className="settings-grid">
-        <NumField label="سهم بیمه کارفرما (مثلاً 0.23)" value={p.hiring.insurance_employer} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, insurance_employer: n } })} />
+        <NumField label="سهم بیمه کارفرما (مثلاً ۰٫۲۳)" decimal value={p.hiring.insurance_employer} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, insurance_employer: n } })} />
         <NumField label="سنوات (ماه به ازای هر سال)" value={p.hiring.severance_months} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, severance_months: n } })} />
         <NumField label="عیدی (ماه)" value={p.hiring.eydi_months} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, eydi_months: n } })} />
         <NumField label="مرخصی سالانه (روز)" value={p.hiring.leave_days} onChange={(n) => setP({ ...p, hiring: { ...p.hiring, leave_days: n } })} />
@@ -901,7 +929,7 @@ function ContractsTab() {
           {contracts.map((contract, index) => (
             <React.Fragment key={contract.id}>
               <tr>
-                <td>{index + 1}</td>
+                <td>{(index + 1).toLocaleString('fa-IR')}</td>
                 <td>{contract.title}</td>
                 <td>{contract.type || '—'}</td>
                 <td>{contract.industry || '—'}</td>
@@ -1072,7 +1100,7 @@ function ArticlesTab() {
         <tbody>
           {items.map((article, index) => (
             <tr key={article.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td>{article.title}</td>
               <td>{article.category}</td>
               <td>{article.author}</td>
@@ -1201,7 +1229,7 @@ function RequestsTab() {
         <tbody>
           {items.map((item, index) => (
             <tr key={item.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td>{item.title}</td>
               <td>{item.category}</td>
               <td>{item.intro || '—'}</td>
@@ -1275,7 +1303,7 @@ function LeadsTab() {
         <tbody>
           {leads.map((lead, index) => (
             <tr key={lead.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td className="mono">{lead.mobile}</td>
               <td>{sourceLabel(lead.source)}</td>
               <td>{fmtDate(lead.created_at)}</td>
@@ -1346,7 +1374,7 @@ function OrdersTab() {
         <tbody>
           {orders.map((order, index) => (
             <tr key={order.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td>{order.full_name || '—'}</td>
               <td>{order.mobile || '—'}</td>
               <td>{order.service_title || '—'}</td>
@@ -1442,7 +1470,7 @@ function ConsultationsTab() {
             const id = String(item.id);
             return (
               <tr key={id}>
-                <td>{index + 1}</td>
+                <td>{(index + 1).toLocaleString('fa-IR')}</td>
                 <td>{String(item.mobile || '—')}</td>
                 <td>{String(item.topic || item.service || '—')}</td>
                 {hasDetail && <td style={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}>{String(item.description || '—')}</td>}
@@ -1613,7 +1641,7 @@ function FeedbackTab() {
   const avg = items.length ? (items.reduce((s, i) => s + i.rating, 0) / items.length).toFixed(1) : '—';
   return (
     <div className="admin-table-wrap">
-      <h2>بازخورد کاربران — میانگین {avg.toLocaleString('fa-IR')} از ۵ ({items.length.toLocaleString('fa-IR')} نظر)</h2>
+      <h2>بازخورد کاربران — میانگین {formatFaNumber(Number(avg))} از ۵ ({formatFaNumber(items.length)} نظر)</h2>
       <table className="admin-table">
         <thead><tr><th>نوع</th><th>مقصد</th><th>امتیاز</th><th>نظر</th><th>تاریخ</th><th></th></tr></thead>
         <tbody>
@@ -1781,7 +1809,7 @@ function UsersTab() {
         <tbody>
           {users.map((user, index) => (
             <tr key={user.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td>{user.id}</td>
               <td>{user.role}</td>
               <td className="mono">{user.password_sha256 || '—'}</td>
@@ -1836,7 +1864,7 @@ function NewsletterTab() {
         <tbody>
           {items.map((item, index) => (
             <tr key={item.id}>
-              <td>{index + 1}</td>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
               <td>{item.mobile}</td>
               <td>{fmtDate(item.created_at)}</td>
             </tr>
@@ -1848,6 +1876,266 @@ function NewsletterTab() {
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ── لایسنس‌های اشتراک حسابداری: فعال‌سازی، تمدید، تغییر پلن ── */
+type AccessRow = {
+  id: string;
+  business_id: string | null;
+  user_id: string | null;
+  email: string | null;
+  role: string;
+  status: string;
+  plan: string | null;
+  expires_at: string | null;
+  created_at: string;
+};
+
+const PLAN_LABELS: Record<string, string> = {
+  trial: 'آزمایشی', monthly: 'ماهانه', yearly: 'سالانه', founder: 'بنیان‌گذار', active: 'قدیمی',
+};
+
+function LicensesTab() {
+  const [rows, setRows] = useState<AccessRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'active' | 'trial' | 'suspended'>('all');
+  const [grantEmail, setGrantEmail] = useState('');
+  const [grantPlan, setGrantPlan] = useState('yearly');
+  const [grantMonths, setGrantMonths] = useState(12);
+  const [status, setStatus] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('acc_access').select('*').order('created_at', { ascending: false }).limit(200);
+    setRows((data || []) as AccessRow[]);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = rows.filter((r) => filter === 'all' || r.status === filter);
+
+  /* فعال‌سازی/تمدید لایسنس برای یک ایمیل — اگر رکورد نبود، از acc_trial_requests یا auth پیدا می‌کنیم */
+  const grant = async () => {
+    const email = grantEmail.trim().toLowerCase();
+    if (!email) { setStatus('ایمیل کاربر را وارد کنید.'); return; }
+    setStatus('در حال پردازش…');
+    const expires = new Date(Date.now() + grantMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
+    const existing = rows.find((r) => (r.email || '').toLowerCase() === email);
+    if (existing) {
+      const { error } = await supabase
+        .from('acc_access')
+        .update({ plan: grantPlan, status: 'active', expires_at: expires })
+        .eq('id', existing.id);
+      if (error) { setStatus('خطا: ' + error.message); return; }
+      setStatus(`لایسنس ${PLAN_LABELS[grantPlan]} برای ${email} تا ${formatFaDate(expires)} فعال شد.`);
+    } else {
+      /* رکورد جدید: user_id از profiles با ایمیل */
+      const { data: prof } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+      if (!prof?.id) {
+        setStatus('کاربری با این ایمیل پیدا نشد. کاربر باید یک‌بار وارد سایت شود.');
+        return;
+      }
+      const { error } = await supabase.from('acc_access').insert({
+        user_id: prof.id,
+        email,
+        role: 'owner',
+        status: 'active',
+        plan: grantPlan,
+        expires_at: expires,
+      });
+      if (error) { setStatus('خطا: ' + error.message); return; }
+      setStatus(`لایسنس ${PLAN_LABELS[grantPlan]} برای ${email} ساخته شد تا ${formatFaDate(expires)}.`);
+    }
+    setGrantEmail('');
+    load();
+  };
+
+  const setRowStatus = async (id: string, newStatus: string) => {
+    await supabase.from('acc_access').update({ status: newStatus }).eq('id', id);
+    load();
+  };
+
+  const extend = async (row: AccessRow) => {
+    const months = window.prompt('چند ماه تمدید شود؟ (عدد)', '12');
+    const m = Number(months);
+    if (!m || m <= 0) return;
+    const base = row.expires_at && new Date(row.expires_at) > new Date() ? new Date(row.expires_at) : new Date();
+    const expires = new Date(base.getTime() + m * 30 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from('acc_access').update({ expires_at: expires, status: 'active' }).eq('id', row.id);
+    load();
+  };
+
+  if (loading) return <KarbanLoader label="در حال بارگذاری لایسنس‌ها…" />;
+  return (
+    <div className="admin-settings">
+      <h2>لایسنس‌های نرم‌افزار حسابداری</h2>
+      <p>فعال‌سازی اشتراک پس از خرید، تمدید و تعلیق لایسنس کاربران.</p>
+
+      <div className="admin-form" style={{ alignItems: 'end' }}>
+        <label className="settings-field" style={{ minWidth: 220 }}>
+          ایمیل کاربر
+          <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="user@example.com" dir="ltr" />
+        </label>
+        <label className="settings-field">
+          پلن
+          <select value={grantPlan} onChange={(e) => setGrantPlan(e.target.value)}>
+            <option value="monthly">ماهانه</option>
+            <option value="yearly">سالانه</option>
+            <option value="founder">بنیان‌گذار</option>
+          </select>
+        </label>
+        <label className="settings-field">
+          مدت (ماه)
+          <FaNumberInput value={grantMonths} onChange={(n) => setGrantMonths(Math.max(1, Math.round(n)))} style={{ minWidth: 90 }} />
+        </label>
+        <button className="button button-green" onClick={grant}><KeyRound size={15} /> فعال‌سازی / تمدید</button>
+      </div>
+      {status && <small className="admin-success">{status}</small>}
+
+      <div style={{ display: 'flex', gap: '.4rem', margin: '1rem 0 .6rem' }}>
+        {([['all', 'همه'], ['active', 'فعال'], ['trial', 'آزمایشی'], ['suspended', 'معلق']] as const).map(([k, l]) => (
+          <button key={k} className={`button button-small ${filter === k ? 'button-green' : 'button-outline'}`} onClick={() => setFilter(k)}>
+            {l} {formatFaNumber(rows.filter((r) => k === 'all' || r.status === k).length)}
+          </button>
+        ))}
+      </div>
+
+      <table className="admin-table">
+        <thead>
+          <tr><th>#</th><th>ایمیل</th><th>پلن</th><th>وضعیت</th><th>انقضا</th><th>ایجاد</th><th></th></tr>
+        </thead>
+        <tbody>
+          {filtered.map((row, index) => (
+            <tr key={row.id}>
+              <td>{(index + 1).toLocaleString('fa-IR')}</td>
+              <td dir="ltr" style={{ textAlign: 'right' }}>{row.email || row.user_id?.slice(0, 8) || '—'}</td>
+              <td>{PLAN_LABELS[row.plan || ''] || row.plan || '—'}</td>
+              <td>
+                <select value={row.status} onChange={(e) => setRowStatus(row.id, e.target.value)}>
+                  <option value="active">فعال</option>
+                  <option value="trial">آزمایشی</option>
+                  <option value="suspended">معلق</option>
+                </select>
+              </td>
+              <td>{row.expires_at ? fmtDate(row.expires_at) : '—'}</td>
+              <td>{fmtDate(row.created_at)}</td>
+              <td className="admin-actions">
+                <button className="button button-small" onClick={() => extend(row)}>تمدید</button>
+              </td>
+            </tr>
+          ))}
+          {filtered.length === 0 && <tr><td colSpan={7}>لایسنسی در این فهرست نیست.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ── اتصال تلگرام ادمین: تنظیم ربات، پیام تست، صف رویدادها ── */
+
+function TelegramTab() {
+  const [cfg, setCfg] = useState<TelegramConfig>(DEFAULT_TELEGRAM_CONFIG);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [testMsg, setTestMsg] = useState('');
+  const [testResult, setTestResult] = useState('');
+  const [queueCount, setQueueCount] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const c = await fetchTelegramConfig();
+      setCfg(c);
+      try {
+        const { count } = await supabase.from('telegram_queue').select('id', { count: 'exact', head: true });
+        setQueueCount(count || 0);
+      } catch { setQueueCount(0); }
+      setLoading(false);
+      /* کشیدن صف پیام‌های کاربران — خودکار در باز شدن تب */
+      drainTelegramQueue(c).then((sent) => {
+        if (sent > 0) {
+          setQueueCount(0);
+          setTestResult(`${sent} پیام صف‌شده به تلگرام ارسال شد.`);
+        }
+      });
+    })();
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await saveTelegramConfig(cfg);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setTestResult('در حال ارسال…');
+    const r = await sendTelegramDirect(cfg, testMsg.trim() || '✅ اتصال کاربان به تلگرام برقرار شد.');
+    setTestResult(r.ok ? '✅ پیام به تلگرام ارسال شد — چک کنید.' : `❌ ${r.error}`);
+  };
+
+  if (loading) return <KarbanLoader label="در حال بارگذاری تنظیمات تلگرام…" />;
+  return (
+    <div className="admin-settings">
+      <h2>اتصال تلگرام ادمین</h2>
+      <p>رویدادهای مهم سایت (سفارش جدید، درخواست تریال، تیکت، فاکتور رسمی، ثبت‌نام کاربر) به تلگرام شما پیام می‌دهند. برای ساخت ربات، در تلگرام به <b dir="ltr">@BotFather</b> پیام <b dir="ltr">/newbot</b> بدهید و برای گرفتن شناسه چت، به <b dir="ltr">@userinfobot</b> پیام بدهید.</p>
+
+      <div className="settings-grid">
+        <label className="settings-field" style={{ gridColumn: 'span 2' }}>
+          توکن ربات (BotFather)
+          <input value={cfg.bot_token} onChange={(e) => setCfg({ ...cfg, bot_token: e.target.value.trim() })} placeholder="1234567890:AAE…" dir="ltr" />
+        </label>
+        <label className="settings-field">
+          شناسه چت (Chat ID)
+          <input value={cfg.chat_id} onChange={(e) => setCfg({ ...cfg, chat_id: e.target.value.trim() })} placeholder="123456789" dir="ltr" />
+        </label>
+      </div>
+
+      <h3>رویدادهای اطلاع‌رسانی</h3>
+      <div className="settings-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+        {([
+          ['notify_orders', 'سفارش خدمات جدید'],
+          ['notify_trials', 'درخواست تریال / کسب‌وکار جدید حسابداری'],
+          ['notify_tickets', 'تیکت پشتیبانی جدید'],
+          ['notify_invoices', 'صدور فاکتور رسمی توسط کاربران'],
+          ['notify_users', 'ثبت‌نام کاربر جدید'],
+        ] as const).map(([key, label]) => (
+          <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.9rem' }}>
+            <input type="checkbox" checked={cfg[key]} onChange={(e) => setCfg({ ...cfg, [key]: e.target.checked })} />
+            {label}
+          </label>
+        ))}
+      </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.95rem', margin: '.6rem 0' }}>
+        <input type="checkbox" checked={cfg.enabled} onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })} />
+        <b>اتصال فعال باشد</b>
+      </label>
+
+      <div className="admin-actions-row">
+        <button className="button button-green" onClick={save} disabled={saving}><Save size={15} /> {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}</button>
+        <button className="button" onClick={sendTest}><Send size={15} /> ارسال پیام تست</button>
+      </div>
+      {saved && <small className="admin-success">✓ تنظیمات ذخیره شد (به‌صورت امن در site_secrets — فقط ادمین).</small>}
+      {testResult && <small className="admin-success">{testResult}</small>}
+
+      <div style={{ marginTop: '1rem', padding: '.8rem 1rem', borderRadius: 12, border: '1px solid var(--line)', background: 'rgba(255,255,255,.03)' }}>
+        <b style={{ fontSize: '.9rem' }}>صف پیام‌های ارسالی کاربران: {formatFaNumber(queueCount)}</b>
+        <p style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: '.3rem' }}>
+          پیام‌های رویدادهای کاربران ابتدا در صف امن ذخیره می‌شوند و هر بار که این تب را باز کنید، خودکار به تلگرام ارسال و از صف حذف می‌شوند.
+        </p>
+        <button className="button button-small" onClick={() => drainTelegramQueue(cfg).then((n) => { setTestResult(`${n} پیام ارسال شد.`); setQueueCount(0); })}>
+          ارسال صف الان
+        </button>
+      </div>
     </div>
   );
 }

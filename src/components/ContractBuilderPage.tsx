@@ -4,6 +4,7 @@ import { CONTRACT_TYPES, INDUSTRIES, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { notifyAdmin } from '@/lib/notify';
+import FaNumberInput from '@/components/FaNumberInput';
 
 const laborTypes = ['کار', 'کارآموزی'];
 
@@ -136,7 +137,7 @@ export default function ContractBuilderPage() {
             <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="مثلاً: ۱۲ ماه" />
           </label>
           <label>مبلغ کل (ریال — اختیاری)
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <FaNumberInput value={Number(String(amount).replace(/\D/g, '')) || 0} onChange={(n) => setAmount(n ? String(n) : '')} />
           </label>
           <label>توضیح اضافه (اختیاری)
             <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder="هر شرط خاصی داری بنویس…" />

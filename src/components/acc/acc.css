@@ -419,3 +419,17 @@
   .tpl-picker { display: none !important; }
   .tpl-sheet { box-shadow: none; border-radius: 0; max-width: none; }
 }
+
+/* ═══ نسخه ۶ — تب‌ها، جست‌وجوی سراسری، ردیف‌های جست‌وجو ═══ */
+.acc-tabs { display: flex; gap: '.35rem'; flex-wrap: wrap; }
+.acc-tabs button { border: 1px solid rgba(216,165,63,.3); background: transparent; color: var(--muted); border-radius: 10px; padding: .45rem 1rem; font-size: .82rem; cursor: pointer; font-family: inherit; transition: all .18s; }
+.acc-tabs button:hover { border-color: rgba(216,165,63,.6); color: var(--gold2); }
+.acc-tabs button.is-active { background: rgba(216,165,63,.14); color: var(--gold2); border-color: rgba(216,165,63,.7); font-weight: 700; }
+
+.acc-search-row { display: flex; gap: .8rem; align-items: center; padding: .5rem .6rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.02); text-decoration: none; color: var(--text); font-size: .82rem; transition: background .15s; }
+.acc-search-row:hover { background: rgba(216,165,63,.08); }
+.acc-search-row b { color: var(--gold2); min-width: 90px; }
+.acc-search-row span { opacity: .75; }
+.acc-search-row span.num { margin-inline-start: auto; }
+
+.acc-grid-12 button { display: flex; align-items: center; gap: .35rem; }

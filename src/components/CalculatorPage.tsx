@@ -3,6 +3,7 @@ import { ArrowLeft, Scale, ShieldCheck, Table2 } from 'lucide-react';
 import { legalConfig, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { formatRial, formatFaNumber } from '@/lib/format';
+import FaNumberInput from '@/components/FaNumberInput';
 import calcSeo from '@/data/calc-seo.json';
 
 type CalcSeoEntry = {
@@ -288,23 +289,23 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'salary' && (
             <>
               <label>حقوق پایه ماهانه (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <label>ساعت اضافه‌کاری در ماه
-                <input type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value) || 0)} />
+                <FaNumberInput value={overtimeHours} onChange={setOvertimeHours} />
               </label>
               <label>تعداد فرزند
-                <input type="number" value={childrenCount} onChange={(e) => setChildrenCount(Number(e.target.value) || 0)} />
+                <FaNumberInput value={childrenCount} onChange={setChildrenCount} />
               </label>
               <label className="terms-check">
                 <input type="checkbox" checked={married} onChange={(e) => setMarried(e.target.checked)} />
                 <span>متأهل هستم (حق عائله‌مندی)</span>
               </label>
               <label>پاداش و سایر مزایا (ریال)
-                <input type="number" value={bonus} onChange={(e) => setBonus(Number(e.target.value) || 0)} />
+                <FaNumberInput value={bonus} onChange={setBonus} />
               </label>
               <label>کسورات دیگر (ریال)
-                <input type="number" value={deduction} onChange={(e) => setDeduction(Number(e.target.value) || 0)} />
+                <FaNumberInput value={deduction} onChange={setDeduction} />
               </label>
               <CalcTable>
                 <TRow label="حقوق پایه" value={formatRial(base)} />
@@ -336,7 +337,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'hire' && (
             <>
               <label>حقوق پایه ماهانه کارمند (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <CalcTable>
                 <TRow label="حقوق پایه" value={formatRial(base)} />
@@ -355,10 +356,10 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'severance' && (
             <>
               <label>آخرین حقوق ماهانه (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <label>سابقه کار (سال)
-                <input type="number" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} />
+                <FaNumberInput value={years} onChange={setYears} />
               </label>
               <CalcTable>
                 <TRow label="سنوات هر سال کار" value={formatRial(severanceResult.perYear)} />
@@ -370,13 +371,13 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'retirement' && (
             <>
               <label>سن فعلی
-                <input type="number" value={age} onChange={(e) => setAge(Number(e.target.value) || 0)} />
+                <FaNumberInput value={age} onChange={setAge} />
               </label>
               <label>سابقه پرداخت حق بیمه (سال)
-                <input type="number" value={insuredYears} onChange={(e) => setInsuredYears(Number(e.target.value) || 0)} />
+                <FaNumberInput value={insuredYears} onChange={setInsuredYears} />
               </label>
               <label>میانگین حقوق دو سال آخر (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <CalcTable valueHeader="نتیجه">
                 <TRow label="شرایط عادی (۶۰ سال + ۲۰ سال سابقه)" value={retirementResult.normal ? '✓ برقرار' : '✗ برقرار نیست'} ok={retirementResult.normal} no={!retirementResult.normal} />
@@ -391,10 +392,10 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'overtime' && (
             <>
               <label>حقوق پایه ماهانه (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <label>ساعت اضافه‌کاری
-                <input type="number" value={overtimeHours} onChange={(e) => setOvertimeHours(Number(e.target.value) || 0)} />
+                <FaNumberInput value={overtimeHours} onChange={setOvertimeHours} />
               </label>
               <CalcTable>
                 <TRow label="نرخ هر ساعت عادی (تقسیم بر ۲۲۰ ساعت)" value={formatRial(Math.round(overtimeResult.hourly))} />
@@ -407,10 +408,10 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'business-tax' && (
             <>
               <label>درآمد سالانه (ریال)
-                <input type="number" value={revenue} onChange={(e) => setRevenue(Number(e.target.value) || 0)} />
+                <FaNumberInput value={revenue} onChange={setRevenue} />
               </label>
               <label>هزینه‌های سالانه قابل‌قبول (ریال)
-                <input type="number" value={expenses} onChange={(e) => setExpenses(Number(e.target.value) || 0)} />
+                <FaNumberInput value={expenses} onChange={setExpenses} />
               </label>
               <CalcTable>
                 <TRow label="سود سالانه" value={formatRial(businessTaxResult.profit)} />
@@ -428,7 +429,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'vat' && (
             <>
               <label>مبلغ (ریال)
-                <input type="number" value={vatAmount} onChange={(e) => setVatAmount(Number(e.target.value) || 0)} />
+                <FaNumberInput value={vatAmount} onChange={setVatAmount} />
               </label>
               <label className="terms-check">
                 <input type="checkbox" checked={vatMode === 'inside'} onChange={(e) => setVatMode(e.target.checked ? 'inside' : 'add')} />
@@ -445,7 +446,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'salary-tax' && (
             <>
               <label>حقوق ماهانه مشمول (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <CalcTable>
                 <TRow label="بیمه سهم کارگر (۷٪)" value={formatRial(salaryTaxResult.insurance)} minus />
@@ -463,10 +464,10 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'eydi' && (
             <>
               <label>حقوق پایه ماهانه (پایه سنوات — ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <label>ماه‌های کارکرد در سال جاری (حداکثر ۱۲)
-                <input type="number" value={eydiMonths} onChange={(e) => setEydiMonths(Number(e.target.value) || 0)} />
+                <FaNumberInput value={eydiMonths} onChange={setEydiMonths} />
               </label>
               <CalcTable>
                 <TRow label="عیدی سالانه تمام‌وقت (۲ × پایه سنوات)" value={formatRial(eydiResult.yearly)} />
@@ -480,7 +481,7 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'insurance' && (
             <>
               <label>حقوق و مزایای مشمول بیمه (ریال)
-                <input type="number" value={insuredBase} onChange={(e) => setInsuredBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={insuredBase} onChange={setInsuredBase} />
               </label>
               <CalcTable>
                 <TRow label="سهم کارگر (۷٪) — از حقوق کسر می‌شود" value={formatRial(insuranceResult.worker)} minus />
@@ -497,13 +498,13 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'leave' && (
             <>
               <label>حقوق ماهانه (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <label>روزهای مرخصی استحقاقی کسب‌شده
-                <input type="number" value={earnedDays} onChange={(e) => setEarnedDays(Number(e.target.value) || 0)} />
+                <FaNumberInput value={earnedDays} onChange={setEarnedDays} />
               </label>
               <label>روزهای استفاده‌شده
-                <input type="number" value={usedDays} onChange={(e) => setUsedDays(Number(e.target.value) || 0)} />
+                <FaNumberInput value={usedDays} onChange={setUsedDays} />
               </label>
               <CalcTable>
                 <TRow label="ارزش هر روز مرخصی (حقوق ÷ ۳۰)" value={formatRial(leaveResult.perDay)} />
@@ -517,16 +518,16 @@ export default function CalculatorPage({ type, title, description }: Props) {
           {type === 'termination' && (
             <>
               <label>آخرین حقوق ماهانه (ریال)
-                <input type="number" value={base} onChange={(e) => setBase(Number(e.target.value) || 0)} />
+                <FaNumberInput value={base} onChange={setBase} />
               </label>
               <label>سابقه کار (سال — اعشار مجاز، مثلاً ۳٫۵)
-                <input type="number" step="0.1" value={years} onChange={(e) => setYears(Number(e.target.value) || 0)} />
+                <FaNumberInput value={years} onChange={setYears} decimal />
               </label>
               <label>ماه‌های کارکرد در سال جاری (برای عیدی)
-                <input type="number" value={termMonths} onChange={(e) => setTermMonths(Number(e.target.value) || 0)} />
+                <FaNumberInput value={termMonths} onChange={setTermMonths} />
               </label>
               <label>مانده روزهای مرخصی
-                <input type="number" value={remainingLeave} onChange={(e) => setRemainingLeave(Number(e.target.value) || 0)} />
+                <FaNumberInput value={remainingLeave} onChange={setRemainingLeave} />
               </label>
               <CalcTable>
                 <TRow label={`سنوات (${formatFaNumber(years)} سال × حقوق آخر)`} value={formatRial(terminationResult.severance)} />

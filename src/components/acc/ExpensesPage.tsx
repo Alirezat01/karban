@@ -7,6 +7,7 @@ import {
   Link2, Loader2, Pencil, Plus, Receipt, Search, Settings2, Trash2, Upload, X,
 } from 'lucide-react';
 import type { AccBusiness, AccExpense, AccExpenseCategory, ExpenseTaxStatus } from '@/lib/acc/types';
+import { listProjects } from '@/lib/acc/api6';
 import {
   computeExpenseTax, deleteExpense, deleteExpenseCategory, ensureExpenseCategories,
   listAccounts, listExpenses, saveExpense, saveExpenseCategory,
@@ -55,6 +56,7 @@ export default function ExpensesPage({ business, access }: {
 }) {
   const [rows, setRows] = useState<AccExpense[]>([]);
   const [accounts, setAccounts] = useState<AccountLite[]>([]);
+  const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<CategoryLite[]>([]);
   const [catManager, setCatManager] = useState(false);
   const [catEditing, setCatEditing] = useState<Partial<AccExpenseCategory> | null>(null);
@@ -76,6 +78,7 @@ export default function ExpensesPage({ business, access }: {
       const [e, a] = await Promise.all([listExpenses(business.id), listAccounts(business.id)]);
       setRows(e);
       setAccounts(a);
+      listProjects(business.id).then((p) => setProjects(p.map((x) => ({ id: x.id, name: x.name })))).catch(() => setProjects([]));
     } finally {
       setLoading(false);
     }
@@ -367,6 +370,14 @@ export default function ExpensesPage({ business, access }: {
                 </select>
               </Field>
             </div>
+            {projects.length > 0 && (
+              <Field label="پروژه مرتبط" hint="هزینه به پروژه اضافه می‌شود و در گزارش عملکرد پروژه‌ها دیده می‌شود">
+                <select className="acc-select" value={editing.project_id || ''} onChange={(e) => setEditing({ ...editing, project_id: e.target.value || null })}>
+                  <option value="">— بدون پروژه —</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </Field>
+            )}
 
             {/* پیوست سند + اعتبارسنجی — پیشرفته */}
             {canTax ? (

@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { BarChart3, Download, FileSpreadsheet, TrendingUp } from 'lucide-react';
-import type { AccBusiness, ProductProfitRow, ProfitAndLoss, VatReport } from '@/lib/acc/types';
+import type { AccBusiness, BalanceSheet, ProductProfitRow, ProfitAndLoss, VatReport } from '@/lib/acc/types';
 import { currentSeasonRange, downloadCsv, productProfitability, profitAndLoss, salesByItem, salesByPartner, seasonalReport, vatReport, type SeasonalRow } from '@/lib/acc/api';
+import { balanceSheet, creditorsReport, projectPerformance, type ProjectPerformance } from '@/lib/acc/api6';
 import { SEASON_NAMES, currentJalaliMonthRange, formatJalali, jalaliSeasonOf, jalaliYearOf, jalaliYearRange, todayJalali } from '@/lib/acc/jalali';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { JalaliDateInput, EmptyState } from './ui';
 
-type Tab = 'pl' | 'vat' | 'seasonal' | 'sales' | 'product';
+type Tab = 'pl' | 'vat' | 'seasonal' | 'sales' | 'product' | 'balance' | 'creditors' | 'projects';
 
 export default function ReportsPage({ business }: { business: AccBusiness }) {
   const [tab, setTab] = useState<Tab>('pl');
@@ -23,6 +24,9 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
   const [byPartner, setByPartner] = useState<{ name: string; count: number; total: number }[]>([]);
   const [byItem, setByItem] = useState<{ title: string; qty: number; total: number }[]>([]);
   const [product, setProduct] = useState<ProductProfitRow[]>([]);
+  const [sheet, setSheet] = useState<BalanceSheet | null>(null);
+  const [creditors, setCreditors] = useState<{ id: string; number: string; partner: string; remaining: number; dueDate: string | null; overdue: boolean }[]>([]);
+  const [projects, setProjects] = useState<ProjectPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +42,9 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
           tasks.push(salesByItem(business.id, from, to).then(setByItem));
         }
         if (tab === 'product') tasks.push(productProfitability(business.id, from, to).then(setProduct));
+        if (tab === 'balance') tasks.push(balanceSheet(business.id).then(setSheet));
+        if (tab === 'creditors') tasks.push(creditorsReport(business.id).then(setCreditors));
+        if (tab === 'projects') tasks.push(projectPerformance(business.id).then(setProjects));
         await Promise.all(tasks);
       } finally {
         setLoading(false);
@@ -67,7 +74,7 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '.35rem', flex: 1, flexWrap: 'wrap' }}>
-          {([['pl', 'سود و زیان'], ['vat', 'ارزش افزوده'], ['seasonal', 'معاملات فصلی (۱۶۹)'], ['sales', 'تحلیل فروش'], ['product', 'سود محصولات']] as const).map(([k, label]) => (
+          {([['pl', 'سود و زیان'], ['balance', 'ترازنامه'], ['vat', 'ارزش افزوده'], ['seasonal', 'معاملات فصلی (۱۶۹)'], ['sales', 'تحلیل فروش'], ['product', 'سود محصولات'], ['creditors', 'بستانکاران'], ['projects', 'عملکرد پروژه‌ها']] as const).map(([k, label]) => (
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
@@ -244,6 +251,99 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
                 </tbody>
               </table>
               {product.length === 0 && <EmptyState icon={<TrendingUp size={34} />} title="فروشی در این بازه ثبت نشده" hint="پس از صدور فاکتور فروش، سود محصولات اینجا محاسبه می‌شود" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'balance' && sheet && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <p className="acc-hint" style={{ margin: 0 }}>ترازنامه از اسناد حسابداری واقعی ساخته می‌شود — دارایی = بدهی + سرمایه + سود انباشته دوره.</p>
+          <div className="acc-grid-2-eq">
+            <div className="acc-card">
+              <h3>دارایی‌ها</h3>
+              <div className="acc-table-wrap">
+                <table className="acc-table" style={{ minWidth: 300 }}>
+                  <thead><tr><th>سرفصل</th><th>مانده (ریال)</th></tr></thead>
+                  <tbody>{sheet.assets.map((r) => <tr key={r.code}><td>{r.title}</td><td className="num">{formatMoney(r.amount)}</td></tr>)}</tbody>
+                  <tfoot><tr><td>جمع دارایی‌ها</td><td className="num" style={{ fontWeight: 800 }}>{formatMoney(sheet.totalAssets)}</td></tr></tfoot>
+                </table>
+              </div>
+            </div>
+            <div className="acc-card">
+              <h3>بدهی‌ها و سرمایه</h3>
+              <div className="acc-table-wrap">
+                <table className="acc-table" style={{ minWidth: 300 }}>
+                  <thead><tr><th>سرفصل</th><th>مانده (ریال)</th></tr></thead>
+                  <tbody>
+                    {sheet.liabilities.map((r) => <tr key={r.code}><td>{r.title}</td><td className="num">{formatMoney(r.amount)}</td></tr>)}
+                    {sheet.equity.map((r) => <tr key={r.code}><td>{r.title}</td><td className="num">{formatMoney(r.amount)}</td></tr>)}
+                  </tbody>
+                  <tfoot><tr><td>جمع بدهی + سرمایه</td><td className="num" style={{ fontWeight: 800 }}>{formatMoney(sheet.totalLiabilities + sheet.totalEquity)}</td></tr></tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div className="acc-kpi" style={{ padding: '1rem', borderColor: Math.abs(sheet.totalAssets - (sheet.totalLiabilities + sheet.totalEquity)) < 1000 ? 'rgba(212,175,55,.4)' : '#ef9a94' }}>
+            <div className="k-label">تفاوت دو طرف ترازنامه</div>
+            <div className="k-value">{formatMoney(sheet.totalAssets - (sheet.totalLiabilities + sheet.totalEquity))} ریال</div>
+            <div className="k-sub">اگر سند افتتاحیه و اسناد کامل باشند، این مقدار نزدیک صفر است</div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'creditors' && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <div className="acc-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="acc-kpi"><div className="k-label">جمع پرداختنی</div><div className="k-value">{formatMoney(creditors.reduce((s, r) => s + r.remaining, 0))}</div></div>
+            <div className="acc-kpi"><div className="k-label">موارد معوق (سررسید گذشته)</div><div className="k-value">{toFaDigits(creditors.filter((r) => r.overdue).length)}</div></div>
+            <div className="acc-kpi"><div className="k-label">تعداد صورتحساب باز خرید</div><div className="k-value">{toFaDigits(creditors.length)}</div></div>
+          </div>
+          <div className="acc-card">
+            <h3>بستانکاران — صورتحساب‌های خرید تسویه‌نشده</h3>
+            <div className="acc-table-wrap">
+              <table className="acc-table" style={{ minWidth: 520 }}>
+                <thead><tr><th>شماره</th><th>تامین‌کننده</th><th>مانده (ریال)</th><th>سررسید</th><th>وضعیت</th></tr></thead>
+                <tbody>
+                  {creditors.map((r) => (
+                    <tr key={r.id}>
+                      <td className="num">{r.number}</td>
+                      <td style={{ fontWeight: 600 }}>{r.partner}</td>
+                      <td className="num" style={{ color: 'var(--gold2)', fontWeight: 700 }}>{formatMoney(r.remaining)}</td>
+                      <td className="num">{r.dueDate ? formatJalali(r.dueDate) : '—'}</td>
+                      <td>{r.overdue ? <span className="acc-badge bad">معوق</span> : <span className="acc-badge ok">در سررسید</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {creditors.length === 0 && <EmptyState title="پرداختنی‌ای وجود ندارد" hint="صورتحساب خرید صادر و تسویه‌نشده اینجا نمایش داده می‌شود" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'projects' && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <p className="acc-hint" style={{ margin: 0 }}>درآمد هر پروژه از فاکتورهای فروش متصل به پروژه و هزینه آن از اسناد هزینه‌ای که با پروژه ثبت شده‌اند محاسبه می‌شود.</p>
+          <div className="acc-card">
+            <h3><TrendingUp size={16} /> عملکرد پروژه‌ها و مراکز هزینه</h3>
+            <div className="acc-table-wrap">
+              <table className="acc-table" style={{ minWidth: 640 }}>
+                <thead><tr><th>پروژه</th><th>بودجه</th><th>درآمد</th><th>هزینه</th><th>سود</th><th>مصرف بودجه</th></tr></thead>
+                <tbody>
+                  {projects.map(({ project, income, expense, profit, budgetUsage }) => (
+                    <tr key={project.id}>
+                      <td style={{ fontWeight: 600 }}>{project.name}</td>
+                      <td className="num">{project.budget ? formatMoney(project.budget) : '—'}</td>
+                      <td className="num">{formatMoney(income)}</td>
+                      <td className="num" style={{ color: '#ef9a94' }}>{formatMoney(expense)}</td>
+                      <td className="num" style={{ color: profit >= 0 ? '#6fdca0' : '#ef9a94', fontWeight: 700 }}>{formatMoney(profit)}</td>
+                      <td className="num">{project.budget > 0 ? <span className={`acc-badge ${budgetUsage > 100 ? 'bad' : budgetUsage > 80 ? 'warn' : 'ok'}`}>{toFaDigits(budgetUsage)}٪</span> : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {projects.length === 0 && <EmptyState icon={<BarChart3 size={34} />} title="پروژه‌ای تعریف نشده" hint="از بخش «پروژه‌ها» پروژه‌های خود را بسازید" />}
             </div>
           </div>
         </div>
