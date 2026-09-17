@@ -40,8 +40,8 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
       toast('ذخیره شد');
       setEditing(null);
       load();
-    } catch {
-      toast('ذخیره ناموفق بود', 'error');
+    } catch (e) {
+      toast('ذخیره ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
     }
   }
 

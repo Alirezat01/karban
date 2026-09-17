@@ -115,19 +115,46 @@ export async function listPartners(businessId: string) {
   return (data || []) as AccPartner[];
 }
 
+/**
+ * درج/به‌روزرسانی مقاوم در برابر ناهم‌خوانی اسکیمای دیتابیس.
+ * اگر دیتابیس ستونی را که ارسال شده نداشته باشد (PGRST204)، آن ستون کنار گذاشته
+ * می‌شود و دوباره تلاش می‌کنیم — تا ذخیره هرگز به‌خاطر یک ستون جامان بشکند.
+ */
+async function mutateSafe(
+  table: string,
+  row: Record<string, unknown>,
+  run: (cleanRow: Record<string, unknown>) => Promise<{ error: { message: string } | null }>,
+): Promise<void> {
+  let clean = { ...row };
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { error } = await run(clean);
+    if (!error) return;
+    const m = error.message || '';
+    const hit = m.match(/Could not find the '([^']+)' column/) || m.match(/column ["']?([\w.]+)["']? does not exist/i);
+    const col = hit ? (hit[1].split('.').pop() as string) : null;
+    if (col && col in clean) {
+      delete clean[col];
+      continue; // ستون جامان را کنار بگذار و دوباره تلاش کن
+    }
+    throw error;
+  }
+}
+
 export async function savePartner(businessId: string, row: Partial<AccPartner>) {
   if (row.id) {
-    const { error } = await supabase.from('acc_partners').update(row).eq('id', row.id);
-    if (error) throw error;
+    await mutateSafe('acc_partners', row as Record<string, unknown>, (clean) =>
+      supabase.from('acc_partners').update(clean).eq('id', row.id!),
+    );
     return row.id;
   }
-  const { data, error } = await supabase
-    .from('acc_partners')
-    .insert({ ...row, business_id: businessId })
-    .select('id')
-    .single();
-  if (error) throw error;
-  return data.id as string;
+  let savedId = '';
+  await mutateSafe('acc_partners', { ...row, business_id: businessId } as Record<string, unknown>, async (clean) => {
+    const { data, error } = await supabase.from('acc_partners').insert(clean).select('id').single();
+    if (!error && data) savedId = data.id as string;
+    return { error };
+  });
+  return savedId;
 }
 
 export async function deletePartner(id: string) {
