@@ -10,7 +10,7 @@ import {
 } from '@/lib/acc/api';
 import { parseStuffFile } from '@/lib/acc/stuff-file';
 import { UNITS, VAT_DEFAULT_RATE } from '@/lib/acc/constants';
-import { Field, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
+import { Field, Modal, MoneyInput, QtyInput, confirmAction, toast, EmptyState } from './ui';
 import { formatMoney } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { featureEnabled } from '@/lib/acc/plan';
@@ -320,7 +320,7 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
                   ? <input className="acc-input" value="معاف" disabled />
                   : (
                     <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
-                      <input className="acc-input" inputMode="numeric" value={editing.vat_rate ?? business.default_vat_rate} onChange={(e) => setEditing({ ...editing, vat_rate: Number(e.target.value) || 0 })} />
+                      <QtyInput value={editing.vat_rate ?? business.default_vat_rate} onChange={(n) => setEditing({ ...editing, vat_rate: n })} />
                       <span style={{ color: 'var(--muted)' }}>٪</span>
                     </div>
                   )}
@@ -347,7 +347,7 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
               </Field>
               {canInventory && editing.track_stock ? (
                 <Field label="موجودی فعلی">
-                  <input className="acc-input num" inputMode="numeric" value={toFaDigits(editing.stock ?? 0)} onChange={(e) => setEditing({ ...editing, stock: Number(e.target.value.replace(/[^\d]/g, '')) || 0 })} />
+                  <QtyInput value={editing.stock ?? 0} onChange={(n) => setEditing({ ...editing, stock: n })} />
                 </Field>
               ) : null}
             </div>

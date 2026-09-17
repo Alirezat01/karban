@@ -14,6 +14,9 @@ export type FeatureKey =
   | 'report_vat'              // گزارش ارزش افزوده فصلی
   | 'report_seasonal'         // صورت معاملات فصلی + CSV
   | 'report_sales_analysis'   // تحلیل فروش و مشتریان
+  | 'report_product_profit'   // گزارش سود محصولات
+  | 'manual_journal'          // سند حسابداری دستی + سرفصل اضافه
+  | 'moadian_json'            // خروجی JSON سامانه مودیان
   | 'export_multiformat'      // خروجی اکسل / ورد / PDF
   | 'expense_tax_validation'  // اعتبارسنجی مالیاتی هزینه + آپلود سند
   | 'stuff_catalog'           // شناسه کالا و خدمات مودیان
@@ -25,7 +28,7 @@ export type FeatureKey =
   | 'reminders'               // یادآوری سررسیدها
   | 'partner_statement';      // صورت‌حساب طرف‌حساب + تحلیل سررسید
 
-/* امکانات انحصاری نسخه پیشرفته — ۱۷ مورد (بیش از حداقل ۱۰ مورد درخواستی) */
+/* امکانات انحصاری نسخه پیشرفته — ۲۰ مورد (بیش از حداقل ۱۰ مورد درخواستی) */
 export interface ProFeatureInfo {
   key: FeatureKey;
   title: string;
@@ -35,11 +38,14 @@ export interface ProFeatureInfo {
 export const PRO_FEATURES: ProFeatureInfo[] = [
   { key: 'invoice_purchase', title: 'صورتحساب خرید و برگشت از فروش', desc: 'ثبت خرید تامین‌کننده‌ها و برگشتی‌ها با سند دوطرفه خودکار' },
   { key: 'books', title: 'دفترخانه کامل', desc: 'دفتر روزنامه، دفتر کل و تراز آزمایشی خودکار' },
+  { key: 'manual_journal', title: 'سند حسابداری دستی و سرفصل اضافه', desc: 'ثبت اسناد بدهکار/بستانکار دلخواه + ساخت سرفصل‌های اختصاصی' },
   { key: 'trial_balance_4col', title: 'تراز آزمایشی چهارستونی', desc: 'گردش بدهکار/بستانکار و مانده دوطرفه هر سرفصل' },
   { key: 'report_pl', title: 'گزارش سود و زیان', desc: 'سود واقعی دوره در یک نگاه، محاسبه‌شده از اسناد واقعی' },
   { key: 'report_vat', title: 'گزارش ارزش افزوده فصلی', desc: 'اظهارنامه فصلی با تفکیک اعتبار خرید و هزینه' },
   { key: 'report_seasonal', title: 'صورت معاملات فصلی + CSV', desc: 'خروجی رسمی معاملات فصل برای سامانه مالیاتی' },
   { key: 'report_sales_analysis', title: 'تحلیل فروش و مشتریان', desc: 'بیشترین مشتری، پرتکرارترین کالا و روند فروش' },
+  { key: 'report_product_profit', title: 'گزارش سود محصولات', desc: 'سود هر کالا = فروش منهای بهای تمام‌شده، رتبه‌بندی‌شده' },
+  { key: 'moadian_json', title: 'خروجی JSON سامانه مودیان', desc: 'بسته JSON هر صورتحساب آماده ارسال با کارپوشه/TSP' },
   { key: 'export_multiformat', title: 'خروجی اکسل، ورد و PDF', desc: 'دانلود همه جدول‌ها و گزارش‌ها در سه فرمت' },
   { key: 'expense_tax_validation', title: 'اعتبارسنجی مالیاتی هزینه‌ها', desc: 'کنترل سند هزینه طبق مواد ۱۴۷، ۱۴۸ و ۱۶۹ + آپلود عکس فاکتور' },
   { key: 'stuff_catalog', title: 'شناسه کالا و خدمات مودیان', desc: 'انتخابگر رسمی stuffId و واردات کاتالوگ مالیاتی' },

@@ -1,15 +1,15 @@
 /* دریافت و پرداخت — تسویه فاکتورها و گردش نقدی */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccInvoice, AccTransaction } from '@/lib/acc/types';
 import { deleteTransaction, listAccounts, listInvoices, listPartners, listTransactions, saveTransaction } from '@/lib/acc/api';
 import { PAYMENT_METHODS } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
-import { formatJalali } from '@/lib/acc/jalali';
+import { formatJalali, dateToISO } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
 
-interface AccountLite { id: string; name: string; kind: string }
+interface AccountLite { id: string; name: string; kind: string; balance?: number }
 
 export default function TransactionsPage({ business }: { business: AccBusiness }) {
   const [rows, setRows] = useState<AccTransaction[]>([]);
@@ -18,6 +18,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
   const [openInvoices, setOpenInvoices] = useState<AccInvoice[]>([]);
   const [tab, setTab] = useState<'all' | 'receipt' | 'payment'>('all');
   const [editing, setEditing] = useState<Partial<AccTransaction> | null>(null);
+  const [transfer, setTransfer] = useState<{ from_account: string; to_account: string; amount: number; date_g: string; description: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -69,6 +70,26 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
     }
   }
 
+  /* حواله بین حساب‌ها: یک پرداخت از حساب مبدا + یک دریافت در حساب مقصد */
+  async function saveTransfer() {
+    if (!transfer) return;
+    if (!transfer.from_account || !transfer.to_account) { toast('هر دو حساب را انتخاب کنید', 'error'); return; }
+    if (transfer.from_account === transfer.to_account) { toast('حساب مبدا و مقصد نباید یکی باشد', 'error'); return; }
+    if ((transfer.amount || 0) <= 0) { toast('مبلغ را وارد کنید', 'error'); return; }
+    const fromName = accounts.find((a) => a.id === transfer.from_account)?.name || '';
+    const toName = accounts.find((a) => a.id === transfer.to_account)?.name || '';
+    const desc = transfer.description?.trim() || `حواله وجه از ${fromName} به ${toName}`;
+    try {
+      await saveTransaction(business.id, { kind: 'payment', amount: transfer.amount, date_g: transfer.date_g, method: 'transfer', account_id: transfer.from_account, description: desc });
+      await saveTransaction(business.id, { kind: 'receipt', amount: transfer.amount, date_g: transfer.date_g, method: 'transfer', account_id: transfer.to_account, description: desc });
+      toast('حواله بین حساب‌ها ثبت شد');
+      setTransfer(null);
+      load();
+    } catch {
+      toast('ثبت حواله ناموفق بود', 'error');
+    }
+  }
+
   async function remove(row: AccTransaction) {
     if (!(await confirmAction(`سند ${row.kind === 'receipt' ? 'دریافت' : 'پرداخت'} به مبلغ ${formatMoney(row.amount)} حذف شود؟`))) return;
     try {
@@ -91,6 +112,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
+        <button className="acc-btn acc-btn-outline" onClick={() => setTransfer({ from_account: '', to_account: '', amount: 0, date_g: dateToISO(new Date()), description: '' })}><ArrowLeftRight size={15} /> حواله بین حساب‌ها</button>
         <button className="acc-btn acc-btn-primary" onClick={() => openForm('receipt')}><ArrowDownLeft size={15} /> ثبت دریافت</button>
         <button className="acc-btn acc-btn-outline" onClick={() => openForm('payment')}><ArrowUpRight size={15} /> ثبت پرداخت</button>
       </div>
@@ -148,7 +170,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
               <Field label="حساب" hint="پول از کدام حساب خارج/داخل شد">
                 <select className="acc-select" value={editing.account_id || ''} onChange={(e) => setEditing({ ...editing, account_id: e.target.value || null })}>
                   <option value="">— انتخاب کنید —</option>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
                 </select>
               </Field>
               <Field label="روش">
@@ -177,6 +199,40 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
             <div style={{ display: 'flex', gap: '.6rem' }}>
               <button className="acc-btn acc-btn-primary" onClick={save}>ثبت</button>
               <button className="acc-btn acc-btn-outline" onClick={() => setEditing(null)}>انصراف</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* مودال حواله بین حساب‌ها */}
+      <Modal open={!!transfer} onClose={() => setTransfer(null)} title="حواله بین حساب‌ها (انتقال وجه داخلی)">
+        {transfer && (
+          <div style={{ display: 'grid', gap: '.8rem' }}>
+            <p className="acc-hint" style={{ fontSize: '.78rem', lineHeight: 1.9 }}>
+              انتقال وجه بین بانک/صندوق‌های خودتان — دو سند پرداخت و دریافت همزمان ثبت می‌شود و مانده هر دو حساب به‌روز می‌شود.
+            </p>
+            <div className="acc-form-grid">
+              <Field label="از حساب *">
+                <select className="acc-select" value={transfer.from_account} onChange={(e) => setTransfer({ ...transfer, from_account: e.target.value })}>
+                  <option value="">— انتخاب کنید —</option>
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
+                </select>
+              </Field>
+              <Field label="به حساب *">
+                <select className="acc-select" value={transfer.to_account} onChange={(e) => setTransfer({ ...transfer, to_account: e.target.value })}>
+                  <option value="">— انتخاب کنید —</option>
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </Field>
+            </div>
+            <div className="acc-form-grid">
+              <Field label="مبلغ (ریال) *"><MoneyInput value={transfer.amount} onChange={(n) => setTransfer({ ...transfer, amount: n })} /></Field>
+              <Field label="تاریخ"><JalaliDateInput value={transfer.date_g} onChange={(iso) => setTransfer({ ...transfer, date_g: iso })} /></Field>
+            </div>
+            <Field label="توضیح (اختیاری)"><input className="acc-input" value={transfer.description} onChange={(e) => setTransfer({ ...transfer, description: e.target.value })} placeholder="خالی = توضیح خودکار" /></Field>
+            <div style={{ display: 'flex', gap: '.6rem' }}>
+              <button className="acc-btn acc-btn-primary" onClick={saveTransfer}>ثبت حواله</button>
+              <button className="acc-btn acc-btn-outline" onClick={() => setTransfer(null)}>انصراف</button>
             </div>
           </div>
         )}

@@ -7,7 +7,7 @@ import { deleteCheck, listAccounts, listChecks, listPartners, saveCheck, setChec
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, dateToISO, toFaDigits } from '@/lib/acc/jalali';
 import { exportExcel, htmlTable, printHtml, exportWord, exportFilename, brandLogoUrl, type BrandAccess } from '@/lib/acc/export';
-import { Badge, EmptyState, Field, Modal, MoneyInput, JalaliDateInput, toast, confirmAction } from './ui';
+import { Badge, EmptyState, Field, Modal, MoneyInput, DigitsInput, JalaliDateInput, toast, confirmAction } from './ui';
 import { CHECK_STATUS_LABEL } from '@/lib/acc/constants';
 
 interface Row extends Partial<AccCheck> { key: number }
@@ -69,7 +69,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
 
   async function submit() {
     if (!editing) return;
-    if (!(editing.amount > 0)) { toast('مبلغ چک را وارد کنید', 'error'); return; }
+    if (!((editing.amount || 0) > 0)) { toast('مبلغ چک را وارد کنید', 'error'); return; }
     if (!editing.due_date_g) { toast('تاریخ سررسید را وارد کنید', 'error'); return; }
     setBusy(true);
     try {
@@ -250,7 +250,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
               </Field>
-              <Field label="شماره چک"><input className="acc-input" value={editing.serial_no || ''} onChange={(e) => setEditing({ ...editing, serial_no: e.target.value })} /></Field>
+              <Field label="شماره چک"><DigitsInput value={editing.serial_no || ''} onChange={(v) => setEditing({ ...editing, serial_no: v })} maxLength={20} /></Field>
             </div>
             <div className="acc-form-grid-3">
               <Field label="بانک"><input className="acc-input" value={editing.bank_name || ''} onChange={(e) => setEditing({ ...editing, bank_name: e.target.value })} placeholder="مثلاً: ملت" /></Field>
@@ -258,7 +258,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
                 <JalaliDateInput value={editing.issue_date_g || ''} onChange={(iso) => setEditing({ ...editing, issue_date_g: iso })} />
               </Field>
               <Field label="تاریخ سررسید *">
-                <JalaliDateInput value={editing.due_date_g} onChange={(iso) => setEditing({ ...editing, due_date_g: iso })} />
+                <JalaliDateInput value={editing.due_date_g || ''} onChange={(iso) => setEditing({ ...editing, due_date_g: iso })} />
               </Field>
             </div>
             <Field label="توضیحات"><input className="acc-input" value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></Field>

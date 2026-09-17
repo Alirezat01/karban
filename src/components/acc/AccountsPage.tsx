@@ -6,7 +6,7 @@ import type { AccBusiness, AccAccount } from '@/lib/acc/types';
 import { deleteAccount, listAccounts, saveAccount } from '@/lib/acc/api';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
-import { Field, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
+import { Field, Modal, MoneyInput, DigitsInput, confirmAction, toast, EmptyState } from './ui';
 
 type AccountWithBalance = AccAccount & { balance?: number };
 
@@ -110,7 +110,7 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
               </Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="شماره حساب / شماره کارت"><input className="acc-input" value={editing.account_number || ''} onChange={(e) => setEditing({ ...editing, account_number: e.target.value })} /></Field>
+              <Field label="شماره حساب / شماره کارت"><DigitsInput value={editing.account_number || ''} onChange={(v) => setEditing({ ...editing, account_number: v })} maxLength={26} /></Field>
               <Field label="مانده اولیه (ریال)" hint="در افتتاحیه، معادل سرمایه ثبت می‌شود">
                 <MoneyInput value={editing.initial_balance || 0} onChange={(n) => setEditing({ ...editing, initial_balance: n })} />
               </Field>

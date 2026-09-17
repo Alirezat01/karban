@@ -4,22 +4,25 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   BadgeCheck, CalendarDays, FileSpreadsheet, FileText, Image as ImageIcon,
-  Link2, Loader2, Pencil, Plus, Receipt, Search, Trash2, Upload, X,
+  Link2, Loader2, Pencil, Plus, Receipt, Search, Settings2, Trash2, Upload, X,
 } from 'lucide-react';
-import type { AccBusiness, AccExpense, ExpenseTaxStatus } from '@/lib/acc/types';
+import type { AccBusiness, AccExpense, AccExpenseCategory, ExpenseTaxStatus } from '@/lib/acc/types';
 import {
-  computeExpenseTax, deleteExpense, listAccounts, listExpenses, saveExpense,
+  computeExpenseTax, deleteExpense, deleteExpenseCategory, ensureExpenseCategories,
+  listAccounts, listExpenses, saveExpense, saveExpenseCategory,
   TAX_STATUS_LABEL, uploadAccMedia,
 } from '@/lib/acc/api';
 import { EXPENSE_CATEGORIES } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, jalaliMonthLength, toGregorian, todayJalali, dateToISO, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
-import { Field, JalaliDateInput, Modal, MoneyInput, confirmAction, toast, EmptyState } from './ui';
+import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, confirmAction, toast, EmptyState } from './ui';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, brandLogoUrl } from '@/lib/acc/export';
 import { featureEnabled } from '@/lib/acc/plan';
 import { Lock } from 'lucide-react';
 
 interface AccountLite { id: string; name: string; kind: string; balance?: number }
+
+interface CategoryLite { id: string; title: string; code?: string | null }
 
 const TAX_BADGE: Record<ExpenseTaxStatus, { tone: string; icon: React.ReactNode }> = {
   valid: { tone: 'ok', icon: <BadgeCheck size={12} /> },
@@ -52,6 +55,9 @@ export default function ExpensesPage({ business, access }: {
 }) {
   const [rows, setRows] = useState<AccExpense[]>([]);
   const [accounts, setAccounts] = useState<AccountLite[]>([]);
+  const [categories, setCategories] = useState<CategoryLite[]>([]);
+  const [catManager, setCatManager] = useState(false);
+  const [catEditing, setCatEditing] = useState<Partial<AccExpenseCategory> | null>(null);
   const [query, setQuery] = useState('');
   const [taxFilter, setTaxFilter] = useState<'all' | ExpenseTaxStatus>('all');
   const [monthIdx, setMonthIdx] = useState(-1);
@@ -75,6 +81,43 @@ export default function ExpensesPage({ business, access }: {
     }
   }
   useEffect(() => { load(); }, [business.id]);
+
+  /* دسته‌بندی‌ها از دیتابیس (seed خودکار ۲۲ دسته پیش‌فرض) — خطا = لیست ثابت */
+  useEffect(() => {
+    (async () => {
+      try {
+        const cats = await ensureExpenseCategories(business.id);
+        setCategories(cats.map((c) => ({ id: c.id, title: c.title, code: c.code })));
+      } catch {
+        setCategories(EXPENSE_CATEGORIES.map((t, i) => ({ id: `c${i}`, title: t })));
+      }
+    })();
+  }, [business.id]);
+
+  async function saveCategory() {
+    if (!catEditing?.title?.trim()) { toast('عنوان دسته را وارد کنید', 'error'); return; }
+    try {
+      await saveExpenseCategory(business.id, catEditing);
+      const cats = await ensureExpenseCategories(business.id);
+      setCategories(cats.map((c) => ({ id: c.id, title: c.title, code: c.code })));
+      setCatEditing(null);
+      toast('دسته‌بندی ذخیره شد');
+    } catch {
+      toast('ذخیره دسته ناموفق بود — عنوان تکراری است؟', 'error');
+    }
+  }
+
+  async function removeCategory(row: AccExpenseCategory) {
+    if (!(await confirmAction(`دسته «${row.title}» حذف شود؟ هزینه‌های ثبت‌شده با این دسته حفظ می‌شوند.`))) return;
+    try {
+      await deleteExpenseCategory(row.id);
+      const cats = await ensureExpenseCategories(business.id);
+      setCategories(cats.map((c) => ({ id: c.id, title: c.title, code: c.code })));
+      toast('دسته حذف شد');
+    } catch {
+      toast('حذف ناموفق بود', 'error');
+    }
+  }
 
   const filtered = useMemo(() => {
     const month = monthIdx >= 0 ? months[monthIdx] : null;
@@ -216,6 +259,7 @@ export default function ExpensesPage({ business, access }: {
           {months.map((m, i) => <option key={m.label} value={i}>{m.label}</option>)}
         </select>
         <button className="acc-btn acc-btn-primary" onClick={() => setEditing({ category: 'اداری و عمومی', is_paid: true, date_g: summary.todayIso, tax_status: 'incomplete' })}><Plus size={15} /> ثبت هزینه امروز</button>
+        <button className="acc-btn acc-btn-outline" onClick={() => setCatManager(true)}><Settings2 size={15} /> دسته‌ها</button>
       </div>
 
       <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -295,10 +339,13 @@ export default function ExpensesPage({ business, access }: {
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
               <Field label="عنوان هزینه *"><input className="acc-input" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
-              <Field label="دسته" hint="سرفصل حسابداری هزینه">
-                <select className="acc-select" value={editing.category || 'اداری و عمومی'} onChange={(e) => setEditing({ ...editing, category: e.target.value })}>
-                  {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+              <Field label="دسته" hint="سرفصل حسابداری هزینه — قابل ویرایش">
+                <div style={{ display: 'flex', gap: '.4rem' }}>
+                  <select className="acc-select" value={editing.category || 'اداری و عمومی'} onChange={(e) => setEditing({ ...editing, category: e.target.value })}>
+                    {(categories.length ? categories.map((c) => c.title) : EXPENSE_CATEGORIES).map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <button type="button" className="acc-icon-btn" title="مدیریت دسته‌ها" onClick={() => setCatManager(true)}><Settings2 size={15} /></button>
+                </div>
               </Field>
             </div>
             <div className="acc-form-grid">
@@ -309,14 +356,14 @@ export default function ExpensesPage({ business, access }: {
             </div>
             <div className="acc-form-grid">
               <Field label="فروشنده / محل خرید"><input className="acc-input" value={editing.vendor_name || ''} onChange={(e) => setEditing({ ...editing, vendor_name: e.target.value })} placeholder="مثلاً: هایپر رفاه" /></Field>
-              <Field label="شماره فاکتور / سند"><input className="acc-input" value={editing.receipt_no || ''} onChange={(e) => setEditing({ ...editing, receipt_no: e.target.value })} /></Field>
+              <Field label="شماره فاکتور / سند"><DigitsInput value={editing.receipt_no || ''} onChange={(v) => setEditing({ ...editing, receipt_no: v })} allow="-/" /></Field>
             </div>
             <div className="acc-form-grid">
               <Field label="تاریخ"><JalaliDateInput value={editing.date_g || ''} onChange={(iso) => setEditing({ ...editing, date_g: iso })} /></Field>
               <Field label="پرداخت از حساب" hint="«نسیه» یعنی در حساب‌های پرداختنی">
                 <select className="acc-select" value={editing.account_id || ''} onChange={(e) => setEditing({ ...editing, account_id: e.target.value || null })}>
                   <option value="">نسیه (پرداختنی)</option>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
                 </select>
               </Field>
             </div>
@@ -391,6 +438,55 @@ export default function ExpensesPage({ business, access }: {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* مودال مدیریت دسته‌بندی‌ها */}
+      <Modal open={catManager} onClose={() => setCatManager(false)} title="مدیریت دسته‌بندی هزینه‌ها">
+        <div style={{ display: 'grid', gap: '.9rem' }}>
+          <p className="acc-hint" style={{ fontSize: '.78rem', lineHeight: 1.9 }}>
+            دسته‌های شما روی همه فرم‌های ثبت هزینه اعمال می‌شود. عنوان و کد سرفصل هر دسته قابل ویرایش است.
+          </p>
+          {catEditing ? (
+            <div className="acc-card" style={{ padding: '.9rem', display: 'grid', gap: '.7rem' }}>
+              <b style={{ fontSize: '.86rem' }}>{catEditing.id ? 'ویرایش دسته' : 'دسته جدید'}</b>
+              <div className="acc-form-grid">
+                <Field label="عنوان دسته *">
+                  <input className="acc-input" value={catEditing.title || ''} onChange={(e) => setCatEditing({ ...catEditing, title: e.target.value })} placeholder="مثلاً: هزینه نرم‌افزار" />
+                </Field>
+                <Field label="کد سرفصل (اختیاری)">
+                  <DigitsInput value={catEditing.code || ''} onChange={(v) => setCatEditing({ ...catEditing, code: v })} maxLength={6} placeholder="52xx" />
+                </Field>
+              </div>
+              <div style={{ display: 'flex', gap: '.5rem' }}>
+                <button className="acc-btn acc-btn-primary" onClick={saveCategory}>ذخیره دسته</button>
+                <button className="acc-btn acc-btn-outline" onClick={() => setCatEditing(null)}>انصراف</button>
+              </div>
+            </div>
+          ) : (
+            <button className="acc-btn acc-btn-primary" onClick={() => setCatEditing({ title: '' })}><Plus size={14} /> دسته جدید</button>
+          )}
+          <div className="acc-table-wrap" style={{ maxHeight: 320 }}>
+            <table className="acc-table">
+              <thead><tr><th>دسته</th><th>کد</th><th style={{ width: 80 }}></th></tr></thead>
+              <tbody>
+                {categories.map((c) => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 600 }}>{c.title}</td>
+                    <td className="num">{c.code ? toFaDigits(c.code) : '—'}</td>
+                    <td>
+                      <div className="row-actions">
+                        <button className="acc-icon-btn" title="ویرایش" onClick={() => setCatEditing({ id: c.id, title: c.title, code: c.code || '' })}><Pencil size={14} /></button>
+                        {!c.id.startsWith('c') && (
+                          <button className="acc-icon-btn danger" title="حذف" onClick={() => { void removeCategory({ ...(c as AccExpenseCategory), business_id: business.id, position: 0, created_at: '' }); }}><Trash2 size={14} /></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </Modal>
     </div>
   );

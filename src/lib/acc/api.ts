@@ -6,6 +6,7 @@ import type {
   AccJournalEntry, AccPartner, AccItem, AccTransaction, InvoiceType, ProfitAndLoss,
   TrialBalanceRow, VatReport, PlRow, InvoiceStatus, AccStuffCatalogRow,
   AccCheck, CheckKind, CheckStatus, PartnerStatement,
+  AccExpenseCategory, AccJournalLine, ProductProfitRow,
 } from './types';
 import { SYSTEM_CHART } from './constants';
 import { jalaliMonthLength, toGregorian, todayJalali, dateToISO } from './jalali';
@@ -236,7 +237,7 @@ export async function listInvoices(businessId: string, opts: { type?: InvoiceTyp
 export async function getInvoice(id: string) {
   const { data, error } = await supabase
     .from('acc_invoices')
-    .select('*, partner:acc_partners(*), acc_invoice_items(*)')
+    .select('*, partner:acc_partners(*), account:acc_accounts(id, name, kind), acc_invoice_items(*)')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -257,6 +258,12 @@ export interface InvoicePayload {
   description: string | null;
   payment_terms: string | null;
   is_cash_sale: boolean | null;
+  /** نوع خریدار مودیان (نوع ۱ بنگاه / نوع ۲ مصرف‌کننده نهایی) */
+  buyer_type?: 'business' | 'final' | null;
+  /** شناسه یکتای پرداخت مودیان */
+  pay_id?: string | null;
+  /** حساب بانکی/صندوق مرتبط با تسویه */
+  account_id?: string | null;
   items: DraftItem[];
 }
 
@@ -272,6 +279,9 @@ export async function saveInvoice(businessId: string, payload: InvoicePayload) {
     description: payload.description,
     payment_terms: payload.payment_terms,
     is_cash_sale: payload.is_cash_sale ?? true,
+    buyer_type: payload.buyer_type ?? 'business',
+    pay_id: payload.pay_id ?? null,
+    account_id: payload.account_id ?? null,
     subtotal: totals.subtotal,
     discount_total: totals.discountTotal,
     vat_total: totals.vatTotal,
@@ -946,4 +956,209 @@ export function currentSeasonRange(): { from: string; to: string; season: number
   };
 }
 
+/* ═══════════════ نسخه ۵: دسته‌بندی‌های قابل ویرایش هزینه‌ها ═══════════════ */
 
+import { EXPENSE_CATEGORY_DEFAULTS } from './constants';
+
+export async function listExpenseCategories(businessId: string): Promise<AccExpenseCategory[]> {
+  const { data, error } = await supabase
+    .from('acc_expense_categories')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('position')
+    .order('created_at');
+  if (error) throw error;
+  return (data || []) as AccExpenseCategory[];
+}
+
+/** اگر کسب‌وکار هنوز دسته‌بندی ندارد، ۲۲ دسته پیش‌فرض را seed می‌کند */
+export async function ensureExpenseCategories(businessId: string): Promise<AccExpenseCategory[]> {
+  const rows = await listExpenseCategories(businessId);
+  if (rows.length > 0) return rows;
+  const { error } = await supabase.from('acc_expense_categories').insert(
+    EXPENSE_CATEGORY_DEFAULTS.map((c, i) => ({ business_id: businessId, title: c.title, code: c.code, position: i })),
+  );
+  if (error) {
+    // اگر همزمان seed شده باشد خطای unique می‌دهیم — بی‌اهمیت
+    return listExpenseCategories(businessId);
+  }
+  return listExpenseCategories(businessId);
+}
+
+export async function saveExpenseCategory(businessId: string, row: Partial<AccExpenseCategory>): Promise<string> {
+  if (row.id) {
+    const { error } = await supabase
+      .from('acc_expense_categories')
+      .update({ title: row.title, code: row.code ?? null, position: row.position })
+      .eq('id', row.id);
+    if (error) throw error;
+    return row.id;
+  }
+  const { data: maxRow } = await supabase
+    .from('acc_expense_categories')
+    .select('position')
+    .eq('business_id', businessId)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { data, error } = await supabase
+    .from('acc_expense_categories')
+    .insert({
+      business_id: businessId,
+      title: (row.title || '').trim(),
+      code: row.code ?? null,
+      position: (maxRow?.position ?? -1) + 1,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deleteExpenseCategory(id: string) {
+  const { error } = await supabase.from('acc_expense_categories').delete().eq('id', id);
+  if (error) throw error;
+}
+
+/* ═══════════════ نسخه ۵: سند حسابداری دستی + سرفصل اضافه ═══════════════ */
+
+export interface ManualJournalLine { account_code: string; account_title: string; debit: number; credit: number }
+
+/** شماره سند بعدی (بیشترین entry_no + ۱) */
+export async function nextEntryNo(businessId: string): Promise<number> {
+  const { data } = await supabase
+    .from('acc_journal')
+    .select('entry_no')
+    .eq('business_id', businessId)
+    .order('entry_no', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data?.entry_no || 0) + 1;
+}
+
+/** ثبت سند دستی — بدهکار و بستانکار باید تراز باشند (کنترل در UI هم انجام می‌شود) */
+export async function saveManualJournal(
+  businessId: string,
+  input: { date_g: string; description: string; lines: ManualJournalLine[] },
+): Promise<string> {
+  const totalD = input.lines.reduce((s, l) => s + (l.debit || 0), 0);
+  const totalC = input.lines.reduce((s, l) => s + (l.credit || 0), 0);
+  if (totalD <= 0) throw new Error('جمع بدهکار باید بزرگ‌تر از صفر باشد');
+  if (totalD !== totalC) throw new Error('سند تراز نیست — جمع بدهکار و بستانکار باید برابر شود');
+  const entryNo = await nextEntryNo(businessId);
+  const { data: entry, error } = await supabase
+    .from('acc_journal')
+    .insert({
+      business_id: businessId,
+      entry_no: entryNo,
+      date_g: input.date_g,
+      ref_type: 'manual',
+      ref_action: 'post',
+      description: input.description || `سند دستی شماره ${entryNo}`,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  const lines = input.lines
+    .filter((l) => l.account_code && (l.debit > 0 || l.credit > 0))
+    .map((l) => ({
+      entry_id: entry.id as string,
+      business_id: businessId,
+      account_code: l.account_code,
+      account_title: l.account_title,
+      debit: l.debit || 0,
+      credit: l.credit || 0,
+    }));
+  if (lines.length) {
+    const { error: lineErr } = await supabase.from('acc_journal_lines').insert(lines);
+    if (lineErr) throw lineErr;
+  }
+  return entry.id as string;
+}
+
+/** حذف سند دستی (فقط ref_type = manual) */
+export async function deleteManualJournal(entryId: string) {
+  const { error: lineErr } = await supabase.from('acc_journal_lines').delete().eq('entry_id', entryId);
+  if (lineErr) throw lineErr;
+  const { error } = await supabase.from('acc_journal').delete().eq('id', entryId).eq('ref_type', 'manual');
+  if (error) throw error;
+}
+
+/** ساخت سرفصل اضافه (کد خودکار بر اساس نوع) */
+export async function saveChartAccount(
+  businessId: string,
+  row: { code?: string; title: string; kind: AccChartRow['kind'] },
+): Promise<string> {
+  let code = (row.code || '').trim();
+  if (!code) {
+    const prefix = row.kind === 'income' ? '41' : row.kind === 'expense' ? '52' : row.kind === 'liability' ? '21' : row.kind === 'equity' ? '31' : '11';
+    const { data: siblings } = await supabase
+      .from('acc_chart')
+      .select('code')
+      .eq('business_id', businessId)
+      .like('code', `${prefix}%`);
+    let maxn = 0;
+    for (const s of siblings || []) {
+      const n = Number(String(s.code).slice(2));
+      if (Number.isFinite(n) && n > maxn) maxn = n;
+    }
+    code = `${prefix}${String(maxn + 1).padStart(2, '0')}`;
+  }
+  const { data, error } = await supabase
+    .from('acc_chart')
+    .insert({ business_id: businessId, code, title: row.title.trim(), kind: row.kind, is_system: false })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+export async function deleteChartAccount(id: string) {
+  const { error } = await supabase.from('acc_chart').delete().eq('id', id).eq('is_system', false);
+  if (error) throw error;
+}
+
+/* ═══════════════ نسخه ۵: گزارش سود محصولات ═══════════════ */
+
+export async function productProfitability(businessId: string, from: string, to: string): Promise<ProductProfitRow[]> {
+  const { data, error } = await supabase
+    .from('acc_invoice_items')
+    .select('title, item_id, quantity, unit_price, discount, invoice:acc_invoices!inner(id, type, status, date_g)')
+    .eq('business_id', businessId)
+    .eq('invoice.type', 'sale')
+    .neq('invoice.status', 'cancelled')
+    .neq('invoice.status', 'draft')
+    .gte('invoice.date_g', from)
+    .lte('invoice.date_g', to);
+  if (error) throw error;
+  const items = await listItems(businessId);
+  const costMap = new Map<string, number>();
+  for (const it of items) costMap.set(it.id, Number(it.purchase_price) || 0);
+
+  type Acc = { key: string; item_id: string | null; title: string; quantity: number; revenue: number; cost: number };
+  const map = new Map<string, Acc>();
+  for (const raw of data || []) {
+    const r = raw as { title: string; item_id: string | null; quantity: number; unit_price: number; discount: number };
+    const key = r.item_id || `t:${r.title}`;
+    let acc = map.get(key);
+    if (!acc) {
+      acc = { key, item_id: r.item_id, title: r.title, quantity: 0, revenue: 0, cost: 0 };
+      map.set(key, acc);
+    }
+    const qty = Number(r.quantity) || 0;
+    acc.quantity += qty;
+    const lineRevenue = Math.round(qty * (Number(r.unit_price) || 0)) - (Number(r.discount) || 0);
+    acc.revenue += lineRevenue;
+    acc.cost += Math.round(qty * (costMap.get(r.item_id || '') || 0));
+  }
+  const rows = [...map.values()].map((a) => ({
+    ...a,
+    profit: a.revenue - a.cost,
+    margin: a.revenue > 0 ? Math.round(((a.revenue - a.cost) / a.revenue) * 100) : 0,
+  }));
+  rows.sort((x, y) => y.profit - x.profit);
+  return rows;
+}
+
+/** حذف سند دستی — خطوط کمکی */
+export type { AccJournalLine };

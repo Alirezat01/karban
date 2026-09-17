@@ -21,6 +21,8 @@ export interface AccConfig {
   public_invoice_maker: boolean;
   /** پیام تبلیغاتی زیر فاکتورهای بدون برند */
   brand_tagline: string;
+  /** مدل پیش‌فرض چاپ فاکتور (شناسه از INVOICE_TEMPLATES) */
+  default_template: string;
 }
 
 export const DEFAULT_ACC_CONFIG: AccConfig = {
@@ -35,6 +37,7 @@ export const DEFAULT_ACC_CONFIG: AccConfig = {
   business_limit_founder: 10,
   public_invoice_maker: true,
   brand_tagline: 'صادرشده با نرم‌افزار حسابداری هوشمند کاربان — karbanapp.ir',
+  default_template: 'official',
 };
 
 /** خواندن تنظیمات حسابداری از دیتابیس (بدون خطا — بازگشت به پیش‌فرض) */
@@ -61,6 +64,7 @@ export async function fetchAccConfig(): Promise<AccConfig> {
       ...(typeof v.business_limit_founder === 'number' ? { business_limit_founder: v.business_limit_founder } : {}),
       ...(typeof v.public_invoice_maker === 'boolean' ? { public_invoice_maker: v.public_invoice_maker } : {}),
       ...(typeof v.brand_tagline === 'string' ? { brand_tagline: v.brand_tagline } : {}),
+      ...(typeof v.default_template === 'string' ? { default_template: v.default_template } : {}),
     };
   } catch {
     return { ...DEFAULT_ACC_CONFIG };

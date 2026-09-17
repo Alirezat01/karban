@@ -155,3 +155,92 @@ export function exportFilename(prefix: string, suffix?: string, ext?: string): s
   const parts = [prefix, suffix, date].filter(Boolean).join('-');
   return ext ? `${parts}.${ext}` : parts;
 }
+
+/* ───────────────── خروجی JSON سامانه مودیان (نسخه ۵) ─────────────────
+   ساختار نزدیک به Invoice.schema.json درگاه مؤدیان — آماده ارسال با TSP/کارپوشه.
+   ارسال واقعی نیازمند حافظه مالیاتی و توکن است؛ این بسته فقط داده آماده می‌کند. */
+
+export interface MoadianInvoiceInput {
+  id: string;
+  number: string;
+  type: string;
+  date_g: string;
+  is_cash_sale: boolean | null;
+  buyer_type: 'business' | 'final' | null;
+  pay_id: string | null;
+  total: number;
+  vat_total: number;
+  discount_total: number;
+  description: string | null;
+  partner?: { name?: string | null; national_id?: string | null; shenase_melli?: string | null; economic_code?: string | null; postal_code?: string | null } | null;
+  items?: { title: string; unit: string; quantity: number; unit_price: number; discount: number; vat_rate: number; vat_amount: number; row_total: number; stuff_id: string | null }[];
+}
+
+export function buildMoadianJson(
+  inv: MoadianInvoiceInput,
+  seller: { name?: string | null; shenase_melli?: string | null; national_id?: string | null; economic_code?: string | null; postal_code?: string | null },
+): string {
+  const taxIdBase = `${(seller.economic_code || '000000000000').slice(-6)}${inv.date_g.replace(/-/g, '').slice(2)}${String(inv.total % 100000).padStart(5, '0')}`;
+  const payload = {
+    invoiceId: inv.id,
+    invoiceNumber: inv.number,
+    taxId: taxIdBase.slice(0, 22),
+    indati2m: inv.date_g,
+    ins: inv.buyer_type === 'final' ? 2 : 1, // موضوع: ۱ اصلی (بنگاه) / ۲ مصرف‌کننده نهایی
+    type: inv.type === 'purchase' ? 2 : 1,   // نوع: ۱ فروش / ۲ خرید
+    patternSubject: inv.is_cash_sale === false ? 2 : 1, // ۱ نقدی / ۲ غیرنقدی
+    payId: inv.pay_id || undefined,
+    description: inv.description || undefined,
+    seller: {
+      name: seller.name,
+      idNum: seller.shenase_melli || seller.national_id,
+      economicCode: seller.economic_code,
+      postCode: seller.postal_code,
+    },
+    buyer: inv.buyer_type === 'final'
+      ? { type: 2 }
+      : {
+          name: inv.partner?.name,
+          idNum: inv.partner?.shenase_melli || inv.partner?.national_id,
+          economicCode: inv.partner?.economic_code,
+          postCode: inv.partner?.postal_code,
+        },
+    total: {
+      amount: inv.total,
+      vat: inv.vat_total,
+      discount: inv.discount_total,
+      settlement: inv.total,
+    },
+    invoiceBody: (inv.items || []).map((it, i) => ({
+      sstId: it.stuff_id || undefined,
+      sstTin: i + 1,
+      sstTtds: it.title,
+      mu: it.unit,
+      am: it.quantity,
+      ssrv: it.unit_price,
+      sscv: Math.round(it.quantity * it.unit_price),
+      ssrvv: it.discount,
+      sscmf: it.vat_amount,
+      ssrvam: it.row_total,
+      exr: it.vat_rate,
+    })),
+    meta: {
+      generator: 'کاربان — karbanapp.ir',
+      generatedAt: new Date().toISOString(),
+      note: 'این بسته برای ارسال با سرویس‌های TSP دارای مجوز سازمان امور مالیاتی آماده شده است.',
+    },
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/** دانلود فایل JSON مودیان */
+export function exportMoadianJson(inv: MoadianInvoiceInput, seller: Parameters<typeof buildMoadianJson>[1]) {
+  const json = buildMoadianJson(inv, seller);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `moadian-invoice-${inv.number}-${inv.date_g}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

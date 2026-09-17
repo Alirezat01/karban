@@ -18,17 +18,40 @@ const DRAFT_KEY = 'karban-invoicemaker-draft';
 
 const newRow = (): Row => ({ key: Date.now() + Math.random(), title: '', unit: 'عدد', qty: 1, price: 0, discount: 0 });
 
-/* ورودی عددی با ارقام فارسی — نمایش فارسی، ذخیره عددی */
+/* ورودی عددی با ارقام فارسی + گروه‌بندی سه‌رقمی زنده — نمایش فارسی، ذخیره عددی */
 function FaNumInput({ value, onChange, placeholder, decimal }: { value: number; onChange: (n: number) => void; placeholder?: string; decimal?: boolean }) {
+  const display = (n: number) => {
+    if (!n) return '';
+    if (decimal) return toFaDigits(String(n)).replace('.', '٫');
+    return toFaDigits(n.toLocaleString('en-US').replace(/,/g, '٬'));
+  };
   return (
     <input
       inputMode="decimal"
+      dir="ltr"
       placeholder={placeholder}
-      value={value ? toFaDigits(String(value)) : ''}
+      value={display(value)}
       onChange={(e) => {
-        const cleaned = toEnDigits(e.target.value).replace(decimal ? /[^\d.]/g : /[^\d]/g, '');
-        onChange(decimal ? Number(cleaned) || 0 : Number(cleaned.replace(/\./g, '')) || 0);
+        let cleaned = toEnDigits(e.target.value).replace(/[٫,]/g, '.').replace(decimal ? /[^\d.]/g : /[^\d]/g, '');
+        const first = cleaned.indexOf('.');
+        if (first >= 0) cleaned = cleaned.slice(0, first + 1) + cleaned.slice(first + 1).replace(/\./g, '');
+        onChange(Number(cleaned) || 0);
       }}
+      style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
+    />
+  );
+}
+
+/* ورودی ارقام فارسی برای شناسه‌ها (کد ملی، اقتصادی، تلفن، شماره فاکتور) */
+function FaDigitsInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <input
+      inputMode="numeric"
+      dir="ltr"
+      placeholder={placeholder}
+      value={toFaDigits(value || '')}
+      onChange={(e) => onChange(toEnDigits(e.target.value).replace(/[^0-9-/]/g, '').slice(0, 30))}
+      style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
     />
   );
 }
@@ -49,6 +72,7 @@ export default function InvoiceMakerPage() {
   const [notes, setNotes] = useState('');
   const [dateText, setDateText] = useState(todayJalaliText());
   const [number, setNumber] = useState('');
+  const [tpl, setTpl] = useState<'official' | 'minimal'>('official');
 
   /* بازیابی پیش‌نویس */
   useEffect(() => {
@@ -64,6 +88,7 @@ export default function InvoiceMakerPage() {
         if (typeof d.notes === 'string') setNotes(d.notes);
         if (typeof d.dateText === 'string') setDateText(d.dateText);
         if (typeof d.number === 'string') setNumber(d.number);
+        if (d.tpl === 'minimal' || d.tpl === 'official') setTpl(d.tpl);
       }
     } catch { /* پیش‌نویس خراب — نادیده */ }
     import('@/lib/acc/config').then((m) => m.fetchAccConfig()).then((cfg) => {
@@ -77,9 +102,9 @@ export default function InvoiceMakerPage() {
   useEffect(() => {
     if (!ready) return;
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ seller, buyer, rows, vatOn, vatRate, notes, dateText, number }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ seller, buyer, rows, vatOn, vatRate, notes, dateText, number, tpl }));
     } catch { /* حافظه پر — بی‌خطر */ }
-  }, [ready, seller, buyer, rows, vatOn, vatRate, notes, dateText, number]);
+  }, [ready, seller, buyer, rows, vatOn, vatRate, notes, dateText, number, tpl]);
 
   const totals = useMemo(() => {
     let subtotal = 0;
@@ -100,7 +125,20 @@ export default function InvoiceMakerPage() {
 
   /* ───────────── خروجی‌ها ───────────── */
   function invoiceBodyHtml(): string {
-    const party = (title: string, p: Party) => `<table style="margin-bottom:10px">
+    const party = (title: string, p: Party) => {
+      if (tpl === 'minimal') {
+        return `<div style="display:flex;justify-content:space-between;gap:14px;border:1px solid #ddd;border-radius:10px;padding:8px 12px;margin-bottom:10px">
+          <div><b>${escapeHtml(title)}</b></div>
+          <div style="font-size:9.5pt;line-height:1.9">
+            ${escapeHtml(p.name) ? `<b>${escapeHtml(p.name)}</b> — ` : ''}
+            ${escapeHtml(p.economic_code) ? `اقتصادی: ${escapeHtml(p.economic_code)} · ` : ''}
+            ${escapeHtml(p.national_id) ? `ملی: ${escapeHtml(p.national_id)} · ` : ''}
+            ${escapeHtml(p.phone) ? `تلفن: ${escapeHtml(p.phone)}` : ''}
+            ${escapeHtml(p.address) ? `<br/>${escapeHtml(p.address)}` : ''}
+          </div>
+        </div>`;
+      }
+      return `<table style="margin-bottom:10px">
       <thead><tr><th colspan="2">${escapeHtml(title)}</th></tr></thead>
       <tbody>
         <tr><td style="width:32%">نام:</td><td><b>${escapeHtml(p.name) || '—'}</b></td></tr>
@@ -109,6 +147,7 @@ export default function InvoiceMakerPage() {
         <tr><td>نشانی:</td><td>${escapeHtml(p.address) || '—'}</td></tr>
         <tr><td>تلفن:</td><td>${escapeHtml(p.phone) || '—'}</td></tr>
       </tbody></table>`;
+    };
     const itemRows = rows.filter((r) => r.title.trim()).map((r, i) => {
       const gross = (Number(r.qty) || 0) * (Number(r.price) || 0);
       const disc = Math.min(Number(r.discount) || 0, gross);
@@ -165,16 +204,16 @@ export default function InvoiceMakerPage() {
         <input value={p.name} onChange={(e) => onChange({ name: e.target.value })} placeholder={title === 'فروشنده' ? 'نام کسب‌وکار شما' : 'نام خریدار'} />
       </label>
       <label>کد اقتصادی
-        <input value={p.economic_code} onChange={(e) => onChange({ economic_code: e.target.value })} inputMode="numeric" />
+        <FaDigitsInput value={p.economic_code} onChange={(v) => onChange({ economic_code: v })} />
       </label>
       <label>شناسه ملی / کد ملی
-        <input value={p.national_id} onChange={(e) => onChange({ national_id: e.target.value })} inputMode="numeric" />
+        <FaDigitsInput value={p.national_id} onChange={(v) => onChange({ national_id: v })} />
       </label>
       <label>نشانی
         <input value={p.address} onChange={(e) => onChange({ address: e.target.value })} />
       </label>
       <label>تلفن
-        <input value={p.phone} onChange={(e) => onChange({ phone: e.target.value })} inputMode="tel" />
+        <FaDigitsInput value={p.phone} onChange={(v) => onChange({ phone: v })} />
       </label>
     </div>
   );
@@ -208,10 +247,16 @@ export default function InvoiceMakerPage() {
               <h3 style={{ marginTop: 0 }}>مشخصات فاکتور</h3>
               <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap' }}>
                 <label>شماره فاکتور
-                  <input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="مثلاً ۱۰۲" />
+                  <FaDigitsInput value={number} onChange={setNumber} placeholder="مثلاً ۱۰۲" />
                 </label>
                 <label>تاریخ
                   <input value={dateText} onChange={(e) => setDateText(e.target.value)} />
+                </label>
+                <label style={{ maxWidth: 150 }}>قالب چاپ
+                  <select value={tpl} onChange={(e) => setTpl(e.target.value as 'official' | 'minimal')}>
+                    <option value="official">جدولی رسمی</option>
+                    <option value="minimal">مینیمال کاربان</option>
+                  </select>
                 </label>
                 <label style={{ maxWidth: 130 }}>ارزش افزوده
                   <select value={vatOn ? String(vatRate) : 'off'} onChange={(e) => {

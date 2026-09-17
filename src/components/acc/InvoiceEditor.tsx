@@ -2,15 +2,15 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Printer, Save, Send, Trash2 } from 'lucide-react';
-import type { AccBusiness, AccInvoice, AccInvoiceItem, AccItem, AccPartner, InvoiceType } from '@/lib/acc/types';
+import type { AccBusiness, AccInvoice, AccInvoiceItem, AccItem, AccAccount, AccPartner, InvoiceType } from '@/lib/acc/types';
 import {
-  computeInvoiceTotals, getInvoice, issueInvoice, listItems, listPartners,
+  computeInvoiceTotals, getInvoice, issueInvoice, listAccounts, listItems, listPartners,
   nextInvoiceNumber, saveInvoice, savePartner,
 } from '@/lib/acc/api';
-import { INVOICE_TYPES, UNITS } from '@/lib/acc/constants';
+import { INVOICE_TYPES, UNITS, BUYER_TYPES } from '@/lib/acc/constants';
 import { formatMoney, amountToWords } from '@/lib/acc/money';
-import { isoToJalaliInput, dateToISO, toFaDigits, toEnDigits } from '@/lib/acc/jalali';
-import { Field, JalaliDateInput, Modal, MoneyInput, toast } from './ui';
+import { isoToJalaliInput, dateToISO, toFaDigits } from '@/lib/acc/jalali';
+import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, QtyInput, toast } from './ui';
 
 interface Row extends Partial<Omit<AccInvoiceItem, 'row_total' | 'position' | 'invoice_id' | 'business_id' | 'id'>> {
   key: number;
@@ -35,6 +35,10 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
   const [description, setDescription] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
   const [isCash, setIsCash] = useState(true);
+  const [buyerType, setBuyerType] = useState<'business' | 'final'>('business');
+  const [payId, setPayId] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState<(AccAccount & { balance?: number })[]>([]);
   const [rows, setRows] = useState<Row[]>([newRow(business.default_vat_rate ?? 10)]);
   const [partners, setPartners] = useState<AccPartner[]>([]);
   const [items, setItems] = useState<AccItem[]>([]);
@@ -46,9 +50,10 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
   useEffect(() => {
     (async () => {
       try {
-        const [p, it] = await Promise.all([listPartners(business.id), listItems(business.id)]);
+        const [p, it, ac] = await Promise.all([listPartners(business.id), listItems(business.id), listAccounts(business.id)]);
         setPartners(p);
         setItems(it);
+        setAccounts(ac);
         if (invoiceId) {
           const inv = await getInvoice(invoiceId);
           if (!inv) { toast('صورتحساب یافت نشد', 'error'); return; }
@@ -60,6 +65,9 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           setDescription(inv.description || '');
           setPaymentTerms(inv.payment_terms || '');
           setIsCash(inv.is_cash_sale !== false);
+          setBuyerType(inv.buyer_type === 'final' ? 'final' : 'business');
+          setPayId(inv.pay_id || '');
+          setAccountId(inv.account_id || '');
           setPosted(!!inv.posted_at);
           setRows((inv.acc_invoice_items || []).map((it2) => ({
             key: Date.now() + Math.random(), item_id: it2.item_id, stuff_id: it2.stuff_id, title: it2.title, unit: it2.unit,
@@ -146,6 +154,9 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
       description: description || null,
       payment_terms: paymentTerms || null,
       is_cash_sale: isCash,
+      buyer_type: buyerType,
+      pay_id: payId || null,
+      account_id: accountId || null,
       items: rows
         .filter((r) => r.title?.trim())
         .map((r) => ({
@@ -215,7 +226,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           ) : (
             <Field label="نوع سند"><input className="acc-input" value={INVOICE_TYPES[type].label} disabled /></Field>
           )}
-          <Field label="شماره صورتحساب"><input className="acc-input" value={number} onChange={(e) => setNumber(e.target.value)} /></Field>
+          <Field label="شماره صورتحساب"><DigitsInput value={number} onChange={setNumber} allow="-/" /></Field>
           <Field label="تاریخ" hint={isoToJalaliInput(dateInput)}>
             <JalaliDateInput value={dateInput} onChange={setDateInput} />
           </Field>
@@ -236,6 +247,22 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           </Field>
           <Field label="شرایط پرداخت">
             <input className="acc-input" placeholder="مثلاً: نصف نقد، بقیه تا پایان ماه" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
+          </Field>
+        </div>
+        <div className="acc-form-grid-3" style={{ marginTop: '.9rem' }}>
+          <Field label="نوع خریدار (مودیان)" hint="روی چاپ فاکتور درج می‌شود">
+            <select className="acc-select" value={buyerType} onChange={(e) => setBuyerType(e.target.value as 'business' | 'final')}>
+              {Object.entries(BUYER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </Field>
+          <Field label="شناسه یکتای پرداخت (payId)" hint="طبق دستورالعمل مودیان برای پرداخت‌ها">
+            <DigitsInput value={payId} onChange={setPayId} maxLength={30} placeholder="مثلاً: ۱۲۳۴۵۶۷۸۹۰۱۲۳۴۵۶۷۸۹۰" />
+          </Field>
+          <Field label="حساب مرتبط (بانک / صندوق)" hint="محل واریز یا وجه تسویه — در همه حساب‌ها قابل انتخاب است">
+            <select className="acc-select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              <option value="">— انتخاب نشده —</option>
+              {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
+            </select>
           </Field>
         </div>
         <div style={{ marginTop: '.9rem', display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap' }}>
@@ -283,10 +310,10 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
                         {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
-                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="decimal" value={r.quantity ? toFaDigits(String(r.quantity)) : ''} onChange={(e) => patchRow(r.key, { quantity: Number(toEnDigits(e.target.value).replace(/[^\d.]/g, '')) || 0 })} /></td>
+                    <td><QtyInput value={Number(r.quantity) || 0} onChange={(n) => patchRow(r.key, { quantity: n })} /></td>
                     <td><MoneyInput value={Number(r.unit_price) || 0} onChange={(n) => patchRow(r.key, { unit_price: n })} /></td>
                     <td><MoneyInput value={Number(r.discount) || 0} onChange={(n) => patchRow(r.key, { discount: n })} /></td>
-                    <td><input className="acc-input num" style={{ minHeight: 40 }} inputMode="numeric" value={toFaDigits(String(r.vat_rate ?? 0))} onChange={(e) => patchRow(r.key, { vat_rate: Number(toEnDigits(e.target.value).replace(/[^\d]/g, '')) || 0 })} /></td>
+                    <td><QtyInput value={Number(r.vat_rate) || 0} onChange={(n) => patchRow(r.key, { vat_rate: n })} /></td>
                     <td className="num" style={{ color: 'var(--muted)' }}>{formatMoney(vat)}</td>
                     <td className="num" style={{ color: 'var(--gold2)', fontWeight: 700 }}>{formatMoney(base + vat)}</td>
                     <td>

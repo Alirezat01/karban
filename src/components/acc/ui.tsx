@@ -2,8 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, X } from 'lucide-react';
-import { formatInputMoney, parseMoney } from '@/lib/acc/money';
-import { isoToJalaliInput, jalaliInputToISO } from '@/lib/acc/jalali';
+import { formatInputMoney, formatMoney } from '@/lib/acc/money';
+import { isoToJalaliInput, jalaliInputToISO, toFaDigits, toEnDigits } from '@/lib/acc/jalali';
 import './acc.css';
 
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
@@ -106,15 +106,22 @@ export function ConfirmHost() {
   );
 }
 
-/* ── ورودی مبلغ با گروه‌بندی فارسی ── */
+/* ── ورودی مبلغ با گروه‌بندی فارسی زنده ──
+   کاربر هر رقمی (فارسی یا انگلیسی) تایپ کند:
+   • همان لحظه به ارقام فارسی تبدیل می‌شود
+   • جداکننده سه‌رقمی (٬) همان لحظه اعمال می‌شود
+   • موقعیت نشانگر هنگام ویرایش وسط رشته حفظ می‌شود */
 export function MoneyInput({ value, onChange, placeholder, disabled }: { value: number; onChange: (n: number) => void; placeholder?: string; disabled?: boolean }) {
-  const [text, setText] = useState(() => formatInputMoney(value));
+  const ref = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState(() => (value ? formatInputMoney(value) : ''));
   const focused = useRef(false);
   useEffect(() => {
-    if (!focused.current) setText(formatInputMoney(value));
+    if (!focused.current) setText(value ? formatInputMoney(value) : '');
   }, [value]);
+
   return (
     <input
+      ref={ref}
       className="acc-input num"
       dir="ltr"
       inputMode="numeric"
@@ -122,10 +129,102 @@ export function MoneyInput({ value, onChange, placeholder, disabled }: { value: 
       placeholder={placeholder || '۰'}
       value={text}
       onFocus={() => { focused.current = true; }}
-      onBlur={() => { focused.current = false; setText(formatInputMoney(value)); }}
+      onBlur={() => { focused.current = false; setText(value ? formatInputMoney(value) : ''); }}
       onChange={(e) => {
-        setText(e.target.value);
-        onChange(parseMoney(e.target.value));
+        const el = e.target;
+        const caret = el.selectionStart ?? el.value.length;
+        const digitsBefore = toEnDigits(el.value.slice(0, caret)).replace(/\D/g, '').length;
+        const digits = toEnDigits(el.value).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+        const n = Number(digits || '0');
+        const display = digits ? formatMoney(n) : '';
+        setText(display);
+        onChange(n);
+        requestAnimationFrame(() => {
+          const inp = ref.current;
+          if (!inp) return;
+          let seen = 0, i = 0;
+          while (i < display.length && seen < digitsBefore) {
+            if (/[۰-۹]/.test(display[i])) seen += 1;
+            i += 1;
+          }
+          inp.setSelectionRange(i, i);
+        });
+      }}
+      style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
+    />
+  );
+}
+
+/* ── ورودی ارقام فارسی برای شناسه‌ها (کد ملی، اقتصادی، پستی، تلفن، شماره سند…) ──
+   هر چه تایپ شود فارسی ذخیره و نمایش داده می‌شود؛ حروف اضافه حذف می‌شود.
+   allow: نویسه‌های مجاز اضافی مثل «-/» برای شماره فاکتور */
+export function DigitsInput({
+  value, onChange, placeholder, disabled, allow, maxLength = 40,
+}: {
+  value: string | null | undefined;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  allow?: string;
+  maxLength?: number;
+}) {
+  const [text, setText] = useState(() => toFaDigits(value || ''));
+  const focused = useRef(false);
+  useEffect(() => { if (!focused.current) setText(toFaDigits(value || '')); }, [value]);
+  const strip = (s: string) => {
+    const esc = (allow || '').replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+    const re = new RegExp(`[^0-9${esc}]`, 'g');
+    return toEnDigits(s).replace(re, '').slice(0, maxLength);
+  };
+  return (
+    <input
+      className="acc-input num"
+      dir="ltr"
+      inputMode={allow ? 'text' : 'numeric'}
+      disabled={disabled}
+      placeholder={placeholder}
+      value={text}
+      onFocus={() => { focused.current = true; }}
+      onBlur={() => { focused.current = false; setText(toFaDigits(value || '')); }}
+      onChange={(e) => {
+        const clean = strip(e.target.value);
+        setText(toFaDigits(clean));
+        onChange(clean);
+      }}
+      style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
+    />
+  );
+}
+
+/* ── ورودی مقدار/تعداد با ارقام فارسی و اعشار فارسی (٫) ── */
+export function QtyInput({
+  value, onChange, placeholder, disabled,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  const [text, setText] = useState(() => (value ? toFaDigits(String(value)).replace('.', '٫') : ''));
+  const focused = useRef(false);
+  useEffect(() => { if (!focused.current) setText(value ? toFaDigits(String(value)).replace('.', '٫') : ''); }, [value]);
+
+  return (
+    <input
+      className="acc-input num"
+      dir="ltr"
+      inputMode="decimal"
+      disabled={disabled}
+      placeholder={placeholder || '۱'}
+      value={text}
+      onFocus={() => { focused.current = true; }}
+      onBlur={() => { focused.current = false; setText(value ? toFaDigits(String(value)).replace('.', '٫') : ''); }}
+      onChange={(e) => {
+        let en = toEnDigits(e.target.value).replace(/[٫,]/g, '.').replace(/[^0-9.]/g, '');
+        const first = en.indexOf('.');
+        if (first >= 0) en = en.slice(0, first + 1) + en.slice(first + 1).replace(/\./g, '');
+        setText(en ? toFaDigits(en).replace('.', '٫') : '');
+        onChange(Number(en) || 0);
       }}
       style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
     />

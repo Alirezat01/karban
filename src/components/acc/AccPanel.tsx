@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { useAccAccess } from '@/lib/acc/access';
 import { createBusiness, startTrial, submitTrialRequest } from '@/lib/acc/api';
 import { featureEnabled, PLAN_TIER_LABEL, planTier, type FeatureKey } from '@/lib/acc/plan';
-import { Field, ToastHost, ConfirmHost, Modal, toast } from "./ui";
+import { Field, ToastHost, ConfirmHost, Modal, DigitsInput, QtyInput, toast } from "./ui";
 import Dashboard from './Dashboard';
 import PartnersPage from './PartnersPage';
 import ItemsPage from './ItemsPage';
@@ -148,18 +148,18 @@ function BusinessWizard({
             </select>
           </Field>
           <Field label="نرخ مالیات ارزش افزوده (٪)" hint="نرخ مصوب ۱۴۰۵: ۱۰٪">
-            <input className="acc-input" inputMode="numeric" value={form.default_vat_rate} onChange={(e) => set('default_vat_rate', Number(e.target.value) || 0)} />
+            <QtyInput value={form.default_vat_rate} onChange={(n) => set('default_vat_rate', n)} />
           </Field>
         </div>
         <div className="acc-form-grid">
           {form.person_type === 'legal'
-            ? <Field label="شناسه ملی"><input className="acc-input" value={form.shenase_melli} onChange={(e) => set('shenase_melli', e.target.value)} /></Field>
-            : <Field label="کد ملی"><input className="acc-input" value={form.national_id} onChange={(e) => set('national_id', e.target.value)} /></Field>}
-          <Field label="شماره اقتصادی"><input className="acc-input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} /></Field>
+            ? <Field label="شناسه ملی"><DigitsInput value={form.shenase_melli} onChange={(v) => set('shenase_melli', v)} maxLength={12} /></Field>
+            : <Field label="کد ملی"><DigitsInput value={form.national_id} onChange={(v) => set('national_id', v)} maxLength={12} /></Field>}
+          <Field label="شماره اقتصادی"><DigitsInput value={form.economic_code} onChange={(v) => set('economic_code', v)} maxLength={14} /></Field>
         </div>
         <div className="acc-form-grid">
           <Field label="شماره ثبت"><input className="acc-input" value={form.registration_number} onChange={(e) => set('registration_number', e.target.value)} /></Field>
-          <Field label="کد پستی (۱۰ رقمی)"><input className="acc-input" inputMode="numeric" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} /></Field>
+          <Field label="کد پستی (۱۰ رقمی)"><DigitsInput value={form.postal_code} onChange={(v) => set('postal_code', v)} maxLength={10} /></Field>
         </div>
         <div className="acc-form-grid-3">
           <Field label="استان"><input className="acc-input" value={form.province} onChange={(e) => set('province', e.target.value)} /></Field>
@@ -168,13 +168,13 @@ function BusinessWizard({
         </div>
         <Field label="نشانی کامل"><input className="acc-input" value={form.address} onChange={(e) => set('address', e.target.value)} /></Field>
         <div className="acc-form-grid">
-          <Field label="تلفن"><input className="acc-input" inputMode="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} /></Field>
+          <Field label="تلفن"><DigitsInput value={form.phone} onChange={(v) => set('phone', v)} maxLength={14} /></Field>
           <Field label="نمابر"><input className="acc-input" value={form.fax} onChange={(e) => set('fax', e.target.value)} /></Field>
         </div>
         {mode === 'trial' && (
           <div className="acc-form-grid">
             <Field label="نام و نام خانوادگی"><input className="acc-input" value={form.contact_name} onChange={(e) => set('contact_name', e.target.value)} /></Field>
-            <Field label="شماره تماس پیگیری"><input className="acc-input" inputMode="tel" value={form.contact_phone} onChange={(e) => set('contact_phone', e.target.value)} /></Field>
+            <Field label="شماره تماس پیگیری"><DigitsInput value={form.contact_phone} onChange={(v) => set('contact_phone', v)} maxLength={14} /></Field>
           </div>
         )}
         <div style={{ display: 'flex', gap: '.6rem', marginTop: '.4rem' }}>
@@ -235,7 +235,7 @@ function NoAccessGate() {
             {contactMode ? (
               <div style={{ display: 'grid', gap: '.6rem', textAlign: 'right', marginTop: '.4rem' }}>
                 <Field label="نام و نام خانوادگی"><input className="acc-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-                <Field label="شماره تماس *"><input className="acc-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+                <Field label="شماره تماس *"><DigitsInput value={phone} onChange={setPhone} maxLength={14} /></Field>
                 <button className="acc-btn acc-btn-outline" disabled={busy} onClick={submitRequest}>{busy ? 'در حال ثبت…' : 'ثبت درخواست مشاوره خرید'}</button>
               </div>
             ) : (

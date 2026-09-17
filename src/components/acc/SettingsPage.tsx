@@ -5,7 +5,7 @@ import { Building2, Image as ImageIcon, PenTool, Shield, Stamp, Trash2, UserPlus
 import { supabase } from '@/lib/supabase';
 import type { AccBusiness } from '@/lib/acc/types';
 import { updateBusiness, uploadAccMedia } from '@/lib/acc/api';
-import { Field, Modal, confirmAction, toast } from './ui';
+import { Field, Modal, DigitsInput, QtyInput, confirmAction, toast } from './ui';
 import { featureEnabled } from '@/lib/acc/plan';
 import { Lock } from 'lucide-react';
 
@@ -126,13 +126,13 @@ export default function SettingsPage({ business, role, plan, reloadAccess }: { b
               <option value="real">حقیقی</option>
             </select>
           </Field>
-          <Field label="شماره اقتصادی"><input className="acc-input" value={form.economic_code || ''} onChange={(e) => set('economic_code', e.target.value)} /></Field>
+          <Field label="شماره اقتصادی"><DigitsInput value={form.economic_code || ''} onChange={(v) => set('economic_code', v)} maxLength={14} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           {form.person_type === 'legal'
-            ? <Field label="شناسه ملی"><input className="acc-input" value={form.shenase_melli || ''} onChange={(e) => set('shenase_melli', e.target.value)} /></Field>
-            : <Field label="کد ملی"><input className="acc-input" value={form.national_id || ''} onChange={(e) => set('national_id', e.target.value)} /></Field>}
-          <Field label="شماره ثبت"><input className="acc-input" value={form.registration_number || ''} onChange={(e) => set('registration_number', e.target.value)} /></Field>
+            ? <Field label="شناسه ملی"><DigitsInput value={form.shenase_melli || ''} onChange={(v) => set('shenase_melli', v)} maxLength={12} /></Field>
+            : <Field label="کد ملی"><DigitsInput value={form.national_id || ''} onChange={(v) => set('national_id', v)} maxLength={12} /></Field>}
+          <Field label="شماره ثبت"><DigitsInput value={form.registration_number || ''} onChange={(v) => set('registration_number', v)} allow="-/" /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           <Field label="استان"><input className="acc-input" value={form.province || ''} onChange={(e) => set('province', e.target.value)} /></Field>
@@ -140,18 +140,18 @@ export default function SettingsPage({ business, role, plan, reloadAccess }: { b
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           <Field label="شهر"><input className="acc-input" value={form.city || ''} onChange={(e) => set('city', e.target.value)} /></Field>
-          <Field label="کد پستی (۱۰ رقمی)"><input className="acc-input" inputMode="numeric" value={form.postal_code || ''} onChange={(e) => set('postal_code', e.target.value)} /></Field>
+          <Field label="کد پستی (۱۰ رقمی)"><DigitsInput value={form.postal_code || ''} onChange={(v) => set('postal_code', v)} maxLength={10} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           <Field label="آدرس کامل"><input className="acc-input" value={form.address || ''} onChange={(e) => set('address', e.target.value)} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
-          <Field label="تلفن"><input className="acc-input" value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} /></Field>
-          <Field label="نمابر"><input className="acc-input" value={form.fax || ''} onChange={(e) => set('fax', e.target.value)} /></Field>
+          <Field label="تلفن"><DigitsInput value={form.phone || ''} onChange={(v) => set('phone', v)} maxLength={14} /></Field>
+          <Field label="نمابر"><DigitsInput value={form.fax || ''} onChange={(v) => set('fax', v)} maxLength={14} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
           <Field label="نرخ پیش‌فرض مالیات ارزش افزوده (٪)" hint="نرخ مصوب ۱۴۰۵: ۱۰٪ — خودکار روی هر ردیف فاکتور اعمال می‌شود">
-            <input className="acc-input" inputMode="numeric" value={form.default_vat_rate} onChange={(e) => set('default_vat_rate', Number(e.target.value) || 0)} />
+            <QtyInput value={form.default_vat_rate} onChange={(n) => set('default_vat_rate', n)} />
           </Field>
           <Field label="پیشوند شماره فاکتور"><input className="acc-input" value={form.invoice_prefix || ''} onChange={(e) => set('invoice_prefix', e.target.value)} /></Field>
         </div>

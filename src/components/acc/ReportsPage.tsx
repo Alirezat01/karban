@@ -1,15 +1,15 @@
 /* گزارش‌ها — سود و زیان، ارزش افزوده دوره، معاملات فصلی (ماده ۱۶۹)، تحلیل فروش */
 
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Download, FileSpreadsheet } from 'lucide-react';
-import type { AccBusiness, ProfitAndLoss, VatReport } from '@/lib/acc/types';
-import { currentSeasonRange, downloadCsv, profitAndLoss, salesByItem, salesByPartner, seasonalReport, vatReport, type SeasonalRow } from '@/lib/acc/api';
+import { BarChart3, Download, FileSpreadsheet, TrendingUp } from 'lucide-react';
+import type { AccBusiness, ProductProfitRow, ProfitAndLoss, VatReport } from '@/lib/acc/types';
+import { currentSeasonRange, downloadCsv, productProfitability, profitAndLoss, salesByItem, salesByPartner, seasonalReport, vatReport, type SeasonalRow } from '@/lib/acc/api';
 import { SEASON_NAMES, currentJalaliMonthRange, formatJalali, jalaliSeasonOf, jalaliYearOf, jalaliYearRange, todayJalali } from '@/lib/acc/jalali';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { JalaliDateInput, EmptyState } from './ui';
 
-type Tab = 'pl' | 'vat' | 'seasonal' | 'sales';
+type Tab = 'pl' | 'vat' | 'seasonal' | 'sales' | 'product';
 
 export default function ReportsPage({ business }: { business: AccBusiness }) {
   const [tab, setTab] = useState<Tab>('pl');
@@ -22,6 +22,7 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
   const [seasonal, setSeasonal] = useState<{ sales: SeasonalRow[]; purchases: SeasonalRow[] } | null>(null);
   const [byPartner, setByPartner] = useState<{ name: string; count: number; total: number }[]>([]);
   const [byItem, setByItem] = useState<{ title: string; qty: number; total: number }[]>([]);
+  const [product, setProduct] = useState<ProductProfitRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
           tasks.push(salesByPartner(business.id, from, to).then(setByPartner));
           tasks.push(salesByItem(business.id, from, to).then(setByItem));
         }
+        if (tab === 'product') tasks.push(productProfitability(business.id, from, to).then(setProduct));
         await Promise.all(tasks);
       } finally {
         setLoading(false);
@@ -65,7 +67,7 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '.35rem', flex: 1, flexWrap: 'wrap' }}>
-          {([['pl', 'سود و زیان'], ['vat', 'ارزش افزوده'], ['seasonal', 'معاملات فصلی (۱۶۹)'], ['sales', 'تحلیل فروش']] as const).map(([k, label]) => (
+          {([['pl', 'سود و زیان'], ['vat', 'ارزش افزوده'], ['seasonal', 'معاملات فصلی (۱۶۹)'], ['sales', 'تحلیل فروش'], ['product', 'سود محصولات']] as const).map(([k, label]) => (
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
@@ -207,6 +209,41 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
                 <tbody>{byItem.map((r) => <tr key={r.title}><td style={{ fontWeight: 600 }}>{r.title}</td><td className="num">{formatMoney(r.qty)}</td><td className="num" style={{ color: 'var(--gold2)' }}>{formatMoney(r.total)}</td></tr>)}</tbody>
               </table>
               {byItem.length === 0 && <EmptyState title="داده‌ای نیست" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'product' && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <p className="acc-hint" style={{ margin: 0 }}>
+            سود هر کالا = فروش (پس از تخفیف) منهای بهای تمام‌شده (قیمت خرید ثبت‌شده در کالا). برای دقت بیشتر، قیمت خرید کالاها را در بخش «کالا و خدمات» به‌روز نگه دارید.
+          </p>
+          <div className="acc-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="acc-kpi"><div className="k-label">جمع فروش</div><div className="k-value">{formatMoney(product.reduce((s, r) => s + r.revenue, 0))}</div></div>
+            <div className="acc-kpi"><div className="k-label">جمع بهای تمام‌شده</div><div className="k-value">{formatMoney(product.reduce((s, r) => s + r.cost, 0))}</div></div>
+            <div className="acc-kpi"><div className="k-label">جمع سود ناخالص</div><div className="k-value" style={{ color: 'var(--gold2)' }}>{formatMoney(product.reduce((s, r) => s + r.profit, 0))}</div></div>
+          </div>
+          <div className="acc-card">
+            <h3><TrendingUp size={16} /> رتبه‌بندی سودآوری کالاها</h3>
+            <div className="acc-table-wrap">
+              <table className="acc-table" style={{ minWidth: 560 }}>
+                <thead><tr><th style={{ width: 40 }}>رتبه</th><th>کالا / خدمت</th><th>مقدار فروش</th><th>فروش (ریال)</th><th>بهای تمام‌شده</th><th>سود (ریال)</th><th>حاشیه سود</th></tr></thead>
+                <tbody>
+                  {product.map((r, i) => (
+                    <tr key={r.key}>
+                      <td className="num">{toFaDigits(i + 1)}</td>
+                      <td style={{ fontWeight: 600 }}>{r.title}</td>
+                      <td className="num">{formatMoney(r.quantity)}</td>
+                      <td className="num">{formatMoney(r.revenue)}</td>
+                      <td className="num" style={{ color: '#ef9a94' }}>{formatMoney(r.cost)}</td>
+                      <td className="num" style={{ color: r.profit >= 0 ? '#6fdca0' : '#ef9a94', fontWeight: 700 }}>{formatMoney(r.profit)}</td>
+                      <td className="num"><span className={`acc-badge ${r.margin >= 20 ? 'ok' : r.margin >= 0 ? 'warn' : 'bad'}`}>{toFaDigits(r.margin)}٪</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {product.length === 0 && <EmptyState icon={<TrendingUp size={34} />} title="فروشی در این بازه ثبت نشده" hint="پس از صدور فاکتور فروش، سود محصولات اینجا محاسبه می‌شود" />}
             </div>
           </div>
         </div>

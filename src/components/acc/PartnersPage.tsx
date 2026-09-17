@@ -8,7 +8,7 @@ import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, toFaDigits } from '@/lib/acc/jalali';
 import { featureEnabled } from '@/lib/acc/plan';
 import { exportExcel, htmlTable, printHtml, exportWord, exportFilename, brandLogoUrl, type BrandAccess } from '@/lib/acc/export';
-import { Field, Modal, confirmAction, toast, EmptyState } from './ui';
+import { Field, Modal, DigitsInput, confirmAction, toast, EmptyState } from './ui';
 
 const empty: Partial<AccPartner> = { kind: 'customer', person_type: 'real', name: '' };
 
@@ -162,12 +162,12 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
                 </select>
               </Field>
               <Field label={editing.person_type === 'legal' ? 'شناسه ملی' : 'کد ملی'} hint="در فهرست معاملات فصلی ماده ۱۶۹ لازم است">
-                <input className="acc-input" value={editing.person_type === 'legal' ? editing.shenase_melli || '' : editing.national_id || ''} onChange={(e) => setEditing(editing.person_type === 'legal' ? { ...editing, shenase_melli: e.target.value } : { ...editing, national_id: e.target.value })} />
+                <DigitsInput value={editing.person_type === 'legal' ? (editing.shenase_melli || '') : (editing.national_id || '')} onChange={(v) => setEditing(editing.person_type === 'legal' ? { ...editing, shenase_melli: v } : { ...editing, national_id: v })} maxLength={12} />
               </Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="شماره اقتصادی طرف‌حساب"><input className="acc-input" value={editing.economic_code || ''} onChange={(e) => setEditing({ ...editing, economic_code: e.target.value })} /></Field>
-              <Field label="شماره ثبت (حقوقی)"><input className="acc-input" value={editing.registration_number || ''} onChange={(e) => setEditing({ ...editing, registration_number: e.target.value })} /></Field>
+              <Field label="شماره اقتصادی طرف‌حساب"><DigitsInput value={editing.economic_code || ''} onChange={(v) => setEditing({ ...editing, economic_code: v })} maxLength={14} /></Field>
+              <Field label="شماره ثبت (حقوقی)"><DigitsInput value={editing.registration_number || ''} onChange={(v) => setEditing({ ...editing, registration_number: v })} allow="-/" /></Field>
             </div>
             <div className="acc-form-grid-3">
               <Field label="استان"><input className="acc-input" value={editing.province || ''} onChange={(e) => setEditing({ ...editing, province: e.target.value })} /></Field>
@@ -175,11 +175,11 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
               <Field label="شهر"><input className="acc-input" value={editing.city || ''} onChange={(e) => setEditing({ ...editing, city: e.target.value })} /></Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="کد پستی"><input className="acc-input" inputMode="numeric" value={editing.postal_code || ''} onChange={(e) => setEditing({ ...editing, postal_code: e.target.value })} /></Field>
-              <Field label="تلفن"><input className="acc-input" value={editing.phone || ''} onChange={(e) => setEditing({ ...editing, phone: e.target.value })} /></Field>
+              <Field label="کد پستی"><DigitsInput value={editing.postal_code || ''} onChange={(v) => setEditing({ ...editing, postal_code: v })} maxLength={10} /></Field>
+              <Field label="تلفن"><DigitsInput value={editing.phone || ''} onChange={(v) => setEditing({ ...editing, phone: v })} maxLength={14} /></Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="نمابر"><input className="acc-input" value={editing.fax || ''} onChange={(e) => setEditing({ ...editing, fax: e.target.value })} /></Field>
+              <Field label="نمابر"><DigitsInput value={editing.fax || ''} onChange={(v) => setEditing({ ...editing, fax: v })} maxLength={14} /></Field>
               <Field label="آدرس"><input className="acc-input" value={editing.address || ''} onChange={(e) => setEditing({ ...editing, address: e.target.value })} /></Field>
             </div>
             <div style={{ display: 'flex', gap: '.6rem' }}>

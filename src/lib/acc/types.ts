@@ -117,12 +117,19 @@ export interface AccInvoice {
   description: string | null;
   payment_terms: string | null;
   is_cash_sale: boolean | null;
+  /** نوع خریدار مودیان: business = بنگاه اقتصادی (نوع ۱) | final = مصرف‌کننده نهایی (نوع ۲) */
+  buyer_type: 'business' | 'final' | null;
+  /** شناسه یکتای پرداخت سامانه مودیان (payId) */
+  pay_id: string | null;
+  /** حساب بانکی/صندوق مرتبط با تسویه */
+  account_id: string | null;
   moadian_uid: string | null;
   posted_at: string | null;
   reversed_at: string | null;
   created_by: string | null;
   created_at: string;
   partner?: AccPartner | null;
+  account?: AccAccount | null;
   acc_invoice_items?: AccInvoiceItem[];
 }
 
@@ -267,6 +274,28 @@ export interface AccStuffCatalogRow {
   taxable: boolean | null;
   is_general: boolean | null;
   shamsi_date: string | null;
+}
+
+/* ───────────────── نسخه ۵: دسته‌بندی قابل ویرایش هزینه‌ها ───────────────── */
+export interface AccExpenseCategory {
+  id: string;
+  business_id: string;
+  title: string;
+  code: string | null;
+  position: number;
+  created_at: string;
+}
+
+/* گزارش سود محصولات — فروش منهای بهای تمام‌شده */
+export interface ProductProfitRow {
+  key: string;
+  item_id: string | null;
+  title: string;
+  quantity: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin: number;
 }
 
 /* ───────────────── نسخه ۴: چک‌ها ───────────────── */

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
 import { formatFaDate, formatRial } from '@/lib/format';
 import { DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/config';
+import { INVOICE_TEMPLATES } from '@/lib/acc/constants';
 import { useCountUp } from '@/lib/reveal';
 import KarbanLoader from '@/components/KarbanLoader';
 
@@ -770,6 +771,12 @@ function AccountingTab() {
         <label className="settings-field" style={{ gridColumn: 'span 2' }}>
           پیام برند زیر فاکتورهای بدون لوگو
           <input value={cfg.brand_tagline} onChange={(e) => setCfg({ ...cfg, brand_tagline: e.target.value })} />
+        </label>
+        <label className="settings-field">
+          مدل پیش‌فرض چاپ فاکتور
+          <select value={cfg.default_template} onChange={(e) => setCfg({ ...cfg, default_template: e.target.value })}>
+            {INVOICE_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name} — {t.free ? 'رایگان' : 'پیشرفته'}</option>)}
+          </select>
         </label>
         <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.9rem' }}>
           <input type="checkbox" checked={cfg.public_invoice_maker} onChange={(e) => setCfg({ ...cfg, public_invoice_maker: e.target.checked })} />
