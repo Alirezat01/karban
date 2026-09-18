@@ -9,7 +9,7 @@
    ═════════════════════════════════════════════════════════════════════ */
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import { resolveConfig, runAudit, publicReport, buildMd } from '../api/_lib/audit-core.js';
+import { resolveConfig, runAudit, publicReport, buildMd } from '../lib-audit/audit-core.js';
 
 const args = new Set(process.argv.slice(2));
 const keep = args.has('--keep');

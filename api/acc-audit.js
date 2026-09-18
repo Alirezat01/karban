@@ -11,8 +11,10 @@
        و پاسخ فقط نسخه عمومی (بدون داده‌های واقعی مشتریان)
    ذخیره گزارش کامل: site_secrets.key = 'acc_audit_report'
    اعلان: تلگرام ادمین با TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (از env ورسل)
+   نکته: موتور حسابرسی در lib-audit/audit-core.js است (خارج از api/ تا ورسل
+   آن را در باندل تابع قرار دهد — پوشه‌های _دار داخل api/ از باندل حذف می‌شوند)
    ═════════════════════════════════════════════════════════════════════ */
-import { resolveConfig, runAudit, publicReport, buildMd } from './_lib/audit-core.js';
+import { resolveConfig, runAudit, publicReport, buildMd } from '../lib-audit/audit-core.js';
 
 export const maxDuration = 60;
 
@@ -23,6 +25,10 @@ const KEY_REPORT = 'acc_audit_report';
 function json(res, status, obj) {
   res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(obj));
+}
+
+function safeParse(s) {
+  try { return typeof s === 'string' ? JSON.parse(s) : s; } catch { return null; }
 }
 
 async function srFetch(URL, SRK, path, method = 'GET', body = null) {
@@ -39,7 +45,7 @@ async function srFetch(URL, SRK, path, method = 'GET', body = null) {
 
 async function readSecret(URL, SRK, key) {
   const r = await srFetch(URL, SRK, `rest/v1/site_secrets?key=eq.${encodeURIComponent(key)}&select=value,updated_at`);
-  return r.json?.[0] || null;
+  return Array.isArray(r.json) && r.json[0] ? r.json[0] : null;
 }
 
 /* upsert بدون تکیه بر on_conflict: اول PATCH، اگر نبود POST */
@@ -85,77 +91,78 @@ async function sendTelegram(summary, findings) {
 }
 
 export default async function handler(req, res) {
-  /* ── فقط GET/POST ── */
-  if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { ok: false, error: 'method_not_allowed' });
-
-  const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const q = u.searchParams;
-  const AUDIT_TOKEN = process.env.AUDIT_TOKEN || '';
-  const CRON_SECRET = process.env.CRON_SECRET || '';
-  const authHeader = req.headers.authorization || '';
-  const providedKey = q.get('key') || req.headers['x-audit-key'] || '';
-
-  const authorized = AUDIT_TOKEN
-    ? (providedKey === AUDIT_TOKEN || (CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`))
-    : !!(CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`); /* بدون AUDIT_TOKEN: فقط کرون مجاز شناخته می‌شود؛ بقیه مهمان هستند */
-
-  /* ── پیکربندی ساپابیس از env ورسل ── */
-  const { URL, SRK } = resolveConfig(process.env);
-  if (!SRK) {
-    return json(res, 500, {
-      ok: false,
-      error: 'missing_service_role_key',
-      hint: 'متغیر محیطی SUPABASE_SERVICE_ROLE_KEY در Vercel تنظیم نشده است. در Vercel → Settings → Environment Variables آن را اضافه کنید و redeploy کنید.',
-    });
-  }
-
-  /* ── محدودیت زمانی: هر ۱۰ دقیقه یک اجرا (مگر force با توکن معتبر) ── */
-  const force = q.get('force') === '1' && authorized;
-  let cachedFull = null;
-  if (!force) {
-    const last = await readSecret(URL, SRK, KEY_LAST);
-    const lastAt = last?.value ? new Date(String(last.value).replace(/^"|"$/g, '')) : null;
-    if (lastAt && Date.now() - lastAt.getTime() < RATE_LIMIT_MS) {
-      cachedFull = await readSecret(URL, SRK, KEY_REPORT);
-      const cached = cachedFull?.value ? (typeof cachedFull.value === 'string' ? safeParse(cachedFull.value) : cachedFull.value) : null;
-      if (cached) {
-        return json(res, 200, {
-          ok: true, cached: true, authorized,
-          generated_at: cached.generated_at,
-          summary: cached.summary, report: publicReport(cached), md: buildMd(publicReport(cached)),
-        });
-      }
-      return json(res, 429, { ok: false, error: 'rate_limited', retry_after_sec: Math.ceil((RATE_LIMIT_MS - (Date.now() - lastAt.getTime())) / 1000) });
-    }
-  }
-
-  /* ── اجرای حسابرسی ── */
-  const keep = q.get('keep') === '1';
-  let full;
+  /* کل هندلر در try/catch — هرگز صفحه «FUNCTION_INVOCATION_FAILED» نمی‌بینید */
   try {
-    full = await runAudit({ URL, SRK, cleanup: !keep });
+    if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { ok: false, error: 'method_not_allowed' });
+
+    const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    const q = u.searchParams;
+    const AUDIT_TOKEN = process.env.AUDIT_TOKEN || '';
+    const CRON_SECRET = process.env.CRON_SECRET || '';
+    const authHeader = req.headers.authorization || '';
+    const providedKey = q.get('key') || req.headers['x-audit-key'] || '';
+
+    const authorized = AUDIT_TOKEN
+      ? (providedKey === AUDIT_TOKEN || (CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`))
+      : !!(CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`); /* بدون AUDIT_TOKEN: فقط کرون مجاز شناخته می‌شود؛ بقیه مهمان هستند */
+
+    /* ── پیکربندی ساپابیس از env ورسل ── */
+    const { URL, SRK } = resolveConfig(process.env);
+    if (!SRK) {
+      return json(res, 500, {
+        ok: false,
+        error: 'missing_service_role_key',
+        hint: 'متغیر محیطی SUPABASE_SERVICE_ROLE_KEY در Vercel تنظیم نشده است. در Vercel → Settings → Environment Variables آن را اضافه کنید و redeploy کنید.',
+      });
+    }
+
+    /* ── محدودیت زمانی: هر ۱۰ دقیقه یک اجرا (مگر force با توکن معتبر) ── */
+    const force = q.get('force') === '1' && authorized;
+    if (!force) {
+      const last = await readSecret(URL, SRK, KEY_LAST);
+      const lastAt = last?.value ? new Date(String(typeof last.value === 'string' ? last.value.replace(/^"|"$/g, '') : last.value)) : null;
+      if (lastAt && !Number.isNaN(lastAt.getTime()) && Date.now() - lastAt.getTime() < RATE_LIMIT_MS) {
+        const cachedFull = await readSecret(URL, SRK, KEY_REPORT);
+        const cached = cachedFull?.value ? safeParse(cachedFull.value) : null;
+        if (cached) {
+          const pub = publicReport(cached);
+          return json(res, 200, {
+            ok: true, cached: true, authorized,
+            generated_at: cached.generated_at,
+            summary: cached.summary, report: pub, md: buildMd(pub),
+          });
+        }
+        return json(res, 429, { ok: false, error: 'rate_limited', retry_after_sec: Math.ceil((RATE_LIMIT_MS - (Date.now() - lastAt.getTime())) / 1000) });
+      }
+    }
+
+    /* ── اجرای حسابرسی ── */
+    const keep = q.get('keep') === '1';
+    let full;
+    try {
+      full = await runAudit({ URL, SRK, cleanup: !keep });
+    } catch (e) {
+      return json(res, 500, { ok: false, error: 'audit_failed', detail: String(e?.stack || e).slice(0, 600) });
+    }
+
+    /* ── ذخیره گزارش کامل + زمان آخرین اجرا ── */
+    const save1 = await writeSecret(URL, SRK, KEY_REPORT, full);
+    const save2 = await writeSecret(URL, SRK, KEY_LAST, new Date().toISOString());
+
+    /* ── تلگرام ادمین ── */
+    const tg = await sendTelegram(full.summary, full.findings);
+
+    const pub = publicReport(full);
+    return json(res, 200, {
+      ok: true, cached: false, authorized,
+      saved_to_db: save1 && save2,
+      telegram: tg?.ok !== undefined ? (tg.ok ? 'sent' : 'failed') : 'skipped',
+      summary: full.summary,
+      report: pub,
+      md: buildMd(pub),
+      ...(authorized ? { full } : {}),
+    });
   } catch (e) {
-    return json(res, 500, { ok: false, error: 'audit_failed', detail: String(e?.message || e).slice(0, 400) });
+    return json(res, 500, { ok: false, error: 'handler_crash', detail: String(e?.stack || e).slice(0, 600) });
   }
-
-  /* ── ذخیره گزارش کامل + زمان آخرین اجرا ── */
-  const save1 = await writeSecret(URL, SRK, KEY_REPORT, full);
-  const save2 = await writeSecret(URL, SRK, KEY_LAST, new Date().toISOString());
-
-  /* ── تلگرام ادمین ── */
-  const tg = await sendTelegram(full.summary, full.findings);
-
-  const pub = publicReport(full);
-  return json(res, 200, {
-    ok: true, cached: false, authorized,
-    saved_to_db: save1 && save2,
-    telegram: tg?.ok !== undefined ? (tg.ok ? 'sent' : 'failed') : 'skipped',
-    summary: full.summary,
-    report: pub,
-    ...(authorized ? { full } : {}),
-  });
-}
-
-function safeParse(s) {
-  try { return JSON.parse(s); } catch { return null; }
 }

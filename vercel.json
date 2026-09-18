@@ -1,5 +1,11 @@
 {
   "trailingSlash": false,
+  "crons": [
+    {
+      "path": "/api/acc-audit",
+      "schedule": "0 4 * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/(.*)",
