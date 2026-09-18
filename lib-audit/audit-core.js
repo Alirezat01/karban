@@ -68,6 +68,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
   }
 
   let BIZ = null, INV1 = null, USER_ID = null, EMAIL = '';
+  let BANK_ID = null;
   let diag = [];
   let liveSchema = {}, missingSchema = {}, accTables = [];
 
@@ -99,6 +100,13 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       acc_projects: ['name', 'code', 'partner_id', 'status', 'budget', 'start_date_g', 'end_date_g', 'description'],
       acc_journal: ['business_id', 'date_g', 'description', 'ref_type', 'ref_id'],
       acc_journal_lines: ['entry_id', 'account_code', 'account_title', 'debit', 'credit'],
+      acc_details: ['business_id', 'title', 'kind'],
+      acc_attachments: ['business_id', 'entity_type', 'entity_id', 'file_url'],
+      acc_petty: ['business_id', 'name', 'status'],
+      acc_petty_ops: ['business_id', 'petty_id', 'kind', 'amount', 'date_g'],
+      acc_prepayments: ['business_id', 'kind', 'partner_id', 'amount', 'date_g', 'status'],
+      acc_bank_lines: ['business_id', 'account_id', 'date_g', 'amount', 'match_status'],
+      acc_fiscal_years: ['business_id', 'jyear', 'status'],
       acc_expense_categories: ['business_id', 'title', 'code', 'position'],
       acc_periods: ['business_id', 'jyear', 'jmonth', 'locked', 'locked_at'],
       acc_activity: ['business_id', 'user_id', 'user_email', 'action', 'entity', 'entity_id', 'detail'],
@@ -193,6 +201,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
     /* B11-B12: حساب‌ها */
     const a1 = await user('rest/v1/acc_accounts', 'POST', { business_id: BIZ, name: 'بانک ملت – جاری ۱۲۳۴', kind: 'bank', initial_balance: 2500000000 });
     const BANK = a1.json?.id;
+    BANK_ID = BANK;
     step('B11', 'ثبت حساب بانکی', a1.status === 201, a1.status === 201 ? `id=${BANK}` : `${a1.status} ${a1.text.slice(0, 200)}`);
     const a2 = await user('rest/v1/acc_accounts', 'POST', { business_id: BIZ, name: 'صندوق فروشگاه', kind: 'cash', initial_balance: 50000000 });
     step('B12', 'ثبت صندوق نقدی', a2.status === 201, a2.status === 201 ? 'ok' : `${a2.status} ${a2.text.slice(0, 200)}`);
@@ -474,6 +483,29 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
 
     const tqAll = await sr('rest/v1/telegram_queue?select=id&limit=100');
     step('C7', 'صف تلگرام (پیام‌های در انتظار ارسال)', true, `${arr(tqAll.json).length} پیام در صف`, 'info');
+
+    /* ═══ B41-B43: قابلیت‌های حرفه‌ای نسخه ۷ ═══ */
+    if (BIZ && USER_TOKEN) {
+      const u2 = (path, method, body) => user(path, method, body);
+      /* B41 تنخواه‌گردان */
+      const pt = await u2('rest/v1/acc_petty', 'POST', { business_id: BIZ, name: 'تنخواه تستی حسابرسی', status: 'open' });
+      const PTY = pt.json?.id;
+      step('B41', 'تنخواه‌گردان — ایجاد و شارژ', pt.status === 201, pt.status === 201 ? 'ok' : `${pt.status} ${pt.text.slice(0, 200)}`);
+      if (PTY) {
+        const po = await u2('rest/v1/acc_petty_ops', 'POST', { business_id: BIZ, petty_id: PTY, kind: 'charge', amount: 5000000, date_g: todayISO() });
+        step('B41b', 'ثبت عمل شارژ تنخواه', po.status === 201, po.status === 201 ? 'ok' : `${po.status} ${po.text.slice(0, 180)}`);
+      }
+      /* B42 پیش‌دریافت */
+      const pp = await u2('rest/v1/acc_prepayments', 'POST', { business_id: BIZ, kind: 'advance_received', amount: 10000000, date_g: todayISO(), status: 'open' });
+      step('B42', 'پیش‌دریافت/پیش‌پرداخت', pp.status === 201, pp.status === 201 ? 'ok' : `${pp.status} ${pp.text.slice(0, 200)}`);
+      /* B43 تفصیلی شناور + ضمیمه + خط بانک */
+      const dt = await u2('rest/v1/acc_details', 'POST', { business_id: BIZ, title: 'تفصیلی تستی حسابرسی', kind: 'other' });
+      step('B43', 'تفصیلی شناور', dt.status === 201, dt.status === 201 ? 'ok' : `${dt.status} ${dt.text.slice(0, 180)}`);
+      const bl = await u2('rest/v1/acc_bank_lines', 'POST', { business_id: BIZ, account_id: BANK_ID, date_g: todayISO(), description: 'واریز تستی', amount: 1500000, match_status: 'unmatched' });
+      step('B44', 'خطوط صورت‌حساب بانک (مغایرت واقعی)', bl.status === 201, bl.status === 201 ? 'ok' : `${bl.status} ${bl.text.slice(0, 200)}`);
+      const fy = await u2('rest/v1/acc_fiscal_years', 'POST', { business_id: BIZ, jyear: jalaliYear(), status: 'open' });
+      step('B45', 'دوره مالی سالانه', fy.status === 201, fy.status === 201 ? 'ok' : `${fy.status} ${fy.text.slice(0, 180)}`);
+    }
   } catch (e) {
     step('X1', 'خطای غیرمنتظره در اجرای حسابرسی', false, String(e?.stack || e).slice(0, 480), 'critical');
   }
@@ -483,6 +515,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
   if (cleanup && BIZ) {
     log('\n══ مرحله E: پاک‌سازی داده‌های تستی ══');
     const tables = [
+      'acc_bank_lines', 'acc_prepayments', 'acc_petty_ops', 'acc_petty', 'acc_attachments', 'acc_details', 'acc_fiscal_years',
       'acc_reconciliations', 'acc_checks', 'acc_transactions', 'acc_invoice_items', 'acc_invoices',
       'acc_journal_lines', 'acc_journal', 'acc_payrolls', 'acc_employees', 'acc_assets',
       'acc_recurring', 'acc_contracts', 'acc_projects', 'acc_expense_categories', 'acc_expenses',
@@ -539,7 +572,7 @@ export function publicReport(report) {
     summary: report.summary,
     schema_tables: report.schema_tables || [],
     missing_schema: report.missing_schema || {},
-    results: (report.results || []).map((r) => ({ id: r.id, title: r.title, ok: r.ok, severity: r.severity || '' })),
+    results: (report.results || []).map((r) => ({ id: r.id, title: r.title, ok: r.ok, severity: r.severity || '', detail: String(r.id || '').startsWith('C') ? '' : (r.detail || '') })),
     findings: (report.findings || []).map((f) => ({ id: f.id, title: f.title, severity: f.severity })),
     business_stats: {
       count: (report.business_diagnosis || []).length,

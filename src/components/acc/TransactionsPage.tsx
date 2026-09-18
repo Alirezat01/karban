@@ -3,7 +3,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccInvoice, AccTransaction } from '@/lib/acc/types';
-import { deleteTransaction, listAccounts, listInvoices, listPartners, listTransactions, saveTransaction } from '@/lib/acc/api';
+import { deleteTransaction, listAccounts, listInvoices, listPartners, listTransactions, saveTransaction, attachmentCounts } from '@/lib/acc/api';
+import { voidTransaction, deleteTransactionFull } from '@/lib/acc/api7';
+import { VoidDeleteBtns } from './VoidDeleteBtns';
+import AttachButton from './AttachButton';
 import { PAYMENT_METHODS } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, dateToISO } from '@/lib/acc/jalali';
@@ -101,6 +104,15 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
     }
   }
 
+  async function voidTx(row: AccTransaction, reason: string) {
+    await voidTransaction(business.id, row.id, reason);
+    load();
+  }
+  async function deleteTxFull(row: AccTransaction) {
+    await deleteTransactionFull(business.id, row.id);
+    load();
+  }
+
   const totalReceipt = filtered.filter((r) => r.kind === 'receipt').reduce((s, r) => s + r.amount, 0);
   const totalPayment = filtered.filter((r) => r.kind === 'payment').reduce((s, r) => s + r.amount, 0);
 
@@ -139,6 +151,13 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
                   <div className="row-actions">
                     <button className="acc-icon-btn" onClick={() => { setOpenInvoices([]); setEditing(r); }}><Pencil size={14} /></button>
                     <button className="acc-icon-btn danger" onClick={() => remove(r)}><Trash2 size={14} /></button>
+                    <VoidDeleteBtns
+                      voidLabel="ابطال دریافت/پرداخت"
+                      deleteLabel="حذف کامل"
+                      onVoid={(reason) => voidTx(r, reason)}
+                      onDelete={() => deleteTxFull(r)}
+                    />
+                    <AttachButton business={business} entityType="transaction" entityId={r.id} />
                   </div>
                 </td>
               </tr>

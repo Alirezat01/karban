@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Download, Landmark, Plus, Receipt, Trash2, XCircle } from 'lucide-react';
 import type { AccBusiness, AccCheck, CheckKind, CheckStatus } from '@/lib/acc/types';
 import { deleteCheck, listAccounts, listChecks, listPartners, saveCheck, setCheckStatus } from '@/lib/acc/api';
+import { voidCheck, deleteCheckFull } from '@/lib/acc/api7';
+import { VoidDeleteBtns } from './VoidDeleteBtns';
+import AttachButton from './AttachButton';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, dateToISO, toFaDigits } from '@/lib/acc/jalali';
 import { exportExcel, htmlTable, printHtml, exportWord, exportFilename, brandLogoUrl, type BrandAccess } from '@/lib/acc/export';
@@ -119,6 +122,15 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
     }
   }
 
+  async function voidChk(c: AccCheck, reason: string) {
+    await voidCheck(business.id, c.id, reason);
+    await refresh();
+  }
+  async function deleteChkFull(c: AccCheck) {
+    await deleteCheckFull(business.id, c.id);
+    await refresh();
+  }
+
   const tableHeaders = ['نوع', 'طرف‌حساب', 'مبلغ (ریال)', 'شماره چک', 'بانک', 'تاریخ صدور', 'سررسید', 'وضعیت'];
 
   function tableRows() {
@@ -207,6 +219,8 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
                           {(r.status === 'deposited' || r.status === 'in_hand') && <button className="acc-icon-btn danger" title="برگشت خورد" onClick={() => changeStatus(r, 'bounced')}><XCircle size={15} /></button>}
                           <button className="acc-icon-btn" title="ویرایش" onClick={() => setEditing({ ...r, key: Date.now() })}>✎</button>
                           <button className="acc-icon-btn danger" title="حذف" onClick={() => remove(r)}><Trash2 size={14} /></button>
+                          <VoidDeleteBtns voidLabel="ابطال چک" deleteLabel="حذف کامل چک" onVoid={(reason) => voidChk(r, reason)} onDelete={() => deleteChkFull(r)} />
+                          <AttachButton business={business} entityType="check" entityId={r.id} />
                         </div>
                       </td>
                     </tr>

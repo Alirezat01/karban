@@ -17,6 +17,9 @@ import { EXPENSE_CATEGORIES } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, jalaliMonthLength, toGregorian, todayJalali, dateToISO, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, confirmAction, toast, EmptyState } from './ui';
+import { voidExpense, deleteExpenseFull } from '@/lib/acc/api7';
+import { VoidDeleteBtns } from './VoidDeleteBtns';
+import AttachButton from './AttachButton';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, brandLogoUrl } from '@/lib/acc/export';
 import { featureEnabled } from '@/lib/acc/plan';
 import { Lock } from 'lucide-react';
@@ -314,6 +317,13 @@ export default function ExpensesPage({ business, access }: {
                     <div className="row-actions">
                       <button className="acc-icon-btn" onClick={() => setEditing(r)}><Pencil size={14} /></button>
                       <button className="acc-icon-btn danger" onClick={() => remove(r)}><Trash2 size={14} /></button>
+                      <VoidDeleteBtns
+                        voidLabel="ابطال هزینه"
+                        deleteLabel="حذف کامل هزینه"
+                        onVoid={async (reason) => { await voidExpense(business.id, r.id, reason); load(); }}
+                        onDelete={async () => { await deleteExpenseFull(business.id, r.id); load(); }}
+                      />
+                      <AttachButton business={business} entityType="expense" entityId={r.id} />
                     </div>
                   </td>
                 </tr>

@@ -31,6 +31,13 @@ import PayrollPage from './PayrollPage';
 import AssetsPage from './AssetsPage';
 import RecurringPage from './RecurringPage';
 import SystemPage from './SystemPage';
+import ChartTreePage from './ChartTreePage';
+import PettyCashPage from './PettyCashPage';
+import PrePayPage from './PrePayPage';
+import BankReconPage from './BankReconPage';
+import FiscalYearPage from './FiscalYearPage';
+import LedgerCardPage from './LedgerCardPage';
+import AccessPermsPage from './AccessPermsPage';
 import ProGate from './ProGate';
 import KarbanLoader from '@/components/KarbanLoader';
 import { globalSearch, type GlobalSearchResult } from '@/lib/acc/api6';
@@ -75,9 +82,13 @@ const NAV = [
     { seg: 'هزینه‌ها', title: 'هزینه‌ها', icon: Receipt, pro: false },
     { seg: 'حساب‌ها', title: 'بانک و صندوق', icon: Wallet, pro: false },
     { seg: 'چک‌ها', title: 'دفتر چک‌ها', icon: Landmark, pro: true },
+    { seg: 'تنخواه', title: 'تنخواه‌گردان', icon: Wallet, pro: false },
+    { seg: 'پیش-دریافت', title: 'پیش‌دریافت و پیش‌پرداخت', icon: ArrowLeftRight, pro: false },
   ] },
   { label: 'حسابداری و تحلیل', items: [
+    { seg: 'کدینگ', title: 'کدینگ حسابداری چندسطحی', icon: BookOpen, pro: false },
     { seg: 'دفترخانه', title: 'دفترخانه (روزنامه و کل)', icon: BookOpen, pro: true },
+    { seg: 'کارت-حساب', title: 'کارت حساب و دفاتر استاندارد', icon: BarChart3, pro: false },
     { seg: 'گزارش‌ها', title: 'گزارش‌ها و مالیات', icon: BarChart3, pro: true },
   ] },
   { label: 'پروژه و منابع انسانی', items: [
@@ -88,7 +99,10 @@ const NAV = [
   ] },
   { label: 'ابزارهای پیشرفته', items: [
     { seg: 'هزینه-تکرارشونده', title: 'هزینه‌های تکرارشونده', icon: RefreshCcw, pro: true },
-    { seg: 'سیستم', title: 'سیستم (قفل دوره، مغایرت، پشتیبان)', icon: Settings, pro: true },
+    { seg: 'مغایرت-بانکی', title: 'مغایرت‌گیری بانکی واقعی', icon: Landmark, pro: false },
+    { seg: 'دوره-مالی', title: 'بستن و افتتاح دوره مالی', icon: Lock, pro: false },
+    { seg: 'دسترسی-ریزدانه', title: 'کنترل دسترسی ریزدانه', icon: ShieldAlert, pro: false },
+    { seg: 'سیستم', title: 'سیستم (قفل دوره، پشتیبان، لاگ)', icon: Settings, pro: true },
   ] },
   { label: 'سیستم', items: [
     { seg: 'تنظیمات', title: 'تنظیمات کسب‌وکار', icon: Settings, pro: false },
@@ -549,6 +563,13 @@ export default function AccPanel({ sub }: { sub: string[] }) {
       case 'هزینه‌ها': return <ExpensesPage business={business} access={{ status, plan }} />;
       case 'حساب‌ها': return <AccountsPage business={business} />;
       case 'دریافت-و-پرداخت': return <TransactionsPage business={business} />;
+      case 'تنخواه': return <PettyCashPage business={business} />;
+      case 'پیش-دریافت': return <PrePayPage business={business} />;
+      case 'کدینگ': return <ChartTreePage business={business} />;
+      case 'کارت-حساب': return <LedgerCardPage business={business} />;
+      case 'مغایرت-بانکی': return <BankReconPage business={business} />;
+      case 'دوره-مالی': return <FiscalYearPage business={business} />;
+      case 'دسترسی-ریزدانه': return <AccessPermsPage business={business} role={role} />;
       case 'چک‌ها': {
         const gate = proBlocked('checks', 'دفتر چک‌ها', 'ثبت و پیگیری چک‌های دریافتی و پرداختی با یادآوری سررسید، مخصوص نسخه پیشرفته است.');
         if (gate) return gate;

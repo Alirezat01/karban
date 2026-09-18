@@ -5,12 +5,13 @@ import { BarChart3, Download, FileSpreadsheet, TrendingUp } from 'lucide-react';
 import type { AccBusiness, BalanceSheet, ProductProfitRow, ProfitAndLoss, VatReport } from '@/lib/acc/types';
 import { currentSeasonRange, downloadCsv, productProfitability, profitAndLoss, salesByItem, salesByPartner, seasonalReport, vatReport, type SeasonalRow } from '@/lib/acc/api';
 import { balanceSheet, creditorsReport, projectPerformance, type ProjectPerformance } from '@/lib/acc/api6';
+import { serviceCosting, trialBalanceMulti, type ServiceCostRow, type TrialBalance6Row } from '@/lib/acc/api7';
 import { SEASON_NAMES, currentJalaliMonthRange, formatJalali, jalaliSeasonOf, jalaliYearOf, jalaliYearRange, todayJalali } from '@/lib/acc/jalali';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { JalaliDateInput, EmptyState } from './ui';
 
-type Tab = 'pl' | 'vat' | 'seasonal' | 'sales' | 'product' | 'balance' | 'creditors' | 'projects';
+type Tab = 'pl' | 'vat' | 'seasonal' | 'sales' | 'product' | 'balance' | 'creditors' | 'projects' | 'costing' | 'tb6';
 
 export default function ReportsPage({ business }: { business: AccBusiness }) {
   const [tab, setTab] = useState<Tab>('pl');
@@ -27,6 +28,8 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
   const [sheet, setSheet] = useState<BalanceSheet | null>(null);
   const [creditors, setCreditors] = useState<{ id: string; number: string; partner: string; remaining: number; dueDate: string | null; overdue: boolean }[]>([]);
   const [projects, setProjects] = useState<ProjectPerformance[]>([]);
+  const [costing, setCosting] = useState<{ rows: ServiceCostRow[]; totalRevenue: number; totalDirect: number; totalIndirect: number; unallocatedIndirect: number; totalProfit: number } | null>(null);
+  const [tb6, setTb6] = useState<TrialBalance6Row[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +48,8 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
         if (tab === 'balance') tasks.push(balanceSheet(business.id).then(setSheet));
         if (tab === 'creditors') tasks.push(creditorsReport(business.id).then(setCreditors));
         if (tab === 'projects') tasks.push(projectPerformance(business.id).then(setProjects));
+        if (tab === 'costing') tasks.push(serviceCosting(business.id, from, to).then(setCosting));
+        if (tab === 'tb6') tasks.push(trialBalanceMulti(business.id, from, to, 1).then(setTb6));
         await Promise.all(tasks);
       } finally {
         setLoading(false);
@@ -74,7 +79,7 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '.35rem', flex: 1, flexWrap: 'wrap' }}>
-          {([['pl', 'سود و زیان'], ['balance', 'ترازنامه'], ['vat', 'ارزش افزوده'], ['seasonal', 'معاملات فصلی (۱۶۹)'], ['sales', 'تحلیل فروش'], ['product', 'سود محصولات'], ['creditors', 'بستانکاران'], ['projects', 'عملکرد پروژه‌ها']] as const).map(([k, label]) => (
+          {([['pl', 'سود و زیان'], ['balance', 'ترازنامه'], ['costing', 'بهای تمام‌شده و سود پروژه'], ['tb6', 'تراز ۶ ستونی'], ['vat', 'ارزش افزوده'], ['seasonal', 'معاملات فصلی (۱۶۹)'], ['sales', 'تحلیل فروش'], ['product', 'سود محصولات'], ['creditors', 'بستانکاران'], ['projects', 'عملکرد پروژه‌ها']] as const).map(([k, label]) => (
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
@@ -345,6 +350,92 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
               </table>
               {projects.length === 0 && <EmptyState icon={<BarChart3 size={34} />} title="پروژه‌ای تعریف نشده" hint="از بخش «پروژه‌ها» پروژه‌های خود را بسازید" />}
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'costing' && costing && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <p className="acc-hint" style={{ margin: 0 }}>
+            بهای تمام‌شده خدمات = هزینه مستقیم پروژه + سهم سربار (هزینه‌های عمومی × نرخ سربار هر پروژه). درصد پیشرفت را از بخش «پروژه‌ها» تنظیم کنید.
+          </p>
+          <div className="acc-kpi-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+            <div className="acc-kpi"><span>درآمد</span><strong>{formatMoney(costing.totalRevenue)}</strong></div>
+            <div className="acc-kpi"><span>هزینه مستقیم</span><strong>{formatMoney(costing.totalDirect)}</strong></div>
+            <div className="acc-kpi"><span>سربار تخصیص‌یافته</span><strong>{formatMoney(costing.totalIndirect)}</strong></div>
+            <div className="acc-kpi"><span>سربار بدون پروژه</span><strong>{formatMoney(costing.unallocatedIndirect)}</strong></div>
+            <div className="acc-kpi"><span>سود خالص</span><strong style={{ color: costing.totalProfit >= 0 ? 'var(--ok, #16a34a)' : '#dc2626' }}>{formatMoney(costing.totalProfit)}</strong></div>
+          </div>
+          <div className="acc-card">
+            <h3><TrendingUp size={16} /> سود واقعی هر پروژه/خدمت</h3>
+            <div className="acc-table-wrap">
+              <table className="acc-table" style={{ minWidth: 720 }}>
+                <thead><tr><th>پروژه</th><th>درآمد</th><th>هزینه مستقیم</th><th>سربار</th><th>بهای تمام‌شده</th><th>سود</th><th>حاشیه</th><th>پیشرفت</th><th>مصرف بودجه</th></tr></thead>
+                <tbody>
+                  {costing.rows.map((r) => (
+                    <tr key={r.projectId || 'none'}>
+                      <td style={{ fontWeight: 600 }}>{r.projectName}</td>
+                      <td className="num">{formatMoney(r.revenue)}</td>
+                      <td className="num" style={{ color: '#ef9a94' }}>{formatMoney(r.directCost)}</td>
+                      <td className="num" style={{ color: '#ef9a94' }}>{formatMoney(r.indirectAllocated)}</td>
+                      <td className="num">{formatMoney(r.totalCost)}</td>
+                      <td className="num" style={{ color: r.profit >= 0 ? '#6fdca0' : '#ef9a94', fontWeight: 700 }}>{formatMoney(r.profit)}</td>
+                      <td className="num">{r.margin}٪</td>
+                      <td className="num">{toFaDigits(r.progress)}٪</td>
+                      <td className="num">{r.budget > 0 ? <span className={`acc-badge ${r.budgetUsedPct > 100 ? 'bad' : r.budgetUsedPct > 80 ? 'warn' : 'ok'}`}>{toFaDigits(r.budgetUsedPct)}٪</span> : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {costing.rows.length === 0 && <EmptyState icon={<BarChart3 size={34} />} title="گردش پروژه‌ای در این بازه نیست" hint="فاکتور یا هزینه را به پروژه متصل کنید" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'tb6' && (
+        <div className="acc-card">
+          <h3><BarChart3 size={16} /> تراز آزمایشی ۶ ستونی (سطح کل)</h3>
+          <p className="acc-hint">گردش و مانده هر حساب در سه لایه افتتاحیه / دوره / اختتامیه — سطوح معین و تفصیلی در «کارت حساب و دفاتر استاندارد»</p>
+          <div className="acc-table-wrap">
+            <table className="acc-table" style={{ minWidth: 780 }}>
+              <thead>
+                <tr>
+                  <th rowSpan={2}>کد</th>
+                  <th rowSpan={2}>عنوان</th>
+                  <th colSpan={2}>افتتاحیه</th>
+                  <th colSpan={2}>گردش دوره</th>
+                  <th colSpan={2}>اختتامیه</th>
+                </tr>
+                <tr><th>بد</th><th>بس</th><th>بد</th><th>بس</th><th>بد</th><th>بس</th></tr>
+              </thead>
+              <tbody>
+                {tb6.map((r) => (
+                  <tr key={r.code}>
+                    <td style={{ fontFamily: 'monospace' }}>{r.code}</td>
+                    <td style={{ fontWeight: 600 }}>{r.title}</td>
+                    <td className="num">{r.openingDebit ? formatMoney(r.openingDebit) : '—'}</td>
+                    <td className="num">{r.openingCredit ? formatMoney(r.openingCredit) : '—'}</td>
+                    <td className="num">{r.periodDebit ? formatMoney(r.periodDebit) : '—'}</td>
+                    <td className="num">{r.periodCredit ? formatMoney(r.periodCredit) : '—'}</td>
+                    <td className="num">{r.closingDebit ? formatMoney(r.closingDebit) : '—'}</td>
+                    <td className="num">{r.closingCredit ? formatMoney(r.closingCredit) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ fontWeight: 800 }}>
+                  <td colSpan={2}>جمع کل</td>
+                  <td className="num">{formatMoney(tb6.reduce((s, r) => s + r.openingDebit, 0))}</td>
+                  <td className="num">{formatMoney(tb6.reduce((s, r) => s + r.openingCredit, 0))}</td>
+                  <td className="num">{formatMoney(tb6.reduce((s, r) => s + r.periodDebit, 0))}</td>
+                  <td className="num">{formatMoney(tb6.reduce((s, r) => s + r.periodCredit, 0))}</td>
+                  <td className="num">{formatMoney(tb6.reduce((s, r) => s + r.closingDebit, 0))}</td>
+                  <td className="num">{formatMoney(tb6.reduce((s, r) => s + r.closingCredit, 0))}</td>
+                </tr>
+              </tfoot>
+            </table>
+            {tb6.length === 0 && <EmptyState icon={<BarChart3 size={34} />} title="سندی برای تراز وجود ندارد" />}
           </div>
         </div>
       )}

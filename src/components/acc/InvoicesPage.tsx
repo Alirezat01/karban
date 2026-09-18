@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Ban, CheckCircle2, Eye, FileText, Pencil, Plus, Printer, Repeat, Search, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccInvoice, InvoiceType } from '@/lib/acc/types';
 import { cancelInvoice, deleteDraftInvoice, issueInvoice, listInvoices, nextInvoiceNumber, saveInvoice } from '@/lib/acc/api';
+import { voidInvoice, deleteInvoiceFull, attachmentCounts } from '@/lib/acc/api7';
+import { VoidDeleteBtns } from './VoidDeleteBtns';
+import AttachButton from './AttachButton';
 import { INVOICE_STATUSES, INVOICE_TYPES } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, toFaDigits } from '@/lib/acc/jalali';
@@ -24,6 +27,10 @@ export default function InvoicesPage({ business, plan }: { business: AccBusiness
   const [tab, setTab] = useState<InvoiceType | 'all'>('all');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [attCounts, setAttCounts] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    attachmentCounts(business.id, 'invoice').then((m) => setAttCounts(m)).catch(() => {});
+  }, [business.id, rows]);
 
   async function load() {
     setLoading(true);
@@ -48,13 +55,13 @@ export default function InvoicesPage({ business, plan }: { business: AccBusiness
   }
 
   async function doCancel(row: AccInvoice) {
-    if (!(await confirmAction(`صورتحساب ${row.number} ابطال شود؟ قید حسابداری عکس آن ثبت خواهد شد.`))) return;
+    if (!(await confirmAction(`صورتحساب ${row.number} ابطال شود؟ سند معکوس در دفترخانه ثبت و موجودی کالا بازگردانده می‌شود.`))) return;
     try {
-      await cancelInvoice(row.id);
-      toast('ابطال شد و قید برگشتی ثبت گردید');
+      await voidInvoice(business.id, row.id, 'ابطال از لیست', true);
+      toast('ابطال شد و سند معکوس ثبت گردید');
       load();
-    } catch {
-      toast('ابطال ناموفق بود', 'error');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'ابطال ناموفق بود', 'error');
     }
   }
 
@@ -67,6 +74,15 @@ export default function InvoicesPage({ business, plan }: { business: AccBusiness
     } catch {
       toast('حذف ناموفق بود', 'error');
     }
+  }
+
+  async function doVoidFull(row: AccInvoice, reason: string) {
+    await voidInvoice(business.id, row.id, reason, true);
+    load();
+  }
+  async function doDeleteFull(row: AccInvoice) {
+    await deleteInvoiceFull(business.id, row.id);
+    load();
   }
 
   async function convertProforma(row: AccInvoice) {
@@ -176,7 +192,16 @@ export default function InvoicesPage({ business, plan }: { business: AccBusiness
                     {r.status === 'draft' && r.type !== 'proforma' && <button className="acc-icon-btn" title="صدور نهایی" onClick={() => doIssue(r)}><CheckCircle2 size={14} /></button>}
                     {r.status === 'draft' && <button className="acc-icon-btn danger" title="حذف پیش‌نویس" onClick={() => doDelete(r)}><Trash2 size={14} /></button>}
                     {(r.status === 'issued' || r.status === 'partial') && <button className="acc-icon-btn danger" title="ابطال" onClick={() => doCancel(r)}><Ban size={14} /></button>}
+                    {(r.status === 'issued' || r.status === 'partial' || r.status === 'paid' || r.status === 'cancelled') && (
+                      <VoidDeleteBtns
+                        voidLabel="ابطال با دلیل و سند معکوس"
+                        deleteLabel="حذف کامل فاکتور"
+                        onVoid={(reason) => doVoidFull(r, reason)}
+                        onDelete={() => doDeleteFull(r)}
+                      />
+                    )}
                     {r.type === 'proforma' && r.status !== 'cancelled' && <button className="acc-icon-btn" title="تبدیل به فاکتور فروش" onClick={() => convertProforma(r)}><Repeat size={14} /></button>}
+                    <AttachButton business={business} entityType="invoice" entityId={r.id} count={attCounts.get(r.id) || 0} onChange={(n) => setAttCounts((m) => { const nm = new Map(m); nm.set(r.id, n); return nm; })} />
                     <a className="acc-icon-btn" title="مشاهده" href={r.status === 'draft' || r.type === 'proforma' ? `/حسابداری/پنل/فاکتور/${r.id}` : `/حسابداری/پنل/چاپ/${r.id}`}><Eye size={14} /></a>
                   </div>
                 </td>

@@ -7,6 +7,9 @@ import {
   deleteManualJournal, deleteChartAccount, listChart, listJournal, saveChartAccount,
   saveManualJournal, trialBalance,
 } from '@/lib/acc/api';
+import { voidJournal as voidJournalV2, deleteJournalFull as deleteJournalFullV2 } from '@/lib/acc/api7';
+import { VoidDeleteBtns } from './VoidDeleteBtns';
+import AttachButton from './AttachButton';
 import { formatMoney } from '@/lib/acc/money';
 import { currentJalaliMonthRange, formatJalali, jalaliYearRange, todayJalali, dateToISO } from '@/lib/acc/jalali';
 import { CHART_KINDS, SYSTEM_CHART } from '@/lib/acc/constants';
@@ -124,6 +127,25 @@ export default function BooksPage({ business }: { business: AccBusiness }) {
     }
   }
 
+  async function voidManual(entry: AccJournalEntry, reason: string) {
+    try {
+      await voidJournalV2(business.id, entry.id, reason);
+      toast('سند معکوس ثبت و سند ابطال شد');
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'ابطال ناموفق بود', 'error');
+    }
+  }
+  async function deleteManualFull(entry: AccJournalEntry) {
+    try {
+      await deleteJournalFullV2(entry.id, entry.ref_type);
+      toast('سند حذف شد');
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'حذف ناموفق بود', 'error');
+    }
+  }
+
   /* ── سرفصل اضافه ── */
   const customChart = chart.filter((c) => !c.is_system);
 
@@ -186,8 +208,12 @@ export default function BooksPage({ business }: { business: AccBusiness }) {
                   {e.ref_action === 'reverse' && <span className="acc-badge bad">برگشتی</span>}
                   <span style={{ marginRight: 'auto', fontSize: '.78rem', color: 'var(--gold2)' }} className="num">{formatMoney(sumD)} ریال</span>
                   {e.ref_type === 'manual' && (
-                    <button className="acc-icon-btn danger" title="حذف سند دستی" onClick={() => removeManual(e)}><Trash2 size={14} /></button>
+                    <>
+                      <button className="acc-icon-btn danger" title="حذف سند دستی" onClick={() => removeManual(e)}><Trash2 size={14} /></button>
+                      <VoidDeleteBtns voidLabel="ابطال سند (برگشت)" deleteLabel="حذف کامل سند" onVoid={(reason) => voidManual(e, reason)} onDelete={() => deleteManualFull(e)} />
+                    </>
                   )}
+                  <AttachButton business={business} entityType="journal" entityId={e.id} />
                 </div>
                 <div className="acc-table-wrap">
                   <table className="acc-table" style={{ minWidth: 520 }}>

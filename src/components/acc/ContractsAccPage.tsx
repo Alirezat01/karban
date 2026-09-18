@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import { FileSignature, Pencil, Plus, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccContract } from '@/lib/acc/types';
 import { deleteContract, listContracts, saveContract } from '@/lib/acc/api6';
+import { voidContract, deleteContractFull } from '@/lib/acc/api7';
+import { VoidDeleteBtns } from './VoidDeleteBtns';
+import AttachButton from './AttachButton';
 import { listPartners } from '@/lib/acc/api';
 import { listProjects } from '@/lib/acc/api6';
 import { formatMoneyUnit, roundVat } from '@/lib/acc/money';
@@ -58,6 +61,15 @@ export default function ContractsAccPage({ business }: { business: AccBusiness }
     }
   }
 
+  async function voidCtr(row: AccContract, reason: string) {
+    await voidContract(row.id, reason);
+    load();
+  }
+  async function deleteCtrFull(row: AccContract) {
+    await deleteContractFull(row.id);
+    load();
+  }
+
   const totalValue = rows.filter((r) => r.status !== 'canceled').reduce((s, r) => s + r.amount + roundVat(r.amount, r.vat_rate), 0);
   const activeCount = rows.filter((r) => r.status === 'active' || r.status === 'signed').length;
 
@@ -102,6 +114,8 @@ export default function ContractsAccPage({ business }: { business: AccBusiness }
                   <div className="row-actions">
                     <button className="acc-icon-btn" onClick={() => setEditing(r)}><Pencil size={14} /></button>
                     <button className="acc-icon-btn danger" onClick={() => remove(r)}><Trash2 size={14} /></button>
+                    <VoidDeleteBtns voidLabel="ابطال قرارداد" deleteLabel="حذف کامل قرارداد" onVoid={(reason) => voidCtr(r, reason)} onDelete={() => deleteCtrFull(r)} />
+                    <AttachButton business={business} entityType="contract" entityId={r.id} />
                   </div>
                 </td>
               </tr>
