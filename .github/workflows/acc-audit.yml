@@ -7,11 +7,16 @@ on:
     paths:
       - 'scripts/audit-full.mjs'
       - 'scripts/save-report.mjs'
-      - 'api/_lib/audit-core.js'
+      - 'lib-audit/audit-core.js'
       - 'api/acc-audit.js'
       - '.github/workflows/acc-audit.yml'
 permissions:
   contents: write
+
+# دو اجرای همزمان = کشمکش کامیت/پوش. فقط یکی در هر لحظه
+concurrency:
+  group: acc-audit
+  cancel-in-progress: true
 
 jobs:
   audit:
@@ -58,7 +63,24 @@ jobs:
         run: |
           git config user.name "audit-bot"
           git config user.email "audit@karbanapp.ir"
-          git add audit-report.json audit-report.md || true
-          git commit -m "audit: گزارش حسابرسی خودکار حسابداری [skip ci]" || echo "nothing to commit"
-          git pull --rebase origin main || true
-          git push
+          git add audit-report.json audit-report.md 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "گزارش جدیدی برای کامیت نیست"
+            exit 0
+          fi
+          git commit -m "audit: گزارش حسابرسی خودکار حسابداری [skip ci]"
+          PUSHED=""
+          for i in 1 2 3; do
+            if git push; then PUSHED=1; break; fi
+            echo "… push رد شد (تلاش $i) — همگام‌سازی با origin"
+            git pull --rebase --autostash origin main || {
+              echo "⚠️ rebase ممکن نشد — گزارش احتمالاً توسط اجرای موازی همین کامیت شده؛ بی‌خیال"
+              git rebase --abort 2>/dev/null || true
+              break
+            }
+            sleep 5
+          done
+          if [ -z "$PUSHED" ]; then
+            echo "⚠️ push انجام نشد اما حسابرسی خود کار کرده و گزارش در site_secrets + تلگرام هست؛ اجرای بعدی دوباره کامیت می‌کند"
+          fi
+          exit 0
