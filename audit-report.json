@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-18T08:44:53.718Z",
-  "duration_ms": 20619,
+  "generated_at": "2026-09-18T09:16:44.071Z",
+  "duration_ms": 16840,
   "summary": {
-    "pass": 38,
-    "fail": 5
+    "pass": 40,
+    "fail": 3
   },
   "schema_tables": [
     "acc_invoices",
@@ -36,23 +36,18 @@
     "acc_employees",
     "acc_partners"
   ],
-  "missing_schema": {
-    "acc_expense_categories": [
-      "name",
-      "kind"
-    ]
-  },
+  "missing_schema": {},
   "results": [
     {
       "id": "A1",
       "title": "تطبیق کامل اسکیمای زنده با کد",
-      "ok": false,
+      "ok": true,
       "severity": "critical"
     },
     {
       "id": "B1",
       "title": "ساخت کاربر تاییدشده (admin)",
-      "ok": false,
+      "ok": true,
       "severity": ""
     },
     {
@@ -131,7 +126,7 @@
       "id": "B15",
       "title": "صدور نهایی فاکتور (status=issued)",
       "ok": false,
-      "severity": ""
+      "severity": "critical"
     },
     {
       "id": "B16",
@@ -257,7 +252,7 @@
       "id": "B40",
       "title": "مغایرت‌گیری بانکی",
       "ok": false,
-      "severity": ""
+      "severity": "high"
     },
     {
       "id": "C1",
@@ -304,14 +299,19 @@
   ],
   "findings": [
     {
-      "id": "A1",
-      "title": "تطبیق کامل اسکیمای زنده با کد",
+      "id": "B15",
+      "title": "صدور نهایی فاکتور (status=issued)",
       "severity": "critical"
     },
     {
       "id": "B38",
       "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
       "severity": "info"
+    },
+    {
+      "id": "B40",
+      "title": "مغایرت‌گیری بانکی",
+      "severity": "high"
     }
   ],
   "business_stats": {
@@ -325,6 +325,6 @@
     "fail": 0
   },
   "test_context": {
-    "email": "karban.audit.mu6ppvmg@gmail.com"
+    "email": "karban.audit.mu6quvyg@gmail.com"
   }
 }
