@@ -1,0 +1,330 @@
+{
+  "generated_at": "2026-09-18T08:44:53.718Z",
+  "duration_ms": 20619,
+  "summary": {
+    "pass": 38,
+    "fail": 5
+  },
+  "schema_tables": [
+    "acc_invoices",
+    "acc_checks",
+    "site_secrets",
+    "acc_payrolls",
+    "acc_reconciliations",
+    "acc_items",
+    "acc_invoice_items",
+    "acc_activity",
+    "acc_transactions",
+    "profiles",
+    "acc_contracts",
+    "acc_expense_categories",
+    "acc_projects",
+    "acc_journal",
+    "acc_recurring",
+    "telegram_queue",
+    "acc_stuff_catalog",
+    "acc_expenses",
+    "acc_chart",
+    "acc_businesses",
+    "acc_assets",
+    "app_settings",
+    "acc_journal_lines",
+    "acc_periods",
+    "acc_trial_requests",
+    "acc_accounts",
+    "acc_access",
+    "acc_employees",
+    "acc_partners"
+  ],
+  "missing_schema": {
+    "acc_expense_categories": [
+      "name",
+      "kind"
+    ]
+  },
+  "results": [
+    {
+      "id": "A1",
+      "title": "تطبیق کامل اسکیمای زنده با کد",
+      "ok": false,
+      "severity": "critical"
+    },
+    {
+      "id": "B1",
+      "title": "ساخت کاربر تاییدشده (admin)",
+      "ok": false,
+      "severity": ""
+    },
+    {
+      "id": "B2",
+      "title": "ورود با رمز → session",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B3",
+      "title": "خواندن پروفایل",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B4",
+      "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B5",
+      "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B6",
+      "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B7",
+      "title": "ثبت طرف‌حساب حقیقی با shenase_melli",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B8",
+      "title": "ستون‌های نسخه۲ طرف‌حساب (استان/شهرستان/فکس/شماره ثبت)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B9",
+      "title": "ثبت کالا با ردیابی موجودی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B10",
+      "title": "ثبت خدمت (بدون موجودی)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B11",
+      "title": "ثبت حساب بانکی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B12",
+      "title": "ثبت صندوق نقدی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B13",
+      "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B15",
+      "title": "صدور نهایی فاکتور (status=issued)",
+      "ok": false,
+      "severity": ""
+    },
+    {
+      "id": "B16",
+      "title": "سند حسابداری خودکار هنگام صدور",
+      "ok": true,
+      "severity": "high"
+    },
+    {
+      "id": "B18",
+      "title": "قفل ویرایش سند صادره (اصل حسابداری)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B19",
+      "title": "پیش‌فاکتور (استعلام قیمت)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B20",
+      "title": "فاکتور خرید",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B23",
+      "title": "ثبت هزینه (با وضعیت مالیاتی)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B24",
+      "title": "ثبت چک دریافتی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B25",
+      "title": "ثبت کارمند",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B27",
+      "title": "ثبت دارایی ثابت",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B28",
+      "title": "هزینه تکرارشونده",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B29",
+      "title": "قرارداد خدماتی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B30",
+      "title": "پروژه / مرکز هزینه",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B31a",
+      "title": "ثبت سربرگ سند دستی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B32",
+      "title": "دسته‌بندی هزینه سفارشی (title/code/position)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B33",
+      "title": "قفل دوره مالی (جلوگیری از تغییر اسناد قطعی)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B34",
+      "title": "لاگ فعالیت کاربران",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B35",
+      "title": "کوئری تراز آزمایشی (join داخلی)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B36",
+      "title": "داده‌های گزارش فروش/درآمد",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B37",
+      "title": "ثبت رویداد در صف تلگرام",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B38",
+      "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
+      "ok": false,
+      "severity": "info"
+    },
+    {
+      "id": "B39",
+      "title": "سقف ۲۰ فاکتور آزمایشی",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "B40",
+      "title": "مغایرت‌گیری بانکی",
+      "ok": false,
+      "severity": ""
+    },
+    {
+      "id": "C1",
+      "title": "خواندن لایسنس‌ها (acc_access)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "C2",
+      "title": "خواندن کسب‌وکارها",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "C3",
+      "title": "گزارش وضعیت کسب‌وکارها",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "C4",
+      "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "C5",
+      "title": "لایسنس‌های منقضی/آزمایشی گذشته",
+      "ok": true,
+      "severity": ""
+    },
+    {
+      "id": "C6",
+      "title": "بررسی ثبت دوبل فاکتورهای صادره (۵ تای آخر هر کسب‌وکار)",
+      "ok": true,
+      "severity": "info"
+    },
+    {
+      "id": "C7",
+      "title": "صف تلگرام (پیام‌های در انتظار ارسال)",
+      "ok": true,
+      "severity": "info"
+    }
+  ],
+  "findings": [
+    {
+      "id": "A1",
+      "title": "تطبیق کامل اسکیمای زنده با کد",
+      "severity": "critical"
+    },
+    {
+      "id": "B38",
+      "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
+      "severity": "info"
+    }
+  ],
+  "business_stats": {
+    "count": 3,
+    "orphan_license": 0,
+    "trial_quota_full": 2
+  },
+  "cleanup": {
+    "attempted": true,
+    "ok": 25,
+    "fail": 0
+  },
+  "test_context": {
+    "email": "karban.audit.mu6ppvmg@gmail.com"
+  }
+}
