@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Paperclip, Trash2, Upload, X, ExternalLink } from 'lucide-react';
-import type { AccBusiness, AccAttachment } from '@/lib/acc/types';
+import type { AccBusiness } from '@/lib/acc/types';
+import type { AccAttachment } from '@/lib/acc/api7';
 import { addAttachment, deleteAttachment, listAttachments, ENTITY_LABELS } from '@/lib/acc/api7';
 import { formatJalali } from '@/lib/acc/jalali';
 import { confirmAction, toast } from './ui';

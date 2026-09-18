@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { CalendarCheck, DoorOpen, Lock, Plus, Trash2 } from 'lucide-react';
 import type { AccBusiness } from '@/lib/acc/types';
 import { listFiscalYears, closeFiscalYearV2, openNextYear, saveOpeningEntry, trialBalanceMulti, AccFiscalYear } from '@/lib/acc/api7';
+import { trialBalance } from '@/lib/acc/api';
 import { formatMoney } from '@/lib/acc/money';
 import { todayJalali } from '@/lib/acc/jalali';
 import { Field, Modal, MoneyInput, confirmAction, toast, EmptyState, Badge } from './ui';

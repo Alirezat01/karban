@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccInvoice, AccTransaction } from '@/lib/acc/types';
-import { deleteTransaction, listAccounts, listInvoices, listPartners, listTransactions, saveTransaction, attachmentCounts } from '@/lib/acc/api';
-import { voidTransaction, deleteTransactionFull } from '@/lib/acc/api7';
+import { deleteTransaction, listAccounts, listInvoices, listPartners, listTransactions, saveTransaction } from '@/lib/acc/api';
+import { voidTransaction, deleteTransactionFull, attachmentCounts } from '@/lib/acc/api7';
 import { VoidDeleteBtns } from './VoidDeleteBtns';
 import AttachButton from './AttachButton';
 import { PAYMENT_METHODS } from '@/lib/acc/constants';

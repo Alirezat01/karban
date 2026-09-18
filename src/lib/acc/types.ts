@@ -178,6 +178,9 @@ export interface AccExpense {
   project_id: string | null;
   created_by: string | null;
   created_at: string;
+  /** ابطال (نسخه ۷): زمان و دلیل باطل‌شدن سند — حذف کامل از سیستم انجام نمی‌شود */
+  voided_at: string | null;
+  void_reason: string | null;
   account?: AccAccount | null;
 }
 
@@ -194,6 +197,9 @@ export interface AccTransaction {
   description: string | null;
   created_by: string | null;
   created_at: string;
+  /** ابطال (نسخه ۷): زمان و دلیل باطل‌شدن سند */
+  voided_at: string | null;
+  void_reason: string | null;
   account?: AccAccount | null;
   partner?: AccPartner | null;
   invoice?: { id: string; number: string; type: InvoiceType } | null;

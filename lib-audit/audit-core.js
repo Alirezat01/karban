@@ -58,6 +58,8 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
   }
   /* پاسخ ساپابیس ممکن است به‌جای آرایه، آبجکت خطا باشد — همیشه امن آرایه بگیر */
   const arr = (x) => (Array.isArray(x) ? x : []);
+  /* پاسخ POST در PostgREST آرایه است — id را امن بگیر (رفع باگ B15/B40/B44: id=undefined) */
+  const idOf = (j) => (Array.isArray(j) ? (j[0]?.id ?? null) : (j?.id ?? null));
   let USER_TOKEN = null;
   async function user(path, method = 'GET', body = null) {
     const r = await fetch(`${URL}/${path}`, { method, headers: srHeaders(USER_TOKEN), body: body ? JSON.stringify(body) : undefined });
@@ -130,7 +132,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
 
     const cu = await sr('auth/v1/admin/users', 'POST', { email: EMAIL, password: PASS, email_confirm: true });
     step('B1', 'ساخت کاربر تاییدشده (admin)', cu.status === 200 || cu.status === 201, (cu.status === 200 || cu.status === 201) ? EMAIL : `${cu.status} ${cu.text.slice(0, 200)}`);
-    USER_ID = cu.json?.id;
+    USER_ID = idOf(cu.json);
 
     const lg = await sr('auth/v1/token?grant_type=password', 'POST', { email: EMAIL, password: PASS });
     USER_TOKEN = lg.json?.access_token;
@@ -162,7 +164,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       national_id: '10860045332', economic_code: '411345678902', postal_code: '1453613345',
       address: 'تهران، خیابان ولیعصر', phone: '02188990011',
     });
-    const PARTNER = p1.json?.id;
+    const PARTNER = idOf(p1.json);
     step('B6', 'ثبت طرف‌حساب حقوقی (بدون shenase_melli)', p1.status === 201, p1.status === 201 ? `id=${PARTNER}` : `${p1.status} ${p1.text.slice(0, 220)}`);
 
     /* B7: طرف‌حساب با shenase_melli */
@@ -188,19 +190,19 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       business_id: BIZ, name: 'لپ‌تاپ لنوو ThinkPad', unit: 'دستگاه', sale_price: 850000000,
       purchase_price: 700000000, vat_rate: 10, track_stock: true, stock: 5,
     });
-    const ITEM1 = it1.json?.id;
+    const ITEM1 = idOf(it1.json);
     step('B9', 'ثبت کالا با ردیابی موجودی', it1.status === 201, it1.status === 201 ? `id=${ITEM1}` : `${it1.status} ${it1.text.slice(0, 200)}`);
 
     const it2 = await user('rest/v1/acc_items', 'POST', {
       business_id: BIZ, name: 'خدمات مشاوره مالی', unit: 'ساعت', sale_price: 120000000,
       purchase_price: 0, vat_rate: 10, vat_exempt: false, track_stock: false,
     });
-    const ITEM2 = it2.json?.id;
+    const ITEM2 = idOf(it2.json);
     step('B10', 'ثبت خدمت (بدون موجودی)', it2.status === 201, it2.status === 201 ? `id=${ITEM2}` : `${it2.status} ${it2.text.slice(0, 200)}`);
 
     /* B11-B12: حساب‌ها */
     const a1 = await user('rest/v1/acc_accounts', 'POST', { business_id: BIZ, name: 'بانک ملت – جاری ۱۲۳۴', kind: 'bank', initial_balance: 2500000000 });
-    const BANK = a1.json?.id;
+    const BANK = idOf(a1.json);
     BANK_ID = BANK;
     step('B11', 'ثبت حساب بانکی', a1.status === 201, a1.status === 201 ? `id=${BANK}` : `${a1.status} ${a1.text.slice(0, 200)}`);
     const a2 = await user('rest/v1/acc_accounts', 'POST', { business_id: BIZ, name: 'صندوق فروشگاه', kind: 'cash', initial_balance: 50000000 });
@@ -219,7 +221,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       pay_id: '123456789012345678901234567890', account_id: BANK,
       subtotal: sub, discount_total: disc, vat_total: vat, total,
     });
-    INV1 = inv1.json?.id;
+    INV1 = idOf(inv1.json);
     step('B13', 'ثبت فاکتور فروش رسمی (پیش‌نویس)', inv1.status === 201, inv1.status === 201 ? `id=${INV1} total=${total.toLocaleString('en')}` : `${inv1.status} ${inv1.text.slice(0, 250)}`);
 
     if (INV1) {
@@ -266,7 +268,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       date_g: todayISO(), is_cash_sale: true, buyer_type: 'business',
       subtotal: 850000000, discount_total: 0, vat_total: 85000000, total: 935000000,
     });
-    step('B19', 'پیش‌فاکتور (استعلام قیمت)', inv2.status === 201, inv2.status === 201 ? `id=${inv2.json?.id}` : `${inv2.status} ${inv2.text.slice(0, 220)}`);
+    step('B19', 'پیش‌فاکتور (استعلام قیمت)', inv2.status === 201, inv2.status === 201 ? `id=${idOf(inv2.json)}` : `${inv2.status} ${inv2.text.slice(0, 220)}`);
 
     /* B20: فاکتور خرید */
     const inv3 = await user('rest/v1/acc_invoices', 'POST', {
@@ -274,7 +276,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       date_g: todayISO(), is_cash_sale: false, buyer_type: 'business',
       subtotal: 1400000000, discount_total: 0, vat_total: 140000000, total: 1540000000,
     });
-    step('B20', 'فاکتور خرید', inv3.status === 201, inv3.status === 201 ? `id=${inv3.json?.id}` : `${inv3.status} ${inv3.text.slice(0, 220)}`);
+    step('B20', 'فاکتور خرید', inv3.status === 201, inv3.status === 201 ? `id=${idOf(inv3.json)}` : `${inv3.status} ${inv3.text.slice(0, 220)}`);
 
     /* B21-B22: دریافت وجه */
     if (INV1) {
@@ -282,7 +284,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
         business_id: BIZ, kind: 'receipt', amount: total, date_g: todayISO(), method: 'transfer',
         account_id: BANK, invoice_id: INV1, partner_id: PARTNER, description: 'واریز کامل فاکتور 001',
       });
-      step('B21', 'ثبت دریافت وجه مرتبط با فاکتور', tx.status === 201, tx.status === 201 ? `id=${tx.json?.id}` : `${tx.status} ${tx.text.slice(0, 220)}`);
+      step('B21', 'ثبت دریافت وجه مرتبط با فاکتور', tx.status === 201, tx.status === 201 ? `id=${idOf(tx.json)}` : `${tx.status} ${tx.text.slice(0, 220)}`);
       const rc1 = await user(`rest/v1/acc_invoices?id=eq.${INV1}`, 'PATCH', { paid_total: total, status: 'paid' });
       const invAfter = await user(`rest/v1/acc_invoices?id=eq.${INV1}&select=status,paid_total`);
       step('B22', 'به‌روزرسانی وضعیت تسویه (paid_total/status=paid)', rc1.status === 204 && invAfter.json?.[0]?.status === 'paid',
@@ -295,7 +297,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       date_g: todayISO(), account_id: BANK, is_paid: true, vendor_name: 'مالک ساختمان',
       receipt_no: 'R-1001', tax_status: 'incomplete', description: 'چک شماره ۵۵۲',
     });
-    step('B23', 'ثبت هزینه (با وضعیت مالیاتی)', ex.status === 201, ex.status === 201 ? `id=${ex.json?.id}` : `${ex.status} ${ex.text.slice(0, 220)}`);
+    step('B23', 'ثبت هزینه (با وضعیت مالیاتی)', ex.status === 201, ex.status === 201 ? `id=${idOf(ex.json)}` : `${ex.status} ${ex.text.slice(0, 220)}`);
 
     /* B24: چک */
     const ck = await user('rest/v1/acc_checks', 'POST', {
@@ -303,7 +305,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       amount: 500000000, serial_no: '552144', bank_name: 'بانک صادرات', branch: 'شعبه مرکزی',
       issue_date_g: todayISO(), due_date_g: todayISO(), status: 'in_hand', description: 'چک بابت فاکتور',
     });
-    step('B24', 'ثبت چک دریافتی', ck.status === 201, ck.status === 201 ? `id=${ck.json?.id}` : `${ck.status} ${ck.text.slice(0, 220)}`);
+    step('B24', 'ثبت چک دریافتی', ck.status === 201, ck.status === 201 ? `id=${idOf(ck.json)}` : `${ck.status} ${ck.text.slice(0, 220)}`);
 
     /* B25-B26: کارمند و حقوق */
     const emp = await user('rest/v1/acc_employees', 'POST', {
@@ -311,7 +313,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       position: 'حسابدار', hire_date_g: todayISO(), base_salary: 150000000, housing_allowance: 9000000,
       food_allowance: 14000000, child_allowance: 0, child_count: 0, insurance_number: '55443322', bank_account: '6037991112223334',
     });
-    const EMP = emp.json?.id;
+    const EMP = idOf(emp.json);
     step('B25', 'ثبت کارمند', emp.status === 201, emp.status === 201 ? `id=${EMP}` : `${emp.status} ${emp.text.slice(0, 220)}`);
     if (EMP) {
       const pay = await user('rest/v1/acc_payrolls', 'POST', {
@@ -320,7 +322,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
         overtime_pay: 15000000, gross: 188000000, insurance_employee: 23460000, tax: 5000000,
         other_deductions: 0, net: 159540000, paid: false, account_id: null, pay_date_g: null,
       });
-      step('B26', 'ثبت فیش حقوقی (حقوق و دستمزد + بیمه)', pay.status === 201, pay.status === 201 ? `id=${pay.json?.id}` : `${pay.status} ${pay.text.slice(0, 220)}`);
+      step('B26', 'ثبت فیش حقوقی (حقوق و دستمزد + بیمه)', pay.status === 201, pay.status === 201 ? `id=${idOf(pay.json)}` : `${pay.status} ${pay.text.slice(0, 220)}`);
     }
 
     /* B27: دارایی ثابت */
@@ -328,35 +330,35 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       business_id: BIZ, name: 'خودرو پیکان', category: 'وسیله نقلیه', purchase_date_g: todayISO(),
       purchase_amount: 950000000, useful_life_years: 5, salvage_value: 50000000, account_id: BANK, status: 'active',
     });
-    step('B27', 'ثبت دارایی ثابت', as1.status === 201, as1.status === 201 ? `id=${as1.json?.id}` : `${as1.status} ${as1.text.slice(0, 220)}`);
+    step('B27', 'ثبت دارایی ثابت', as1.status === 201, as1.status === 201 ? `id=${idOf(as1.json)}` : `${as1.status} ${as1.text.slice(0, 220)}`);
 
     /* B28: هزینه تکرارشونده */
     const rc = await user('rest/v1/acc_recurring', 'POST', {
       business_id: BIZ, title: 'اجاره ماهانه', category: 'اجاره', amount: 60000000, vat_amount: 6000000,
       frequency: 'monthly', next_date_g: todayISO(), account_id: BANK, auto_create: false, active: true,
     });
-    step('B28', 'هزینه تکرارشونده', rc.status === 201, rc.status === 201 ? `id=${rc.json?.id}` : `${rc.status} ${rc.text.slice(0, 220)}`);
+    step('B28', 'هزینه تکرارشونده', rc.status === 201, rc.status === 201 ? `id=${idOf(rc.json)}` : `${rc.status} ${rc.text.slice(0, 220)}`);
 
     /* B29: قرارداد */
     const ct = await user('rest/v1/acc_contracts', 'POST', {
       business_id: BIZ, title: 'قرارداد پشتیبانی شبکه سالانه', partner_id: PARTNER, project_id: null,
       amount: 480000000, vat_rate: 10, status: 'active', start_date_g: todayISO(), end_date_g: todayISO(),
     });
-    step('B29', 'قرارداد خدماتی', ct.status === 201, ct.status === 201 ? `id=${ct.json?.id}` : `${ct.status} ${ct.text.slice(0, 220)}`);
+    step('B29', 'قرارداد خدماتی', ct.status === 201, ct.status === 201 ? `id=${idOf(ct.json)}` : `${ct.status} ${ct.text.slice(0, 220)}`);
 
     /* B30: پروژه */
     const pj = await user('rest/v1/acc_projects', 'POST', {
       business_id: BIZ, name: 'پروژه راه‌اندازی فروشگاه آنلاین', code: 'PRJ-01', partner_id: PARTNER,
       status: 'active', budget: 2000000000, start_date_g: todayISO(), end_date_g: null,
     });
-    step('B30', 'پروژه / مرکز هزینه', pj.status === 201, pj.status === 201 ? `id=${pj.json?.id}` : `${pj.status} ${pj.text.slice(0, 220)}`);
+    step('B30', 'پروژه / مرکز هزینه', pj.status === 201, pj.status === 201 ? `id=${idOf(pj.json)}` : `${pj.status} ${pj.text.slice(0, 220)}`);
 
     /* B31: سند دستی دوبل */
     const mj = await user('rest/v1/acc_journal', 'POST', {
       business_id: BIZ, entry_no: 9001, date_g: todayISO(), description: 'سند افتتاحی — سرمایه نقدی',
       ref_type: 'manual', ref_action: 'post',
     });
-    const MJID = mj.json?.id;
+    const MJID = idOf(mj.json);
     step('B31a', 'ثبت سربرگ سند دستی', mj.status === 201, mj.status === 201 ? `id=${MJID}` : `${mj.status} ${mj.text.slice(0, 250)}`);
     if (MJID) {
       const mjl = await user('rest/v1/acc_journal_lines', 'POST', [
@@ -489,7 +491,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       const u2 = (path, method, body) => user(path, method, body);
       /* B41 تنخواه‌گردان */
       const pt = await u2('rest/v1/acc_petty', 'POST', { business_id: BIZ, name: 'تنخواه تستی حسابرسی', status: 'open' });
-      const PTY = pt.json?.id;
+      const PTY = idOf(pt.json);
       step('B41', 'تنخواه‌گردان — ایجاد و شارژ', pt.status === 201, pt.status === 201 ? 'ok' : `${pt.status} ${pt.text.slice(0, 200)}`);
       if (PTY) {
         const po = await u2('rest/v1/acc_petty_ops', 'POST', { business_id: BIZ, petty_id: PTY, kind: 'charge', amount: 5000000, date_g: todayISO() });

@@ -123,7 +123,7 @@ export async function listPartners(businessId: string) {
 async function mutateSafe(
   table: string,
   row: Record<string, unknown>,
-  run: (cleanRow: Record<string, unknown>) => Promise<{ error: { message: string } | null }>,
+  run: (cleanRow: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>,
 ): Promise<void> {
   let clean = { ...row };
   // eslint-disable-next-line no-constant-condition
@@ -382,7 +382,7 @@ export async function cancelInvoice(invoiceId: string) {
 }
 
 /** کسر/بازگرداندن موجودی کالا هنگام صدور و ابطال */
-async function adjustStockForInvoice(invoiceId: string, sign: 1 | -1) {
+export async function adjustStockForInvoice(invoiceId: string, sign: 1 | -1) {
   const inv = await getInvoice(invoiceId);
   if (!inv || inv.type !== 'sale') return;
   for (const line of inv.acc_invoice_items || []) {

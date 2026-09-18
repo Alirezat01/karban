@@ -134,7 +134,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
       setPartnerId(id);
       setQuickPartner(null);
       toast('طرف‌حساب اضافه شد');
-    } catch {
+    } catch (e) {
       toast('ثبت طرف‌حساب ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
     }
   }
