@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-18T10:13:08.811Z",
-  "duration_ms": 16142,
+  "generated_at": "2026-09-18T10:57:33.838Z",
+  "duration_ms": 20924,
   "summary": {
     "pass": 44,
     "fail": 4
@@ -57,7 +57,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mu6svgi1@gmail.com"
+      "detail": "karban.audit.mu6uggvk@gmail.com"
     },
     {
       "id": "B2",
@@ -78,21 +78,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=708a82f6-9fa7-470c-8200-f4af8a1e5136"
+      "detail": "biz=04490da3-e5da-4fd5-b4a4-34a6ee49b79f"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"5589ee3f-0c06-4dcc-a24a-2a6882c651bb\",\"business_id\":\"708a82f6-9fa7-470c-8200-f4af8a1e5136\",\"user_id\":\"37877964-ee4a-42a3-8bb1-1577271332b6\",\"email\":\"karban.audit.mu6svgi1@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"57b11181-c6b2-4fab-acd7-7ecda293d11e\",\"business_id\":\"04490da3-e5da-4fd5-b4a4-34a6ee49b79f\",\"user_id\":\"ce051d42-7f88-4f98-b569-80d21024bdb9\",\"email\":\"karban.audit.mu6uggvk@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B7",
@@ -113,21 +113,21 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B12",
@@ -141,14 +141,14 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined total=2,310,000,000"
+      "detail": "id=null total=2,310,000,000"
     },
     {
       "id": "B15",
       "title": "صدور نهایی فاکتور (status=issued)",
       "ok": false,
       "severity": "critical",
-      "detail": "400 {\"code\":\"22P02\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type uuid: \\\"undefined\\\"\"}"
+      "detail": "400 {\"code\":\"22P02\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type uuid: \\\"null\\\"\"}"
     },
     {
       "id": "B16",
@@ -169,70 +169,70 @@
       "title": "پیش‌فاکتور (استعلام قیمت)",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B20",
       "title": "فاکتور خرید",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B23",
       "title": "ثبت هزینه (با وضعیت مالیاتی)",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B24",
       "title": "ثبت چک دریافتی",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B25",
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B27",
       "title": "ثبت دارایی ثابت",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B28",
       "title": "هزینه تکرارشونده",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B29",
       "title": "قرارداد خدماتی",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B30",
       "title": "پروژه / مرکز هزینه",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B31a",
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=undefined"
+      "detail": "id=null"
     },
     {
       "id": "B32",
@@ -410,6 +410,6 @@
     "fail": 0
   },
   "test_context": {
-    "email": "karban.audit.mu6svgi1@gmail.com"
+    "email": "karban.audit.mu6uggvk@gmail.com"
   }
 }
