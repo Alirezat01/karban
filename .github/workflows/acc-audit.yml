@@ -1,12 +1,18 @@
 name: acc-audit
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0' # هفتگی — یکشنبه ۰۳:۰۰ UTC
   push:
     paths:
       - 'scripts/audit-full.mjs'
+      - 'scripts/save-report.mjs'
+      - 'api/_lib/audit-core.js'
+      - 'api/acc-audit.js'
       - '.github/workflows/acc-audit.yml'
 permissions:
   contents: write
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -15,16 +21,44 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run full accounting audit
+
+      - name: Run audit (Vercel endpoint → fallback اجرای مستقیم)
         env:
+          AUDIT_TOKEN: ${{ secrets.AUDIT_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/audit-full.mjs
+        run: |
+          set -e
+          BASE="https://karbanapp.ir/api/acc-audit"
+          if [ -n "$AUDIT_TOKEN" ]; then EP="$BASE?key=$AUDIT_TOKEN"; else EP="$BASE"; fi
+          echo "→ تلاش از طریق endpoint ورسل (توکن‌ها همان‌جاست)…"
+          OK=""
+          for i in 1 2 3 4; do
+            if curl -sf --max-time 150 -X POST "$EP" -o audit-response.json; then
+              if node scripts/save-report.mjs audit-response.json audit-report.json; then
+                echo "✅ حسابرسی از طریق ورسل انجام شد (بدون نیاز به هیچ secret در گیت‌هاب)"
+                OK=1
+                break
+              fi
+            else
+              echo "… تلاش $i ناموفق (احتمالاً deploy ورسل هنوز کامل نشده) — ۳۰ ثانیه صبر"
+              sleep 30
+            fi
+          done
+          if [ -n "$OK" ]; then exit 0; fi
+          echo "⚠️ endpoint ورسل پاسخ نداد → fallback به اجرای مستقیم"
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "❌ اجرای مستقیم ممکن نیست: SUPABASE_SERVICE_ROLE_KEY در GitHub Secrets تنظیم نشده."
+            echo "   راهنما: یا متغیر AUDIT_TOKEN را در Vercel و همین Secret در گیت‌هاب ست کن،"
+            echo "   یا SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY را در GitHub Secrets اضافه کن."
+          fi
+          node scripts/audit-full.mjs
+
       - name: Commit report back
         run: |
           git config user.name "audit-bot"
           git config user.email "audit@karbanapp.ir"
-          git add audit-report.json
+          git add audit-report.json audit-report.md || true
           git commit -m "audit: گزارش حسابرسی خودکار حسابداری [skip ci]" || echo "nothing to commit"
           git pull --rebase origin main || true
           git push
