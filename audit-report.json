@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-18T10:57:33.838Z",
-  "duration_ms": 20924,
+  "generated_at": "2026-09-19T08:02:27.758Z",
+  "duration_ms": 25794,
   "summary": {
-    "pass": 44,
-    "fail": 4
+    "pass": 53,
+    "fail": 2
   },
   "schema_tables": [
     "acc_invoices",
@@ -57,7 +57,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mu6uggvk@gmail.com"
+      "detail": "karban.audit.mu83n1ec@gmail.com"
     },
     {
       "id": "B2",
@@ -78,21 +78,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=04490da3-e5da-4fd5-b4a4-34a6ee49b79f"
+      "detail": "biz=ac984f4e-f58f-4f39-9b03-3415a79e0660"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"57b11181-c6b2-4fab-acd7-7ecda293d11e\",\"business_id\":\"04490da3-e5da-4fd5-b4a4-34a6ee49b79f\",\"user_id\":\"ce051d42-7f88-4f98-b569-80d21024bdb9\",\"email\":\"karban.audit.mu6uggvk@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"41eb4c93-5889-4f54-95e8-6c44bc6dc00d\",\"business_id\":\"ac984f4e-f58f-4f39-9b03-3415a79e0660\",\"user_id\":\"f04d4840-3abc-45b0-b17f-042d9a36add6\",\"email\":\"karban.audit.mu83n1ec@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=null"
+      "detail": "id=9cdeb786-0f77-4f1f-8955-87c46e4c31b8"
     },
     {
       "id": "B7",
@@ -113,21 +113,21 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=null"
+      "detail": "id=e309273c-1e63-465c-bb92-86a8acd5317b"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=null"
+      "detail": "id=d153c544-32d1-4959-a216-f6ac3978b6fc"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
       "ok": true,
       "severity": "",
-      "detail": "id=null"
+      "detail": "id=c000b489-a97c-4c8d-95cf-c2d204d7bf02 | SELECT کاربر: 1 ردیف"
     },
     {
       "id": "B12",
@@ -141,28 +141,42 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=null total=2,310,000,000"
+      "detail": "id=ac5877ce-5281-4034-9b39-5b71ecd387e8 total=2,310,000,000"
+    },
+    {
+      "id": "B14",
+      "title": "ثبت ردیف‌های فاکتور",
+      "ok": true,
+      "severity": "",
+      "detail": "۲ ردیف"
     },
     {
       "id": "B15",
       "title": "صدور نهایی فاکتور (status=issued)",
-      "ok": false,
-      "severity": "critical",
-      "detail": "400 {\"code\":\"22P02\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type uuid: \\\"null\\\"\"}"
+      "ok": true,
+      "severity": "",
+      "detail": "ok"
     },
     {
       "id": "B16",
       "title": "سند حسابداری خودکار هنگام صدور",
       "ok": true,
       "severity": "high",
-      "detail": "2 سند"
+      "detail": "3 سند"
+    },
+    {
+      "id": "B17",
+      "title": "به‌روزرسانی موجودی کالا پس از فروش (۵→۳)",
+      "ok": true,
+      "severity": "",
+      "detail": "stock=3 (بود 5)"
     },
     {
       "id": "B18",
       "title": "قفل ویرایش سند صادره (اصل حسابداری)",
-      "ok": true,
-      "severity": "",
-      "detail": "مسدود شد (400)"
+      "ok": false,
+      "severity": "medium",
+      "detail": "سند صادره از مسیر REST قابل ویرایش است — هیچ تریگر/پالیسی قفلی وجود ندارد"
     },
     {
       "id": "B19",
@@ -177,6 +191,20 @@
       "ok": true,
       "severity": "",
       "detail": "id=null"
+    },
+    {
+      "id": "B21",
+      "title": "ثبت دریافت وجه مرتبط با فاکتور",
+      "ok": true,
+      "severity": "",
+      "detail": "id=null"
+    },
+    {
+      "id": "B22",
+      "title": "به‌روزرسانی وضعیت تسویه (paid_total/status=paid)",
+      "ok": true,
+      "severity": "",
+      "detail": "{\"status\":\"paid\",\"paid_total\":2310000000}"
     },
     {
       "id": "B23",
@@ -195,6 +223,13 @@
     {
       "id": "B25",
       "title": "ثبت کارمند",
+      "ok": true,
+      "severity": "",
+      "detail": "id=8f2c7eab-f2ba-41f6-9429-f7c0b23b9509"
+    },
+    {
+      "id": "B26",
+      "title": "ثبت فیش حقوقی (حقوق و دستمزد + بیمه)",
       "ok": true,
       "severity": "",
       "detail": "id=null"
@@ -232,7 +267,14 @@
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=null"
+      "detail": "id=20835cff-8e51-40c6-961b-9b1154ed86c4"
+    },
+    {
+      "id": "B31b",
+      "title": "ثبت سطرهای بدهکار/بستانکار سند دوبل",
+      "ok": true,
+      "severity": "",
+      "detail": "۲ سطر"
     },
     {
       "id": "B32",
@@ -260,7 +302,7 @@
       "title": "کوئری تراز آزمایشی (join داخلی)",
       "ok": true,
       "severity": "",
-      "detail": "rows=10"
+      "detail": "rows=17"
     },
     {
       "id": "B36",
@@ -293,9 +335,9 @@
     {
       "id": "B40",
       "title": "مغایرت‌گیری بانکی",
-      "ok": false,
-      "severity": "high",
-      "detail": "400 {\"code\":\"23502\",\"details\":null,\"hint\":null,\"message\":\"null value in column \\\"account_id\\\" of relation \\\"acc_reconciliations\\\" violates not-null constraint\"} ← جدول acc_reconciliations در دیتابیس نیست — sql-4 را اجرا کن"
+      "ok": true,
+      "severity": "",
+      "detail": "ok"
     },
     {
       "id": "C1",
@@ -354,6 +396,13 @@
       "detail": "ok"
     },
     {
+      "id": "B41b",
+      "title": "ثبت عمل شارژ تنخواه",
+      "ok": true,
+      "severity": "",
+      "detail": "ok"
+    },
+    {
       "id": "B42",
       "title": "پیش‌دریافت/پیش‌پرداخت",
       "ok": true,
@@ -370,9 +419,9 @@
     {
       "id": "B44",
       "title": "خطوط صورت‌حساب بانک (مغایرت واقعی)",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "400 {\"code\":\"23502\",\"details\":null,\"hint\":null,\"message\":\"null value in column \\\"account_id\\\" of relation \\\"acc_bank_lines\\\" violates not-null constraint\"}"
+      "detail": "ok"
     },
     {
       "id": "B45",
@@ -384,19 +433,14 @@
   ],
   "findings": [
     {
-      "id": "B15",
-      "title": "صدور نهایی فاکتور (status=issued)",
-      "severity": "critical"
+      "id": "B18",
+      "title": "قفل ویرایش سند صادره (اصل حسابداری)",
+      "severity": "medium"
     },
     {
       "id": "B38",
       "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
       "severity": "info"
-    },
-    {
-      "id": "B40",
-      "title": "مغایرت‌گیری بانکی",
-      "severity": "high"
     }
   ],
   "business_stats": {
@@ -406,10 +450,10 @@
   },
   "cleanup": {
     "attempted": true,
-    "ok": 32,
-    "fail": 0
+    "ok": 31,
+    "fail": 1
   },
   "test_context": {
-    "email": "karban.audit.mu6uggvk@gmail.com"
+    "email": "karban.audit.mu83n1ec@gmail.com"
   }
 }
