@@ -23,14 +23,25 @@ export async function listProjects(businessId: string): Promise<AccProject[]> {
 }
 
 export async function saveProject(businessId: string, row: Partial<AccProject>): Promise<string> {
+  /* فقط ستون‌های واقعی — آبجکت join شده «partner» هرگز به دیتابیس نمی‌رود */
+  const payload = {
+    name: row.name,
+    code: row.code ?? null,
+    partner_id: row.partner_id ?? null,
+    status: row.status || 'active',
+    budget: Number(row.budget) || 0,
+    start_date_g: row.start_date_g ?? null,
+    end_date_g: row.end_date_g ?? null,
+    description: row.description ?? null,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_projects').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_projects').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_projects')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;
@@ -82,14 +93,26 @@ export async function listContracts(businessId: string): Promise<AccContract[]> 
 }
 
 export async function saveContract(businessId: string, row: Partial<AccContract>): Promise<string> {
+  /* فقط ستون‌های واقعی — آبجکت join شده «partner» هرگز به دیتابیس نمی‌رود */
+  const payload = {
+    title: row.title,
+    partner_id: row.partner_id ?? null,
+    project_id: row.project_id ?? null,
+    amount: Number(row.amount) || 0,
+    vat_rate: Number(row.vat_rate) || 0,
+    status: row.status || 'draft',
+    start_date_g: row.start_date_g ?? null,
+    end_date_g: row.end_date_g ?? null,
+    description: row.description ?? null,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_contracts').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_contracts').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_contracts')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;
@@ -111,15 +134,33 @@ export async function listEmployees(businessId: string, onlyActive = false): Pro
   return (data || []) as AccEmployee[];
 }
 
+const EMPLOYEE_COLS = (row: Partial<AccEmployee>) => ({
+  name: row.name,
+  national_id: row.national_id ?? null,
+  personnel_code: row.personnel_code ?? null,
+  position: row.position ?? null,
+  hire_date_g: row.hire_date_g ?? null,
+  base_salary: Number(row.base_salary) || 0,
+  housing_allowance: Number(row.housing_allowance) || 0,
+  food_allowance: Number(row.food_allowance) || 0,
+  child_allowance: Number(row.child_allowance) || 0,
+  child_count: Number(row.child_count) || 0,
+  insurance_number: row.insurance_number ?? null,
+  bank_account: row.bank_account ?? null,
+  active: row.active ?? true,
+  notes: row.notes ?? null,
+});
+
 export async function saveEmployee(businessId: string, row: Partial<AccEmployee>): Promise<string> {
+  const payload = EMPLOYEE_COLS(row);
   if (row.id) {
-    const { error } = await supabase.from('acc_employees').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_employees').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_employees')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;
@@ -218,14 +259,35 @@ export async function listPayrolls(businessId: string, jyear: number, jmonth: nu
 }
 
 export async function savePayroll(businessId: string, row: Partial<AccPayroll>): Promise<string> {
+  /* فقط ستون‌های واقعی — آبجکت join شده «employee» هرگز به دیتابیس نمی‌رود */
+  const payload = {
+    employee_id: row.employee_id ?? null,
+    jyear: row.jyear,
+    jmonth: row.jmonth,
+    work_days: Number(row.work_days) || 0,
+    overtime_hours: Number(row.overtime_hours) || 0,
+    base_salary: Number(row.base_salary) || 0,
+    food_allowance: Number(row.food_allowance) || 0,
+    housing_allowance: Number(row.housing_allowance) || 0,
+    family_allowance: Number(row.family_allowance) || 0,
+    overtime_pay: Number(row.overtime_pay) || 0,
+    gross: Number(row.gross) || 0,
+    insurance_employee: Number(row.insurance_employee) || 0,
+    tax: Number(row.tax) || 0,
+    other_deductions: Number(row.other_deductions) || 0,
+    net: Number(row.net) || 0,
+    paid: row.paid ?? false,
+    account_id: row.account_id ?? null,
+    pay_date_g: row.pay_date_g ?? null,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_payrolls').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_payrolls').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_payrolls')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;
@@ -268,14 +330,28 @@ export async function listAssets(businessId: string): Promise<AccAsset[]> {
 }
 
 export async function saveAsset(businessId: string, row: Partial<AccAsset>): Promise<string> {
+  /* فقط ستون‌های واقعی جدول */
+  const payload = {
+    name: row.name,
+    category: row.category ?? null,
+    purchase_date_g: row.purchase_date_g ?? null,
+    purchase_amount: Number(row.purchase_amount) || 0,
+    useful_life_years: Number(row.useful_life_years) || 0,
+    salvage_value: Number(row.salvage_value) || 0,
+    account_id: row.account_id ?? null,
+    status: row.status || 'active',
+    sell_amount: row.sell_amount ?? null,
+    sell_date_g: row.sell_date_g ?? null,
+    notes: row.notes ?? null,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_assets').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_assets').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_assets')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;
@@ -318,14 +394,29 @@ export async function listRecurring(businessId: string): Promise<AccRecurring[]>
 }
 
 export async function saveRecurring(businessId: string, row: Partial<AccRecurring>): Promise<string> {
+  /* فقط ستون‌های واقعی — آبجکت‌های join شده «partner/account» هرگز به دیتابیس نمی‌روند */
+  const payload = {
+    title: row.title,
+    category: row.category ?? null,
+    amount: Number(row.amount) || 0,
+    vat_amount: Number(row.vat_amount) || 0,
+    frequency: row.frequency || 'monthly',
+    next_date_g: row.next_date_g,
+    account_id: row.account_id ?? null,
+    partner_id: row.partner_id ?? null,
+    auto_create: row.auto_create ?? true,
+    active: row.active ?? true,
+    last_created_date_g: row.last_created_date_g ?? null,
+    description: row.description ?? null,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_recurring').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_recurring').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_recurring')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;

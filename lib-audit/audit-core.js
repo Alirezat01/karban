@@ -518,6 +518,27 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       step('B44', 'خطوط صورت‌حساب بانک (مغایرت واقعی)', bl.status === 201, bl.status === 201 ? 'ok' : `${bl.status} ${bl.text.slice(0, 200)}`);
       const fy = await u2('rest/v1/acc_fiscal_years', 'POST', { business_id: BIZ, jyear: jalaliYear(), status: 'open' });
       step('B45', 'دوره مالی سالانه', fy.status === 201, fy.status === 201 ? 'ok' : `${fy.status} ${fy.text.slice(0, 180)}`);
+
+      /* B46: ویرایش اطلاعات حساب بانکی — ریشه‌یابی باگ «ذخیره نشدن اطلاعات بانک» */
+      if (BANK_ID) {
+        const editName = `بانک آری ویرایش‌شده ${STAMP}`;
+        const pAcc = await u2(`rest/v1/acc_accounts?id=eq.${BANK_ID}`, 'PATCH', { name: editName, account_number: '6104337812345678' });
+        const chk = await u2(`rest/v1/acc_accounts?id=eq.${BANK_ID}&select=name,account_number`);
+        const persisted = arr(chk.json)[0]?.name === editName && arr(chk.json)[0]?.account_number === '6104337812345678';
+        step('B46', 'ویرایش اطلاعات حساب بانکی ذخیره می‌شود', pAcc.status === 204 && persisted,
+          pAcc.status === 204 && persisted ? 'ok — UPDATE پالیسی و ذخیره برقرار' : `PATCH=${pAcc.status} persisted=${persisted} ${pAcc.text.slice(0, 160)}`,
+          pAcc.status === 204 && persisted ? '' : 'high');
+      }
+
+      /* B47: پیش‌فاکتور صادره همچنان قابل ویرایش است (کنترل قفل B18) */
+      const pf = await u2(`rest/v1/acc_invoices?business_id=eq.${BIZ}&type=eq.proforma&select=id&order=created_at.desc&limit=1`);
+      const PFID = arr(pf.json)[0]?.id ?? null;
+      if (PFID) {
+        const pPf = await u2(`rest/v1/acc_invoices?id=eq.${PFID}`, 'PATCH', { description: 'ویرایش آزاد پیش‌فاکتور' });
+        step('B47', 'پیش‌فاکتور صادره قابل ویرایش می‌ماند', pPf.status === 204,
+          pPf.status === 204 ? 'ok — قفل B18 فقط اسناد رسمی را می‌بندد' : `PATCH=${pPf.status} ${pPf.text.slice(0, 160)}`,
+          pPf.status === 204 ? '' : 'medium');
+      }
     }
   } catch (e) {
     step('X1', 'خطای غیرمنتظره در اجرای حسابرسی', false, String(e?.stack || e).slice(0, 480), 'critical');

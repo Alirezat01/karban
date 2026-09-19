@@ -221,14 +221,22 @@ export async function listAccounts(businessId: string) {
 }
 
 export async function saveAccount(businessId: string, row: Partial<AccAccount>) {
+  /* فقط ستون‌های واقعی جدول ارسال می‌شود — فیلد «balance» محاسباتیِ لیست هرگز
+     به دیتابیس نمی‌رود (باگ «ذخیره نشدن اطلاعات بانک» از همین‌جا بود) */
+  const payload = {
+    name: row.name,
+    kind: row.kind,
+    account_number: row.account_number ?? null,
+    initial_balance: Number(row.initial_balance) || 0,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_accounts').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_accounts').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_accounts')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;
