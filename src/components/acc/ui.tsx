@@ -111,7 +111,7 @@ export function ConfirmHost() {
    • همان لحظه به ارقام فارسی تبدیل می‌شود
    • جداکننده سه‌رقمی (٬) همان لحظه اعمال می‌شود
    • موقعیت نشانگر هنگام ویرایش وسط رشته حفظ می‌شود */
-export function MoneyInput({ value, onChange, placeholder, disabled }: { value: number; onChange: (n: number) => void; placeholder?: string; disabled?: boolean }) {
+export function MoneyInput({ value, onChange, placeholder, disabled, big }: { value: number; onChange: (n: number) => void; placeholder?: string; disabled?: boolean; big?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const [text, setText] = useState(() => (value ? formatInputMoney(value) : ''));
   const focused = useRef(false);
@@ -126,6 +126,7 @@ export function MoneyInput({ value, onChange, placeholder, disabled }: { value: 
       dir="ltr"
       inputMode="numeric"
       disabled={disabled}
+      style={big ? { textAlign: 'left', minHeight: 46, fontSize: '1rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' } : { textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
       placeholder={placeholder || '۰'}
       value={text}
       onFocus={() => { focused.current = true; }}
@@ -150,7 +151,6 @@ export function MoneyInput({ value, onChange, placeholder, disabled }: { value: 
           inp.setSelectionRange(i, i);
         });
       }}
-      style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
     />
   );
 }

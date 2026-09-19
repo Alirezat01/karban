@@ -64,7 +64,12 @@
 .acc-hint { font-size: .72rem; color: var(--muted); }
 
 /* ── دکمه‌ها ── */
-.acc-btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 44px; padding: .55rem 1.15rem; border-radius: 12px; font-size: .86rem; font-weight: 600; transition: all .2s; white-space: nowrap; }
+.acc-btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 44px; padding: .55rem 1.15rem; border-radius: 12px; font-size: .86rem; font-weight: 600; transition: all .2s; white-space: nowrap; flex: 0 0 auto; }
+/* سخت‌سازی ضدتغییرشکل: آیکون همیشه اندازه ثابت — دکمه هرگز فشرده/کشیده نمی‌شود */
+.acc-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.acc-btn { line-height: 1; }
+.acc-btn:active { transform: scale(.985); }
+.acc-icon-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 .acc-btn-primary { background: linear-gradient(135deg, rgba(231,194,116,.92), rgba(201,150,46,.85)); color: #14100a; }
 .acc-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(216,165,63,.5); }
 .acc-btn-outline { border: 1px solid rgba(255,255,255,.18); color: var(--text); background: rgba(255,255,255,.05); }

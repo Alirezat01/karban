@@ -285,19 +285,19 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
       <div className="acc-card">
         <h3>ردیف‌های صورتحساب</h3>
           <div className="acc-table-wrap">
-          <table className="acc-table" style={{ minWidth: 960 }}>
+          <table className="acc-table" style={{ minWidth: 1150 }}>
             <thead>
               <tr>
                 <th style={{ width: 34 }}>#</th>
-                <th style={{ minWidth: 190 }}>شرح کالا / خدمت</th>
-                <th style={{ width: 84 }}>واحد</th>
-                <th style={{ width: 76 }}>مقدار</th>
-                <th style={{ width: 122 }}>مبلغ واحد (ریال)</th>
-                <th style={{ width: 104 }}>تخفیف (ریال)</th>
-                <th style={{ width: 68 }}>مالیات ٪</th>
-                <th style={{ width: 116 }}>مبلغ مالیات (ریال)</th>
-                <th style={{ width: 118 }}>جمع ردیف (ریال)</th>
-                <th style={{ width: 44 }}></th>
+                <th style={{ width: 300 }}>شرح کالا / خدمت</th>
+                <th style={{ width: 90 }}>واحد</th>
+                <th style={{ width: 86 }}>مقدار</th>
+                <th style={{ width: 180 }}>مبلغ واحد (ریال)</th>
+                <th style={{ width: 150 }}>تخفیف (ریال)</th>
+                <th style={{ width: 84 }}>مالیات ٪</th>
+                <th style={{ width: 130 }}>مبلغ مالیات (ریال)</th>
+                <th style={{ width: 140 }}>جمع ردیف (ریال)</th>
+                <th style={{ width: 48 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -308,7 +308,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
                   <tr key={r.key}>
                     <td className="num">{toFaDigits(idx + 1)}</td>
                     <td>
-                      <input className="acc-input" style={{ minHeight: 40 }} placeholder="شرح…" value={r.title || ''} onChange={(e) => onRowTitle(r.key, e.target.value)} list="acc-items-list" />
+                      <input className="acc-input" style={{ minHeight: 46, fontSize: '.95rem', width: '100%' }} placeholder="شرح کالا یا خدمت…" value={r.title || ''} onChange={(e) => onRowTitle(r.key, e.target.value)} list="acc-items-list" />
                       <datalist id="acc-items-list">
                         {items.map((i) => <option key={i.id} value={i.name} />)}
                       </datalist>
@@ -319,7 +319,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
                       </select>
                     </td>
                     <td><QtyInput value={Number(r.quantity) || 0} onChange={(n) => patchRow(r.key, { quantity: n })} /></td>
-                    <td><MoneyInput value={Number(r.unit_price) || 0} onChange={(n) => patchRow(r.key, { unit_price: n })} /></td>
+                    <td><MoneyInput value={Number(r.unit_price) || 0} onChange={(n) => patchRow(r.key, { unit_price: n })} big /></td>
                     <td><MoneyInput value={Number(r.discount) || 0} onChange={(n) => patchRow(r.key, { discount: n })} /></td>
                     <td><QtyInput value={Number(r.vat_rate) || 0} onChange={(n) => patchRow(r.key, { vat_rate: n })} /></td>
                     <td className="num" style={{ color: 'var(--muted)' }}>{formatMoney(vat)}</td>

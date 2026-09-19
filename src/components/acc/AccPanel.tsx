@@ -36,6 +36,7 @@ import PettyCashPage from './PettyCashPage';
 import PrePayPage from './PrePayPage';
 import BankReconPage from './BankReconPage';
 import BankImportPage from './BankImportPage';
+import InvoiceImportPage from './InvoiceImportPage';
 import FiscalYearPage from './FiscalYearPage';
 import LedgerCardPage from './LedgerCardPage';
 import AccessPermsPage from './AccessPermsPage';
@@ -102,6 +103,7 @@ const NAV = [
     { seg: 'هزینه-تکرارشونده', title: 'هزینه‌های تکرارشونده', icon: RefreshCcw, pro: true },
     { seg: 'مغایرت-بانکی', title: 'مغایرت‌گیری بانکی واقعی', icon: Landmark, pro: false },
     { seg: 'واردات-بانک', title: 'واردات اکسل صورت‌حساب بانک', icon: FileSpreadsheet, pro: false },
+    { seg: 'واردات-فاکتور', title: 'واردات فاکتور از Word/PDF', icon: FileText, pro: false },
     { seg: 'دوره-مالی', title: 'بستن و افتتاح دوره مالی', icon: Lock, pro: false },
     { seg: 'دسترسی-ریزدانه', title: 'کنترل دسترسی ریزدانه', icon: ShieldAlert, pro: false },
     { seg: 'سیستم', title: 'سیستم (قفل دوره، پشتیبان، لاگ)', icon: Settings, pro: true },
@@ -571,6 +573,7 @@ export default function AccPanel({ sub }: { sub: string[] }) {
       case 'کارت-حساب': return <LedgerCardPage business={business} />;
       case 'مغایرت-بانکی': return <BankReconPage business={business} />;
       case 'واردات-بانک': return <BankImportPage business={business} />;
+      case 'واردات-فاکتور': return <InvoiceImportPage business={business} />;
       case 'دوره-مالی': return <FiscalYearPage business={business} />;
       case 'دسترسی-ریزدانه': return <AccessPermsPage business={business} role={role} />;
       case 'چک‌ها': {

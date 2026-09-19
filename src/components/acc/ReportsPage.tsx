@@ -1,7 +1,7 @@
 /* گزارش‌ها — سود و زیان، ارزش افزوده دوره، معاملات فصلی (ماده ۱۶۹)، تحلیل فروش */
 
 import React, { useEffect, useState } from 'react';
-import { BarChart3, Download, FileSpreadsheet, TrendingUp } from 'lucide-react';
+import { BarChart3, Download, FileSpreadsheet, Printer, TrendingUp } from 'lucide-react';
 import type { AccBusiness, BalanceSheet, ProductProfitRow, ProfitAndLoss, VatReport } from '@/lib/acc/types';
 import { currentSeasonRange, downloadCsv, productProfitability, profitAndLoss, salesByItem, salesByPartner, seasonalReport, vatReport, type SeasonalRow } from '@/lib/acc/api';
 import { balanceSheet, creditorsReport, projectPerformance, type ProjectPerformance } from '@/lib/acc/api6';
@@ -10,6 +10,7 @@ import { SEASON_NAMES, currentJalaliMonthRange, formatJalali, jalaliSeasonOf, ja
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { JalaliDateInput, EmptyState } from './ui';
+import { exportTableToExcel, printTablePdf, type ExportTable } from '@/lib/acc/exporter';
 
 type Tab = 'pl' | 'vat' | 'seasonal' | 'sales' | 'product' | 'balance' | 'creditors' | 'projects' | 'costing' | 'tb6';
 
@@ -75,6 +76,83 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
     { label: 'فصل جاری', run: () => { const r = currentSeasonRange(); setFrom(r.from); setTo(r.to); } },
   ];
 
+  /* ── خروجی اکسل و PDF — دقیقاً مطابق جدول فعال هر تب ── */
+  const FILE_LABELS: Record<Tab, string> = { pl: 'سود-و-زیان', vat: 'ارزش-افزوده', seasonal: 'معاملات-فصلی', sales: 'تحلیل-فروش', product: 'سود-محصولات', balance: 'ترازنامه', creditors: 'بستانکاران', projects: 'عملکرد-پروژه‌ها', costing: 'بهای-تمام‌شده', tb6: 'تراز-۶-ستونی' };
+
+  function buildExport(): ExportTable | null {
+    const range = `از ${formatJalali(from)} تا ${formatJalali(to)}`;
+    const base = { subtitle: range, landscape: true } as const;
+    switch (tab) {
+      case 'pl':
+        if (!pl) return null;
+        return { ...base, title: 'صورت سود و زیان', meta: [['بازه', range], ['جمع درآمد', formatMoney(pl.totalRevenue) + ' ریال'], ['جمع هزینه', formatMoney(pl.totalExpense) + ' ریال'], ['سود خالص', formatMoney(pl.netProfit) + ' ریال']] as const, blocks: [
+          { name: 'درآمدها', headers: ['سرفصل', 'مبلغ (ریال)'], moneyCols: [1], rows: pl.revenues.map((r) => [r.title, r.amount]), foot: ['جمع درآمد', pl.totalRevenue] },
+          { name: 'هزینه‌ها', headers: ['سرفصل', 'مبلغ (ریال)'], moneyCols: [1], rows: pl.expenses.map((r) => [r.title, r.amount]), foot: ['جمع هزینه', pl.totalExpense] },
+        ] };
+      case 'vat':
+        if (!vat) return null;
+        return { ...base, title: 'گزارش ارزش افزوده دوره', meta: [['بازه', range], ['فروش خالص', formatMoney(vat.salesBase) + ' ریال'], ['مالیات فروش', formatMoney(vat.salesVat) + ' ریال'], ['اعتبار خرید و هزینه', formatMoney(vat.totalCredit) + ' ریال'], ['مالیات قابل پرداخت', formatMoney(vat.payable) + ' ریال']] as const, blocks: [
+          { name: 'صورتحساب‌های فروش', headers: ['شماره', 'تاریخ', 'خریدار', 'پایه (ریال)', 'مالیات (ریال)'], moneyCols: [3, 4], rows: vat.saleRows.map((r) => [r.number, formatJalali(r.date), r.partner, r.base, r.vat]) },
+          { name: 'صورتحساب‌های خرید', headers: ['شماره', 'تاریخ', 'تامین‌کننده', 'پایه (ریال)', 'مالیات (ریال)'], moneyCols: [3, 4], rows: vat.purchaseRows.map((r) => [r.number, formatJalali(r.date), r.partner, r.base, r.vat]) },
+        ] };
+      case 'seasonal': {
+        if (!seasonal) return null;
+        const season = jalaliSeasonOf(from);
+        const seasonHeaders = ['تاریخ', 'شماره', 'طرف‌حساب', 'کد/شناسه ملی', 'شماره اقتصادی', 'کد پستی', 'مبلغ کل (ریال)'];
+        const mapRow = (r: SeasonalRow) => [formatJalali(r.date), r.number, r.partner, r.nationalId || '—', r.economicCode || '—', r.postalCode || '—', r.total];
+        return { ...base, title: 'فهرست معاملات فصلی (ماده ۱۶۹)', meta: [['فصل', `${SEASON_NAMES[season - 1]} ${jalaliYearOf(from)}`]] as const, blocks: [
+          { name: 'فهرست فروش‌ها', headers: seasonHeaders, moneyCols: [6], rows: seasonal.sales.map(mapRow) },
+          { name: 'فهرست خریدها', headers: seasonHeaders, moneyCols: [6], rows: seasonal.purchases.map(mapRow) },
+        ] };
+      }
+      case 'sales':
+        return { ...base, title: 'تحلیل فروش', blocks: [
+          { name: 'فروش به تفکیک مشتری', headers: ['مشتری', 'تعداد فاکتور', 'جمع فروش (ریال)'], moneyCols: [2], rows: byPartner.map((r) => [r.name, r.count, r.total]) },
+          { name: 'فروش به تفکیک کالا / خدمت', headers: ['شرح', 'مقدار', 'جمع فروش (ریال)'], moneyCols: [2], rows: byItem.map((r) => [r.title, r.qty, r.total]) },
+        ] };
+      case 'product':
+        return { ...base, title: 'رتبه‌بندی سودآوری کالاها', blocks: [
+          { name: 'کالاها و خدمات', headers: ['رتبه', 'کالا / خدمت', 'مقدار فروش', 'فروش (ریال)', 'بهای تمام‌شده (ریال)', 'سود (ریال)', 'حاشیه سود'], moneyCols: [2, 3, 4, 5], rows: product.map((r, i) => [i + 1, r.title, r.quantity, r.revenue, r.cost, r.profit, `${toFaDigits(r.margin)}٪`]) },
+        ] };
+      case 'balance':
+        if (!sheet) return null;
+        return { ...base, title: 'ترازنامه', meta: [['تا تاریخ', formatJalali(to)], ['تفاوت دو طرف', formatMoney(sheet.totalAssets - (sheet.totalLiabilities + sheet.totalEquity)) + ' ریال']] as const, blocks: [
+          { name: 'دارایی‌ها', headers: ['سرفصل', 'مانده (ریال)'], moneyCols: [1], rows: sheet.assets.map((r) => [r.title, r.amount]), foot: ['جمع دارایی‌ها', sheet.totalAssets] },
+          { name: 'بدهی‌ها و سرمایه', headers: ['سرفصل', 'مانده (ریال)'], moneyCols: [1], rows: [...sheet.liabilities, ...sheet.equity].map((r) => [r.title, r.amount]), foot: ['جمع بدهی + سرمایه', sheet.totalLiabilities + sheet.totalEquity] },
+        ] };
+      case 'creditors':
+        return { ...base, title: 'بستانکاران — خریدهای تسویه‌نشده', blocks: [
+          { name: 'بستانکاران', headers: ['شماره', 'تامین‌کننده', 'مانده (ریال)', 'سررسید', 'وضعیت'], moneyCols: [2], rows: creditors.map((r) => [r.number, r.partner, r.remaining, r.dueDate ? formatJalali(r.dueDate) : '—', r.overdue ? 'معوق' : 'در سررسید']) },
+        ] };
+      case 'projects':
+        return { ...base, title: 'عملکرد پروژه‌ها و مراکز هزینه', blocks: [
+          { name: 'پروژه‌ها', headers: ['پروژه', 'بودجه (ریال)', 'درآمد (ریال)', 'هزینه (ریال)', 'سود (ریال)', 'مصرف بودجه'], moneyCols: [1, 2, 3, 4], rows: projects.map(({ project, income, expense, profit, budgetUsage }) => [project.name, project.budget || 0, income, expense, profit, project.budget > 0 ? `${toFaDigits(budgetUsage)}٪` : '—']) },
+        ] };
+      case 'costing':
+        if (!costing) return null;
+        return { ...base, title: 'بهای تمام‌شده و سود پروژه‌ها', meta: [['بازه', range], ['سود خالص', formatMoney(costing.totalProfit) + ' ریال']] as const, blocks: [
+          { name: 'سود واقعی هر پروژه / خدمت', headers: ['پروژه', 'درآمد (ریال)', 'هزینه مستقیم (ریال)', 'سربار (ریال)', 'بهای تمام‌شده (ریال)', 'سود (ریال)', 'حاشیه', 'پیشرفت'], moneyCols: [1, 2, 3, 4, 5], rows: costing.rows.map((r) => [r.projectName, r.revenue, r.directCost, r.indirectAllocated, r.totalCost, r.profit, `${r.margin}٪`, `${toFaDigits(r.progress)}٪`]) },
+        ] };
+      case 'tb6':
+        return { ...base, title: 'تراز آزمایشی ۶ ستونی (سطح کل)', blocks: [
+          { name: 'تراز ۶ ستونی', headers: ['کد', 'عنوان', 'افتتاحیه بد', 'افتتاحیه بس', 'گردش بد', 'گردش بس', 'اختتامیه بد', 'اختتامیه بس'], moneyCols: [2, 3, 4, 5, 6, 7], rows: tb6.map((r) => [r.code, r.title, r.openingDebit || 0, r.openingCredit || 0, r.periodDebit || 0, r.periodCredit || 0, r.closingDebit || 0, r.closingCredit || 0]),
+            foot: ['جمع کل', '', tb6.reduce((s, r) => s + r.openingDebit, 0), tb6.reduce((s, r) => s + r.openingCredit, 0), tb6.reduce((s, r) => s + r.periodDebit, 0), tb6.reduce((s, r) => s + r.periodCredit, 0), tb6.reduce((s, r) => s + r.closingDebit, 0), tb6.reduce((s, r) => s + r.closingCredit, 0)] },
+        ] };
+    }
+  }
+
+  async function exportExcel() {
+    const t = buildExport();
+    if (!t) return;
+    await exportTableToExcel(t, `گزارش-${FILE_LABELS[tab]}-${from}-تا-${to}`);
+  }
+
+  function exportPdf() {
+    const t = buildExport();
+    if (!t) return;
+    printTablePdf(t, { bizName: business.brand || business.name, moneyFormat: (n) => formatMoney(n), dateLabel: `تاریخ گزارش: ${formatJalali(new Date().toISOString())}` });
+  }
+
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -83,7 +161,11 @@ export default function ReportsPage({ business }: { business: AccBusiness }) {
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="acc-btn acc-btn-outline" onClick={exportExcel} disabled={!buildExport()}><FileSpreadsheet size={15} /> خروجی اکسل</button>
+          <button className="acc-btn acc-btn-outline" onClick={exportPdf} disabled={!buildExport()}><Printer size={15} /> خروجی PDF / چاپ</button>
+        </div>
+        <div style={{ display: 'flex', gap: '.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ width: 150 }}><JalaliDateInput value={from} onChange={setFrom} /></div>
           <span className="acc-hint">تا</span>
           <div style={{ width: 150 }}><JalaliDateInput value={to} onChange={setTo} /></div>

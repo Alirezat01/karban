@@ -57,8 +57,10 @@ function bestPlan(accesses: AccAccess[], now: number): { plan: string; status: s
 export function useAccAccess() {
   const [state, setState] = useState<AccState>({ phase: 'loading' });
 
-  async function reload() {
-    setState({ phase: 'loading' });
+  async function reload(opts?: { soft?: boolean }) {
+    /* نرم: وضعیت فعلی را نگه می‌داریم تا داده تازه برسد — پنل پاک نمی‌شود و
+       کاربر وسط کار (مثلاً افزودن ردیف فاکتور) چیزی از دست نمی‌دهد */
+    if (!opts?.soft) setState({ phase: 'loading' });
     try {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
@@ -72,14 +74,14 @@ export function useAccAccess() {
         (a) => ['active', 'trial'].includes(a.status) && (!a.expires_at || new Date(a.expires_at).getTime() > now),
       );
       if (!valid.length) {
-        setState({ phase: 'no-access' });
+        setState((s) => (opts?.soft && s.phase === 'ready' ? s : { phase: 'no-access' }));
         return;
       }
       const best = bestPlan(accesses, now);
       const businesses = await fetchMyBusinesses();
       const mine = businesses.filter((b) => valid.some((v) => v.business_id === b.id));
       if (!mine.length) {
-        setState({ phase: 'needs-business' });
+        setState((s) => (opts?.soft && s.phase === 'ready' ? s : { phase: 'needs-business' }));
         return;
       }
       /* بازیابی کسب‌وکار انتخابی کاربر از localStorage */
@@ -119,8 +121,14 @@ export function useAccAccess() {
 
   useEffect(() => {
     reload();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      reload();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      /* رفرش توکن در پس‌زمینه — که معمولاً دقیقاً وقتی کاربر به تب برمی‌گردد رخ می‌دهد —
+         حق دسترسی را عوض نمی‌کند. اگر به‌خاطر آن reload سخت بزنیم، کل پنل به
+         «در حال بررسی دسترسی» برمی‌گردد و کارِ نیمه‌تمام (مثل ردیف‌های فاکتور) پاک می‌شود.
+         پس فقط رویدادهای واقعی ورود/خروج/ویرایش کاربر را نرم رفرش می‌کنیم. */
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        reload({ soft: true });
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
