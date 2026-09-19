@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-19T08:02:27.758Z",
-  "duration_ms": 25794,
+  "generated_at": "2026-09-19T08:53:44.401Z",
+  "duration_ms": 19681,
   "summary": {
-    "pass": 53,
-    "fail": 2
+    "pass": 56,
+    "fail": 1
   },
   "schema_tables": [
     "acc_invoices",
@@ -57,7 +57,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mu83n1ec@gmail.com"
+      "detail": "karban.audit.mu85h42j@gmail.com"
     },
     {
       "id": "B2",
@@ -78,21 +78,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=ac984f4e-f58f-4f39-9b03-3415a79e0660"
+      "detail": "biz=c46e2ad1-f55a-4b13-ba2f-e99d6fa7eae2"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"41eb4c93-5889-4f54-95e8-6c44bc6dc00d\",\"business_id\":\"ac984f4e-f58f-4f39-9b03-3415a79e0660\",\"user_id\":\"f04d4840-3abc-45b0-b17f-042d9a36add6\",\"email\":\"karban.audit.mu83n1ec@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"bf92e4b5-f77f-4ac8-bacd-d7518b3f9073\",\"business_id\":\"c46e2ad1-f55a-4b13-ba2f-e99d6fa7eae2\",\"user_id\":\"c3051b35-6089-47f5-88b2-8d44897c3165\",\"email\":\"karban.audit.mu85h42j@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=9cdeb786-0f77-4f1f-8955-87c46e4c31b8"
+      "detail": "id=fc67b24a-d81d-4341-bed6-effcfeb31aa1"
     },
     {
       "id": "B7",
@@ -113,21 +113,21 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=e309273c-1e63-465c-bb92-86a8acd5317b"
+      "detail": "id=0e53c280-ac36-4aeb-a3d9-d8b609ac6dc2"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=d153c544-32d1-4959-a216-f6ac3978b6fc"
+      "detail": "id=0e28923b-38a0-493b-9372-90f849715f51"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
       "ok": true,
       "severity": "",
-      "detail": "id=c000b489-a97c-4c8d-95cf-c2d204d7bf02 | SELECT کاربر: 1 ردیف"
+      "detail": "id=320d3470-7d51-4714-aa99-84fe260298b9 | SELECT کاربر: 1 ردیف"
     },
     {
       "id": "B12",
@@ -141,7 +141,7 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=ac5877ce-5281-4034-9b39-5b71ecd387e8 total=2,310,000,000"
+      "detail": "id=6baaf7bb-84ce-4357-ba28-ec83a9d200cb total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -174,9 +174,9 @@
     {
       "id": "B18",
       "title": "قفل ویرایش سند صادره (اصل حسابداری)",
-      "ok": false,
-      "severity": "medium",
-      "detail": "سند صادره از مسیر REST قابل ویرایش است — هیچ تریگر/پالیسی قفلی وجود ندارد"
+      "ok": true,
+      "severity": "",
+      "detail": "مسدود شد (400)"
     },
     {
       "id": "B19",
@@ -225,7 +225,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=8f2c7eab-f2ba-41f6-9429-f7c0b23b9509"
+      "detail": "id=d8e243b3-fc02-4f7c-a957-2deb8a4e2526"
     },
     {
       "id": "B26",
@@ -267,7 +267,7 @@
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=20835cff-8e51-40c6-961b-9b1154ed86c4"
+      "detail": "id=239dcf57-85aa-46c2-bd5c-f315164dcd4e"
     },
     {
       "id": "B31b",
@@ -429,14 +429,23 @@
       "ok": true,
       "severity": "",
       "detail": "ok"
+    },
+    {
+      "id": "B46",
+      "title": "ویرایش اطلاعات حساب بانکی ذخیره می‌شود",
+      "ok": true,
+      "severity": "",
+      "detail": "ok — UPDATE پالیسی و ذخیره برقرار"
+    },
+    {
+      "id": "B47",
+      "title": "پیش‌فاکتور صادره قابل ویرایش می‌ماند",
+      "ok": true,
+      "severity": "",
+      "detail": "ok — قفل B18 فقط اسناد رسمی را می‌بندد"
     }
   ],
   "findings": [
-    {
-      "id": "B18",
-      "title": "قفل ویرایش سند صادره (اصل حسابداری)",
-      "severity": "medium"
-    },
     {
       "id": "B38",
       "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
@@ -454,6 +463,6 @@
     "fail": 1
   },
   "test_context": {
-    "email": "karban.audit.mu83n1ec@gmail.com"
+    "email": "karban.audit.mu85h42j@gmail.com"
   }
 }
