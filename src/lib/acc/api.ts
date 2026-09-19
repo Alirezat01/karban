@@ -175,14 +175,31 @@ export async function listItems(businessId: string) {
 }
 
 export async function saveItem(businessId: string, row: Partial<AccItem>) {
+  /* whitelist ستون‌های واقعی acc_items — همان الگوی باگ «ذخیره نشدن اطلاعات بانک»:
+     هرگز ردیف خام UI (با فیلدهای join شده/محاسباتی) را به update/insert نفرست */
+  const payload = {
+    name: row.name,
+    code: row.code ?? null,
+    stuff_id: row.stuff_id ?? null,
+    unit: row.unit ?? 'عدد',
+    category: row.category ?? null,
+    kind: row.kind ?? 'product',
+    sale_price: Number(row.sale_price) || 0,
+    purchase_price: Number(row.purchase_price) || 0,
+    vat_rate: Number(row.vat_rate) || 0,
+    vat_exempt: !!row.vat_exempt,
+    track_stock: !!row.track_stock,
+    stock: Number(row.stock) || 0,
+    active: row.active ?? true,
+  };
   if (row.id) {
-    const { error } = await supabase.from('acc_items').update(row).eq('id', row.id);
+    const { error } = await supabase.from('acc_items').update(payload).eq('id', row.id);
     if (error) throw error;
     return row.id;
   }
   const { data, error } = await supabase
     .from('acc_items')
-    .insert({ ...row, business_id: businessId })
+    .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
   if (error) throw error;

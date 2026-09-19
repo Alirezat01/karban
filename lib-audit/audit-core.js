@@ -60,7 +60,10 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
   const arr = (x) => (Array.isArray(x) ? x : []);
   /* پاسخ POST در PostgREST آرایه است — id را امن بگیر (رفع باگ B15/B40/B44: id=undefined) */
   const idOf = (j) => (Array.isArray(j) ? (j[0]?.id ?? null) : (j?.id ?? null));
-  /* اگر POST ردیف را برنگرداند (RLS روی INSERT RETURNING)، شناسه را با سرویس‌رو برمی‌گردانیم — ریشه B15/B40/B44 */
+  /* اگر POST ردیف را برنگرداند، شناسه را با سرویس‌رو برمی‌گردانیم — ریشه B15/B40/B44.
+     نکته دقیق: POSTهای این موتور هدر «Prefer: return=representation» ندارند، پس PostgREST
+     طبق رفتار استانداردش بدنه خالی برمی‌گرداند (نه به‌خاطر RLS). اپ اصلی با supabase-js
+     که این هدر را می‌فرستد، ردیف را می‌گیرد. idBack در هر دو حالت درست کار می‌کند. */
   async function idBack(json, table, query) {
     const d = idOf(json);
     if (d) return d;
