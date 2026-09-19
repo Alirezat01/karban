@@ -60,6 +60,13 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
   const arr = (x) => (Array.isArray(x) ? x : []);
   /* پاسخ POST در PostgREST آرایه است — id را امن بگیر (رفع باگ B15/B40/B44: id=undefined) */
   const idOf = (j) => (Array.isArray(j) ? (j[0]?.id ?? null) : (j?.id ?? null));
+  /* اگر POST ردیف را برنگرداند (RLS روی INSERT RETURNING)، شناسه را با سرویس‌رو برمی‌گردانیم — ریشه B15/B40/B44 */
+  async function idBack(json, table, query) {
+    const d = idOf(json);
+    if (d) return d;
+    const r = await sr(`rest/v1/${table}?select=id&${query}&order=created_at.desc&limit=1`);
+    return arr(r.json)[0]?.id ?? null;
+  }
   let USER_TOKEN = null;
   async function user(path, method = 'GET', body = null) {
     const r = await fetch(`${URL}/${path}`, { method, headers: srHeaders(USER_TOKEN), body: body ? JSON.stringify(body) : undefined });
@@ -164,7 +171,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       national_id: '10860045332', economic_code: '411345678902', postal_code: '1453613345',
       address: 'تهران، خیابان ولیعصر', phone: '02188990011',
     });
-    const PARTNER = idOf(p1.json);
+    const PARTNER = await idBack(p1.json, 'acc_partners', `business_id=eq.${BIZ}&name=eq.${encodeURIComponent('شرکت بازرگانی آریا')}`);
     step('B6', 'ثبت طرف‌حساب حقوقی (بدون shenase_melli)', p1.status === 201, p1.status === 201 ? `id=${PARTNER}` : `${p1.status} ${p1.text.slice(0, 220)}`);
 
     /* B7: طرف‌حساب با shenase_melli */
@@ -190,21 +197,25 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       business_id: BIZ, name: 'لپ‌تاپ لنوو ThinkPad', unit: 'دستگاه', sale_price: 850000000,
       purchase_price: 700000000, vat_rate: 10, track_stock: true, stock: 5,
     });
-    const ITEM1 = idOf(it1.json);
+    const ITEM1 = await idBack(it1.json, 'acc_items', `business_id=eq.${BIZ}&name=eq.${encodeURIComponent('لپ‌تاپ لنوو ThinkPad')}`);
     step('B9', 'ثبت کالا با ردیابی موجودی', it1.status === 201, it1.status === 201 ? `id=${ITEM1}` : `${it1.status} ${it1.text.slice(0, 200)}`);
 
     const it2 = await user('rest/v1/acc_items', 'POST', {
       business_id: BIZ, name: 'خدمات مشاوره مالی', unit: 'ساعت', sale_price: 120000000,
       purchase_price: 0, vat_rate: 10, vat_exempt: false, track_stock: false,
     });
-    const ITEM2 = idOf(it2.json);
+    const ITEM2 = await idBack(it2.json, 'acc_items', `business_id=eq.${BIZ}&name=eq.${encodeURIComponent('خدمات مشاوره مالی')}`);
     step('B10', 'ثبت خدمت (بدون موجودی)', it2.status === 201, it2.status === 201 ? `id=${ITEM2}` : `${it2.status} ${it2.text.slice(0, 200)}`);
 
     /* B11-B12: حساب‌ها */
     const a1 = await user('rest/v1/acc_accounts', 'POST', { business_id: BIZ, name: 'بانک ملت – جاری ۱۲۳۴', kind: 'bank', initial_balance: 2500000000 });
-    const BANK = idOf(a1.json);
+    const BANK = await idBack(a1.json, 'acc_accounts', `business_id=eq.${BIZ}&kind=eq.bank`);
     BANK_ID = BANK;
-    step('B11', 'ثبت حساب بانکی', a1.status === 201, a1.status === 201 ? `id=${BANK}` : `${a1.status} ${a1.text.slice(0, 200)}`);
+    /* تشخیص: آیا توکن کاربر اصلاً اجازه SELECT روی این جدول را دارد؟ (ریشه خالی‌بودن پاسخ POST) */
+    const probeRead = await user(`rest/v1/acc_accounts?select=id,kind&business_id=eq.${BIZ}&limit=3`);
+    const probeCount = Array.isArray(probeRead.json) ? probeRead.json.length : -1;
+    const probeNote = probeCount === 0 ? ' | ⚠️ SELECT با توکن کاربر = ۰ ردیف → پالیسی SELECT این جدول برای کاربر عادی وجود ندارد (اپ هم لیست خالی می‌بیند)' : (probeCount > 0 ? ` | SELECT کاربر: ${probeCount} ردیف` : ' | SELECT کاربر: خطا');
+    step('B11', 'ثبت حساب بانکی', a1.status === 201, a1.status === 201 ? `id=${BANK}${probeNote}${BANK ? '' : ' | پاسخ POST: ' + JSON.stringify(a1.json)?.slice(0, 100)}` : `${a1.status} ${a1.text.slice(0, 200)}`);
     const a2 = await user('rest/v1/acc_accounts', 'POST', { business_id: BIZ, name: 'صندوق فروشگاه', kind: 'cash', initial_balance: 50000000 });
     step('B12', 'ثبت صندوق نقدی', a2.status === 201, a2.status === 201 ? 'ok' : `${a2.status} ${a2.text.slice(0, 200)}`);
 
@@ -221,7 +232,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       pay_id: '123456789012345678901234567890', account_id: BANK,
       subtotal: sub, discount_total: disc, vat_total: vat, total,
     });
-    INV1 = idOf(inv1.json);
+    INV1 = await idBack(inv1.json, 'acc_invoices', `business_id=eq.${BIZ}&number=eq.${jy}-001`);
     step('B13', 'ثبت فاکتور فروش رسمی (پیش‌نویس)', inv1.status === 201, inv1.status === 201 ? `id=${INV1} total=${total.toLocaleString('en')}` : `${inv1.status} ${inv1.text.slice(0, 250)}`);
 
     if (INV1) {
@@ -313,7 +324,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       position: 'حسابدار', hire_date_g: todayISO(), base_salary: 150000000, housing_allowance: 9000000,
       food_allowance: 14000000, child_allowance: 0, child_count: 0, insurance_number: '55443322', bank_account: '6037991112223334',
     });
-    const EMP = idOf(emp.json);
+    const EMP = await idBack(emp.json, 'acc_employees', `business_id=eq.${BIZ}&personnel_code=eq.101`);
     step('B25', 'ثبت کارمند', emp.status === 201, emp.status === 201 ? `id=${EMP}` : `${emp.status} ${emp.text.slice(0, 220)}`);
     if (EMP) {
       const pay = await user('rest/v1/acc_payrolls', 'POST', {
@@ -358,7 +369,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       business_id: BIZ, entry_no: 9001, date_g: todayISO(), description: 'سند افتتاحی — سرمایه نقدی',
       ref_type: 'manual', ref_action: 'post',
     });
-    const MJID = idOf(mj.json);
+    const MJID = await idBack(mj.json, 'acc_journal', `business_id=eq.${BIZ}&entry_no=eq.9001`);
     step('B31a', 'ثبت سربرگ سند دستی', mj.status === 201, mj.status === 201 ? `id=${MJID}` : `${mj.status} ${mj.text.slice(0, 250)}`);
     if (MJID) {
       const mjl = await user('rest/v1/acc_journal_lines', 'POST', [
@@ -491,7 +502,7 @@ export async function runAudit({ URL, SRK, cleanup = true, log = console.log } =
       const u2 = (path, method, body) => user(path, method, body);
       /* B41 تنخواه‌گردان */
       const pt = await u2('rest/v1/acc_petty', 'POST', { business_id: BIZ, name: 'تنخواه تستی حسابرسی', status: 'open' });
-      const PTY = idOf(pt.json);
+      const PTY = await idBack(pt.json, 'acc_petty', `business_id=eq.${BIZ}&name=eq.${encodeURIComponent('تنخواه تستی حسابرسی')}`);
       step('B41', 'تنخواه‌گردان — ایجاد و شارژ', pt.status === 201, pt.status === 201 ? 'ok' : `${pt.status} ${pt.text.slice(0, 200)}`);
       if (PTY) {
         const po = await u2('rest/v1/acc_petty_ops', 'POST', { business_id: BIZ, petty_id: PTY, kind: 'charge', amount: 5000000, date_g: todayISO() });
