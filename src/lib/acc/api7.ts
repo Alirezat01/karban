@@ -115,7 +115,7 @@ export interface AccBankLine {
   description: string | null;
   ref_no: string | null;
   amount: number; // + واریز / - برداشت
-  match_status: 'unmatched' | 'auto' | 'manual' | 'onbook';
+  match_status: 'unmatched' | 'auto' | 'manual' | 'onbook' | 'needs_doc' | 'ignored';
   match_entity_type: string | null;
   match_entity_id: string | null;
   matched_at: string | null;
@@ -1304,6 +1304,7 @@ export const ENTITY_LABELS: Record<string, string> = {
   invoice: 'فاکتور', journal: 'سند حسابداری', transaction: 'دریافت/پرداخت',
   check: 'چک', contract: 'قرارداد', expense: 'هزینه', payroll: 'حقوق',
   asset: 'دارایی', prepay: 'پیش‌دریافت/پرداخت', petty: 'تنخواه', project: 'پروژه',
+  bank_line: 'خط صورت‌حساب بانک',
 };
 
 export async function listAttachments(businessId: string, entityType: string, entityId?: string): Promise<AccAttachment[]> {
