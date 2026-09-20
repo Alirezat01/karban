@@ -318,6 +318,10 @@ export interface ClassifyOptions { category?: string; title?: string; partnerId?
 export async function classifyBankLine(
   business: AccBusiness, line: AccBankLine, action: ClassifyAction, opts: ClassifyOptions = {},
 ): Promise<void> {
+  /* idempotency: خطِ قبلاً طبقه‌بندی‌شده دوباره سند نمی‌سازد (دوبل ممنوع) */
+  if (action !== 'needs_doc' && action !== 'ignore' && line.match_entity_id && line.match_status === 'manual') {
+    return;
+  }
   const abs = Math.abs(line.amount);
   if (action === 'receipt' || action === 'payment') {
     const txId = await saveTransaction(business.id, {

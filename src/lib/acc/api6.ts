@@ -760,37 +760,49 @@ export async function closeFiscalYear(businessId: string, jyear: number): Promis
     if (kind === 'expense') expenseTotal += (Number(l.debit) || 0) - (Number(l.credit) || 0);
   }
   const netProfit = revenueTotal - expenseTotal;
-  const entryNo = await nextEntryNo(businessId);
   const closingDate = jalaliYearRange(jyear).to;
-  const { data: entry, error: entryErr } = await supabase
-    .from('acc_journal')
-    .insert({ business_id: businessId, entry_no: entryNo, date_g: closingDate, ref_type: 'manual', ref_action: 'post', description: `سند اختتامیه سال مالی ${jyear}` })
-    .select('id')
-    .single();
-  if (entryErr) throw entryErr;
+  /* ردیف‌ها اول ساخته می‌شوند؛ سرِسند فقط اگر ردیف مؤثر داریم (بدون سند یتیم و
+     بدون ردیف 0/0 که CHECK دیتابیس ردش می‌کند — ریشهٔ LGI-2).
+     کدینگ استاندارد: بستن درآمد به 4109 و نتیجهٔ سال به 3102 (قبلاً 4001/3999
+     خارج از کدینگ بودند و اعتبارسنج دیتابیس کل بستن سال را رد می‌کرد) */
   const lineRows: Record<string, unknown>[] = [];
-  const base = { entry_id: entry.id, business_id: businessId, partner_id: null };
   if (revenueTotal > 0) {
-    lineRows.push({ ...base, account_code: '4001', account_title: 'درآمد فروش', debit: revenueTotal, credit: 0 });
+    lineRows.push({ account_code: '4109', account_title: 'بستن درآمدهای سال مالی', debit: revenueTotal, credit: 0 });
   }
   if (expenseTotal > 0) {
-    lineRows.push({ ...base, account_code: '3999', account_title: 'سود (زیان) انباشته', debit: 0, credit: expenseTotal });
+    lineRows.push({ account_code: '3102', account_title: 'سود (زیان) انباشته', debit: 0, credit: expenseTotal });
   }
-  lineRows.push({
-    ...base,
-    account_code: '3999',
-    account_title: 'سود (زیان) انباشته',
-    debit: revenueTotal > expenseTotal ? 0 : expenseTotal - revenueTotal,
-    credit: revenueTotal > expenseTotal ? netProfit : 0,
-  });
-  const { error: linesErr } = await supabase.from('acc_journal_lines').insert(lineRows as never);
-  if (linesErr) throw linesErr;
+  /* سطر نتیجهٔ سال — فقط وقتی مبلغ مؤثر دارد (صفرِ مطلق توسط CHECK رد می‌شود) */
+  if (netProfit > 0) {
+    lineRows.push({ account_code: '3102', account_title: 'سود (زیان) انباشته', debit: 0, credit: netProfit });
+  } else if (netProfit < 0) {
+    lineRows.push({ account_code: '3102', account_title: 'سود (زیان) انباشته', debit: -netProfit, credit: 0 });
+  }
+  let entryNo = 0;
+  let entryId: string | null = null;
+  if (lineRows.length) {
+    entryNo = await nextEntryNo(businessId);
+    const { data: entry, error: entryErr } = await supabase
+      .from('acc_journal')
+      .insert({ business_id: businessId, entry_no: entryNo, date_g: closingDate, ref_type: 'manual', ref_action: 'post', description: `سند اختتامیه سال مالی ${jyear}` })
+      .select('id')
+      .single();
+    if (entryErr) throw entryErr;
+    entryId = entry.id as string;
+    const rows = lineRows.map((l) => ({ ...l, entry_id: entryId, business_id: businessId, partner_id: null }));
+    const { error: linesErr } = await supabase.from('acc_journal_lines').insert(rows as never);
+    if (linesErr) {
+      /* جبرانی: سرِسند یتیم نماند (LGI-2) */
+      await supabase.from('acc_journal').delete().eq('id', entryId);
+      throw linesErr;
+    }
+  }
   /* قفل همه دوره‌های سال */
   let lockedPeriods = 0;
   for (let m = 1; m <= 12; m++) {
     await setPeriodLock(businessId, jyear, m, true);
     lockedPeriods += 1;
   }
-  await logActivity(businessId, 'بستن سال مالی', 'journal', entry.id as string, `سال ${jyear} — سود: ${netProfit}`);
+  await logActivity(businessId, 'بستن سال مالی', 'journal', entryId, `سال ${jyear} — سود: ${netProfit}${entryId ? '' : ' (بدون گردش — سند اختتامیه نداشت)'}`);
   return { entryNo, netProfit, revenueTotal, expenseTotal, lockedPeriods };
 }
