@@ -1,0 +1,64 @@
+name: acc-test
+# سوئیت زندهٔ حسابداری کاربان — اجرا از روی رانر GitHub (IP متفاوت و تمیز)
+# پیش‌نیاز: ۴ راز مخزن — ACC_TEST_USER_1 / ACC_TEST_PASS_1 / ACC_TEST_USER_2 / ACC_TEST_PASS_2
+#   (دو کاربر ساخته‌شده در Dashboard → Authentication → Add user با تیک Auto Confirm)
+# اجرا: Actions → acc-test → Run workflow
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 6' # هفتگی شنبه ۰۴:۰۰ UTC — گزارش دوره‌ای
+permissions:
+  contents: write
+
+concurrency:
+  group: acc-test
+  cancel-in-progress: true
+
+jobs:
+  live-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: نصب وابستگی (حداقلی — فقط کلاینت ساپابیس)
+        run: |
+          npm install @supabase/supabase-js@^2 --no-save --no-audit --no-fund \
+            || { echo "نصب حداقلی ناموفق — نصب کامل"; npm ci --no-audit --no-fund; }
+
+      - name: اجرای سوئیت زندهٔ حسابداری (۱۵ سناریو)
+        env:
+          ACC_TEST_USER_1: ${{ secrets.ACC_TEST_USER_1 }}
+          ACC_TEST_PASS_1: ${{ secrets.ACC_TEST_PASS_1 }}
+          ACC_TEST_USER_2: ${{ secrets.ACC_TEST_USER_2 }}
+          ACC_TEST_PASS_2: ${{ secrets.ACC_TEST_PASS_2 }}
+        run: |
+          mkdir -p tests/acc/out
+          set +e
+          node tests/acc/run.mjs 2>&1 | tee tests/acc/out/live-run.log
+          echo "ACC_EXIT=$?" >> "$GITHUB_ENV"
+
+      - name: خلاصهٔ نتیجه در Summary
+        if: always()
+        run: |
+          {
+            echo "## نتیجهٔ سوئیت زندهٔ حسابداری"
+            echo '```'
+            tail -5 tests/acc/out/live-run.log 2>/dev/null || echo "لاگ موجود نیست"
+            echo '```'
+            echo "- شناسهٔ اجرا و جزئیات کامل: tests/acc/out/results.json در کامیت"
+            echo "- خروج غیر صفر = حداقل یک سناریو FAIL است"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: کامیت نتایج (حتی هنگام شکست تست‌ها)
+        if: always()
+        run: |
+          git config user.name "karban-bot"
+          git config user.email "bot@karbanapp.ir"
+          git add tests/acc/out/ || true
+          git commit -m "test: نتایج سوئیت زندهٔ حسابداری [skip ci]" || echo "چیزی برای کامیت نبود"
+          git push || echo "پوش ناموفق — نتایج در آرتیفکت/لاگ موجوده"
