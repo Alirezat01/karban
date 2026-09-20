@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-20",
+  "environment": "PostgreSQL 17.11 local (zonky) + Supabase stub roles, rebuilt from zero (12 migrations)",
+  "suites": [
+    {
+      "name": "test_hardening.py",
+      "checks": 26,
+      "passed": 26
+    },
+    {
+      "name": "test_master_data.py",
+      "checks": 59,
+      "passed": 59
+    },
+    {
+      "name": "test_vat_zero.py",
+      "checks": 15,
+      "passed": 15
+    },
+    {
+      "name": "hardening idempotency re-run",
+      "result": "OK"
+    }
+  ],
+  "live_probe": {
+    "api_gate": "anon key rejected 401 since ~11:05 — confirmed in real Chrome browser too",
+    "app_impact": "karbanapp.ir data layer currently failing for all users",
+    "harness_fix": "tests/acc/_harness.mjs — browser UA/Origin injection (committed 936edbf)",
+    "blocking": "live write-suite needs: (1) working anon key, (2) 2 auto-confirmed test users via ACC_TEST_USER_1/2"
+  }
+}
