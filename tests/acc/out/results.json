@@ -1,0 +1,13 @@
+{
+  "runId": "3b067b",
+  "at": "2026-09-20T12:16:24.721Z",
+  "results": [
+    {
+      "id": "SETUP",
+      "name": "ساخت کاربران/کسب‌وکار آزمایشی",
+      "status": "FAIL",
+      "detail": "Node.js 20 detected without native WebSocket support.\n\nSuggested solution: For Node.js < 22, install \"ws\" package and provide it via the transport option:\nimport ws from \"ws\"\nnew RealtimeClient(url, { transport: ws })",
+      "evidence": null
+    }
+  ]
+}
