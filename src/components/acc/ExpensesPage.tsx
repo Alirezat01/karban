@@ -23,6 +23,7 @@ import AttachButton from './AttachButton';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, brandLogoUrl } from '@/lib/acc/export';
 import { featureEnabled } from '@/lib/acc/plan';
 import { Lock } from 'lucide-react';
+import { resolveAccFileUrl } from '@/lib/acc/rpc';
 
 interface AccountLite { id: string; name: string; kind: string; balance?: number }
 
@@ -58,6 +59,7 @@ export default function ExpensesPage({ business, access }: {
   access: { status: string; plan: string };
 }) {
   const [rows, setRows] = useState<AccExpense[]>([]);
+  const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
   const [accounts, setAccounts] = useState<AccountLite[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<CategoryLite[]>([]);
@@ -80,6 +82,12 @@ export default function ExpensesPage({ business, access }: {
     try {
       const [e, a] = await Promise.all([listExpenses(business.id), listAccounts(business.id)]);
       setRows(e);
+      /* URL امن امضاشده برای اسناد هزینه (باکت خصوصی acc-attach) */
+      const urlMap: Record<string, string> = {};
+      await Promise.all(e.filter((r) => r.receipt_url).map(async (r) => {
+        urlMap[r.id] = await resolveAccFileUrl(r.receipt_url);
+      }));
+      setReceiptUrls(urlMap);
       setAccounts(a);
       listProjects(business.id).then((p) => setProjects(p.map((x) => ({ id: x.id, name: x.name })))).catch(() => setProjects([]));
     } finally {
@@ -161,6 +169,10 @@ export default function ExpensesPage({ business, access }: {
     try {
       const url = await uploadAccMedia(business.id, file, 'expense');
       setEditing((prev) => (prev ? { ...prev, receipt_url: url } : prev));
+      if (editing?.id) {
+        const view = await resolveAccFileUrl(url);
+        setReceiptUrls((m) => ({ ...m, [editing.id as string]: view }));
+      }
       toast('سند پیوست شد');
     } catch {
       toast('آپلود سند ناموفق بود', 'error');
@@ -309,7 +321,7 @@ export default function ExpensesPage({ business, access }: {
                   <td><span className={`acc-badge ${badge.tone}`}>{badge.icon} {TAX_STATUS_LABEL[r.tax_status || 'incomplete']}</span></td>
                   <td>
                     {r.receipt_url
-                      ? <a href={r.receipt_url} target="_blank" rel="noreferrer" className="acc-icon-btn" title="مشاهده سند پیوست"><Link2 size={14} /></a>
+                      ? <a href={receiptUrls[r.id] || r.receipt_url} target="_blank" rel="noreferrer" className="acc-icon-btn" title="مشاهده سند پیوست"><Link2 size={14} /></a>
                       : <span style={{ color: 'var(--muted)', fontSize: '.75rem' }}>ندارد</span>}
                   </td>
                   <td>{r.is_paid ? (r.account?.name || 'نسیه (پرداختنی)') : 'ثبت نشده'}</td>
@@ -396,10 +408,10 @@ export default function ExpensesPage({ business, access }: {
                   {editing.receipt_url ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '.7rem' }}>
                       {isImage(editing.receipt_url)
-                        ? <img src={editing.receipt_url} alt="سند هزینه" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)' }} />
+                        ? <img src={receiptUrls[editing.id || ''] || editing.receipt_url} alt="سند هزینه" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--line)' }} />
                         : <div className="acc-icon-btn" style={{ width: 84, height: 84, display: 'grid', placeItems: 'center' }}><ImageIcon size={26} /></div>}
                       <div style={{ display: 'grid', gap: '.4rem' }}>
-                        <a className="acc-btn acc-btn-outline" href={editing.receipt_url} target="_blank" rel="noreferrer"><Link2 size={14} /> مشاهده سند</a>
+                        <a className="acc-btn acc-btn-outline" href={receiptUrls[editing.id || ''] || editing.receipt_url} target="_blank" rel="noreferrer"><Link2 size={14} /> مشاهده سند</a>
                         <button className="acc-btn acc-btn-outline" onClick={() => setEditing({ ...editing, receipt_url: null })}><X size={14} /> حذف پیوست</button>
                       </div>
                     </div>

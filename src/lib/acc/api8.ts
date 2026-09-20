@@ -312,28 +312,18 @@ export type ClassifyAction = 'receipt' | 'payment' | 'expense' | 'needs_doc' | '
 
 export interface ClassifyOptions { category?: string; title?: string; partnerId?: string | null }
 
-/** شناسه آخرین ردیف درج‌شده را با خواندن برمی‌گرداند (RLS-safe: خواندن مجاز است) */
-async function fetchBackId(table: string, eq: Record<string, unknown>): Promise<string | null> {
-  let q = supabase.from(table).select('id').order('created_at', { ascending: false }).limit(1);
-  for (const [k, v] of Object.entries(eq)) q = q.eq(k, v);
-  const { data } = await q;
-  return ((data as { id: string }[] | null)?.[0]?.id) ?? null;
-}
-
-/** طبقه‌بندی یک خط صورت‌حساب بانک — سند خزانه یا هزینه می‌سازد و خط را قفل می‌کند */
+/** طبقه‌بندی یک خط صورت‌حساب بانک — سند خزانه یا هزینه می‌سازد و خط را قفل می‌کند
+ *  شناسهٔ سند ساخته‌شده مستقیماً از خود درج برمی‌گردد (fetchBackId حذف شد — جست‌وجوی مجدد
+ *  بر اساس مبلغ/تاریخ در درج هم‌زمان می‌توانست خط را به سند اشتباه وصل کند) */
 export async function classifyBankLine(
   business: AccBusiness, line: AccBankLine, action: ClassifyAction, opts: ClassifyOptions = {},
 ): Promise<void> {
   const abs = Math.abs(line.amount);
   if (action === 'receipt' || action === 'payment') {
-    await saveTransaction(business.id, {
+    const txId = await saveTransaction(business.id, {
       kind: action, amount: abs, date_g: line.date_g, method: 'transfer',
       account_id: line.account_id, partner_id: opts.partnerId || null,
       description: line.description || line.ref_no || 'تراکنش بانکی',
-    });
-    const txId = await fetchBackId('acc_transactions', {
-      business_id: business.id, kind: action, amount: abs, date_g: line.date_g,
-      account_id: line.account_id,
     });
     const { error } = await supabase.from('acc_bank_lines').update({
       match_status: 'manual', match_entity_type: 'transaction', match_entity_id: txId,
@@ -343,15 +333,12 @@ export async function classifyBankLine(
     return;
   }
   if (action === 'expense') {
-    await saveExpense(business.id, {
+    const exId = await saveExpense(business.id, {
       category: opts.category || 'اداری و عمومی',
       title: (opts.title || line.description || 'هزینه بانکی').slice(0, 120),
       amount: abs, vat_amount: 0, date_g: line.date_g, account_id: line.account_id,
       partner_id: opts.partnerId || null, is_paid: true, tax_status: 'incomplete',
       description: line.description || null,
-    });
-    const exId = await fetchBackId('acc_expenses', {
-      business_id: business.id, amount: abs, date_g: line.date_g, account_id: line.account_id,
     });
     const { error } = await supabase.from('acc_bank_lines').update({
       match_status: 'manual', match_entity_type: 'expense', match_entity_id: exId,

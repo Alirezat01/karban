@@ -197,6 +197,8 @@ export { DETAIL_KINDS as DETAIL_KIND_LABELS };
 
 /* ═══════════════════════ helper های پایه ═══════════════════════ */
 
+import { isMissingRpc, accStoragePathOf } from './rpc';
+
 function num(v: unknown): number {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -233,16 +235,44 @@ export async function ensureChartCode(
   });
 }
 
-/** ثبت سند دوبل (نسخه حرفه‌ای با تفصیلی و پروژه) */
+/** ثبت سند دوبل (نسخه حرفه‌ای با تفصیلی و پروژه)
+ *  مسیر اصلی: RPC اتمیک acc_create_journal — سرِسند + ردیف‌ها + شماره‌گذاری + تراز در یک تراکنش
+ *  سازگاری: اگر مایگریشن هنوز اجرا نشده باشد، مسیر دو مرحله‌ای قدیمی استفاده می‌شود */
 async function insertEntry(
   businessId: string,
-  input: { date_g: string; description: string; ref_type: string; ref_action?: string; ref_id?: string | null; reversal_of?: string | null },
+  input: { date_g: string; description: string; ref_type: string; ref_action?: string; ref_id?: string | null; reversal_of?: string | null; attachment_url?: string | null },
   lines: JournalLineV2[],
 ): Promise<string> {
   if (!lines.some((l) => num(l.debit) > 0 || num(l.credit) > 0)) throw new Error('ردیف سند خالی است');
   const d = lines.reduce((s, l) => s + num(l.debit), 0);
   const c = lines.reduce((s, l) => s + num(l.credit), 0);
-  if (Math.abs(d - c) > 1) throw new Error(`سند تراز نیست — بدهکار ${d.toLocaleString('fa-IR')} / بستانکار ${c.toLocaleString('fa-IR')}`);
+  if (d !== c) throw new Error(`سند تراز نیست — بدهکار ${d.toLocaleString('fa-IR')} / بستانکار ${c.toLocaleString('fa-IR')}`);
+
+  const rpcLines = lines
+    .filter((l) => l.account_code && (num(l.debit) > 0 || num(l.credit) > 0))
+    .map((l) => ({
+      account_code: l.account_code,
+      account_title: l.account_title || l.account_code,
+      debit: num(l.debit), credit: num(l.credit),
+      detail_id: l.detail_id ?? null,
+      project_id: l.project_id ?? null,
+      line_desc: l.line_desc ?? null,
+    }));
+  const { data: rpcId, error: rpcErr } = await supabase.rpc('acc_create_journal', {
+    p_business: businessId,
+    p_date: input.date_g,
+    p_description: input.description,
+    p_ref_type: input.ref_type,
+    p_ref_action: input.ref_action || 'post',
+    p_ref_id: input.ref_id ?? null,
+    p_reversal_of: input.reversal_of ?? null,
+    p_lines: rpcLines,
+    p_attachment_url: input.attachment_url ?? null,
+  });
+  if (!rpcErr) return rpcId as string;
+  if (!isMissingRpc(rpcErr)) throw new Error(rpcErr.message);
+
+  /* ── مسیر قدیمی (پیش از اجرای مایگریشن) ── */
   const entryNo = await nextEntryNo(businessId);
   const { data: entry, error } = await supabase
     .from('acc_journal')
@@ -440,15 +470,23 @@ export interface ManualJournalInput {
 
 /** سند مرکب چندردیفی با تفصیلی شناور و پروژه — کنترل تراز اجباری */
 export async function saveJournalV2(businessId: string, input: ManualJournalInput): Promise<string> {
-  const id = await insertEntry(businessId, { date_g: input.date_g, description: input.description, ref_type: 'manual' }, input.lines);
+  const id = await insertEntry(businessId, { date_g: input.date_g, description: input.description, ref_type: 'manual', attachment_url: input.attachment_url ?? null }, input.lines);
   if (input.attachment_url) {
+    /* مسیر قدیمی پیوست را در درج نمی‌گیرد — این‌جا idempotent ست می‌شود */
     await supabase.from('acc_journal').update({ attachment_url: input.attachment_url }).eq('id', id);
   }
   return id;
 }
 
-/** برگشت سند (ابطال) — سند معکوس با ارجاع متقابل ثبت می‌شود */
+/** برگشت سند (ابطال) — سند معکوس با ارجاع متقابل، اتمیک از مسیر RPC */
 export async function voidJournal(businessId: string, entryId: string, reason: string): Promise<string> {
+  const { data: revId, error: rpcErr } = await supabase.rpc('acc_void_journal', {
+    p_business: businessId, p_entry: entryId, p_reason: reason || '',
+  });
+  if (!rpcErr) return revId as string;
+  if (!isMissingRpc(rpcErr)) throw new Error(rpcErr.message);
+
+  /* ── مسیر قدیمی (پیش از اجرای مایگریشن) ── */
   const { data: entry, error } = await supabase
     .from('acc_journal')
     .select('*, acc_journal_lines(*)')
@@ -465,7 +503,7 @@ export async function voidJournal(businessId: string, entryId: string, reason: s
     detail_id: l.detail_id, project_id: l.project_id,
     line_desc: l.line_desc ? `برگشت: ${l.line_desc}` : null,
   }));
-  const revId = await insertEntry(
+  const revIdLegacy = await insertEntry(
     businessId,
     { date_g: new Date().toISOString().slice(0, 10), description: `برگشت سند ${e.description || ''}${reason ? ` — علت: ${reason}` : ''}`, ref_type: 'manual', ref_action: 'reverse', reversal_of: entryId },
     revLines,
@@ -474,7 +512,7 @@ export async function voidJournal(businessId: string, entryId: string, reason: s
     voided_at: new Date().toISOString(), void_reason: reason || null,
   }).eq('id', entryId);
   if (uerr) throw uerr;
-  return revId;
+  return revIdLegacy;
 }
 
 /** حذف کامل سند — فقط سندهای دستی یا برگشتی؛ سندهای سیستمی از مسیر ابطال سند مادر */
@@ -1133,8 +1171,15 @@ export interface YearCloseResultV2 {
   closedAccounts: number;
 }
 
-/** بستن دوره مالی — بستن تک‌تک حساب‌های موقت به سود (زیان) انباشته */
+/** بستن دوره مالی — بستن تک‌تک حساب‌های موقت به سود (زیان) انباشته
+ *  نگهبان: سال بسته‌شده قابل بستن مجدد نیست (در دیتابیس هم تریگر جلوگیری می‌کند) */
 export async function closeFiscalYearV2(businessId: string, jyear: number): Promise<YearCloseResultV2> {
+  const { data: fyNow } = await supabase
+    .from('acc_fiscal_years').select('status, closing_entry_id')
+    .eq('business_id', businessId).eq('jyear', jyear).maybeSingle();
+  if (fyNow && (fyNow.status === 'closed' || fyNow.closing_entry_id)) {
+    throw new Error(`سال مالی ${jyear} قبلاً بسته شده است — بستن مجدد مجاز نیست`);
+  }
   const range = jalaliYearRange(jyear);
   const { data: journal } = await supabase
     .from('acc_journal')
@@ -1326,6 +1371,9 @@ export async function attachmentCounts(businessId: string, entityType: string): 
   return m;
 }
 
+/** افزودن ضمیمه به اسناد — باکت خصوصی «acc-attach» با مسیر {businessId}/…
+ *  در file_url مسیر نسبی «bucket/object» ذخیره می‌شود؛ URL امضاشده هنگام نمایش ساخته می‌شود
+ *  (resolveAccFileUrl در rpc.ts) — اسناد مالی دیگر با URL عمومی همیشه‌معتبر در دسترس نیستند */
 export async function addAttachment(
   businessId: string,
   entityType: string,
@@ -1334,21 +1382,44 @@ export async function addAttachment(
   title?: string,
 ): Promise<string> {
   const ext = (file.name.split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '');
-  const path = `${businessId}/att-${entityType}-${entityId.slice(0, 8)}-${Date.now()}.${ext || 'bin'}`;
-  const { error: upErr } = await supabase.storage.from('acc-media').upload(path, file, { upsert: true });
-  if (upErr) throw upErr;
-  const { data: url } = supabase.storage.from('acc-media').getPublicUrl(path);
+  const objectPath = `${businessId}/att-${entityType}-${entityId.slice(0, 8)}-${Date.now()}.${ext || 'bin'}`;
+  const { error: upErr } = await supabase.storage.from('acc-attach').upload(objectPath, file, { upsert: true });
+  if (upErr) {
+    /* سازگاری: اگر باکت خصوصی هنوز ساخته نشده، مسیر قبلی */
+    if (!/not found|does not exist|Bucket not found/i.test(upErr.message)) throw upErr;
+    const legacyPath = `${businessId}/att-${entityType}-${entityId.slice(0, 8)}-${Date.now()}.${ext || 'bin'}`;
+    const { error: up2 } = await supabase.storage.from('acc-media').upload(legacyPath, file, { upsert: true });
+    if (up2) throw up2;
+    const { data: url } = supabase.storage.from('acc-media').getPublicUrl(legacyPath);
+    const { data: user } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from('acc_attachments').insert({
+      business_id: businessId, entity_type: entityType, entity_id: entityId,
+      title: title || file.name, file_url: url.publicUrl,
+      file_name: file.name, file_size: file.size, uploaded_by: user?.user?.id || null,
+    }).select('id').single();
+    if (error) throw error;
+    return data.id as string;
+  }
   const { data: user } = await supabase.auth.getUser();
   const { data, error } = await supabase.from('acc_attachments').insert({
     business_id: businessId, entity_type: entityType, entity_id: entityId,
-    title: title || file.name, file_url: url.publicUrl,
+    title: title || file.name, file_url: `acc-attach/${objectPath}`,
     file_name: file.name, file_size: file.size, uploaded_by: user?.user?.id || null,
   }).select('id').single();
   if (error) throw error;
   return data.id as string;
 }
 
+/** حذف ضمیمه — RPC اتمیک (فایل Storage + رکورد)؛ در نبود مایگریشن، مسیر دو مرحله‌ای */
 export async function deleteAttachment(id: string): Promise<void> {
+  const { error: rpcErr } = await supabase.rpc('acc_delete_attachment', { p_id: id });
+  if (!rpcErr) return;
+  if (!isMissingRpc(rpcErr)) throw new Error(rpcErr.message);
+  const { data: row } = await supabase.from('acc_attachments').select('file_url').eq('id', id).maybeSingle();
+  const loc = accStoragePathOf(row?.file_url);
+  if (loc) {
+    try { await supabase.storage.from(loc.bucket).remove([loc.object]); } catch { /* حذف فایل بهترین‌تلاش */ }
+  }
   const { error } = await supabase.from('acc_attachments').delete().eq('id', id);
   if (error) throw error;
 }
@@ -1363,7 +1434,15 @@ async function findJournalsByRef(businessId: string, refType: string, refId: str
 }
 
 /* ── فاکتور ── */
+/** ابطال فاکتور — اتمیک از مسیر RPC: قفل سطر + برگشت موجودی + ابطال سندها + وضعیت ابطال */
 export async function voidInvoice(businessId: string, invoiceId: string, reason: string, restoreStock: boolean): Promise<void> {
+  const { error: rpcErr } = await supabase.rpc('acc_void_invoice', {
+    p_business: businessId, p_invoice: invoiceId, p_reason: reason || '', p_restore_stock: restoreStock,
+  });
+  if (!rpcErr) return;
+  if (!isMissingRpc(rpcErr)) throw new Error(rpcErr.message);
+
+  /* ── مسیر قدیمی (پیش از اجرای مایگریشن) ── */
   const { data: inv } = await supabase.from('acc_invoices').select('status, voided_at').eq('id', invoiceId).maybeSingle();
   if (!inv) throw new Error('فاکتور یافت نشد');
   if (inv.voided_at) throw new Error('این فاکتور قبلاً ابطال شده است');
@@ -1382,6 +1461,11 @@ export async function voidInvoice(businessId: string, invoiceId: string, reason:
 }
 
 export async function deleteInvoiceFull(businessId: string, invoiceId: string): Promise<void> {
+  /* اصل سند قطعی: فقط پیش‌نویس حذف می‌شود؛ صادره/ابطال‌شده فقط از مسیر ابطال (سند معکوس) */
+  const { data: invRow } = await supabase.from('acc_invoices').select('status, posted_at').eq('id', invoiceId).maybeSingle();
+  if (invRow && (invRow.posted_at || invRow.status === 'cancelled')) {
+    throw new Error('صورتحساب صادره قابل حذف نیست — برای اصلاح آن را ابطال کنید');
+  }
   const { data: txs } = await supabase.from('acc_transactions').select('id').eq('invoice_id', invoiceId).limit(1);
   if (txs && txs.length) throw new Error('این فاکتور تسویه دارد — اول دریافت/پرداخت‌های مرتبط را حذف کنید');
   const { data: checks } = await supabase.from('acc_checks').select('id').eq('invoice_id', invoiceId).limit(1);
@@ -1551,8 +1635,8 @@ export async function serviceCosting(
   /* درآمد فاکتورهای پروژه‌دار بدون سند — از فاکتور */
   let invQ = supabase
     .from('acc_invoices')
-    .select('project_id, subtotal, discount_total, vat_total, voided_at, type')
-    .eq('business_id', businessId).eq('type', 'sale');
+    .select('project_id, subtotal, discount_total, vat_total, voided_at, type, status')
+    .eq('business_id', businessId).eq('type', 'sale').in('status', ['issued', 'partial', 'paid']);
   const { data: invs } = await invQ;
   let invoiceRevenueProject = 0;
   for (const inv of (invs || []) as { project_id: string | null; subtotal: number; discount_total: number; voided_at: string | null }[]) {

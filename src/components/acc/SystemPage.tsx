@@ -5,10 +5,11 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Download, FileJson, History, Landmark, Lock, Save, Upload } from 'lucide-react';
 import type { AccBusiness, AccPeriod, AccReconciliation, AccActivityRow } from '@/lib/acc/types';
+import { closeFiscalYearV2, type YearCloseResultV2 } from '@/lib/acc/api7';
 import {
-  closeFiscalYear, deleteReconciliation, exportBackup, listActivity,
+  deleteReconciliation, exportBackup, listActivity,
   listPeriods, listReconciliations, restoreBackup, saveReconciliation, setPeriodLock,
-  type RestoreReport, type YearCloseResult,
+  type RestoreReport, 
 } from '@/lib/acc/api6';
 import { listAccounts } from '@/lib/acc/api';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
@@ -43,7 +44,7 @@ function PeriodsSection({ business, jy }: { business: AccBusiness; jy: number })
   const [periods, setPeriods] = useState<AccPeriod[]>([]);
   const [year, setYear] = useState(jy);
   const [busy, setBusy] = useState(false);
-  const [closeResult, setCloseResult] = useState<YearCloseResult | null>(null);
+  const [closeResult, setCloseResult] = useState<YearCloseResultV2 | null>(null);
 
   useEffect(() => { listPeriods(business.id).then(setPeriods).catch(() => setPeriods([])); }, [business.id]);
 
@@ -65,10 +66,10 @@ function PeriodsSection({ business, jy }: { business: AccBusiness; jy: number })
     if (!(await confirmAction(`سال مالی ${year} بسته شود؟ سند اختتامیه ساخته می‌شود و هر ۱۲ ماه این سال قفل خواهد شد. این عمل قابل بازگشت خودکار نیست.`, true))) return;
     setBusy(true);
     try {
-      const r = await closeFiscalYear(business.id, year);
+      const r = await closeFiscalYearV2(business.id, year);
       setCloseResult(r);
       setPeriods(await listPeriods(business.id));
-      toast(`سال ${year} بسته شد — سند اختتامیه شماره ${toFaDigits(r.entryNo)} ثبت شد`);
+      toast(`سال ${year} بسته شد — سند اختتامیه شماره ${toFaDigits(r.closingEntryNo)} ثبت شد`);
     } catch {
       toast('بستن سال ناموفق بود', 'error');
     } finally {
@@ -119,7 +120,7 @@ function PeriodsSection({ business, jy }: { business: AccBusiness; jy: number })
             <span>درآمد دوره: <b>{formatMoney(closeResult.revenueTotal)} ریال</b></span>
             <span>هزینه دوره: <b>{formatMoney(closeResult.expenseTotal)} ریال</b></span>
             <span>سود خالص: <b style={{ color: 'var(--gold2)' }}>{formatMoney(closeResult.netProfit)} ریال</b></span>
-            <span>دوره‌های قفل‌شده: <b>{toFaDigits(closeResult.lockedPeriods)}</b></span>
+            <span>حساب‌های بسته‌شده: <b>{toFaDigits(closeResult.closedAccounts)}</b></span>
           </div>
         </div>
       )}

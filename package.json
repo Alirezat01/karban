@@ -8,7 +8,8 @@
     "build": "node scripts/build.mjs && node scripts/prerender-meta.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "test:acc": "node tests/acc/run.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

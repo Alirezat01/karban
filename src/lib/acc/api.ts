@@ -11,6 +11,7 @@ import type {
 import { SYSTEM_CHART } from './constants';
 import { jalaliMonthLength, toGregorian, todayJalali, dateToISO } from './jalali';
 import { roundVat } from './money';
+import { isMissingRpc } from './rpc';
 
 /* ═══════════════════════ محاسبات فاکتور ═══════════════════════ */
 
@@ -396,13 +397,21 @@ export async function setInvoiceStatus(invoiceId: string, status: InvoiceStatus)
   if (error) throw error;
 }
 
+/** صدور فاکتور — اتمیک از مسیر RPC: قفل سطر + وضعیت + موجودی + سند آینه‌ای حسابداری */
 export async function issueInvoice(invoiceId: string) {
+  const { error: rpcErr } = await supabase.rpc('acc_issue_invoice', { p_invoice: invoiceId });
+  if (!rpcErr) return;
+  if (!isMissingRpc(rpcErr)) throw new Error(rpcErr.message);
+  /* ── مسیر قدیمی (پیش از اجرای مایگریشن) ── */
   await setInvoiceStatus(invoiceId, 'issued');
   await adjustStockForInvoice(invoiceId, -1);
 }
 
+/** ابطال ساده (برای پیش‌نویس/فروش‌های بدون سند) — موجودی با UPDATE اتمیک برمی‌گردد */
 export async function cancelInvoice(invoiceId: string) {
-  await adjustStockForInvoice(invoiceId, +1);
+  const { error: stErr } = await supabase.rpc('acc_adjust_stock', { p_invoice: invoiceId, p_direction: 'increase' });
+  if (stErr && !isMissingRpc(stErr)) throw new Error(stErr.message);
+  if (stErr) await adjustStockForInvoice(invoiceId, +1);
   await setInvoiceStatus(invoiceId, 'cancelled');
 }
 
@@ -586,13 +595,17 @@ interface RawLine { account_code: string; account_title: string; debit: number; 
 async function fetchLinesInRange(businessId: string, from?: string, to?: string): Promise<RawLine[]> {
   let q = supabase
     .from('acc_journal_lines')
-    .select('account_code, account_title, debit, credit, acc_journal!inner(date_g)')
+    .select('account_code, account_title, debit, credit, acc_journal!inner(date_g, voided_at, ref_action)')
     .eq('business_id', businessId);
   if (from) q = q.gte('acc_journal.date_g', from);
   if (to) q = q.lte('acc_journal.date_g', to);
   const { data, error } = await q;
   if (error) throw error;
-  return (data || []) as unknown as RawLine[];
+  /* سند باطل‌شده و سند معکوس نباید در تراز آزمایشی/سود و زیان دوباره شمرده شوند */
+  const rows = (data || []) as unknown as { account_code: string; account_title: string; debit: number; credit: number; acc_journal: { voided_at: string | null; ref_action: string } }[];
+  return rows
+    .filter((l) => l.acc_journal && !l.acc_journal.voided_at && l.acc_journal.ref_action !== 'reverse')
+    .map((l) => ({ account_code: l.account_code, account_title: l.account_title, debit: l.debit, credit: l.credit } as RawLine));
 }
 
 const chartKind = (code: string): AccChartRow['kind'] =>
@@ -641,8 +654,8 @@ export async function vatReport(businessId: string, from: string, to: string): P
   const invoices = await listInvoices(businessId, { from, to });
   const partners = await listPartners(businessId);
   const partnerName = (id: string | null) => partners.find((p) => p.id === id)?.name || '—';
-  const sales = invoices.filter((i) => i.type === 'sale' && i.status === 'issued');
-  const purchases = invoices.filter((i) => i.type === 'purchase' && i.status === 'issued');
+  const sales = invoices.filter((i) => i.type === 'sale' && ['issued', 'partial', 'paid'].includes(i.status));
+  const purchases = invoices.filter((i) => i.type === 'purchase' && ['issued', 'partial', 'paid'].includes(i.status));
   const { data: exps } = await supabase
     .from('acc_expenses')
     .select('vat_amount')
@@ -695,8 +708,8 @@ export async function seasonalReport(businessId: string, from: string, to: strin
     vat: i.vat_total,
   });
   return {
-    sales: invoices.filter((i) => i.type === 'sale' && i.status === 'issued').map(mapRow),
-    purchases: invoices.filter((i) => i.type === 'purchase' && i.status === 'issued').map(mapRow),
+    sales: invoices.filter((i) => i.type === 'sale' && ['issued', 'partial', 'paid'].includes(i.status)).map(mapRow),
+    purchases: invoices.filter((i) => i.type === 'purchase' && ['issued', 'partial', 'paid'].includes(i.status)).map(mapRow),
   };
 }
 
@@ -755,7 +768,7 @@ export async function salesSeries6Months(businessId: string): Promise<{ label: s
     .select('date_g, total')
     .eq('business_id', businessId)
     .eq('type', 'sale')
-    .eq('status', 'issued')
+    .in('status', ['issued', 'partial', 'paid'])
     .gte('date_g', spans[0].from);
   if (error) throw error;
   return spans.map((s, idx) => ({
@@ -865,6 +878,14 @@ export function computeExpenseTax(row: Partial<AccExpense>): {
 
 export async function uploadAccMedia(businessId: string, file: File, kind: 'logo' | 'signature' | 'stamp' | 'expense'): Promise<string> {
   const ext = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+  /* رسید هزینه = سند مالی → باکت خصوصی acc-attach؛ لوگو/امضا/مهر = برندینگ چاپی → acc-media عمومی */
+  if (kind === 'expense') {
+    const objectPath = `${businessId}/receipt-${Date.now()}.${ext || 'png'}`;
+    const { error: upErr } = await supabase.storage.from('acc-attach').upload(objectPath, file, { upsert: true });
+    if (!upErr) return `acc-attach/${objectPath}`;
+    if (!/not found|does not exist|Bucket not found/i.test(upErr.message)) throw upErr;
+    /* سازگاری: باکت خصوصی هنوز نیست */
+  }
   const path = `${businessId}/${kind}-${Date.now()}.${ext || 'png'}`;
   const { error } = await supabase.storage.from('acc-media').upload(path, file, { upsert: true });
   if (error) throw error;
@@ -1097,7 +1118,9 @@ export async function nextEntryNo(businessId: string): Promise<number> {
   return (data?.entry_no || 0) + 1;
 }
 
-/** ثبت سند دستی — بدهکار و بستانکار باید تراز باشند (کنترل در UI هم انجام می‌شود) */
+/** ثبت سند دستی — بدهکار و بستانکار باید تراز باشند
+ *  مسیر اصلی: RPC اتمیک acc_create_journal (سرِسند + ردیف‌ها + شماره‌گذاری در یک تراکنش)
+ *  سازگاری: در نبود مایگریشن، مسیر دو مرحله‌ای قدیمی */
 export async function saveManualJournal(
   businessId: string,
   input: { date_g: string; description: string; lines: ManualJournalLine[] },
@@ -1106,6 +1129,23 @@ export async function saveManualJournal(
   const totalC = input.lines.reduce((s, l) => s + (l.credit || 0), 0);
   if (totalD <= 0) throw new Error('جمع بدهکار باید بزرگ‌تر از صفر باشد');
   if (totalD !== totalC) throw new Error('سند تراز نیست — جمع بدهکار و بستانکار باید برابر شود');
+  const rpcLines = input.lines
+    .filter((l) => l.account_code && (l.debit > 0 || l.credit > 0))
+    .map((l) => ({
+      account_code: l.account_code,
+      account_title: l.account_title || l.account_code,
+      debit: l.debit || 0, credit: l.credit || 0,
+      detail_id: null, project_id: null, line_desc: null,
+    }));
+  const { data: rpcId, error: rpcErr } = await supabase.rpc('acc_create_journal', {
+    p_business: businessId, p_date: input.date_g, p_description: input.description || '',
+    p_ref_type: 'manual', p_ref_action: 'post', p_ref_id: null, p_reversal_of: null,
+    p_lines: rpcLines, p_attachment_url: null,
+  });
+  if (!rpcErr) return rpcId as string;
+  if (!isMissingRpc(rpcErr)) throw new Error(rpcErr.message);
+
+  /* ── مسیر قدیمی ── */
   const entryNo = await nextEntryNo(businessId);
   const { data: entry, error } = await supabase
     .from('acc_journal')

@@ -66,10 +66,10 @@ export async function projectPerformance(businessId: string): Promise<ProjectPer
   const projects = await listProjects(businessId);
   if (!projects.length) return [];
   const [invoices, expenses] = await Promise.all([
-    supabase.from('acc_invoices').select('project_id,total,type').eq('business_id', businessId).in('type', ['sale']).neq('status', 'cancelled'),
+    supabase.from('acc_invoices').select('project_id,total,type,voided_at').eq('business_id', businessId).in('type', ['sale']).in('status', ['issued', 'partial', 'paid']),
     supabase.from('acc_expenses').select('project_id,amount').eq('business_id', businessId),
   ]);
-  const invRows = (invoices.data || []) as { project_id: string | null; total: number }[];
+  const invRows = ((invoices.data || []) as { project_id: string | null; total: number; voided_at: string | null }[]).filter((r) => !r.voided_at);
   const expRows = (expenses.data || []) as { project_id: string | null; amount: number }[];
   return projects.map((project) => {
     const income = invRows.filter((r) => r.project_id === project.id).reduce((s, r) => s + (Number(r.total) || 0), 0);
@@ -581,8 +581,10 @@ export async function balanceSheet(businessId: string): Promise<BalanceSheet> {
   const { data: chart } = await supabase.from('acc_chart').select('*').or(`business_id.is.null,business_id.eq.${businessId}`);
   const { data: journal } = await supabase
     .from('acc_journal')
-    .select('acc_journal_lines(account_code,debit,credit)')
-    .eq('business_id', businessId);
+    .select('voided_at, ref_action, acc_journal_lines(account_code,debit,credit)')
+    .eq('business_id', businessId)
+    .is('voided_at', null)
+    .neq('ref_action', 'reverse');
   type Line = { account_code: string; debit: number | null; credit: number | null };
   const lines = ((journal || []) as { acc_journal_lines: Line[] | null }[]).flatMap((j) => j.acc_journal_lines || []);
   const balances = new Map<string, { debit: number; credit: number }>();

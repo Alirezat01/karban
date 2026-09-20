@@ -6,6 +6,7 @@ import type { AccBusiness } from '@/lib/acc/types';
 import type { AccAttachment } from '@/lib/acc/api7';
 import { addAttachment, deleteAttachment, listAttachments, ENTITY_LABELS } from '@/lib/acc/api7';
 import { formatJalali } from '@/lib/acc/jalali';
+import { resolveAccFileUrl } from '@/lib/acc/rpc';
 import { confirmAction, toast } from './ui';
 
 export default function AttachButton({
@@ -19,6 +20,7 @@ export default function AttachButton({
 }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<AccAttachment[]>([]);
+  const [viewUrls, setViewUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -30,6 +32,10 @@ export default function AttachButton({
       const r = await listAttachments(business.id, entityType, entityId);
       setRows(r);
       onChange?.(r.length);
+      /* URL امن امضاشده برای هر فایل (باکت خصوصی) — URL عمومی قدیمی سرراست می‌ماند */
+      const map: Record<string, string> = {};
+      await Promise.all(r.map(async (a) => { map[a.id] = await resolveAccFileUrl(a.file_url); }));
+      setViewUrls(map);
     } finally {
       setLoading(false);
     }
@@ -106,7 +112,7 @@ export default function AttachButton({
                               {formatJalali(a.created_at)}{a.file_size ? ` • ${(a.file_size / 1024).toFixed(0)} کیلوبایت` : ''}
                             </div>
                           </div>
-                          <a className="acc-icon-btn" href={a.file_url} target="_blank" rel="noreferrer" title="مشاهده"><ExternalLink size={14} /></a>
+                          <a className="acc-icon-btn" href={viewUrls[a.id] || a.file_url} target="_blank" rel="noreferrer" title="مشاهده"><ExternalLink size={14} /></a>
                           <button className="acc-icon-btn" onClick={() => remove(a.id)} title="حذف"><Trash2 size={14} style={{ color: '#dc2626' }} /></button>
                         </div>
                       ))}
