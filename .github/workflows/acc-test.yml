@@ -23,11 +23,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # WebSocket بومی — نسخه‌های <22 بدون پکیج ws در realtime کرش می‌کنند
 
-      - name: نصب وابستگی (حداقلی — فقط کلاینت ساپابیس)
+      - name: نصب وابستگی (حداقلی — فقط کلاینت ساپابیس، همان نسخهٔ پین‌شدهٔ اپ)
         run: |
-          npm install @supabase/supabase-js@^2 --no-save --no-audit --no-fund \
+          SR_VER=$(node -p "require('./package.json').dependencies['@supabase/supabase-js']" | sed 's/\^//')
+          echo "نسخهٔ کلاینت از package.json: $SR_VER"
+          npm install "@supabase/supabase-js@$SR_VER" --no-save --no-audit --no-fund \
             || { echo "نصب حداقلی ناموفق — نصب کامل"; npm ci --no-audit --no-fund; }
 
       - name: اجرای سوئیت زندهٔ حسابداری (۱۵ سناریو)
@@ -59,6 +61,7 @@ jobs:
         run: |
           git config user.name "karban-bot"
           git config user.email "bot@karbanapp.ir"
-          git add tests/acc/out/ || true
+          git add tests/acc/out/results.json || true
+          git add -f tests/acc/out/live-run.log || true
           git commit -m "test: نتایج سوئیت زندهٔ حسابداری [skip ci]" || echo "چیزی برای کامیت نبود"
-          git push || echo "پوش ناموفق — نتایج در آرتیفکت/لاگ موجوده"
+          git push || echo "پوش ناموفق — نتایج در لاگ ورک‌فلو موجوده"
