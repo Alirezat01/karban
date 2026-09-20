@@ -1209,7 +1209,11 @@ export async function saveManualJournal(
     }));
   if (lines.length) {
     const { error: lineErr } = await supabase.from('acc_journal_lines').insert(lines);
-    if (lineErr) throw lineErr;
+    if (lineErr) {
+      /* جبرانی: سرِسند یتیم نماند (LGI-2) */
+      await supabase.from('acc_journal').delete().eq('id', entry.id);
+      throw lineErr;
+    }
   }
   return entry.id as string;
 }
