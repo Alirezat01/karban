@@ -53,7 +53,11 @@ export interface AccPartner {
   business_id: string;
   kind: PartnerKind;
   person_type: PersonType;
+  /** کد یکتای طرف‌حساب — اتمیک از شمارندهٔ دیتابیس (بند ۴ دستور) */
+  partner_code: string | null;
   name: string;
+  /** نام حقوقی کامل برای اشخاص حقوقی */
+  legal_name: string | null;
   national_id: string | null;
   shenase_melli: string | null;
   economic_code: string | null;
@@ -63,10 +67,50 @@ export interface AccPartner {
   city: string | null;
   postal_code: string | null;
   phone: string | null;
+  /** موبایل جدا از تلفن ثابت */
+  mobile: string | null;
+  email: string | null;
   fax: string | null;
   address: string | null;
   notes: string | null;
+  /** غیرفعال‌سازی به‌جای حذف (بند ۳۰) */
+  active: boolean;
   created_at: string;
+  updated_at: string;
+  /** نقش‌های طرف‌حساب (join از acc_partner_roles) */
+  roles?: PartnerRole[];
+}
+
+/* نقش‌های طرف‌حساب — یک شخص می‌تواند چند نقش داشته باشد (بند ۵ و ۶) */
+export type PartnerRole = 'customer' | 'supplier' | 'shareholder' | 'employee' | 'other';
+
+export const PARTNER_ROLE_LABELS: Record<PartnerRole, string> = {
+  customer: 'مشتری',
+  supplier: 'تامین‌کننده',
+  shareholder: 'شریک / سهامدار',
+  employee: 'کارمند',
+  other: 'سایر',
+};
+
+export interface AccPartnerRole {
+  id: string;
+  business_id: string;
+  partner_id: string;
+  role: PartnerRole;
+  chart_code: string | null;
+  created_at: string;
+}
+
+/* مرکز هزینه — Master مستقل (بند ۲۲) */
+export interface AccCostCenter {
+  id: string;
+  business_id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AccItem {
@@ -96,6 +140,10 @@ export interface AccAccount {
   kind: AccountKind;
   account_number: string | null;
   initial_balance: number;
+  /** حساب معین مرتبط در کدینگ (پیش‌فرض 1102 بانک / 1101 صندوق) */
+  chart_code: string | null;
+  /** تفصیلی اختصاصی همین بانک/صندوق در دفتر بانک */
+  detail_id: string | null;
   active: boolean;
   created_at: string;
 }
@@ -176,22 +224,34 @@ export interface AccExpense {
   tax_note: string | null;
   /** پروژه مرتبط (نسخه ۶) */
   project_id: string | null;
+  /** حساب معین هزینه —mapping دیتابیسی به کدینگ (بند ۲۰) */
+  expense_account_id: string | null;
+  /** تفصیلی سطر هزینه (تامین‌کننده/شریک/…) */
+  detail_id: string | null;
+  /** مرکز هزینه (بند ۲۲) */
+  cost_center_id: string | null;
   created_by: string | null;
   created_at: string;
   /** ابطال (نسخه ۷): زمان و دلیل باطل‌شدن سند — حذف کامل از سیستم انجام نمی‌شود */
   voided_at: string | null;
   void_reason: string | null;
   account?: AccAccount | null;
+  expense_account?: AccChartRow | null;
+  detail?: { id: string; title: string; detail_code: string | null } | null;
+  cost_center?: AccCostCenter | null;
 }
 
 export interface AccTransaction {
   id: string;
   business_id: string;
-  kind: 'receipt' | 'payment';
+  /** kind=transfer: انتقال بین بانک/صندوق — بدون درآمد/هزینه (بند ۲۸) */
+  kind: 'receipt' | 'payment' | 'transfer';
   amount: number;
   date_g: string;
   method: 'cash' | 'transfer' | 'cheque' | 'card' | 'other';
   account_id: string | null;
+  /** حساب مقصد برای انتقال (بند ۲۸) */
+  to_account_id: string | null;
   invoice_id: string | null;
   partner_id: string | null;
   description: string | null;
@@ -201,6 +261,7 @@ export interface AccTransaction {
   voided_at: string | null;
   void_reason: string | null;
   account?: AccAccount | null;
+  to_account?: AccAccount | null;
   partner?: AccPartner | null;
   invoice?: { id: string; number: string; type: InvoiceType } | null;
 }
@@ -224,9 +285,18 @@ export interface AccJournalLine {
   business_id: string;
   account_code: string;
   account_title: string;
+  /** اتصال مستقیم به سطر کدینگ (بند ۶۲) */
+  account_id: string | null;
   debit: number;
   credit: number;
   partner_id: string | null;
+  detail_id: string | null;
+  cost_center_id: string | null;
+  project_id: string | null;
+  line_desc: string | null;
+  detail?: { id: string; title: string; kind: string; detail_code: string | null } | null;
+  cost_center?: { id: string; name: string; code: string } | null;
+  project?: { id: string; name: string } | null;
 }
 
 export interface AccChartRow {
@@ -234,9 +304,21 @@ export interface AccChartRow {
   business_id: string | null;
   code: string;
   title: string;
-  kind: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+  kind: AccChartKind;
   is_system: boolean;
+  /** سطح درخت کدینگ: 1=گروه، 2=کل، 3=معین، 4=تفصیلی موضعی */
+  level: number | null;
+  parent_id: string | null;
+  is_leaf: boolean | null;
+  nature: 'debit' | 'credit' | null;
+  active: boolean | null;
+  /** این حساب بدون تفصیلی Post نمی‌شود (بند ۲۵) */
+  requires_detail: boolean | null;
+  /** انواع تفصیلی مجاز برای این حساب */
+  allowed_detail_types: string[] | null;
 }
+
+export type AccChartKind = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 
 export interface TrialBalanceRow {
   code: string;

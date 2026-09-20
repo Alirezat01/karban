@@ -33,7 +33,7 @@ export async function run(ctx) {
     date_g: TODAY, description: `${P}-ب`, lines: [{ code: '1101', debit: 300 }, { code: '5201', credit: 300 }],
   });
   await insertJournalLegacy(A.sb, bizA, {
-    date_g: TODAY, description: `${P}-پ`, lines: [{ code: '2101', debit: 500 }, { code: '1201', credit: 500 }],
+    date_g: TODAY, description: `${P}-پ`, lines: [{ code: '2109', debit: 500 }, { code: '1201', credit: 500 }],
   });
   const voidedId = await insertJournalLegacy(A.sb, bizA, {
     date_g: TODAY, description: `${P}-ابطالی`, lines: [{ code: '1101', debit: 99999 }, { code: '4101', credit: 99999 }],
@@ -44,7 +44,7 @@ export async function run(ctx) {
   /* گردش فعال فقط از سندهای این سناریو */
   const { m: sums, active, td, tc } = await activeSums(A.sb, bizA, P);
 
-  const expect = { '1101': { d: 1500, c: 0 }, '4101': { d: 0, c: 1200 }, '5201': { d: 0, c: 300 }, '2101': { d: 500, c: 0 }, '1201': { d: 0, c: 500 } };
+  const expect = { '1101': { d: 1500, c: 0 }, '4101': { d: 0, c: 1200 }, '5201': { d: 0, c: 300 }, '2109': { d: 500, c: 0 }, '1201': { d: 0, c: 500 } };
   let exact = true;
   for (const [code, want] of Object.entries(expect)) {
     const got = sums.get(code) || { d: 0, c: 0 };

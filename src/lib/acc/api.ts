@@ -126,7 +126,7 @@ async function mutateSafe(
   row: Record<string, unknown>,
   run: (cleanRow: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>,
 ): Promise<void> {
-  let clean = { ...row };
+  const clean = { ...row };
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { error } = await run(clean);
@@ -149,16 +149,47 @@ export async function savePartner(businessId: string, row: Partial<AccPartner>) 
     );
     return row.id;
   }
-  let savedId = '';
-  await mutateSafe('acc_partners', { ...row, business_id: businessId } as Record<string, unknown>, async (clean) => {
-    const { data, error } = await supabase.from('acc_partners').insert(clean).select('id').single();
-    if (!error && data) savedId = data.id as string;
-    return { error };
+  /* درج بدون select (مقاوم به مشکل RLS-RETURNING) — کد اتمیک را تریگر دیتابیس می‌دهد */
+  const { error } = await supabase.from('acc_partners').insert({
+    business_id: businessId,
+    kind: row.kind ?? 'customer',
+    person_type: row.person_type ?? 'legal',
+    name: row.name,
+    national_id: row.national_id ?? null,
+    shenase_melli: row.shenase_melli ?? null,
+    economic_code: row.economic_code ?? null,
+    registration_number: row.registration_number ?? null,
+    province: row.province ?? null,
+    county: row.county ?? null,
+    city: row.city ?? null,
+    postal_code: row.postal_code ?? null,
+    phone: row.phone ?? null,
+    mobile: row.mobile ?? null,
+    email: row.email ?? null,
+    fax: row.fax ?? null,
+    address: row.address ?? null,
+    notes: row.notes ?? null,
   });
-  return savedId;
+  if (error) throw error;
+  const { data: found } = await supabase
+    .from('acc_partners')
+    .select('id')
+    .eq('business_id', businessId)
+    .eq('name', row.name)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!found) throw new Error('طرف‌حساب ذخیره شد ولی بازیابی شناسه ناموفق بود');
+  /* همگام‌سازی نقش‌ها با kind قدیمی — زنجیرهٔ نقش→تفصیلی خودکار برقرار می‌شود */
+  const roles: string[] = row.kind === 'both' ? ['customer', 'supplier'] : [row.kind || 'customer'];
+  await supabase.from('acc_partner_roles').insert(
+    roles.map((role) => ({ business_id: businessId, partner_id: found.id as string, role })),
+  );
+  return found.id as string;
 }
 
 export async function deletePartner(id: string) {
+  /* گارد دیتابیس: حذف طرف‌حساب دارای گردش ممنوع — پیام راهنمای غیرفعال‌سازی برمی‌گردد */
   const { error } = await supabase.from('acc_partners').delete().eq('id', id);
   if (error) throw error;
 }
@@ -491,6 +522,10 @@ export async function saveExpense(businessId: string, row: Partial<AccExpense>) 
     receipt_url: row.receipt_url ?? null,
     tax_status: row.tax_status || 'incomplete',
     tax_note: row.tax_note ?? null,
+    /* اتصال کامل به کدینگ (بند ۲۰): حساب هزینه + تفصیلی + مرکز هزینه */
+    expense_account_id: row.expense_account_id ?? null,
+    detail_id: row.detail_id ?? null,
+    cost_center_id: row.cost_center_id ?? null,
   };
   if (row.id) {
     const { error } = await supabase.from('acc_expenses').update(payload).eq('id', row.id);
@@ -513,10 +548,10 @@ export async function deleteExpense(id: string) {
 
 /* ═══════════════════════ دریافت / پرداخت ═══════════════════════ */
 
-export async function listTransactions(businessId: string, opts: { kind?: 'receipt' | 'payment'; from?: string; to?: string } = {}) {
+export async function listTransactions(businessId: string, opts: { kind?: 'receipt' | 'payment' | 'transfer'; from?: string; to?: string } = {}) {
   let q = supabase
     .from('acc_transactions')
-    .select('*, account:acc_accounts(id, name, kind), partner:acc_partners(id, name), invoice:acc_invoices(id, number, type)')
+    .select('*, account:acc_accounts(id, name, kind), to_account:acc_accounts(id, name, kind), partner:acc_partners(id, name), invoice:acc_invoices(id, number, type)')
     .eq('business_id', businessId)
     .order('date_g', { ascending: false })
     .order('created_at', { ascending: false });
@@ -528,15 +563,17 @@ export async function listTransactions(businessId: string, opts: { kind?: 'recei
   return (data || []) as AccTransaction[];
 }
 
-export async function saveTransaction(businessId: string, row: Partial<AccTransaction> & { kind: 'receipt' | 'payment'; amount: number }) {
+export async function saveTransaction(businessId: string, row: Partial<AccTransaction> & { kind: 'receipt' | 'payment' | 'transfer'; amount: number }) {
   const payload = {
     kind: row.kind,
     amount: row.amount,
     date_g: row.date_g,
     method: row.method || 'transfer',
     account_id: row.account_id,
-    invoice_id: row.invoice_id,
-    partner_id: row.partner_id,
+    /* انتقال بین بانک/صندوق (بند ۲۸): حساب مقصد — هیچ درآمد/هزینه‌ای ساخته نمی‌شود */
+    to_account_id: row.kind === 'transfer' ? row.to_account_id : null,
+    invoice_id: row.kind === 'transfer' ? null : row.invoice_id,
+    partner_id: row.kind === 'transfer' ? null : row.partner_id,
     description: row.description,
   };
   let id = row.id;

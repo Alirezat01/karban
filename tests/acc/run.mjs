@@ -67,6 +67,8 @@ try {
 const SPECS = [
   ['accounting.rls.business-isolation', () => import('./accounting.rls.business-isolation.spec.mjs')],
   ['accounting.permissions', () => import('./accounting.permissions.spec.mjs')],
+  ['accounting.master-data', () => import('./accounting.master-data.spec.mjs')],
+  ['accounting.subledger', () => import('./accounting.subledger.spec.mjs')],
   ['accounting.journal.concurrent', () => import('./accounting.journal.concurrent.spec.mjs')],
   ['accounting.journal.atomicity', () => import('./accounting.journal.atomicity.spec.mjs')],
   ['accounting.invoice-void', () => import('./accounting.invoice-void.spec.mjs')],

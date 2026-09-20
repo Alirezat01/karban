@@ -13,6 +13,9 @@ import {
   listAccounts, listExpenses, saveExpense, saveExpenseCategory,
   TAX_STATUS_LABEL, uploadAccMedia,
 } from '@/lib/acc/api';
+import { listChartTree, listDetails } from '@/lib/acc/api7';
+import { listCostCenters } from '@/lib/acc/api10';
+import type { AccDetail } from '@/lib/acc/api7';
 import { EXPENSE_CATEGORIES } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, jalaliMonthLength, toGregorian, todayJalali, dateToISO, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
@@ -63,6 +66,9 @@ export default function ExpensesPage({ business, access }: {
   const [accounts, setAccounts] = useState<AccountLite[]>([]);
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
   const [categories, setCategories] = useState<CategoryLite[]>([]);
+  const [expenseAccounts, setExpenseAccounts] = useState<{ id: string; label: string }[]>([]);
+  const [details, setDetails] = useState<AccDetail[]>([]);
+  const [costCenters, setCostCenters] = useState<{ id: string; code: string; name: string }[]>([]);
   const [catManager, setCatManager] = useState(false);
   const [catEditing, setCatEditing] = useState<Partial<AccExpenseCategory> | null>(null);
   const [query, setQuery] = useState('');
@@ -90,6 +96,20 @@ export default function ExpensesPage({ business, access }: {
       setReceiptUrls(urlMap);
       setAccounts(a);
       listProjects(business.id).then((p) => setProjects(p.map((x) => ({ id: x.id, name: x.name })))).catch(() => setProjects([]));
+      /* حساب‌های هزینه/بهای تمام‌شده از کدینگ واقعی (بند ۲۰) */
+      listChartTree(business.id).then((tree) => {
+        const accs: { id: string; label: string }[] = [];
+        const walk = (nodes: typeof tree) => {
+          for (const n of nodes) {
+            if (n.kind === 'expense' && n.is_leaf) accs.push({ id: n.id, label: `${n.code} — ${n.title}` });
+            if (n.children?.length) walk(n.children);
+          }
+        };
+        walk(tree);
+        setExpenseAccounts(accs);
+      }).catch(() => setExpenseAccounts([]));
+      listDetails(business.id).then((d) => setDetails(d.filter((x) => x.active !== false))).catch(() => setDetails([]));
+      listCostCenters(business.id, true).then((cc) => setCostCenters(cc.map((x) => ({ id: x.id, code: x.code, name: x.name })))).catch(() => setCostCenters([]));
     } finally {
       setLoading(false);
     }
@@ -400,6 +420,28 @@ export default function ExpensesPage({ business, access }: {
                 </select>
               </Field>
             )}
+
+            {/* اتصال هزینه به کدینگ حسابداری (بند ۲۰): حساب واقعی، تفصیلی، مرکز هزینه */}
+            <div className="acc-form-grid-3">
+              <Field label="حساب هزینه (کدینگ)" hint="حساب واقعی در سند حسابداری — پیش‌فرض از دسته انتخاب می‌شود">
+                <select className="acc-select" value={editing.expense_account_id || ''} onChange={(e) => setEditing({ ...editing, expense_account_id: e.target.value || null })}>
+                  <option value="">— خودکار از دسته —</option>
+                  {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </select>
+              </Field>
+              <Field label="مرکز هزینه">
+                <select className="acc-select" value={editing.cost_center_id || ''} onChange={(e) => setEditing({ ...editing, cost_center_id: e.target.value || null })}>
+                  <option value="">— بدون مرکز هزینه —</option>
+                  {costCenters.map((cc) => <option key={cc.id} value={cc.id}>{cc.code} {cc.name}</option>)}
+                </select>
+              </Field>
+              <Field label="تفصیلی (طرف‌حساب)">
+                <select className="acc-select" value={editing.detail_id || ''} onChange={(e) => setEditing({ ...editing, detail_id: e.target.value || null })}>
+                  <option value="">— خودکار از فروشنده —</option>
+                  {details.map((d) => <option key={d.id} value={d.id}>{d.detail_code ? `${d.detail_code} — ` : ''}{d.title}</option>)}
+                </select>
+              </Field>
+            </div>
 
             {/* پیوست سند + اعتبارسنجی — پیشرفته */}
             {canTax ? (

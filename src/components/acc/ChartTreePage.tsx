@@ -1,9 +1,10 @@
 /* کدینگ حسابداری چندسطحی — کل ← معین ← تفصیلی + مدیریت تفصیلی شناور */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronLeft, Folder, FolderOpen, Pencil, Plus, Trash2, Hash, Layers } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Folder, FolderOpen, Pencil, Plus, Trash2, Hash, Layers, ShieldCheck } from 'lucide-react';
 import type { AccBusiness, AccChartRow } from '@/lib/acc/types';
-import { ChartNode, AccDetail, listChartTree, saveChartNode, deleteChartNode, listDetails, saveDetail, deleteDetail, DETAIL_KIND_LABELS } from '@/lib/acc/api7';
+import { ChartNode, AccDetail, listChartTree, saveChartNode, deleteChartNode, listDetails, saveDetail, setDetailActive, deleteDetail, DETAIL_KIND_LABELS } from '@/lib/acc/api7';
+import { updateChartRules } from '@/lib/acc/api10';
 import { Field, Modal, confirmAction, toast, EmptyState } from './ui';
 
 const KIND_LABELS: Record<AccChartRow['kind'], string> = {
@@ -24,7 +25,9 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
   const [form, setForm] = useState({ code: '', title: '', kind: 'asset' as AccChartRow['kind'] });
   const [detEditing, setDetEditing] = useState<AccDetail | null>(null);
   const [detOpen, setDetOpen] = useState(false);
-  const [detForm, setDetForm] = useState<{ title: string; kind: AccDetail['kind']; code: string }>({ title: '', kind: 'other', code: '' });
+  const [detForm, setDetForm] = useState<{ title: string; kind: AccDetail['kind'] }>({ title: '', kind: 'other' });
+  const [rulesNode, setRulesNode] = useState<ChartNode | null>(null);
+  const [rulesForm, setRulesForm] = useState<{ requires_detail: boolean; allowed: string[] }>({ requires_detail: false, allowed: [] });
 
   async function load() {
     setLoading(true);
@@ -89,12 +92,46 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
     try {
       await saveDetail(business.id, {
         id: detEditing?.id, title: detForm.title, kind: detForm.kind,
-        code: detForm.code || null, ref_id: detEditing?.ref_id ?? null,
+        ref_id: detEditing?.ref_id ?? null,
       });
-      toast('تفصیلی ذخیره شد');
+      toast('تفصیلی ذخیره شد — کد یکتا به‌صورت اتمیک تخصیص یافت');
       setDetEditing(null);
       setDetOpen(false);
-      setDetForm({ title: '', kind: 'other', code: '' });
+      setDetForm({ title: '', kind: 'other' });
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'خطا', 'error');
+    }
+  }
+
+  async function deactivateDetail(d: AccDetail) {
+    if (!(await confirmAction(`تفصیلی «${d.title}» ${d.active ? 'غیرفعال' : 'فعال'} شود؟`))) return;
+    try {
+      await setDetailActive(d.id, !d.active);
+      toast(d.active ? 'تفصیلی غیرفعال شد' : 'تفصیلی فعال شد');
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'خطا', 'error');
+    }
+  }
+
+  function openRules(node: ChartNode) {
+    setRulesNode(node);
+    setRulesForm({
+      requires_detail: !!node.requires_detail,
+      allowed: node.allowed_detail_types || [],
+    });
+  }
+
+  async function submitRules() {
+    if (!rulesNode) return;
+    try {
+      await updateChartRules(rulesNode.code, business.id, {
+        requires_detail: rulesForm.requires_detail,
+        allowed_detail_types: rulesForm.allowed,
+      });
+      toast('قوانین تفصیلی حساب ذخیره شد');
+      setRulesNode(null);
       await load();
     } catch (e) {
       toast(e instanceof Error ? e.message : 'خطا', 'error');
@@ -139,6 +176,10 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
           <span style={{ fontSize: '.84rem', fontWeight: node.level === 1 ? 700 : 500, flex: 1 }}>{node.title}</span>
           <span style={{ fontSize: '.64rem', opacity: .55 }}>{LEVEL_LABELS[node.level] || ''}</span>
           <span style={{ fontSize: '.62rem', color: KIND_COLORS[node.kind], fontWeight: 700 }}>{KIND_LABELS[node.kind]}</span>
+          {node.requires_detail && (
+            <span className="acc-chip" style={{ fontSize: '.6rem', background: 'rgba(217,119,6,.12)', color: '#b45309' }} title={`انواع مجاز: ${(node.allowed_detail_types || []).join('، ')}`}>الزام تفصیلی</span>
+          )}
+          <button className="acc-icon-btn" style={{ minHeight: 0, padding: 2 }} title="قوانین تفصیلی" onClick={() => openRules(node)}><ShieldCheck size={13} /></button>
           <button className="acc-icon-btn" style={{ minHeight: 0, padding: 2 }} title="افزودن زیرمجموعه" onClick={() => openAdd(node)}><Plus size={13} /></button>
           {!node.is_system && (
             <>
@@ -166,7 +207,7 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
           <button className={`acc-btn ${tab === 'details' ? 'acc-btn-primary' : 'acc-btn-outline'}`} onClick={() => setTab('details')}>تفصیلی شناور ({details.length})</button>
           {tab === 'tree' && <button className="acc-btn acc-btn-primary" onClick={() => openAdd(null)}><Plus size={15} /> سرفصل جدید</button>}
           {tab === 'details' && (
-            <button className="acc-btn acc-btn-primary" onClick={() => { setDetEditing(null); setDetForm({ title: '', kind: 'customer', code: '' }); setDetOpen(true); }}>
+            <button className="acc-btn acc-btn-primary" onClick={() => { setDetEditing(null); setDetForm({ title: '', kind: 'customer' }); setDetOpen(true); }}>
               <Plus size={15} /> تفصیلی جدید
             </button>
           )}
@@ -185,9 +226,13 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
             <div key={d.id} className="acc-card" style={{ padding: '.6rem .8rem', display: 'flex', alignItems: 'center', gap: '.6rem', flexWrap: 'wrap' }}>
               <span className="acc-chip" style={{ fontSize: '.68rem' }}>{DETAIL_KIND_LABELS[d.kind]}</span>
               <span style={{ fontWeight: 600, fontSize: '.86rem', flex: 1 }}>{d.title}</span>
-              {d.code && <span style={{ fontFamily: 'monospace', fontSize: '.72rem', opacity: .6 }}>{d.code}</span>}
-              <button className="acc-icon-btn" onClick={() => { setDetEditing(d); setDetForm({ title: d.title, kind: d.kind, code: d.code || '' }); setDetOpen(true); }}><Pencil size={13} /></button>
-              <button className="acc-icon-btn" onClick={() => removeDetail(d)}><Trash2 size={13} style={{ color: '#dc2626' }} /></button>
+              {d.detail_code && <span style={{ fontFamily: 'monospace', fontSize: '.72rem', opacity: .6 }}>{d.detail_code}</span>}
+              {d.is_locked && <span className="acc-chip" style={{ fontSize: '.6rem' }} title="تفصیلی سیستمی (اتصال به Master)">سیستمی</span>}
+              {d.active === false && <span className="acc-chip" style={{ fontSize: '.6rem', background: 'rgba(220,38,38,.1)', color: '#dc2626' }}>غیرفعال</span>}
+              <button className="acc-icon-btn" onClick={() => { setDetEditing(d); setDetForm({ title: d.title, kind: d.kind }); setDetOpen(true); }}><Pencil size={13} /></button>
+              {d.is_locked
+                ? <button className="acc-icon-btn" title={d.active === false ? 'فعال‌سازی' : 'غیرفعال‌سازی'} onClick={() => deactivateDetail(d)}><Trash2 size={13} style={{ color: '#b45309' }} /></button>
+                : <button className="acc-icon-btn" onClick={() => removeDetail(d)}><Trash2 size={13} style={{ color: '#dc2626' }} /></button>}
             </div>
           ))}
         </div>
@@ -232,12 +277,46 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
                 {Object.entries(DETAIL_KIND_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </Field>
-            <Field label="کد (اختیاری)">
-              <input className="acc-input" value={detForm.code} onChange={(e) => setDetForm((f) => ({ ...f, code: e.target.value }))} />
-            </Field>
+            <p style={{ margin: 0, fontSize: '.72rem', opacity: .6 }}>کد تفصیلی به‌صورت اتمیک از شمارندهٔ دیتابیس تخصیص می‌یابد (بدون تکرار حتی در ثبت هم‌زمان).</p>
             <div style={{ display: 'flex', gap: '.5rem' }}>
               <button className="acc-btn acc-btn-primary" onClick={submitDetail}>ذخیره</button>
               <button className="acc-btn acc-btn-outline" onClick={() => { setDetOpen(false); setDetEditing(null); }}>انصراف</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* مودال قوانین تفصیلی حساب (بند ۲۵) */}
+      {rulesNode && (
+        <Modal open onClose={() => setRulesNode(null)} title={`قوانین تفصیلی — ${rulesNode.code} ${rulesNode.title}`}>
+          <div style={{ display: 'grid', gap: '.7rem' }}>
+            <p style={{ margin: 0, fontSize: '.78rem', opacity: .7 }}>
+              اگر «الزام تفصیلی» فعال باشد، ثبت سند روی این حساب بدون تفصیلی مجاز نیست — در دیتابیس و موتور سند اعمال می‌شود.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.84rem' }}>
+              <input type="checkbox" checked={rulesForm.requires_detail} onChange={(e) => setRulesForm((f) => ({ ...f, requires_detail: e.target.checked }))} />
+              این حساب به تفصیلی نیاز دارد (requires_detail)
+            </label>
+            <Field label="انواع تفصیلی مجاز" hint="خالی = همهٔ انواع مجاز است">
+              <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap' }}>
+                {['customer', 'supplier', 'shareholder', 'employee', 'bank', 'cash', 'project', 'other'].map((k) => (
+                  <label key={k} style={{ display: 'flex', alignItems: 'center', gap: '.25rem', fontSize: '.78rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={rulesForm.allowed.includes(k)}
+                      onChange={(e) => setRulesForm((f) => ({
+                        ...f,
+                        allowed: e.target.checked ? [...f.allowed, k] : f.allowed.filter((x) => x !== k),
+                      }))}
+                    />
+                    {DETAIL_KIND_LABELS[k as AccDetail['kind']] || k}
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <button className="acc-btn acc-btn-primary" onClick={submitRules}>ذخیره قوانین</button>
+              <button className="acc-btn acc-btn-outline" onClick={() => setRulesNode(null)}>انصراف</button>
             </div>
           </div>
         </Modal>

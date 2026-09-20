@@ -82,7 +82,7 @@ export function summarize() {
 /* ── پاکسازی داده (لایسنس acc_access و خود کسب‌وکار حفظ می‌شود تا اجرای بعدی reuse کند) ── */
 const DATA_TABLES = ['acc_journal_lines', 'acc_journal', 'acc_invoice_items', 'acc_invoices', 'acc_transactions', 'acc_expenses', 'acc_checks',
   'acc_petty_ops', 'acc_petty', 'acc_prepayments', 'acc_bank_lines', 'acc_fiscal_years', 'acc_periods', 'acc_attachments',
-  'acc_details', 'acc_partners', 'acc_items', 'acc_accounts', 'acc_projects', 'acc_expense_categories', 'acc_reconciliations', 'acc_entry_counters'];
+  'acc_details', 'acc_partner_roles', 'acc_cost_centers', 'acc_partners', 'acc_items', 'acc_accounts', 'acc_projects', 'acc_expense_categories', 'acc_reconciliations', 'acc_entry_counters', 'acc_code_counters'];
 export async function cleanup(sb, bizIds) {
   const failed = [];
   for (const b of bizIds) {

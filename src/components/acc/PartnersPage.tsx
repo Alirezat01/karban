@@ -1,9 +1,11 @@
-/* مشتریان و طرف‌حساب‌ها (مشتری/تامین‌کننده) + صورت‌حساب طرف‌حساب (پیشرفته) */
+/* مشتریان و طرف‌حساب‌ها — Partner Master واقعی (کد یکتا + چند نقش + صورت‌حساب) */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileSpreadsheet, Pencil, Plus, Printer, Search, Trash2, Users } from 'lucide-react';
-import type { AccBusiness, AccPartner, PartnerStatement } from '@/lib/acc/types';
-import { deletePartner, listPartners, partnerStatement, savePartner } from '@/lib/acc/api';
+import { FileSpreadsheet, Pencil, Plus, Printer, Search, Trash2, Users, Power, UserCog } from 'lucide-react';
+import type { AccBusiness, AccPartner, PartnerStatement, PartnerRole } from '@/lib/acc/types';
+import { PARTNER_ROLE_LABELS } from '@/lib/acc/types';
+import { deletePartner, partnerStatement } from '@/lib/acc/api';
+import { listPartnersV2, savePartnerV2, deactivatePartner, type PartnerWithRoles } from '@/lib/acc/api10';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, toFaDigits } from '@/lib/acc/jalali';
 import { featureEnabled } from '@/lib/acc/plan';
@@ -13,9 +15,10 @@ import { Field, Modal, DigitsInput, confirmAction, toast, EmptyState } from './u
 const empty: Partial<AccPartner> = { kind: 'customer', person_type: 'real', name: '' };
 
 export default function PartnersPage({ business, plan }: { business: AccBusiness; plan?: string }) {
-  const [rows, setRows] = useState<AccPartner[]>([]);
+  const [rows, setRows] = useState<PartnerWithRoles[]>([]);
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Partial<AccPartner> | null>(null);
+  const [editRoles, setEditRoles] = useState<PartnerRole[]>(['customer']);
   const [loading, setLoading] = useState(true);
   const [statement, setStatement] = useState<PartnerStatement | null>(null);
   const [statementLoading, setStatementLoading] = useState(false);
@@ -24,24 +27,47 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
 
   async function load() {
     setLoading(true);
-    try { setRows(await listPartners(business.id)); } finally { setLoading(false); }
+    try { setRows(await listPartnersV2(business.id)); } finally { setLoading(false); }
   }
   useEffect(() => { load(); }, [business.id]);
 
   const filtered = useMemo(
-    () => rows.filter((r) => (r.name + (r.phone || '') + (r.national_id || '')).includes(query)),
+    () => rows.filter((r) => (r.name + (r.phone || '') + (r.mobile || '') + (r.partner_code || '') + (r.national_id || '') + r.roles.join()).includes(query)),
     [rows, query],
   );
 
   async function save() {
     if (!editing?.name?.trim()) { toast('نام طرف‌حساب الزامی است', 'error'); return; }
     try {
-      await savePartner(business.id, editing);
-      toast('ذخیره شد');
+      if (editing.id) {
+        await savePartnerV2(business.id, { ...editing, roles: editRoles } as never);
+      } else {
+        await savePartnerV2(business.id, {
+          name: editing.name || '', kind: editing.kind, person_type: editing.person_type,
+          shenase_melli: editing.shenase_melli || null, national_id: editing.national_id || null,
+          economic_code: editing.economic_code || null, registration_number: editing.registration_number || null,
+          province: editing.province || null, county: editing.county || null, city: editing.city || null,
+          postal_code: editing.postal_code || null, phone: editing.phone || null, mobile: editing.mobile || null,
+          fax: editing.fax || null, address: editing.address || null, notes: editing.notes || null,
+          roles: editRoles,
+        });
+      }
+      toast('ذخیره شد — کد یکتا از شمارندهٔ دیتابیس تخصیص یافت');
       setEditing(null);
       load();
     } catch (e) {
       toast('ذخیره ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
+    }
+  }
+
+  async function toggleActive(row: PartnerWithRoles) {
+    if (!(await confirmAction(`طرف‌حساب «${row.name}» ${row.active ? 'غیرفعال' : 'دوباره فعال'} شود؟`))) return;
+    try {
+      await deactivatePartner(business.id, row.id, !row.active);
+      toast(row.active ? 'غیرفعال شد — کد آن هرگز به دیگری داده نمی‌شود' : 'فعال شد');
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'خطا', 'error');
     }
   }
 
@@ -83,14 +109,14 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
     else printHtml(title, html, { logoUrl: brandLogoUrl(business, { status: plan } as BrandAccess) });
   }
 
-  async function remove(row: AccPartner) {
-    if (!(await confirmAction(`«${row.name}» حذف شود؟ این عمل قابل بازگشت نیست.`))) return;
+  async function remove(row: PartnerWithRoles) {
+    if (!(await confirmAction(`«${row.name}» حذف شود؟ فقط طرف‌حساب بدون گردش قابل حذف است.`))) return;
     try {
       await deletePartner(row.id);
       toast('حذف شد');
       load();
-    } catch {
-      toast('حذف ناموفق (احتمالاً در اسناد استفاده شده است)', 'error');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'حذف ناموفق — برای طرف‌حساب دارای گردش از غیرفعال‌سازی استفاده کنید', 'error');
     }
   }
 
@@ -101,33 +127,48 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
           <Search size={15} style={{ position: 'absolute', top: 14, right: 12, color: 'var(--muted)' }} />
           <input className="acc-input" placeholder="جست‌وجوی نام، تلفن یا کد ملی…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ paddingRight: '2.3rem' }} />
         </div>
-        <button className="acc-btn acc-btn-primary" onClick={() => setEditing({ ...empty })}><Plus size={15} /> طرف‌حساب جدید</button>
+        <button className="acc-btn acc-btn-primary" onClick={() => { setEditing({ ...empty }); setEditRoles(['customer']); }}><Plus size={15} /> طرف‌حساب جدید</button>
       </div>
 
       <div className="acc-table-wrap">
         <table className="acc-table">
           <thead>
             <tr>
-              <th>نام</th><th>نوع</th><th>شخصیت</th><th>کد/شناسه ملی</th><th>شماره اقتصادی</th><th>تلفن</th><th>کد پستی</th><th></th>
+              <th>کد</th><th>نام</th><th>نقش‌ها</th><th>شخصیت</th><th>کد/شناسه ملی</th><th>شماره اقتصادی</th><th>تلفن</th><th>وضعیت</th><th></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((r) => (
-              <tr key={r.id}>
-                <td style={{ fontWeight: 600 }}>{r.name}</td>
-                <td>{r.kind === 'customer' ? 'مشتری' : r.kind === 'supplier' ? 'تامین‌کننده' : 'دوطرفه'}</td>
+              <tr key={r.id} style={{ opacity: r.active === false ? .5 : 1 }}>
+                <td><span className="acc-chip" style={{ fontFamily: 'monospace', fontSize: '.7rem' }}>{r.partner_code || '—'}</span></td>
+                <td style={{ fontWeight: 600 }}>
+                  {r.name}
+                  {r.mobile && <div style={{ fontSize: '.68rem', opacity: .6 }}>{r.mobile}</div>}
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: '.25rem', flexWrap: 'wrap' }}>
+                    {r.roles.map((role) => (
+                      <span key={role} className="acc-chip" style={{ fontSize: '.62rem' }}>{PARTNER_ROLE_LABELS[role]}</span>
+                    ))}
+                  </div>
+                </td>
                 <td>{r.person_type === 'legal' ? 'حقوقی' : 'حقیقی'}</td>
                 <td className="num">{r.person_type === 'legal' ? r.shenase_melli || '—' : r.national_id || '—'}</td>
                 <td className="num">{r.economic_code || '—'}</td>
                 <td className="num">{r.phone || '—'}</td>
-                <td className="num">{r.postal_code || '—'}</td>
+                <td>
+                  {r.active === false
+                    ? <span className="acc-chip" style={{ fontSize: '.62rem', background: 'rgba(220,38,38,.1)', color: '#dc2626' }}>غیرفعال</span>
+                    : <span className="acc-chip" style={{ fontSize: '.62rem' }}>فعال</span>}
+                </td>
                 <td>
                   <div className="row-actions">
                     {canStatement && (
                       <button className="acc-icon-btn" title="صورت‌حساب و گردش" onClick={() => openStatement(r)}><FileSpreadsheet size={14} /></button>
                     )}
-                    <button className="acc-icon-btn" title="ویرایش" onClick={() => setEditing(r)}><Pencil size={14} /></button>
-                    <button className="acc-icon-btn danger" title="حذف" onClick={() => remove(r)}><Trash2 size={14} /></button>
+                    <button className="acc-icon-btn" title="ویرایش" onClick={() => { setEditing(r); setEditRoles(r.roles.length ? r.roles : ['customer']); }}><Pencil size={14} /></button>
+                    <button className="acc-icon-btn" title={r.active === false ? 'فعال‌سازی' : 'غیرفعال‌سازی (به‌جای حذف)'} onClick={() => toggleActive(r)}><Power size={14} style={{ color: r.active === false ? '#15803d' : '#b45309' }} /></button>
+                    <button className="acc-icon-btn danger" title="حذف (فقط بدون گردش)" onClick={() => remove(r)}><Trash2 size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -135,39 +176,59 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
           </tbody>
         </table>
         {!loading && filtered.length === 0 && (
-          <EmptyState icon={<Users size={34} />} title="طرف‌حسابی ثبت نشده" hint="مشتریان و تامین‌کنندگان را برای صدور فاکتور رسمی ثبت کنید" />
+          <EmptyState icon={<Users size={34} />} title="طرف‌حسابی ثبت نشده" hint="مشتریان، تامین‌کنندگان، شرکا و کارمندان را با نقش‌هایشان ثبت کنید — هر شخص کد یکتا می‌گیرد" />
         )}
       </div>
 
-      <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'ویرایش طرف‌حساب' : 'طرف‌حساب جدید'}>
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? `ویرایش طرف‌حساب${editing.partner_code ? ` — کد ${editing.partner_code}` : ''}` : 'طرف‌حساب جدید — با نقش‌ها'}>
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
+            <Field label="نقش‌های طرف‌حساب *" hint="یک شخص می‌تواند هم‌زمان مشتری، شریک و کارمند باشد — هر نقش دفتر مستقل خودش را دارد">
+              <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
+                {(Object.keys(PARTNER_ROLE_LABELS) as PartnerRole[]).map((role) => (
+                  <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.82rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={editRoles.includes(role)}
+                      onChange={(e) => setEditRoles((f) => (e.target.checked ? Array.from(new Set([...f, role])) : f.filter((x) => x !== role)))}
+                    />
+                    {PARTNER_ROLE_LABELS[role]}
+                  </label>
+                ))}
+              </div>
+            </Field>
             <div className="acc-form-grid">
               <Field label="نام *">
                 <input className="acc-input" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
               </Field>
-              <Field label="نوع">
+              <Field label="نام حقوقی کامل">
+                <input className="acc-input" value={editing.legal_name || ''} onChange={(e) => setEditing({ ...editing, legal_name: e.target.value })} />
+              </Field>
+            </div>
+            <div className="acc-form-grid">
+              <Field label="نوع تجاری">
                 <select className="acc-select" value={editing.kind} onChange={(e) => setEditing({ ...editing, kind: e.target.value as AccPartner['kind'] })}>
                   <option value="customer">مشتری</option>
                   <option value="supplier">تامین‌کننده</option>
                   <option value="both">دوطرفه</option>
                 </select>
               </Field>
-            </div>
-            <div className="acc-form-grid">
               <Field label="شخصیت">
                 <select className="acc-select" value={editing.person_type} onChange={(e) => setEditing({ ...editing, person_type: e.target.value as AccPartner['person_type'] })}>
                   <option value="real">حقیقی</option>
                   <option value="legal">حقوقی (شرکت)</option>
                 </select>
               </Field>
+            </div>
+            <div className="acc-form-grid">
               <Field label={editing.person_type === 'legal' ? 'شناسه ملی' : 'کد ملی'} hint="در فهرست معاملات فصلی ماده ۱۶۹ لازم است">
                 <DigitsInput value={editing.person_type === 'legal' ? (editing.shenase_melli || '') : (editing.national_id || '')} onChange={(v) => setEditing(editing.person_type === 'legal' ? { ...editing, shenase_melli: v } : { ...editing, national_id: v })} maxLength={12} />
               </Field>
+              <Field label="شماره ثبت (حقوقی)"><DigitsInput value={editing.registration_number || ''} onChange={(v) => setEditing({ ...editing, registration_number: v })} allow="-/" /></Field>
             </div>
             <div className="acc-form-grid">
               <Field label="شماره اقتصادی طرف‌حساب"><DigitsInput value={editing.economic_code || ''} onChange={(v) => setEditing({ ...editing, economic_code: v })} maxLength={14} /></Field>
-              <Field label="شماره ثبت (حقوقی)"><DigitsInput value={editing.registration_number || ''} onChange={(v) => setEditing({ ...editing, registration_number: v })} allow="-/" /></Field>
+              <div />
             </div>
             <div className="acc-form-grid-3">
               <Field label="استان"><input className="acc-input" value={editing.province || ''} onChange={(e) => setEditing({ ...editing, province: e.target.value })} /></Field>
@@ -179,12 +240,17 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
               <Field label="تلفن"><DigitsInput value={editing.phone || ''} onChange={(v) => setEditing({ ...editing, phone: v })} maxLength={14} /></Field>
             </div>
             <div className="acc-form-grid">
+              <Field label="موبایل"><DigitsInput value={editing.mobile || ''} onChange={(v) => setEditing({ ...editing, mobile: v })} maxLength={14} /></Field>
+              <Field label="ایمیل"><input className="acc-input" type="email" value={editing.email || ''} onChange={(e) => setEditing({ ...editing, email: e.target.value })} dir="ltr" /></Field>
+            </div>
+            <div className="acc-form-grid">
               <Field label="نمابر"><DigitsInput value={editing.fax || ''} onChange={(v) => setEditing({ ...editing, fax: v })} maxLength={14} /></Field>
               <Field label="آدرس"><input className="acc-input" value={editing.address || ''} onChange={(e) => setEditing({ ...editing, address: e.target.value })} /></Field>
             </div>
-            <div style={{ display: 'flex', gap: '.6rem' }}>
-              <button className="acc-btn acc-btn-primary" onClick={save}>ذخیره</button>
+            <div style={{ display: 'flex', gap: '.6rem', alignItems: 'center' }}>
+              <button className="acc-btn acc-btn-primary" onClick={save}><UserCog size={15} /> ذخیره</button>
               <button className="acc-btn acc-btn-outline" onClick={() => setEditing(null)}>انصراف</button>
+              {!editing.id && <span style={{ fontSize: '.7rem', opacity: .6 }}>کد یکتا هنگام ذخیره به‌صورت اتمیک تخصیص می‌یابد</span>}
             </div>
           </div>
         )}

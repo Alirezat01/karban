@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowLeftRight, BarChart3, BookOpen, Building2, CheckCircle2, Crown, FileSignature,
   FileSpreadsheet, FileText, Landmark, LayoutDashboard, Lock, LogOut, Menu, Package, Plus, Receipt, RefreshCcw,
-  Search, Settings, ShieldAlert, Sparkles, TrendingUp, Users, Wallet, X,
+  PieChart, Search, Settings, ShieldAlert, Sparkles, TrendingUp, Users, Wallet, X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAccAccess } from '@/lib/acc/access';
@@ -26,6 +26,7 @@ import ReportsPage from './ReportsPage';
 import SettingsPage from './SettingsPage';
 import ChecksPage from './ChecksPage';
 import ProjectsPage from './ProjectsPage';
+import CostCentersPage from './CostCentersPage';
 import ContractsAccPage from './ContractsAccPage';
 import PayrollPage from './PayrollPage';
 import AssetsPage from './AssetsPage';
@@ -94,7 +95,8 @@ const NAV = [
     { seg: 'گزارش‌ها', title: 'گزارش‌ها و مالیات', icon: BarChart3, pro: true },
   ] },
   { label: 'پروژه و منابع انسانی', items: [
-    { seg: 'پروژه‌ها', title: 'پروژه‌ها و مراکز هزینه', icon: TrendingUp, pro: true },
+    { seg: 'پروژه‌ها', title: 'پروژه‌ها و مراکز درآمد', icon: TrendingUp, pro: true },
+    { seg: 'مراکز-هزینه', title: 'مراکز هزینه و جاری شرکا', icon: PieChart, pro: true },
     { seg: 'قراردادها', title: 'قراردادهای خدماتی', icon: FileSignature, pro: true },
     { seg: 'حقوق-و-دستمزد', title: 'حقوق و دستمزد و بیمه', icon: Users, pro: true },
     { seg: 'دارایی‌ها', title: 'دارایی‌های ثابت شرکت', icon: Building2, pro: true },
@@ -595,6 +597,11 @@ export default function AccPanel({ sub }: { sub: string[] }) {
         const gate = proBlocked('projects', 'پروژه‌ها و مراکز هزینه', 'تعریف پروژه، اتصال فاکتور و هزینه و گزارش سود هر پروژه، مخصوص نسخه پیشرفته است.');
         if (gate) return gate;
         return <ProjectsPage business={business} />;
+      }
+      case 'مراکز-هزینه': {
+        const gate = proBlocked('projects', 'مراکز هزینه و جاری شرکا', 'مراکز هزینه، گزارش طرف‌حساب‌ها و دفتر جاری شرکا، مخصوص نسخه پیشرفته است.');
+        if (gate) return gate;
+        return <CostCentersPage business={business} />;
       }
       case 'قراردادها': {
         const gate = proBlocked('contracts', 'قراردادهای خدماتی', 'ثبت قرارداد با مبلغ و سررسید و اتصال به پروژه، مخصوص نسخه پیشرفته است.');

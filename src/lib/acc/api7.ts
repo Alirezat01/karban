@@ -6,8 +6,7 @@
    ═════════════════════════════════════════════════════════════════════ */
 
 import { supabase } from '@/lib/supabase';
-import { SYSTEM_CHART } from './constants';
-import { jalaliYearRange, todayJalali, toGregorian } from './jalali';
+import { jalaliYearRange, toGregorian } from './jalali';
 import type { AccChartRow } from './types';
 
 /* ═══════════ تایپ‌های نسخه ۷ ═══════════ */
@@ -24,12 +23,15 @@ export interface ChartNode extends AccChartRow {
 export interface AccDetail {
   id: string;
   business_id: string;
-  code: string | null;
+  /** کد یکتای تفصیلی — اتمیک از شمارندهٔ دیتابیس (بند ۷ دستور) */
+  detail_code: string | null;
   title: string;
-  kind: 'customer' | 'supplier' | 'employee' | 'project' | 'bank' | 'partner' | 'other';
+  kind: 'customer' | 'supplier' | 'shareholder' | 'employee' | 'project' | 'bank' | 'cash' | 'cost_center' | 'partner' | 'other';
   ref_id: string | null;
   active: boolean;
+  is_locked: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export interface JournalLineV2 {
@@ -38,6 +40,7 @@ export interface JournalLineV2 {
   debit: number;
   credit: number;
   detail_id?: string | null;
+  cost_center_id?: string | null;
   project_id?: string | null;
   line_desc?: string | null;
 }
@@ -190,8 +193,9 @@ export const CODE_AP = '2101';          // حساب‌های پرداختنی
 export const CODE_RETAINED = '3102';    // سود (زیان) انباشته
 
 const DETAIL_KINDS: Record<AccDetail['kind'], string> = {
-  customer: 'مشتری', supplier: 'تامین‌کننده', employee: 'کارمند',
-  project: 'پروژه', bank: 'بانک', partner: 'طرف‌حساب', other: 'سایر',
+  customer: 'مشتری', supplier: 'تامین‌کننده', shareholder: 'شریک / سهامدار', employee: 'کارمند',
+  project: 'پروژه', bank: 'بانک', cash: 'صندوق', cost_center: 'مرکز هزینه',
+  partner: 'طرف‌حساب (قدیمی)', other: 'سایر',
 };
 export { DETAIL_KINDS as DETAIL_KIND_LABELS };
 
@@ -255,6 +259,7 @@ async function insertEntry(
       account_title: l.account_title || l.account_code,
       debit: num(l.debit), credit: num(l.credit),
       detail_id: l.detail_id ?? null,
+      cost_center_id: l.cost_center_id ?? null,
       project_id: l.project_id ?? null,
       line_desc: l.line_desc ?? null,
     }));
@@ -294,6 +299,7 @@ async function insertEntry(
       account_title: l.account_title,
       debit: num(l.debit), credit: num(l.credit),
       detail_id: l.detail_id ?? null,
+      cost_center_id: l.cost_center_id ?? null,
       project_id: l.project_id ?? null,
       line_desc: l.line_desc ?? null,
     }));
@@ -330,10 +336,10 @@ export async function listChartTree(businessId: string): Promise<ChartNode[]> {
   return roots;
 }
 
-/** افزودن سرفصل زیرمجموعه — سطح خودکار از والد محاسبه می‌شود */
+/** افزودن سرفصل زیرمجموعه — سطح خودکار از والد محاسبه می‌شود؛ قوانین تفصیلی اختیاری */
 export async function saveChartNode(
   businessId: string,
-  input: { id?: string; parent_id?: string | null; code?: string; title: string; kind: AccChartRow['kind']; nature?: 'debit' | 'credit' },
+  input: { id?: string; parent_id?: string | null; code?: string; title: string; kind: AccChartRow['kind']; nature?: 'debit' | 'credit'; requires_detail?: boolean; allowed_detail_types?: string[] },
 ): Promise<string> {
   let level = 1;
   let code = (input.code || '').trim();
@@ -370,6 +376,8 @@ export async function saveChartNode(
     const { error } = await supabase.from('acc_chart').update({
       title: input.title.trim(), kind: input.kind,
       nature: input.nature || (input.kind === 'liability' || input.kind === 'equity' || input.kind === 'income' ? 'credit' : 'debit'),
+      ...(input.requires_detail !== undefined ? { requires_detail: input.requires_detail } : {}),
+      ...(input.allowed_detail_types !== undefined ? { allowed_detail_types: input.allowed_detail_types } : {}),
     }).eq('id', input.id).eq('is_system', false);
     if (error) throw error;
     return input.id;
@@ -380,6 +388,8 @@ export async function saveChartNode(
       business_id: businessId, code, title: input.title.trim(), kind: input.kind,
       is_system: false, parent_id: input.parent_id ?? null, level,
       is_leaf: true, nature: input.nature || (input.kind === 'liability' || input.kind === 'equity' || input.kind === 'income' ? 'credit' : 'debit'),
+      requires_detail: input.requires_detail ?? false,
+      allowed_detail_types: input.allowed_detail_types ?? [],
     })
     .select('id')
     .single();
@@ -420,22 +430,40 @@ export async function listDetails(businessId: string, kind?: AccDetail['kind']):
 
 export async function saveDetail(
   businessId: string,
-  input: { id?: string; title: string; kind: AccDetail['kind']; code?: string | null; ref_id?: string | null },
+  input: { id?: string; title: string; kind: AccDetail['kind']; ref_id?: string | null; active?: boolean },
 ): Promise<string> {
   if (!input.title.trim()) throw new Error('عنوان تفصیلی الزامی است');
   if (input.id) {
     const { error } = await supabase.from('acc_details').update({
-      title: input.title.trim(), kind: input.kind, code: input.code ?? null,
+      title: input.title.trim(), kind: input.kind,
+      ...(input.active !== undefined ? { active: input.active } : {}),
     }).eq('id', input.id);
     if (error) throw error;
     return input.id;
   }
-  const { data, error } = await supabase.from('acc_details').insert({
+  /* کد تفصیلی را تریگر دیتابیس اتمیک تخصیص می‌دهد — بدون MAX+1 */
+  const { error } = await supabase.from('acc_details').insert({
     business_id: businessId, title: input.title.trim(), kind: input.kind,
-    code: input.code || null, ref_id: input.ref_id ?? null,
-  }).select('id').single();
+    ref_id: input.ref_id ?? null,
+  });
   if (error) throw error;
-  return data.id as string;
+  const { data: found } = await supabase
+    .from('acc_details')
+    .select('id')
+    .eq('business_id', businessId)
+    .eq('title', input.title.trim())
+    .eq('kind', input.kind)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!found) throw new Error('تفصیلی ذخیره شد ولی بازیابی شناسه ناموفق بود');
+  return found.id as string;
+}
+
+/** غیرفعال‌سازی تفصیلی — حذف دارای گردش در دیتابیس ممنوع است */
+export async function setDetailActive(id: string, active: boolean): Promise<void> {
+  const { error } = await supabase.from('acc_details').update({ active }).eq('id', id);
+  if (error) throw error;
 }
 
 export async function deleteDetail(id: string): Promise<void> {
@@ -674,7 +702,7 @@ export async function trialBalanceMulti(
 
   /* گردش قبل از from → افتتاحیه */
   if (from) {
-    let q0 = supabase
+    const q0 = supabase
       .from('acc_journal_lines')
       .select('account_code, debit, credit, acc_journal!inner(date_g, voided_at, ref_action)')
       .eq('business_id', businessId)
@@ -1707,6 +1735,7 @@ export const PERM_KEYS: PermKey[] = [
   { key: 'journal.manage', label: 'ثبت سند دستی', group: 'حسابداری' },
   { key: 'journal.void', label: 'ابطال و حذف سند', group: 'حسابداری' },
   { key: 'chart.manage', label: 'مدیریت کدینگ حسابداری', group: 'حسابداری' },
+  { key: 'master.data', label: 'مدیریت Master Data (طرف‌حساب، تفصیلی، مرکز هزینه)', group: 'حسابداری' },
   { key: 'recon.manage', label: 'مغایرت‌گیری بانکی', group: 'حسابداری' },
   { key: 'fiscal.close', label: 'بستن و افتتاح دوره مالی', group: 'حسابداری' },
   { key: 'reports.view', label: 'مشاهده گزارش‌ها', group: 'گزارش' },

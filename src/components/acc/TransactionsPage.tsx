@@ -1,10 +1,10 @@
-/* دریافت و پرداخت — تسویه فاکتورها و گردش نقدی */
+/* دریافت و پرداخت و انتقال — تسویه فاکتورها، گردش نقدی و حواله بین حساب‌ها */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccInvoice, AccTransaction } from '@/lib/acc/types';
 import { deleteTransaction, listAccounts, listInvoices, listPartners, listTransactions, saveTransaction } from '@/lib/acc/api';
-import { voidTransaction, deleteTransactionFull, attachmentCounts } from '@/lib/acc/api7';
+import { voidTransaction, deleteTransactionFull } from '@/lib/acc/api7';
 import { VoidDeleteBtns } from './VoidDeleteBtns';
 import AttachButton from './AttachButton';
 import { PAYMENT_METHODS } from '@/lib/acc/constants';
@@ -19,7 +19,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
   const [accounts, setAccounts] = useState<AccountLite[]>([]);
   const [partners, setPartners] = useState<{ id: string; name: string }[]>([]);
   const [openInvoices, setOpenInvoices] = useState<AccInvoice[]>([]);
-  const [tab, setTab] = useState<'all' | 'receipt' | 'payment'>('all');
+  const [tab, setTab] = useState<'all' | 'receipt' | 'payment' | 'transfer'>('all');
   const [editing, setEditing] = useState<Partial<AccTransaction> | null>(null);
   const [transfer, setTransfer] = useState<{ from_account: string; to_account: string; amount: number; date_g: string; description: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,12 +68,13 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
       toast('ثبت شد و سند حسابداری ثبت گردید');
       setEditing(null);
       load();
-    } catch {
-      toast('ثبت ناموفق بود', 'error');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'ثبت ناموفق بود', 'error');
     }
   }
 
-  /* حواله بین حساب‌ها: یک پرداخت از حساب مبدا + یک دریافت در حساب مقصد */
+  /* انتقال بانک/صندوق — یک سند واحد kind=transfer (بند ۲۸):
+     بانک مقصد بدهکار، بانک مبدا بستانکار — هیچ درآمد یا هزینه‌ای ساخته نمی‌شود */
   async function saveTransfer() {
     if (!transfer) return;
     if (!transfer.from_account || !transfer.to_account) { toast('هر دو حساب را انتخاب کنید', 'error'); return; }
@@ -81,20 +82,23 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
     if ((transfer.amount || 0) <= 0) { toast('مبلغ را وارد کنید', 'error'); return; }
     const fromName = accounts.find((a) => a.id === transfer.from_account)?.name || '';
     const toName = accounts.find((a) => a.id === transfer.to_account)?.name || '';
-    const desc = transfer.description?.trim() || `حواله وجه از ${fromName} به ${toName}`;
+    const desc = transfer.description?.trim() || `انتقال وجه از ${fromName} به ${toName}`;
     try {
-      await saveTransaction(business.id, { kind: 'payment', amount: transfer.amount, date_g: transfer.date_g, method: 'transfer', account_id: transfer.from_account, description: desc });
-      await saveTransaction(business.id, { kind: 'receipt', amount: transfer.amount, date_g: transfer.date_g, method: 'transfer', account_id: transfer.to_account, description: desc });
-      toast('حواله بین حساب‌ها ثبت شد');
+      await saveTransaction(business.id, {
+        kind: 'transfer', amount: transfer.amount, date_g: transfer.date_g,
+        method: 'transfer', account_id: transfer.from_account, to_account_id: transfer.to_account,
+        description: desc,
+      } as AccTransaction & { kind: 'transfer'; amount: number });
+      toast('انتقال ثبت شد — سند: حساب مقصد بدهکار / مبدا بستانکار');
       setTransfer(null);
       load();
-    } catch {
-      toast('ثبت حواله ناموفق بود', 'error');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'ثبت انتقال ناموفق بود', 'error');
     }
   }
 
   async function remove(row: AccTransaction) {
-    if (!(await confirmAction(`سند ${row.kind === 'receipt' ? 'دریافت' : 'پرداخت'} به مبلغ ${formatMoney(row.amount)} حذف شود؟`))) return;
+    if (!(await confirmAction(`سند ${row.kind === 'receipt' ? 'دریافت' : row.kind === 'payment' ? 'پرداخت' : 'انتقال'} به مبلغ ${formatMoney(row.amount)} حذف شود؟`))) return;
     try {
       await deleteTransaction({ id: row.id, invoice_id: row.invoice_id });
       toast('حذف شد');
@@ -115,12 +119,13 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
 
   const totalReceipt = filtered.filter((r) => r.kind === 'receipt').reduce((s, r) => s + r.amount, 0);
   const totalPayment = filtered.filter((r) => r.kind === 'payment').reduce((s, r) => s + r.amount, 0);
+  const totalTransfer = filtered.filter((r) => r.kind === 'transfer').reduce((s, r) => s + r.amount, 0);
 
   return (
     <div style={{ display: 'grid', gap: '1rem' }}>
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '.35rem', flex: 1, flexWrap: 'wrap' }}>
-          {([['all', 'همه'], ['receipt', 'دریافت‌ها'], ['payment', 'پرداخت‌ها']] as const).map(([k, label]) => (
+          {([['all', 'همه'], ['receipt', 'دریافت‌ها'], ['payment', 'پرداخت‌ها'], ['transfer', 'انتقال‌ها']] as const).map(([k, label]) => (
             <button key={k} className={`acc-btn ${tab === k ? 'acc-btn-primary' : 'acc-btn-outline'}`} style={{ minHeight: 40, padding: '.35rem .9rem', fontSize: '.8rem' }} onClick={() => setTab(k)}>{label}</button>
           ))}
         </div>
@@ -140,11 +145,13 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
                 <td className="num">{formatJalali(r.date_g)}</td>
                 <td>{r.kind === 'receipt'
                   ? <span className="acc-badge ok">دریافت</span>
-                  : <span className="acc-badge bad">پرداخت</span>}</td>
+                  : r.kind === 'transfer'
+                    ? <span className="acc-badge" style={{ background: 'rgba(59,130,246,.12)', color: '#2563eb' }}>انتقال</span>
+                    : <span className="acc-badge bad">پرداخت</span>}</td>
                 <td className="num" style={{ fontWeight: 700 }}>{formatMoney(r.amount)}</td>
                 <td>{r.partner?.name || '—'}</td>
                 <td className="num">{r.invoice?.number || '—'}</td>
-                <td>{r.account?.name || '—'}</td>
+                <td>{r.kind === 'transfer' ? `${r.account?.name || '—'} → ${r.to_account?.name || '—'}` : (r.account?.name || '—')}</td>
                 <td>{PAYMENT_METHODS[r.method] || r.method}</td>
                 <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.description || '—'}</td>
                 <td>
@@ -167,7 +174,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
             <tfoot>
               <tr>
                 <td colSpan={2}>جمع</td>
-                <td className="num">دریافت {formatMoney(totalReceipt)} — پرداخت {formatMoney(totalPayment)}</td>
+                <td className="num">دریافت {formatMoney(totalReceipt)} — پرداخت {formatMoney(totalPayment)} — انتقال {formatMoney(totalTransfer)}</td>
                 <td colSpan={6}></td>
               </tr>
             </tfoot>
@@ -228,7 +235,8 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
         {transfer && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <p className="acc-hint" style={{ fontSize: '.78rem', lineHeight: 1.9 }}>
-              انتقال وجه بین بانک/صندوق‌های خودتان — دو سند پرداخت و دریافت همزمان ثبت می‌شود و مانده هر دو حساب به‌روز می‌شود.
+              انتقال وجه بین بانک/صندوق‌های خودتان — یک سند واحد ثبت می‌شود: حساب مقصد بدهکار، حساب مبدا بستانکار.
+              هیچ درآمد یا هزینه‌ای در این انتقال ساخته نمی‌شود.
             </p>
             <div className="acc-form-grid">
               <Field label="از حساب *">
