@@ -1,0 +1,113 @@
+══════════════════════════════════════════════════════
+  تست زندهٔ هستهٔ حسابداری کاربان
+  دیتابیس: rocjeanizzhfvhnuhnms.supabase.co (واقعی)
+  شناسهٔ اجرا: fafbbd — تاریخ: 2026-09-20
+══════════════════════════════════════════════════════
+
+✅ [SETUP] ساخت ۲ کاربر و ۲ کسب‌وکار آزمایشی → PASS — A:test-002@karbanapp.ir · B:test-test@karbanapp.ir
+✅ [CAPS] تشخیص مایگریشن سخت‌سازی (RPCها) → PASS — RPCها موجودند — همهٔ تست‌های دیتابیسی فعال
+
+─── accounting.rls.business-isolation ───
+✅ [BIS-1] SELECT طرف‌حساب کسب‌وکار دیگر → خالی → PASS — 0 ردیف نشت کرد
+✅ [BIS-2] SELECT بدون فیلتر → ردیف B دیده نمی‌شود → PASS — ایزوله
+✅ [BIS-3] SELECT سند حسابداری کسب‌وکار دیگر → PASS — 0 ردیف
+✅ [BIS-4] UPDATE طرف‌حساب کسب‌وکار دیگر → صفر ردیف → PASS — 0 ردیف تغییر کرد
+✅ [BIS-5] DELETE طرف‌حساب کسب‌وکار دیگر → صفر ردیف → PASS — 0 ردیف حذف شد
+✅ [BIS-6] INSERT با business_id کسب‌وکار دیگر → PASS — new row violates row-level security policy for table "acc_pa
+✅ [BIS-7] INSERT سند با business_id دیگر → PASS — new row violates row-level security policy for table "acc_jo
+✅ [BIS-8] دسترسی عادی مالک به دادهٔ خودش سالم است → PASS — 1 ردیف خودی
+
+─── accounting.permissions ───
+✅ [PRM-1] viewer → INSERT طرف‌حساب ممنوع → PASS — new row violates row-level security policy for table "acc_pa
+✅ [PRM-2] viewer → UPDATE طرف‌حساب ممنوع → PASS — 0 ردیف
+✅ [PRM-3] viewer → INSERT تفصیلی شناور ممنوع (پالیسی §10) → PASS — new row violates row-level security policy for table "acc_de
+✅ [PRM-4] viewer → SELECT مجاز (عضویت خواندنی) → PASS — 0 ردیف
+✅ [PRM-5] حسابدار با مجوز پیکربندی‌نشده → رفتار قدیمی (دسترسی کامل) → PASS — سند ساخته شد
+✅ [PRM-6] حسابدار با invoices.issue=false → صدور ممنوع (enforce دیتابیس) → PASS — اجازهٔ صدور صورتحساب را ندارید
+✅ [PRM-7] حسابدار با journal.manage=false → ثبت سند ممنوع → PASS — اجازهٔ ثبت سند در این کسب‌وکار را ندارید
+
+─── accounting.master-data ───
+❌ [accounting.master-data] اجرای سناریو → FAIL — خطای غیرمنتظره: record is not a function
+
+─── accounting.subledger ───
+❌ [accounting.subledger] اجرای سناریو → FAIL — خطای غیرمنتظره: Cannot read properties of null (reading 'id')
+
+─── accounting.journal.concurrent ───
+✅ [JCC-2] تعداد اسناد موفق در ۲۰ درخواست هم‌زمان → PASS — 20/20 موفق
+✅ [JCC-3] یکتایی شناسه‌های برگشتی → PASS — 20 یکتا از 20
+✅ [JCC-4] یکتایی شمارهٔ سند (entry_no) بعد از ۲۰ درج هم‌زمان → PASS — 20 شمارهٔ یکتا از 20
+✅ [JCC-5] همهٔ اسناد هم‌زمان دارای ردیف و تراز → PASS — تراز: 20/20 · دارای ردیف: 20/20
+
+─── accounting.journal.atomicity ───
+✅ [JAT-1] رد سند غیرتراز + عدم باقی‌ماندن رد → PASS — رد شد: سند تراز نیست — جمع بدهکار 5000 و بستانکار 3000 باید برابر ش · رد باقی‌مانده: 0
+✅ [JAT-2] Rollback کامل هنگام خطای ردیف (بدون سرِسند یتیم) → PASS — تراکنش برگشت: insert or update on table "acc_journal_lines" violates forei · سرِسند یتیم: 0
+✅ [JAT-3] رد سند بدون هیچ ردیف → PASS — سند بدون ردیف مجاز نیست
+✅ [JAT-4] رد مبلغ منفی در ردیف سند → PASS — مبلغ منفی در ردیف سند مجاز نیست
+✅ [JAT-5] رفتار مسیر قدیمی با سند غیرتراز → PASS — درج مستقیم غیرتراز رد شد: سند شماره 22 تراز نیست — جمع بدهکار 777 و بستانکار 333 باید برابر شود
+
+─── accounting.invoice-void ───
+❌ [IVD-0] ساخت فاکتور آزمایشی → FAIL — function public.acc_ensure_detail(uuid, text, text, uuid) does not exist
+
+─── accounting.bank-reconciliation.concurrent ───
+❌ [BRC-1] هر دو طبقه‌بندی هم‌زمان موفق → FAIL — خطاها: duplicate key value violates unique constraint "ac / duplicate key value violates unique constraint "ac
+❌ [BRC-2] دو سند خزانهٔ متمایز برای دو خط (بدون دوبل) → FAIL — null / null
+✅ [BRC-3] هر خط بانکی به سند صحیح خودش متصل است → PASS — خط۱→undefined / خط۲→undefined
+❌ [BRC-4] تعداد تراکنش‌های ساخته‌شده = ۲ (بدون تکرار) → FAIL — 0 تراکنش
+
+─── accounting.fiscal-year ───
+❌ [FIS-1] ثبت سند اختتامیهٔ تراز → FAIL — شماره‌گذاری سند با تداخل مکرر ناموفق ماند
+❌ [FIS-2] اختتامیه تراز است (۸۰۰٬۰۰۰ = ۳۰۰٬۰۰۰ + ۵۰۰٬۰۰۰) → FAIL — 0/0
+✅ [FIS-3] ثبت سند در سال مالی بسته ممنوع (enforce دیتابیس) → PASS — سال مالی 1403 بسته شده است — ثبت سند در دورهٔ بسته مجاز نیست
+✅ [FIS-4] درج مستقیم در سال بسته ممنوع (تریگر) → PASS — رد شد ✓
+✅ [FIS-5] بستن مجدد (اختتامیهٔ دوم) ممنوع → PASS — شماره‌گذاری سند با تداخل مکرر ناموفق ماند
+✅ [FIS-6] ثبت سند در ماه قفل‌شده ممنوع → PASS — شماره‌گذاری سند با تداخل مکرر ناموفق ماند
+❌ [FIS-7] ثبت سند افتتاحیهٔ سال بعد → FAIL — شماره‌گذاری سند با تداخل مکرر ناموفق ماند
+✅ [FIS-8] افتتاحیهٔ دوم برای همان سال ممنوع → PASS — شماره‌گذاری سند با تداخل مکرر ناموفق ماند
+❌ [FIS-9] ابطال سند (سند معکوس) از مسیر RPC کار می‌کند → FAIL — duplicate key value violates unique constraint "acc_journal_business_i
+✅ [FIS-CTX] دورهٔ 1403 بسته شد + اختتامیه/افتتاحیه ثبت شد → PASS — ok
+
+─── accounting.trial-balance ───
+✅ [TB-1] گردش هر حساب در تراز آزمایشی با سندهای ثبت‌شده برابر است → PASS — هر ۵ حساب دقیق
+✅ [TB-2] سند باطل‌شده از تراز آزمایشی حذف می‌شود → PASS — حذف شد ✓
+✅ [TB-3] جمع بدهکار = جمع بستانکار در بازهٔ سناریو → PASS — ۲٬۰۰۰ / ۲٬۰۰۰
+
+─── accounting.ledger-integrity ───
+✅ [LGI-1] همهٔ سندهای دارای ردیف، تراز هستند → PASS — 28/28 تراز
+❌ [LGI-2] هیچ سرِسند بدون ردیف در دفتر نیست → FAIL — سندهای یتیم: #22
+✅ [LGI-3] هیچ ردیف سند بدون سند والد نیست → PASS — 0 ردیف یتیم
+✅ [LGI-4] سلامت دفتر کسب‌وکار دوم (ایزوله) → PASS — 0 سند
+
+─── accounting.numeric-rounding ───
+✅ [NUM-1] اعداد مرزی (۱ تا ۹۹۹٬۹۹۹٬۹۹۹) با مالیات ۱۰٪ → PASS — 8 عدد دقیق
+✅ [NUM-2] مبلغ اعشاری گرد می‌شود (۳×۳۳۳۳.۶ → ۱۰٬۰۰۱) → PASS — {"subtotal":10001,"discountTotal":0,"vatTotal":1000,"total":11001}
+✅ [NUM-3] تخفیف ۵٬۰۰۰ + مالیات روی مبلغ پس از تخفیف → PASS — {"subtotal":100000,"discountTotal":5000,"vatTotal":9500,"total":104500}
+✅ [NUM-4] کالای معاف از مالیات (۰٪) → PASS — {"subtotal":5000,"discountTotal":0,"vatTotal":0,"total":5000}
+✅ [NUM-5] چند ردیف با تخفیف/مالیات متفاوت → PASS — 9237 در برابر 9237
+✅ [NUM-6] باقی‌مانده = جمع − پرداخت‌شده (۶۴٬۵۰۰) → PASS — ۶۴٬۵۰۰
+✅ [NUM-7] ذخیرهٔ ردیف با مبلغ بزرگ (۸۶۴٬۱۹۲ − ۱۰٬۰۰۰) دقیق است → PASS — vat=85419 row=939611
+
+─── accounting.e2e.flow ───
+✅ [E2E-0] ایجاد کسب‌وکار، مشتری، تامین‌کننده، بانک، صندوق، خدمت، دستهٔ هزینه → PASS
+❌ [accounting.e2e.flow] اجرای سناریو → FAIL — خطای غیرمنتظره: Cannot read properties of null (reading 'id')
+
+─── accounting.deletion ───
+✅ [DEL-1] حذف طرف‌حساب بدون گردش مجاز است → PASS — حذف شد
+✅ [DEL-2] حذف فاکتور پیش‌نویس مجاز است → PASS — حذف شد
+❌ [DEL-3] حذف فاکتور صادره ممنوع (حتی بدون خطا، اثری ندارد) → FAIL — 1 ردیف حذف شد
+✅ [DEL-4] حذف سند دستی (خط‌ها بعد سرِسند) مجاز است → PASS — حذف شد
+✅ [DEL-5] حذف مستقیم سند سیستمی ممنوع → PASS — درج سند سیستمی از مسیر مستقیم هم رد شد (تریگر ردیف‌ها)
+❌ [accounting.deletion] اجرای سناریو → FAIL — خطای غیرمنتظره: Cannot read properties of null (reading 'id')
+
+─── accounting.reports ───
+✅ [RPT-1] فیلتر تاریخ گزارش درست است (گردش امروز = ۱٬۵۰۰ · سند ۲۰۲۰ بیرون بازه) → PASS — گردش ۱۱۰۱ در بازهٔ امروز: 1500 · ردیف‌های ۲۰۲۰ (بیرون بازه): 2
+✅ [RPT-2] سند ابطال‌شده در گزارش دوره نمی‌ماند → PASS — حذف شد ✓
+✅ [RPT-3] گزارش کسب‌وکار A دادهٔ B را نشان نمی‌دهد → PASS — ایزوله
+✅ [RPT-4] کارت حساب ۱۱۰۱ = دفتر کل (۱٬۵۰۰) → PASS — مانده: 1500
+✅ [RPT-5] سود و زیان دوره با گردش دفتر برابر است (۱٬۵۰۰) → PASS — درآمد: 1500
+✅ [RPT-6] کنترل دوبار‌شمردن افتتاحیه/اختتامیه → PASS — بعد از مایگریشن: اختتامیهٔ تکراری در سطح DB رد می‌شود (FIS-5) و درآمدِ اختتامیه با ref_type=closing از گزارش عملکرد سال حذف می‌گردد (فیلتر ref_type در نسخهٔ اصلاح‌شدهٔ P&L)
+✅ [RPT-7] گزارش فروش فاکتور تسویه‌شده را هم می‌گیرد (وضعیت paid) → PASS — 1 ردیف
+
+─── پاکسازی ───
+❌ [CLEANUP] پاکسازی داده‌های تست (لایسنس برای اجرای بعدی حفظ شد) → FAIL — جدول‌های باقی‌مانده: acc_journal_lines: ردیف‌های سند قطعی/سیستمی قابل تغییر نیستند — برای  · acc_journal: سند باطل‌شده بخشی از تاریخچهٔ حسابداری است و حذف ن
+
+═══ جمع‌بندی: 58 PASS / 15 FAIL / 0 EXPECTED-FAIL / 0 SKIP ═══

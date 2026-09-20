@@ -1,12 +1,521 @@
 {
-  "runId": "3b067b",
-  "at": "2026-09-20T12:16:24.721Z",
+  "runId": "fafbbd",
+  "at": "2026-09-20T12:31:28.011Z",
   "results": [
     {
       "id": "SETUP",
-      "name": "ساخت کاربران/کسب‌وکار آزمایشی",
+      "name": "ساخت ۲ کاربر و ۲ کسب‌وکار آزمایشی",
+      "status": "PASS",
+      "detail": "A:test-002@karbanapp.ir · B:test-test@karbanapp.ir",
+      "evidence": null
+    },
+    {
+      "id": "CAPS",
+      "name": "تشخیص مایگریشن سخت‌سازی (RPCها)",
+      "status": "PASS",
+      "detail": "RPCها موجودند — همهٔ تست‌های دیتابیسی فعال",
+      "evidence": {
+        "probe": "سند بدون ردیف مجاز نیست"
+      }
+    },
+    {
+      "id": "BIS-1",
+      "name": "SELECT طرف‌حساب کسب‌وکار دیگر → خالی",
+      "status": "PASS",
+      "detail": "0 ردیف نشت کرد",
+      "evidence": null
+    },
+    {
+      "id": "BIS-2",
+      "name": "SELECT بدون فیلتر → ردیف B دیده نمی‌شود",
+      "status": "PASS",
+      "detail": "ایزوله",
+      "evidence": null
+    },
+    {
+      "id": "BIS-3",
+      "name": "SELECT سند حسابداری کسب‌وکار دیگر",
+      "status": "PASS",
+      "detail": "0 ردیف",
+      "evidence": null
+    },
+    {
+      "id": "BIS-4",
+      "name": "UPDATE طرف‌حساب کسب‌وکار دیگر → صفر ردیف",
+      "status": "PASS",
+      "detail": "0 ردیف تغییر کرد",
+      "evidence": null
+    },
+    {
+      "id": "BIS-5",
+      "name": "DELETE طرف‌حساب کسب‌وکار دیگر → صفر ردیف",
+      "status": "PASS",
+      "detail": "0 ردیف حذف شد",
+      "evidence": null
+    },
+    {
+      "id": "BIS-6",
+      "name": "INSERT با business_id کسب‌وکار دیگر",
+      "status": "PASS",
+      "detail": "new row violates row-level security policy for table \"acc_pa",
+      "evidence": null
+    },
+    {
+      "id": "BIS-7",
+      "name": "INSERT سند با business_id دیگر",
+      "status": "PASS",
+      "detail": "new row violates row-level security policy for table \"acc_jo",
+      "evidence": null
+    },
+    {
+      "id": "BIS-8",
+      "name": "دسترسی عادی مالک به دادهٔ خودش سالم است",
+      "status": "PASS",
+      "detail": "1 ردیف خودی",
+      "evidence": null
+    },
+    {
+      "id": "PRM-1",
+      "name": "viewer → INSERT طرف‌حساب ممنوع",
+      "status": "PASS",
+      "detail": "new row violates row-level security policy for table \"acc_pa",
+      "evidence": null
+    },
+    {
+      "id": "PRM-2",
+      "name": "viewer → UPDATE طرف‌حساب ممنوع",
+      "status": "PASS",
+      "detail": "0 ردیف",
+      "evidence": null
+    },
+    {
+      "id": "PRM-3",
+      "name": "viewer → INSERT تفصیلی شناور ممنوع (پالیسی §10)",
+      "status": "PASS",
+      "detail": "new row violates row-level security policy for table \"acc_de",
+      "evidence": null
+    },
+    {
+      "id": "PRM-4",
+      "name": "viewer → SELECT مجاز (عضویت خواندنی)",
+      "status": "PASS",
+      "detail": "0 ردیف",
+      "evidence": null
+    },
+    {
+      "id": "PRM-5",
+      "name": "حسابدار با مجوز پیکربندی‌نشده → رفتار قدیمی (دسترسی کامل)",
+      "status": "PASS",
+      "detail": "سند ساخته شد",
+      "evidence": null
+    },
+    {
+      "id": "PRM-6",
+      "name": "حسابدار با invoices.issue=false → صدور ممنوع (enforce دیتابیس)",
+      "status": "PASS",
+      "detail": "اجازهٔ صدور صورتحساب را ندارید",
+      "evidence": null
+    },
+    {
+      "id": "PRM-7",
+      "name": "حسابدار با journal.manage=false → ثبت سند ممنوع",
+      "status": "PASS",
+      "detail": "اجازهٔ ثبت سند در این کسب‌وکار را ندارید",
+      "evidence": null
+    },
+    {
+      "id": "accounting.master-data",
+      "name": "اجرای سناریو",
       "status": "FAIL",
-      "detail": "Node.js 20 detected without native WebSocket support.\n\nSuggested solution: For Node.js < 22, install \"ws\" package and provide it via the transport option:\nimport ws from \"ws\"\nnew RealtimeClient(url, { transport: ws })",
+      "detail": "خطای غیرمنتظره: record is not a function",
+      "evidence": null
+    },
+    {
+      "id": "accounting.subledger",
+      "name": "اجرای سناریو",
+      "status": "FAIL",
+      "detail": "خطای غیرمنتظره: Cannot read properties of null (reading 'id')",
+      "evidence": null
+    },
+    {
+      "id": "JCC-2",
+      "name": "تعداد اسناد موفق در ۲۰ درخواست هم‌زمان",
+      "status": "PASS",
+      "detail": "20/20 موفق",
+      "evidence": null
+    },
+    {
+      "id": "JCC-3",
+      "name": "یکتایی شناسه‌های برگشتی",
+      "status": "PASS",
+      "detail": "20 یکتا از 20",
+      "evidence": null
+    },
+    {
+      "id": "JCC-4",
+      "name": "یکتایی شمارهٔ سند (entry_no) بعد از ۲۰ درج هم‌زمان",
+      "status": "PASS",
+      "detail": "20 شمارهٔ یکتا از 20",
+      "evidence": null
+    },
+    {
+      "id": "JCC-5",
+      "name": "همهٔ اسناد هم‌زمان دارای ردیف و تراز",
+      "status": "PASS",
+      "detail": "تراز: 20/20 · دارای ردیف: 20/20",
+      "evidence": null
+    },
+    {
+      "id": "JAT-1",
+      "name": "رد سند غیرتراز + عدم باقی‌ماندن رد",
+      "status": "PASS",
+      "detail": "رد شد: سند تراز نیست — جمع بدهکار 5000 و بستانکار 3000 باید برابر ش · رد باقی‌مانده: 0",
+      "evidence": {
+        "error": "سند تراز نیست — جمع بدهکار 5000 و بستانکار 3000 باید برابر شود"
+      }
+    },
+    {
+      "id": "JAT-2",
+      "name": "Rollback کامل هنگام خطای ردیف (بدون سرِسند یتیم)",
+      "status": "PASS",
+      "detail": "تراکنش برگشت: insert or update on table \"acc_journal_lines\" violates forei · سرِسند یتیم: 0",
+      "evidence": {
+        "error": "insert or update on table \"acc_journal_lines\" violates foreign key constraint \"acc_journal_lines_project_id_fkey\""
+      }
+    },
+    {
+      "id": "JAT-3",
+      "name": "رد سند بدون هیچ ردیف",
+      "status": "PASS",
+      "detail": "سند بدون ردیف مجاز نیست",
+      "evidence": null
+    },
+    {
+      "id": "JAT-4",
+      "name": "رد مبلغ منفی در ردیف سند",
+      "status": "PASS",
+      "detail": "مبلغ منفی در ردیف سند مجاز نیست",
+      "evidence": null
+    },
+    {
+      "id": "JAT-5",
+      "name": "رفتار مسیر قدیمی با سند غیرتراز",
+      "status": "PASS",
+      "detail": "درج مستقیم غیرتراز رد شد: سند شماره 22 تراز نیست — جمع بدهکار 777 و بستانکار 333 باید برابر شود",
+      "evidence": null
+    },
+    {
+      "id": "IVD-0",
+      "name": "ساخت فاکتور آزمایشی",
+      "status": "FAIL",
+      "detail": "function public.acc_ensure_detail(uuid, text, text, uuid) does not exist",
+      "evidence": null
+    },
+    {
+      "id": "BRC-1",
+      "name": "هر دو طبقه‌بندی هم‌زمان موفق",
+      "status": "FAIL",
+      "detail": "خطاها: duplicate key value violates unique constraint \"ac / duplicate key value violates unique constraint \"ac",
+      "evidence": null
+    },
+    {
+      "id": "BRC-2",
+      "name": "دو سند خزانهٔ متمایز برای دو خط (بدون دوبل)",
+      "status": "FAIL",
+      "detail": "null / null",
+      "evidence": null
+    },
+    {
+      "id": "BRC-3",
+      "name": "هر خط بانکی به سند صحیح خودش متصل است",
+      "status": "PASS",
+      "detail": "خط۱→undefined / خط۲→undefined",
+      "evidence": null
+    },
+    {
+      "id": "BRC-4",
+      "name": "تعداد تراکنش‌های ساخته‌شده = ۲ (بدون تکرار)",
+      "status": "FAIL",
+      "detail": "0 تراکنش",
+      "evidence": null
+    },
+    {
+      "id": "FIS-1",
+      "name": "ثبت سند اختتامیهٔ تراز",
+      "status": "FAIL",
+      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "evidence": null
+    },
+    {
+      "id": "FIS-2",
+      "name": "اختتامیه تراز است (۸۰۰٬۰۰۰ = ۳۰۰٬۰۰۰ + ۵۰۰٬۰۰۰)",
+      "status": "FAIL",
+      "detail": "0/0",
+      "evidence": null
+    },
+    {
+      "id": "FIS-3",
+      "name": "ثبت سند در سال مالی بسته ممنوع (enforce دیتابیس)",
+      "status": "PASS",
+      "detail": "سال مالی 1403 بسته شده است — ثبت سند در دورهٔ بسته مجاز نیست",
+      "evidence": null
+    },
+    {
+      "id": "FIS-4",
+      "name": "درج مستقیم در سال بسته ممنوع (تریگر)",
+      "status": "PASS",
+      "detail": "رد شد ✓",
+      "evidence": null
+    },
+    {
+      "id": "FIS-5",
+      "name": "بستن مجدد (اختتامیهٔ دوم) ممنوع",
+      "status": "PASS",
+      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "evidence": null
+    },
+    {
+      "id": "FIS-6",
+      "name": "ثبت سند در ماه قفل‌شده ممنوع",
+      "status": "PASS",
+      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "evidence": null
+    },
+    {
+      "id": "FIS-7",
+      "name": "ثبت سند افتتاحیهٔ سال بعد",
+      "status": "FAIL",
+      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "evidence": null
+    },
+    {
+      "id": "FIS-8",
+      "name": "افتتاحیهٔ دوم برای همان سال ممنوع",
+      "status": "PASS",
+      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "evidence": null
+    },
+    {
+      "id": "FIS-9",
+      "name": "ابطال سند (سند معکوس) از مسیر RPC کار می‌کند",
+      "status": "FAIL",
+      "detail": "duplicate key value violates unique constraint \"acc_journal_business_i",
+      "evidence": null
+    },
+    {
+      "id": "FIS-CTX",
+      "name": "دورهٔ 1403 بسته شد + اختتامیه/افتتاحیه ثبت شد",
+      "status": "PASS",
+      "detail": "ok",
+      "evidence": null
+    },
+    {
+      "id": "TB-1",
+      "name": "گردش هر حساب در تراز آزمایشی با سندهای ثبت‌شده برابر است",
+      "status": "PASS",
+      "detail": "هر ۵ حساب دقیق",
+      "evidence": null
+    },
+    {
+      "id": "TB-2",
+      "name": "سند باطل‌شده از تراز آزمایشی حذف می‌شود",
+      "status": "PASS",
+      "detail": "حذف شد ✓",
+      "evidence": null
+    },
+    {
+      "id": "TB-3",
+      "name": "جمع بدهکار = جمع بستانکار در بازهٔ سناریو",
+      "status": "PASS",
+      "detail": "۲٬۰۰۰ / ۲٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "LGI-1",
+      "name": "همهٔ سندهای دارای ردیف، تراز هستند",
+      "status": "PASS",
+      "detail": "28/28 تراز",
+      "evidence": null
+    },
+    {
+      "id": "LGI-2",
+      "name": "هیچ سرِسند بدون ردیف در دفتر نیست",
+      "status": "FAIL",
+      "detail": "سندهای یتیم: #22",
+      "evidence": null
+    },
+    {
+      "id": "LGI-3",
+      "name": "هیچ ردیف سند بدون سند والد نیست",
+      "status": "PASS",
+      "detail": "0 ردیف یتیم",
+      "evidence": null
+    },
+    {
+      "id": "LGI-4",
+      "name": "سلامت دفتر کسب‌وکار دوم (ایزوله)",
+      "status": "PASS",
+      "detail": "0 سند",
+      "evidence": null
+    },
+    {
+      "id": "NUM-1",
+      "name": "اعداد مرزی (۱ تا ۹۹۹٬۹۹۹٬۹۹۹) با مالیات ۱۰٪",
+      "status": "PASS",
+      "detail": "8 عدد دقیق",
+      "evidence": null
+    },
+    {
+      "id": "NUM-2",
+      "name": "مبلغ اعشاری گرد می‌شود (۳×۳۳۳۳.۶ → ۱۰٬۰۰۱)",
+      "status": "PASS",
+      "detail": "{\"subtotal\":10001,\"discountTotal\":0,\"vatTotal\":1000,\"total\":11001}",
+      "evidence": null
+    },
+    {
+      "id": "NUM-3",
+      "name": "تخفیف ۵٬۰۰۰ + مالیات روی مبلغ پس از تخفیف",
+      "status": "PASS",
+      "detail": "{\"subtotal\":100000,\"discountTotal\":5000,\"vatTotal\":9500,\"total\":104500}",
+      "evidence": null
+    },
+    {
+      "id": "NUM-4",
+      "name": "کالای معاف از مالیات (۰٪)",
+      "status": "PASS",
+      "detail": "{\"subtotal\":5000,\"discountTotal\":0,\"vatTotal\":0,\"total\":5000}",
+      "evidence": null
+    },
+    {
+      "id": "NUM-5",
+      "name": "چند ردیف با تخفیف/مالیات متفاوت",
+      "status": "PASS",
+      "detail": "9237 در برابر 9237",
+      "evidence": null
+    },
+    {
+      "id": "NUM-6",
+      "name": "باقی‌مانده = جمع − پرداخت‌شده (۶۴٬۵۰۰)",
+      "status": "PASS",
+      "detail": "۶۴٬۵۰۰",
+      "evidence": null
+    },
+    {
+      "id": "NUM-7",
+      "name": "ذخیرهٔ ردیف با مبلغ بزرگ (۸۶۴٬۱۹۲ − ۱۰٬۰۰۰) دقیق است",
+      "status": "PASS",
+      "detail": "vat=85419 row=939611",
+      "evidence": null
+    },
+    {
+      "id": "E2E-0",
+      "name": "ایجاد کسب‌وکار، مشتری، تامین‌کننده، بانک، صندوق، خدمت، دستهٔ هزینه",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "id": "accounting.e2e.flow",
+      "name": "اجرای سناریو",
+      "status": "FAIL",
+      "detail": "خطای غیرمنتظره: Cannot read properties of null (reading 'id')",
+      "evidence": null
+    },
+    {
+      "id": "DEL-1",
+      "name": "حذف طرف‌حساب بدون گردش مجاز است",
+      "status": "PASS",
+      "detail": "حذف شد",
+      "evidence": null
+    },
+    {
+      "id": "DEL-2",
+      "name": "حذف فاکتور پیش‌نویس مجاز است",
+      "status": "PASS",
+      "detail": "حذف شد",
+      "evidence": null
+    },
+    {
+      "id": "DEL-3",
+      "name": "حذف فاکتور صادره ممنوع (حتی بدون خطا، اثری ندارد)",
+      "status": "FAIL",
+      "detail": "1 ردیف حذف شد",
+      "evidence": null
+    },
+    {
+      "id": "DEL-4",
+      "name": "حذف سند دستی (خط‌ها بعد سرِسند) مجاز است",
+      "status": "PASS",
+      "detail": "حذف شد",
+      "evidence": null
+    },
+    {
+      "id": "DEL-5",
+      "name": "حذف مستقیم سند سیستمی ممنوع",
+      "status": "PASS",
+      "detail": "درج سند سیستمی از مسیر مستقیم هم رد شد (تریگر ردیف‌ها)",
+      "evidence": null
+    },
+    {
+      "id": "accounting.deletion",
+      "name": "اجرای سناریو",
+      "status": "FAIL",
+      "detail": "خطای غیرمنتظره: Cannot read properties of null (reading 'id')",
+      "evidence": null
+    },
+    {
+      "id": "RPT-1",
+      "name": "فیلتر تاریخ گزارش درست است (گردش امروز = ۱٬۵۰۰ · سند ۲۰۲۰ بیرون بازه)",
+      "status": "PASS",
+      "detail": "گردش ۱۱۰۱ در بازهٔ امروز: 1500 · ردیف‌های ۲۰۲۰ (بیرون بازه): 2",
+      "evidence": null
+    },
+    {
+      "id": "RPT-2",
+      "name": "سند ابطال‌شده در گزارش دوره نمی‌ماند",
+      "status": "PASS",
+      "detail": "حذف شد ✓",
+      "evidence": null
+    },
+    {
+      "id": "RPT-3",
+      "name": "گزارش کسب‌وکار A دادهٔ B را نشان نمی‌دهد",
+      "status": "PASS",
+      "detail": "ایزوله",
+      "evidence": null
+    },
+    {
+      "id": "RPT-4",
+      "name": "کارت حساب ۱۱۰۱ = دفتر کل (۱٬۵۰۰)",
+      "status": "PASS",
+      "detail": "مانده: 1500",
+      "evidence": null
+    },
+    {
+      "id": "RPT-5",
+      "name": "سود و زیان دوره با گردش دفتر برابر است (۱٬۵۰۰)",
+      "status": "PASS",
+      "detail": "درآمد: 1500",
+      "evidence": null
+    },
+    {
+      "id": "RPT-6",
+      "name": "کنترل دوبار‌شمردن افتتاحیه/اختتامیه",
+      "status": "PASS",
+      "detail": "بعد از مایگریشن: اختتامیهٔ تکراری در سطح DB رد می‌شود (FIS-5) و درآمدِ اختتامیه با ref_type=closing از گزارش عملکرد سال حذف می‌گردد (فیلتر ref_type در نسخهٔ اصلاح‌شدهٔ P&L)",
+      "evidence": null
+    },
+    {
+      "id": "RPT-7",
+      "name": "گزارش فروش فاکتور تسویه‌شده را هم می‌گیرد (وضعیت paid)",
+      "status": "PASS",
+      "detail": "1 ردیف",
+      "evidence": null
+    },
+    {
+      "id": "CLEANUP",
+      "name": "پاکسازی داده‌های تست (لایسنس برای اجرای بعدی حفظ شد)",
+      "status": "FAIL",
+      "detail": "جدول‌های باقی‌مانده: acc_journal_lines: ردیف‌های سند قطعی/سیستمی قابل تغییر نیستند — برای  · acc_journal: سند باطل‌شده بخشی از تاریخچهٔ حسابداری است و حذف ن",
       "evidence": null
     }
   ]
