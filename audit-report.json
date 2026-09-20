@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-19T09:22:58.553Z",
-  "duration_ms": 18598,
+  "generated_at": "2026-09-20T08:13:59.759Z",
+  "duration_ms": 20087,
   "summary": {
     "pass": 56,
     "fail": 1
@@ -18,6 +18,7 @@
     "profiles",
     "acc_fiscal_years",
     "acc_contracts",
+    "acc_entry_counters",
     "acc_details",
     "acc_bank_lines",
     "acc_petty_ops",
@@ -57,7 +58,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mu86iqkm@gmail.com"
+      "detail": "karban.audit.mu9jhu8h@gmail.com"
     },
     {
       "id": "B2",
@@ -78,21 +79,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=6e71d67f-41dc-405f-985b-0ef3749c5982"
+      "detail": "biz=fbce8f71-7aff-4f4a-89dc-328dcfd8f4b8"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"1ad5290c-71e3-4a72-b2ae-b7bde765cbf4\",\"business_id\":\"6e71d67f-41dc-405f-985b-0ef3749c5982\",\"user_id\":\"0fb2d7a7-c639-457c-8b71-fb09c5fa8d41\",\"email\":\"karban.audit.mu86iqkm@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"846209d7-b66a-4ff3-ad7c-f685dd224303\",\"business_id\":\"fbce8f71-7aff-4f4a-89dc-328dcfd8f4b8\",\"user_id\":\"741aae2f-5a67-4a30-a380-31ff391f9c26\",\"email\":\"karban.audit.mu9jhu8h@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=7d04809a-cf10-422c-bb6b-45f262f83537"
+      "detail": "id=eea3176b-6d33-42aa-9fc9-dd652857382d"
     },
     {
       "id": "B7",
@@ -113,21 +114,21 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=b4afa8be-c528-4df7-988c-24a03f03b9e6"
+      "detail": "id=d41f821e-3d8b-448d-9a8c-c3b943b52567"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=92fa57a0-c842-4467-8dfd-253ecbcbbad6"
+      "detail": "id=4273296a-0c71-48cf-ad53-d08fa51ece49"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
       "ok": true,
       "severity": "",
-      "detail": "id=25925c55-1563-472b-abcd-9470129955e7 | SELECT کاربر: 1 ردیف"
+      "detail": "id=f66f8b68-db3d-44fb-898c-e645b9c723d5 | SELECT کاربر: 1 ردیف"
     },
     {
       "id": "B12",
@@ -141,7 +142,7 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=bc6c7fb3-62fe-4f2d-8af7-4498d2257f90 total=2,310,000,000"
+      "detail": "id=5332fdfb-737b-452b-8d3c-57b58d008373 total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -225,7 +226,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=7ca21dc6-f2bc-4ed3-8d2f-f760d9344b9a"
+      "detail": "id=cfb588e0-a965-4b64-8987-793ff1164e2a"
     },
     {
       "id": "B26",
@@ -267,7 +268,7 @@
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=b0cd7c21-d1c6-4e7e-a675-f96264952d20"
+      "detail": "id=fe205f3a-4ad2-4f5b-b218-448c29ee3055"
     },
     {
       "id": "B31b",
@@ -321,9 +322,9 @@
     {
       "id": "B38",
       "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
-      "ok": false,
+      "ok": true,
       "severity": "info",
-      "detail": "رکورد telegram_admin در site_secrets نیست (پنل ادمین هنوز تنظیم نکرده)"
+      "detail": "key=telegram_admin updated=2026-09-19T14:41:31.738+00:00"
     },
     {
       "id": "B39",
@@ -363,8 +364,8 @@
     {
       "id": "C4",
       "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
-      "ok": true,
-      "severity": "",
+      "ok": false,
+      "severity": "critical",
       "detail": ""
     },
     {
@@ -447,14 +448,14 @@
   ],
   "findings": [
     {
-      "id": "B38",
-      "title": "تنظیم تلگرام ادمین در site_secrets (پنل)",
-      "severity": "info"
+      "id": "C4",
+      "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
+      "severity": "critical"
     }
   ],
   "business_stats": {
-    "count": 3,
-    "orphan_license": 0,
+    "count": 5,
+    "orphan_license": 2,
     "trial_quota_full": 2
   },
   "cleanup": {
@@ -463,6 +464,6 @@
     "fail": 1
   },
   "test_context": {
-    "email": "karban.audit.mu86iqkm@gmail.com"
+    "email": "karban.audit.mu9jhu8h@gmail.com"
   }
 }
