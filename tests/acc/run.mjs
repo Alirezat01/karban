@@ -42,7 +42,7 @@ try {
   } else {
     bizB = await makeBusiness(B, `بنگاه تست ب ${RID}`);
   }
-  ctx = { A, B, bizA, bizB, rpc: false, TODAY, RID };
+  ctx = { A, B, bizA, bizB, rpc: false, TODAY, RID, record };
   record('SETUP', 'ساخت ۲ کاربر و ۲ کسب‌وکار آزمایشی', bizA && bizB ? 'PASS' : 'FAIL', `A:${A.email} · B:${B.email}`);
 } catch (e) {
   record('SETUP', 'ساخت کاربران/کسب‌وکار آزمایشی', 'FAIL', e.message);
@@ -95,11 +95,14 @@ for (const [name, loader] of SPECS) {
 /* ── پاکسازی نهایی: حذف کامل کسب‌وکارهای آزمایشی (آبشاری) ── */
 console.log('\n─── پاکسازی ───');
 try {
-  const failA = await cleanup(ctx.A.sb, [ctx.bizA]);
-  const failB = await cleanup(ctx.B.sb, [ctx.bizB]);
-  const all = [...failA, ...failB];
-  record('CLEANUP', 'پاکسازی داده‌های تست (لایسنس برای اجرای بعدی حفظ شد)', all.length === 0 ? 'PASS' : 'FAIL',
-    all.length === 0 ? 'داده‌های تست پاک شدند' : `جدول‌های باقی‌مانده: ${all.slice(0, 4).join(' · ')}`);
+  const rA = await cleanup(ctx.A.sb, [ctx.bizA]);
+  const rB = ctx.B ? await cleanup(ctx.B.sb, [ctx.bizB]) : { failed: [], blocked: [] };
+  const failed = [...rA.failed, ...rB.failed];
+  const blocked = [...new Set([...rA.blocked, ...rB.blocked])];
+  record('CLEANUP', 'پاکسازی داده‌های تست (لایسنس برای اجرای بعدی حفظ شد)', failed.length === 0 ? 'PASS' : 'FAIL',
+    failed.length === 0
+      ? (blocked.length ? `سابقهٔ قطعی‌شده طبق گارد تاریخچه حفظ شد: ${blocked.slice(0, 4).join(' · ')}` : 'داده‌های تست پاک شدند')
+      : `خطای واقعی: ${failed.slice(0, 4).join(' · ')}`);
 } catch (e) {
   record('CLEANUP', 'حذف کسب‌وکارهای آزمایشی', 'FAIL', e.message);
 }

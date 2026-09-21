@@ -10,7 +10,7 @@ export async function run(ctx) {
   const { data: item } = await A.sb.from('acc_items').insert({
     business_id: bizA, name: `کالا-ابطال-${RID}`, unit: 'عدد', kind: 'goods',
     sale_price: 100000, purchase_price: 60000, vat_rate: 10, track_stock: true, stock: 50, active: true,
-  }).select('id').single();
+  }).select('id, name').single();
   const { data: partner } = await A.sb.from('acc_partners').insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `خریدار-${RID}` }).select('id').single();
 
   /* فاکتور فروش ۲×۱۰۰٬۰۰۰ + ۱۰٪ مالیات = ۲۲۰٬۰۰۰ */

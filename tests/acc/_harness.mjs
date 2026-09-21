@@ -12,24 +12,6 @@ export const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 export const RID = randomBytes(3).toString('hex');
 const PW = 'Kb!' + randomBytes(8).toString('hex');
 
-/* ── گارد درگاه API (کشف‌شده در اجرای زنده) ──
-   درگاه Supabase درخواست‌های با User-Agent غیرمرورگری (مثل «node» پیش‌فرض undici)
-   را با ۴۰۱ «Invalid API key» رد می‌کند. اپ واقعی از مرورگر با UA مرورگری می‌فرستد؛
-   اینجا هم هر درخواست به میزبان Supabase با UA مرورگری + Origin اپ واقعی تزئین می‌شود. */
-const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
-const _realFetch = globalThis.fetch;
-globalThis.fetch = (input, init = {}) => {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-  if (url && url.startsWith(SUPABASE_URL)) {
-    const headers = new Headers(init.headers || (typeof input === 'object' && !(input instanceof URL) ? input.headers : undefined));
-    if (!headers.has('User-Agent')) headers.set('User-Agent', BROWSER_UA);
-    if (!headers.has('Origin')) headers.set('Origin', 'https://karbanapp.ir');
-    if (!headers.has('Referer')) headers.set('Referer', 'https://karbanapp.ir/');
-    return _realFetch(input, { ...init, headers });
-  }
-  return _realFetch(input, init);
-};
-
 export function client() {
   return createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, flowType: 'implicit' } });
 }
@@ -103,16 +85,22 @@ const DATA_TABLES = ['acc_journal_lines', 'acc_journal', 'acc_invoice_items', 'a
   'acc_details', 'acc_partner_roles', 'acc_cost_centers', 'acc_partners', 'acc_items', 'acc_accounts', 'acc_projects', 'acc_expense_categories', 'acc_reconciliations', 'acc_entry_counters', 'acc_code_counters'];
 export async function cleanup(sb, bizIds) {
   const failed = [];
+  const blocked = [];
   for (const b of bizIds) {
     if (!b) continue;
     for (const t of DATA_TABLES) {
       const { error } = await sb.from(t).delete().eq('business_id', b);
       if (error && !/Could not find the table|does not exist/i.test(error.message)) {
-        failed.push(`${t}: ${error.message.slice(0, 50)}`);
+        /* رد شدن به‌خاطر گارد حفظ تاریخچهٔ حسابداری (DEL-3/LGI) انتظار طراحی است */
+        if (/قابل حذف نیست|بخشی از تاریخچه|قابل تغییر نیست|گردش حسابداری دارد|گردش مالی دارد|سند باطل‌شده/.test(error.message)) {
+          blocked.push(t);
+        } else {
+          failed.push(`${t}: ${error.message.slice(0, 50)}`);
+        }
       }
     }
   }
-  return failed;
+  return { failed, blocked };
 }
 
 /* درج سند دو مرحله‌ای — همان مسیر قدیمی اپ (برای سنجش رفتار پیش از مایگریشن) */

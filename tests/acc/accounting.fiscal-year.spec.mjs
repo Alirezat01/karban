@@ -56,7 +56,8 @@ export async function run(ctx) {
     { business_id: bizA, jyear: YEAR, status: 'closed', closing_entry_id: closingId, closed_at: new Date().toISOString() },
     { onConflict: 'business_id,jyear' },
   ).select('id').single();
-  await A.sb.from('acc_periods').upsert({ business_id: bizA, jyear: YEAR, jmonth: 11, locked: true }, { onConflict: 'business_id,jyear,jmonth' });
+  /* قفل ماه ۱۱ از سالِ باز (سال بعد از سال بسته‌شده) — سند FIS-6 در ۱۴۰۴/۱۱ ثبت می‌شود */
+  await A.sb.from('acc_periods').upsert({ business_id: bizA, jyear: YEAR + 1, jmonth: 11, locked: true }, { onConflict: 'business_id,jyear,jmonth' });
 
   /* ۳) ثبت سند در سال بسته → ممنوع (تریگر دیتابیس) */
   const { error: closedErr } = await A.sb.rpc('acc_create_journal', {
