@@ -84,13 +84,20 @@ export async function run(ctx) {
   if (accErr || !acc) {
     record('DEL-6', 'ساخت حساب بانکی آزمایشی', 'FAIL', accErr?.message?.slice(0, 60) || 'بدون داده');
   } else {
-  const { data: tx } = await A.sb.from('acc_transactions').insert({ business_id: bizA, kind: 'receipt', amount: 7000, date_g: TODAY, method: 'cash', account_id: acc.id, description: `تراکنش-${DEL}` }).select('id').single();
+  /* ۶) حساب بانکی با تراکنش → حذف نباید تراکنش‌ها را یتیم کند
+     (بند ۱۳: دریافت/پرداخت بدون طرف‌حساب در دیتابیس ممنوع است — مثل اپ همیشه طرف‌حساب می‌فرستیم) */
+  const { data: pTx, error: pTxErr } = await A.sb.from('acc_partners').insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `طرف‌حساب-${DEL}` }).select('id').single();
+  const { data: tx, error: txErr } = await A.sb.from('acc_transactions').insert({ business_id: bizA, kind: 'receipt', amount: 7000, date_g: TODAY, method: 'cash', account_id: acc.id, partner_id: pTx?.id ?? null, description: `تراکنش-${DEL}` }).select('id').single();
+  if (pTxErr || txErr || !tx) {
+    record('DEL-6', 'ساخت تراکنش آزمایشی با طرف‌حساب', 'FAIL', (pTxErr || txErr)?.message?.slice(0, 60) || 'بدون داده');
+  } else {
   const { error: delAccErr } = await A.sb.from('acc_accounts').delete().eq('id', acc.id);
   const { data: txAfter } = await A.sb.from('acc_transactions').select('id, account_id').eq('id', tx.id).maybeSingle();
   record('DEL-6', 'حذف حساب با تراکنش: تراکنش یتیم نمی‌ماند (FK on-delete رفتار مشخص دارد)',
     !txAfter || txAfter.account_id === null || delAccErr ? 'PASS' : 'FAIL',
     delAccErr ? `حذف حساب رد شد: ${delAccErr.message.slice(0, 40)}` : (!txAfter ? 'تراکنش هم حذف شد (cascade)' : 'تراکنش با account_id = null ماند (set null)'));
   await A.sb.from('acc_transactions').delete().eq('id', tx.id);
+  }
   }
 
   /* ۷) مشتری با فاکتور → حذف مشتری نباید فاکتور را از بین ببرد */

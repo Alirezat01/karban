@@ -3,6 +3,8 @@
    Invoice=Cancelled · Journal=Voided/Reversed · موجودی برگشته · ویرایش/حذف/ابطال مجدد بسته */
 import { record, entrySums } from './_harness.mjs';
 
+const M = (x) => Number(x || 0);
+
 export async function run(ctx) {
   const { A, bizA, rpc, TODAY, RID } = ctx;
 
@@ -58,11 +60,19 @@ export async function run(ctx) {
   /* ۲) موجودی کسر شده؟ */
   record('IVD-2', 'کسر موجودی هنگام صدور (۵۰ → ۴۸)', Number(itemAfter2?.stock) === 48 ? 'PASS' : 'FAIL', `موجودی: ${itemAfter2?.stock}`);
 
-  /* ۳) سند آینه‌ای تراز و درست */
+  /* ۳) سند آینه‌ای تراز و درست — فروش ۲۲۰٬۰۰۰ + بهای تمام‌شدهٔ کالای فروخته (COGS) ۲×۶۰٬۰۰۰=۱۲۰٬۰۰۰
+     DR 1103: 220000 / CR 4101: 200000 / CR 2102: 20000 / DR 5103: 120000 / CR 1301: 120000 → جمع ۳۴۰٬۰۰۰ */
   const jid = issued?.journal_id;
-  const s = jid ? await entrySums(A.sb, jid) : { d: 0, c: 0, lines: 0 };
-  record('IVD-3', 'سند آینه‌ای فاکتور تراز است', jid && s.d === s.c && s.d === 220000 ? 'PASS' : 'FAIL',
-    jid ? `بدهکار ${s.d} / بستانکار ${s.c} (${s.lines} ردیف)` : 'سند یافت نشد');
+  const { data: jl3 } = jid ? await A.sb.from('acc_journal_lines').select('account_code, debit, credit').eq('entry_id', jid) : { data: [] };
+  const d3 = (jl3 || []).reduce((x, l) => x + M(l.debit), 0);
+  const c3 = (jl3 || []).reduce((x, l) => x + M(l.credit), 0);
+  const L3 = (code) => (jl3 || []).find((l) => l.account_code === code);
+  const ok3 = jid && d3 === c3 && d3 === 340000
+    && M(L3('1103')?.debit) === 220000
+    && M(L3('4101')?.credit) === 200000 && M(L3('2102')?.credit) === 20000
+    && M(L3('5101')?.debit) === 120000 && M(L3('1201')?.credit) === 120000;
+  record('IVD-3', 'سند آینه‌ای فاکتور تراز و کامل (فروش + COGS)', ok3 ? 'PASS' : 'FAIL',
+    jid ? `بدهکار ${d3} / بستانکار ${c3} · 1103=${L3('1103')?.debit} · 4101=${L3('4101')?.credit} · 2102=${L3('2102')?.credit} · 5101=${L3('5101')?.debit} · 1201=${L3('1201')?.credit}` : 'سند یافت نشد');
 
   /* ۴) ابطال اتمیک */
   const { data: voidRes, error: voidErr2 } = await A.sb.rpc('acc_void_invoice', {
@@ -85,10 +95,12 @@ export async function run(ctx) {
   record('IVD-7', 'سند اصلی voided + سند معکوس با ارجاع متقابل', !!jAfter?.voided_at && (revJ || []).length >= 1 ? 'PASS' : 'FAIL',
     `voided=${!!jAfter?.voided_at} · معکوس‌ها: ${(revJ || []).length}`);
 
-  /* ۸) سند معکوس هم تراز است؟ */
+  /* ۸) سند معکوس هم تراز و قرینهٔ کامل است؟ (شامل برگشت COGS) */
   if (revJ?.length) {
-    const rs = await entrySums(A.sb, revJ[0].id);
-    record('IVD-8', 'سند معکوس تراز است', rs.d === rs.c && rs.d === 220000 ? 'PASS' : 'FAIL', `${rs.d}/${rs.c}`);
+    const { data: jl8 } = await A.sb.from('acc_journal_lines').select('account_code, debit, credit').eq('entry_id', revJ[0].id);
+    const rd = (jl8 || []).reduce((x, l) => x + M(l.debit), 0);
+    const rc = (jl8 || []).reduce((x, l) => x + M(l.credit), 0);
+    record('IVD-8', 'سند معکوس تراز و قرینهٔ کامل است', rd === rc && rd === 340000 ? 'PASS' : 'FAIL', `${rd}/${rc} (${(jl8 || []).length} ردیف)`);
   }
 
   /* ۹) ابطال مجدد ممنوع */

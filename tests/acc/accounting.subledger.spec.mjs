@@ -48,11 +48,16 @@ export async function run(ctx) {
       JSON.stringify((ls || []).map((l) => [l.account_code, l.debit, l.credit, l.acc_details?.kind])));
   }
 
-  /* SL2: هزینه پرداخت‌شده توسط شریک ۱۰م → هزینه بدهکار / جاری شریک بستانکار (بند ۴۲) */
+  /* SL2: هزینهٔ پرداخت‌نشده بر عهدهٔ شریک ۱۰م → هزینه بدهکار / جاری شریک بستانکار (بند ۴۲)
+     مسیر کانونیکال بند ۱۳: paid_by_kind='unpaid' → 3103 (سهامدار) با تفصیلی */
   {
     const { data: exp, error } = await A.sb.from('acc_expenses')
-      .insert({ business_id: bizA, category: 'تبلیغات و بازاریابی', title: `${P}-هزینه توسط شریک`, amount: 10000000, vat_amount: 0, date_g: TODAY, partner_id: sh.id, is_paid: false })
+      .insert({ business_id: bizA, category: 'تبلیغات و بازاریابی', title: `${P}-هزینه توسط شریک`, amount: 10000000, vat_amount: 0, date_g: TODAY, partner_id: sh.id, paid_by_kind: 'unpaid', is_paid: false })
       .select('id').single();
+    if (!exp) {
+      record('SL2', 'هزینه پرداخت‌شده توسط شریک: هزینه بدهکار / جاری شریک بستانکار', 'FAIL',
+        'درج هزینه: ' + (error?.message?.slice(0, 70) || 'بدون داده'));
+    } else {
     const { data: j } = await A.sb.from('acc_journal').select('id').eq('ref_type', 'expense').eq('ref_id', exp.id).maybeSingle();
     let ls = [];
     if (j) {
@@ -64,25 +69,34 @@ export async function run(ctx) {
       && ls.some((l) => l.account_code === '5205' && M(l.debit) === 10000000);
     record('SL2', 'هزینه پرداخت‌شده توسط شریک: هزینه بدهکار / جاری شریک بستانکار', ok ? 'PASS' : 'FAIL',
       JSON.stringify(ls.map((l) => [l.account_code, l.debit, l.credit, l.acc_details?.kind])));
+    }
   }
 
   /* SL3: هزینه توسط کارمند ۵م → جاری کارکنان (2108) بستانکار؛ بازپرداخت ۲م → 2108 بدهکار (بند ۴۳) */
   {
-    const { data: exp } = await A.sb.from('acc_expenses')
-      .insert({ business_id: bizA, category: 'اجاره', title: `${P}-هزینه توسط کارمند`, amount: 5000000, vat_amount: 0, date_g: TODAY, partner_id: emp.id, is_paid: false })
+    const { data: exp, error: exp3Err } = await A.sb.from('acc_expenses')
+      .insert({ business_id: bizA, category: 'اجاره', title: `${P}-هزینه توسط کارمند`, amount: 5000000, vat_amount: 0, date_g: TODAY, partner_id: emp.id, paid_by_kind: 'unpaid', is_paid: false })
       .select('id').single();
-    const { data: j } = await A.sb.from('acc_journal').select('id').eq('ref_type', 'expense').eq('ref_id', exp.id).maybeSingle();
+    if (!exp) {
+      record('SL3a', 'هزینه توسط کارمند: هزینه بدهکار / جاری کارکنان بستانکار', 'FAIL',
+        'درج هزینه: ' + (exp3Err?.message?.slice(0, 70) || 'بدون داده'));
+    }
+    const { data: j } = exp ? await A.sb.from('acc_journal').select('id').eq('ref_type', 'expense').eq('ref_id', exp.id).maybeSingle() : { data: null };
     const { data: ls } = j ? await A.sb.from('acc_journal_lines').select('account_code, debit, credit, acc_details(kind)').eq('entry_id', j.id) : { data: [] };
     const d2108 = (ls || []).find((l) => l.account_code === '2108');
     record('SL3a', 'هزینه توسط کارمند: هزینه بدهکار / جاری کارکنان بستانکار',
       d2108 && M(d2108.credit) === 5000000 && d2108.acc_details?.kind === 'employee' ? 'PASS' : 'FAIL',
       JSON.stringify((ls || []).map((l) => [l.account_code, l.debit, l.credit, l.acc_details?.kind])));
 
-    const { data: tx } = await A.sb.from('acc_transactions')
+    const { data: tx, error: tx3Err } = await A.sb.from('acc_transactions')
       .insert({ business_id: bizA, kind: 'payment', amount: 2000000, date_g: TODAY, method: 'transfer', account_id: bank.id, partner_id: emp.id, description: 'بازپرداخت به کارمند' })
       .select('id').single();
-    const { data: j2 } = await A.sb.from('acc_journal').select('id').eq('ref_type', 'transaction').eq('ref_id', tx.id).single();
-    const { data: ls2 } = await A.sb.from('acc_journal_lines').select('account_code, debit, credit').eq('entry_id', j2.id);
+    if (!tx) {
+      record('SL3b', 'بازپرداخت به کارمند: جاری کارکنان بدهکار / بانک بستانکار', 'FAIL',
+        'درج پرداخت: ' + (tx3Err?.message?.slice(0, 70) || 'بدون داده'));
+    }
+    const { data: j2 } = tx ? await A.sb.from('acc_journal').select('id').eq('ref_type', 'transaction').eq('ref_id', tx.id).maybeSingle() : { data: null };
+    const { data: ls2 } = j2 ? await A.sb.from('acc_journal_lines').select('account_code, debit, credit').eq('entry_id', j2.id) : { data: [] };
     const d2108b = (ls2 || []).find((l) => l.account_code === '2108');
     record('SL3b', 'بازپرداخت به کارمند: جاری کارکنان بدهکار / بانک بستانکار',
       d2108b && M(d2108b.debit) === 2000000 && (ls2 || []).some((l) => l.account_code === '1102' && M(l.credit) === 2000000) ? 'PASS' : 'FAIL',
@@ -97,14 +111,21 @@ export async function run(ctx) {
       .insert({ business_id: bizA, name: `${P}-همایش تهران` }).select('id').single();
     const { data: chart } = await A.sb.from('acc_chart').select('id').eq('code', '5401').is('business_id', null).maybeSingle();
     const expAccId = chart?.id || null;
+    /* تفصیلی صریح روی سطر هزینه — مثل فرم هزینهٔ اپ (بند ۴۴: حساب + تفصیلی + مرکز + پروژه) */
+    const { data: shDet } = await A.sb.from('acc_details')
+      .select('id').eq('business_id', bizA).eq('ref_id', sh.id).eq('kind', 'shareholder').maybeSingle();
     const { data: exp, error } = await A.sb.from('acc_expenses')
       .insert({
         business_id: bizA, category: 'تبلیغات و بازاریابی', title: `${P}-کمپین`, amount: 20000000, vat_amount: 0,
-        date_g: TODAY, account_id: bank.id, partner_id: sh.id, is_paid: true,
+        date_g: TODAY, account_id: bank.id, partner_id: sh.id, is_paid: true, detail_id: shDet?.id ?? null,
         expense_account_id: expAccId, cost_center_id: cc.id, project_id: prj.id,
       })
       .select('id').single();
-    const { data: j } = await A.sb.from('acc_journal').select('id').eq('ref_type', 'expense').eq('ref_id', exp.id).maybeSingle();
+    if (!exp) {
+      record('SL4', 'هزینه ۲۰م با حساب/مرکز هزینه/پروژه/تفصیلی بانک روی سطر سند', 'FAIL',
+        'درج هزینه: ' + (error?.message?.slice(0, 70) || 'بدون داده'));
+    }
+    const { data: j } = exp ? await A.sb.from('acc_journal').select('id').eq('ref_type', 'expense').eq('ref_id', exp.id).maybeSingle() : { data: null };
     const { data: ls } = j ? await A.sb.from('acc_journal_lines')
       .select('account_code, debit, credit, detail_id, cost_center_id, project_id').eq('entry_id', j.id) : { data: [] };
     const debit = (ls || []).find((l) => l.account_code === '5401');
@@ -121,11 +142,15 @@ export async function run(ctx) {
     const { data: cust } = await A.sb.from('acc_partners')
       .insert({ business_id: bizA, kind: 'customer', person_type: 'legal', name: `${P}-مشتری ایکس` })
       .select('id').single();
-    const { data: tx } = await A.sb.from('acc_transactions')
+    const { data: tx, error: tx5Err } = await A.sb.from('acc_transactions')
       .insert({ business_id: bizA, kind: 'receipt', amount: 50000000, date_g: TODAY, method: 'transfer', account_id: bank.id, partner_id: cust.id, description: 'دریافت از مشتری' })
       .select('id').single();
-    const { data: j } = await A.sb.from('acc_journal').select('id').eq('ref_type', 'transaction').eq('ref_id', tx.id).single();
-    const { data: ls } = await A.sb.from('acc_journal_lines').select('account_code, debit, credit, acc_details(kind)').eq('entry_id', j.id);
+    if (!tx) {
+      record('SL5', 'دریافت ۵۰م: بانک بدهکار / 1103 بستانکار با تفصیلی مشتری', 'FAIL',
+        'درج دریافت: ' + (tx5Err?.message?.slice(0, 70) || 'بدون داده'));
+    }
+    const { data: j } = tx ? await A.sb.from('acc_journal').select('id').eq('ref_type', 'transaction').eq('ref_id', tx.id).maybeSingle() : { data: null };
+    const { data: ls } = j ? await A.sb.from('acc_journal_lines').select('account_code, debit, credit, acc_details(kind)').eq('entry_id', j.id) : { data: [] };
     const ar = (ls || []).find((l) => l.account_code === '1103');
     record('SL5', 'دریافت ۵۰م: بانک بدهکار / 1103 بستانکار با تفصیلی مشتری',
       ar && M(ar.credit) === 50000000 && ar.acc_details?.kind === 'customer' ? 'PASS' : 'FAIL',
@@ -134,10 +159,14 @@ export async function run(ctx) {
 
   /* SL6: انتقال بانک→صندوق — فقط 1101 بدهکار / 1102 بستانکار؛ صفر درآمد/هزینه (بند ۲۸ و ۴۷) */
   {
-    const { data: tx } = await A.sb.from('acc_transactions')
+    const { data: tx, error: tx6Err } = await A.sb.from('acc_transactions')
       .insert({ business_id: bizA, kind: 'transfer', amount: 10000000, date_g: TODAY, method: 'transfer', account_id: bank.id, to_account_id: cash.id, description: 'انتقال به صندوق' })
       .select('id').single();
-    const { data: j } = await A.sb.from('acc_journal').select('id').eq('ref_type', 'transaction').eq('ref_id', tx.id).maybeSingle();
+    if (!tx) {
+      record('SL6', 'انتقال بانک→صندوق: فقط دو سطر خزانه؛ بدون درآمد/هزینه', 'FAIL',
+        'درج انتقال: ' + (tx6Err?.message?.slice(0, 70) || 'بدون داده'));
+    }
+    const { data: j } = tx ? await A.sb.from('acc_journal').select('id').eq('ref_type', 'transaction').eq('ref_id', tx.id).maybeSingle() : { data: null };
     const { data: ls } = j ? await A.sb.from('acc_journal_lines').select('account_code, debit, credit').eq('entry_id', j.id) : { data: [] };
     const ok = (ls || []).length === 2
       && ls.some((l) => l.account_code === '1101' && M(l.debit) === 10000000)
@@ -204,11 +233,15 @@ export async function run(ctx) {
   {
     /* مانده جاری شریک از Journal: واریز ۱۰۰م + هزینه پرداختی ۱۰م بستانکار */
     const { data: det } = await A.sb.from('acc_details').select('id').eq('business_id', bizA).eq('ref_id', sh.id).eq('kind', 'shareholder').maybeSingle();
-    const { data: ls } = await A.sb.from('acc_journal_lines')
-      .select('debit, credit').eq('business_id', bizA).eq('account_code', '3103').eq('detail_id', det.id);
-    const bal = (ls || []).reduce((s, l) => s + M(l.credit) - M(l.debit), 0);
-    record('SL8', 'مانده جاری شریک = ۱۱۰م بستانکار (۱۰۰ واریز + ۱۰ هزینه پرداختی)',
-      bal === 110000000 ? 'PASS' : 'PARTIAL', `balance=${bal}`);
+    if (det) {
+      const { data: ls } = await A.sb.from('acc_journal_lines')
+        .select('debit, credit').eq('business_id', bizA).eq('account_code', '3103').eq('detail_id', det.id);
+      const bal = (ls || []).reduce((s, l) => s + M(l.credit) - M(l.debit), 0);
+      record('SL8', 'مانده جاری شریک = ۱۱۰م بستانکار (۱۰۰ واریز + ۱۰ هزینه پرداختی)',
+        bal === 110000000 ? 'PASS' : 'PARTIAL', `balance=${bal}`);
+    } else {
+      record('SL8', 'مانده جاری شریک = ۱۱۰م بستانکار (۱۰۰ واریز + ۱۰ هزینه پرداختی)', 'PARTIAL', 'تفصیلی سهامدار یافت نشد');
+    }
   }
 
   /* SL9: گزارش‌ها از Journal واقعی — مرکز هزینه و پروژه (بند ۳۳ و ۸۹) */

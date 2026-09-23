@@ -71,23 +71,30 @@ export async function run(ctx) {
 
   /* MD5: گارد حذف — طرف‌حساب دارای گردش ممنوع؛ حذف طرف‌حساب بدون گردش مجاز (بند ۳۰) */
   {
-    const { data: busy } = await A.sb.from('acc_partners')
-      .select('id, name').eq('business_id', bizA).eq('name', `${P}-همزمان-0`).single();
-    /* گردش بساز: سند دستی روی 1103 با تفصیلی مشتریِ همین طرف‌حساب */
-    const { data: det } = await A.sb.from('acc_details')
-      .select('id').eq('business_id', bizA).eq('ref_id', busy.id).eq('kind', 'customer').maybeSingle();
-    if (det) {
-      await A.sb.rpc('acc_create_journal', {
-        p_business: bizA, p_date: TODAY, p_description: `${P}-گردش`, p_ref_type: 'manual',
-        p_lines: [
-          { account_code: '1103', debit: 1000, credit: 0, detail_id: det.id },
-          { account_code: '4101', debit: 0, credit: 1000 },
-        ],
-      });
-    }
-    const { error: delErr } = await A.sb.from('acc_partners').delete().eq('id', busy.id);
-    record('MD5', 'حذف طرف‌حساب دارای گردش → رد با پیام غیرفعال‌سازی', !!delErr && /غیرفعال/.test(delErr.message) ? 'PASS' : 'FAIL',
-      delErr ? delErr.message.slice(0, 70) : 'no error!');
+    /* طرف‌حساب آزمایشی با نقش مشتری → تفصیلی خودکار (تریگر نقش) → گردش واقعی */
+    const { data: busy, error: busyErr } = await A.sb.from('acc_partners')
+      .insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `${P}-باگردش` })
+      .select('id, name').single();
+    if (busyErr || !busy) {
+      record('MD5', 'حذف طرف‌حساب دارای گردش → رد با پیام غیرفعال‌سازی', 'FAIL',
+        'ساخت طرف‌حساب: ' + (busyErr?.message?.slice(0, 55) || 'بدون داده'));
+    } else {
+      await A.sb.from('acc_partner_roles').insert({ business_id: bizA, partner_id: busy.id, role: 'customer' });
+      /* گردش بساز: سند دستی روی 1103 با تفصیلی مشتریِ همین طرف‌حساب */
+      const { data: det } = await A.sb.from('acc_details')
+        .select('id').eq('business_id', bizA).eq('ref_id', busy.id).eq('kind', 'customer').maybeSingle();
+      if (det) {
+        await A.sb.rpc('acc_create_journal', {
+          p_business: bizA, p_date: TODAY, p_description: `${P}-گردش`, p_ref_type: 'manual',
+          p_lines: [
+            { account_code: '1103', debit: 1000, credit: 0, detail_id: det.id },
+            { account_code: '4101', debit: 0, credit: 1000 },
+          ],
+        });
+      }
+      const { error: delErr } = await A.sb.from('acc_partners').delete().eq('id', busy.id);
+      record('MD5', 'حذف طرف‌حساب دارای گردش → رد با پیام غیرفعال‌سازی', !!delErr && /غیرفعال/.test(delErr.message) ? 'PASS' : 'FAIL',
+        delErr ? delErr.message.slice(0, 70) : `no error! (det=${!!det})`);
 
     /* طرف‌حساب بدون گردش: حذف مجاز */
     const { data: fresh } = await A.sb.from('acc_partners')
@@ -95,6 +102,7 @@ export async function run(ctx) {
       .select('id').single();
     const { error: okErr } = await A.sb.from('acc_partners').delete().eq('id', fresh.id);
     record('MD6', 'حذف طرف‌حساب بدون گردش مجاز است', !okErr ? 'PASS' : 'FAIL', okErr?.message?.slice(0, 60));
+    }
   }
 
   /* MD7: ایزوله‌سازی — کسب‌وکار B نقش‌ها و مراکز A را نمی‌بیند (بند ۳۷ و ۴۹) */
