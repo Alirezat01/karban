@@ -42,7 +42,7 @@ try {
   } else {
     bizB = await makeBusiness(B, `بنگاه تست ب ${RID}`);
   }
-  ctx = { A, B, bizA, bizB, rpc: false, TODAY, RID };
+  ctx = { A, B, bizA, bizB, rpc: false, TODAY, RID, record };
   record('SETUP', 'ساخت ۲ کاربر و ۲ کسب‌وکار آزمایشی', bizA && bizB ? 'PASS' : 'FAIL', `A:${A.email} · B:${B.email}`);
 } catch (e) {
   record('SETUP', 'ساخت کاربران/کسب‌وکار آزمایشی', 'FAIL', e.message);
@@ -73,13 +73,17 @@ const SPECS = [
   ['accounting.journal.atomicity', () => import('./accounting.journal.atomicity.spec.mjs')],
   ['accounting.invoice-void', () => import('./accounting.invoice-void.spec.mjs')],
   ['accounting.bank-reconciliation.concurrent', () => import('./accounting.bank-reconciliation.concurrent.spec.mjs')],
+  /* بکاپ/ریستور عمداً «قبل از» fiscal-year است: restore، اسناد اختتامیهٔ سال
+     بسته را هم بازپخش می‌کند و گارد دورهٔ بسته (رفتار درست محصول) آن را رد می‌کند.
+     با پاک‌سازی ابتدای اجرا (purge سال‌های مالی قبلی)، این ترتیب تضمین می‌کند
+     فایل بکاپ فقط اسنادِ درون سال باز داشته باشد. */
+  ['accounting.backup-restore', () => import('./accounting.backup-restore.spec.mjs')],
   ['accounting.fiscal-year', () => import('./accounting.fiscal-year.spec.mjs')],
   ['accounting.trial-balance', () => import('./accounting.trial-balance.spec.mjs')],
   ['accounting.ledger-integrity', () => import('./accounting.ledger-integrity.spec.mjs')],
   ['accounting.numeric-rounding', () => import('./accounting.numeric-rounding.spec.mjs')],
   ['accounting.e2e.flow', () => import('./accounting.e2e.flow.spec.mjs')],
   ['accounting.checks-sayadi', () => import('./accounting.checks-sayadi.spec.mjs')],
-  ['accounting.backup-restore', () => import('./accounting.backup-restore.spec.mjs')],
   ['accounting.person-payables', () => import('./accounting.person-payables.spec.mjs')],
   ['accounting.deletion', () => import('./accounting.deletion.spec.mjs')],
   ['accounting.reports', () => import('./accounting.reports.spec.mjs')],

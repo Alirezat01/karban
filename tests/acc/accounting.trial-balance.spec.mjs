@@ -38,7 +38,8 @@ export async function run(ctx) {
   const voidedId = await insertJournalLegacy(A.sb, bizA, {
     date_g: TODAY, description: `${P}-ابطالی`, lines: [{ code: '1101', debit: 99999 }, { code: '4101', credit: 99999 }],
   });
-  const { error: voidErr } = await A.sb.from('acc_journal').update({ voided_at: new Date().toISOString(), void_reason: 'تست تراز' }).eq('id', voidedId);
+  /* ابطال فقط از مسیر قرارداد جدید (RPC اتمیک M120000) — نوشتن مستقیم acc_journal با M150000 بسته است */
+  const { error: voidErr } = await A.sb.rpc('acc_void_journal', { p_business: bizA, p_entry: voidedId, p_reason: 'تست تراز' });
   if (voidErr) { record('TB-0', 'ابطال سند برای تست تراز', 'FAIL', voidErr.message); return; }
 
   /* گردش فعال فقط از سندهای این سناریو */

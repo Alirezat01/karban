@@ -21,18 +21,30 @@ export async function run(ctx) {
   const { error: delDraft } = await A.sb.from('acc_invoices').delete().eq('id', draft.id);
   record('DEL-2', 'حذف فاکتور پیش‌نویس مجاز است', !delDraft ? 'PASS' : 'FAIL', delDraft?.message?.slice(0, 50) || 'حذف شد');
 
-  /* ۳) فاکتور صادره → حذف ممنوع (بعد از مایگریشن؛ قبل از آن مستند) */
-  const { data: issued } = await A.sb.from('acc_invoices').insert({
-    business_id: bizA, number: `${DEL}-I`, type: 'sale', status: 'draft', date_g: TODAY,
+  /* ۳) فاکتور صادره → حذف ممنوع (بعد از مایگریشن؛ قبل از آن مستند)
+     فاکتور باید قابل صدور باشد (طرف‌حساب + ردیف) وگرنه draft می‌ماند و حذفش مجاز است */
+  const { data: del3Partner } = await A.sb.from('acc_partners').insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `خریدار-DEL3-${DEL}` }).select('id').single();
+  const { data: issued, error: issuedErr } = await A.sb.from('acc_invoices').insert({
+    business_id: bizA, number: `${DEL}-I`, type: 'sale', status: 'draft', partner_id: del3Partner?.id ?? null, date_g: TODAY,
     subtotal: 2000, discount_total: 0, vat_total: 0, total: 2000, paid_total: 0,
   }).select('id').single();
   if (rpc) {
-    await A.sb.rpc('acc_issue_invoice', { p_invoice: issued.id });
-    const { data: delRes, error: delIssued } = await A.sb.from('acc_invoices').delete().eq('id', issued.id).select('id');
-    record('DEL-3', 'حذف فاکتور صادره ممنوع (حتی بدون خطا، اثری ندارد)', (delRes || []).length === 0 ? 'PASS' : 'FAIL',
-      `${(delRes || []).length} ردیف حذف شد`);
-    /* بستن مسیر ابطال برای پاکسازی */
-    await A.sb.rpc('acc_void_invoice', { p_business: bizA, p_invoice: issued.id, p_reason: 'تست حذف', p_restore_stock: false });
+    const { error: iiErr3 } = await A.sb.from('acc_invoice_items').insert({
+      invoice_id: issued.id, business_id: bizA, title: `خدمت DEL3-${DEL}`, unit: 'عدد',
+      quantity: 1, unit_price: 2000, discount: 0, vat_rate: 0, vat_amount: 0, row_total: 2000, position: 0,
+    });
+    const { error: issueErr } = iiErr3 || issuedErr
+      ? { error: iiErr3 || issuedErr }
+      : await A.sb.rpc('acc_issue_invoice', { p_invoice: issued.id }).then(r => ({ error: r.error }));
+    if (issueErr) {
+      record('DEL-3', 'حذف فاکتور صادره ممنوع', 'FAIL', 'صادر نشد: ' + issueErr.message.slice(0, 70));
+    } else {
+      const { data: delRes, error: delIssued } = await A.sb.from('acc_invoices').delete().eq('id', issued.id).select('id');
+      record('DEL-3', 'حذف فاکتور صادره ممنوع (حتی بدون خطا، اثری ندارد)', (delRes || []).length === 0 ? 'PASS' : 'FAIL',
+        `${(delRes || []).length} ردیف حذف شد`);
+      /* بستن مسیر ابطال برای پاکسازی */
+      await A.sb.rpc('acc_void_invoice', { p_business: bizA, p_invoice: issued.id, p_reason: 'تست حذف', p_restore_stock: false });
+    }
   } else {
     /* قبل از مایگریشن posted_at توسط تریگر sql-6 مهر می‌شود ولی DELETE آزاد است */
     await A.sb.from('acc_invoices').update({ status: 'issued' }).eq('id', issued.id);
@@ -68,7 +80,10 @@ export async function run(ctx) {
   }
 
   /* ۶) حساب بانکی با تراکنش → حذف نباید تراکنش‌ها را یتیم کند */
-  const { data: acc } = await A.sb.from('acc_accounts').insert({ business_id: bizA, name: `بانک-${DEL}`, kind: 'bank', initial_balance: 0, active: true }).select('id').single();
+  const { data: acc, error: accErr } = await A.sb.from('acc_accounts').insert({ business_id: bizA, name: `بانک-${DEL}`, kind: 'bank', initial_balance: 0, active: true }).select('id').single();
+  if (accErr || !acc) {
+    record('DEL-6', 'ساخت حساب بانکی آزمایشی', 'FAIL', accErr?.message?.slice(0, 60) || 'بدون داده');
+  } else {
   const { data: tx } = await A.sb.from('acc_transactions').insert({ business_id: bizA, kind: 'receipt', amount: 7000, date_g: TODAY, method: 'cash', account_id: acc.id, description: `تراکنش-${DEL}` }).select('id').single();
   const { error: delAccErr } = await A.sb.from('acc_accounts').delete().eq('id', acc.id);
   const { data: txAfter } = await A.sb.from('acc_transactions').select('id, account_id').eq('id', tx.id).maybeSingle();
@@ -76,6 +91,7 @@ export async function run(ctx) {
     !txAfter || txAfter.account_id === null || delAccErr ? 'PASS' : 'FAIL',
     delAccErr ? `حذف حساب رد شد: ${delAccErr.message.slice(0, 40)}` : (!txAfter ? 'تراکنش هم حذف شد (cascade)' : 'تراکنش با account_id = null ماند (set null)'));
   await A.sb.from('acc_transactions').delete().eq('id', tx.id);
+  }
 
   /* ۷) مشتری با فاکتور → حذف مشتری نباید فاکتور را از بین ببرد */
   const { data: pWith } = await A.sb.from('acc_partners').insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `مشتری-با-فاکتور-${DEL}` }).select('id').single();

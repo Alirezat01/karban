@@ -4,13 +4,14 @@
    دو خط بانکی مشابه + دو درخواست هم‌زمان → هر خط به سند درست خودش وصل شود */
 import { record } from './_harness.mjs';
 
-/* همان منطق classifyBankLine اپ (بعد از اصلاح) — شناسه از خود درج */
-async function classifyLikeApp(sb, business, line, kind) {
+/* همان منطق classifyBankLine اپ (بعد از اصلاح) — شناسه از خود درج؛
+   دریافت/پرداخت بدون طرف‌حساب طبق بند ۱۳ در M120000 REJECT می‌شود — مثل اپ واقعی partner می‌فرستیم */
+async function classifyLikeApp(sb, business, line, kind, partnerId) {
   const abs = Math.abs(line.amount);
   const txId = await (async () => {
     const { data, error } = await sb.from('acc_transactions').insert({
       business_id: business.id, kind, amount: abs, date_g: line.date_g, method: 'transfer',
-      account_id: line.account_id, partner_id: null,
+      account_id: line.account_id, partner_id: partnerId,
       description: line.description || 'تراکنش بانکی',
     }).select('id').single();
     if (error) throw error;
@@ -31,6 +32,8 @@ export async function run(ctx) {
     business_id: bizA, name: `بانک-مغایرت-${RID}`, kind: 'bank', initial_balance: 0, active: true,
   }).select('id').single();
 
+  const { data: partner } = await A.sb.from('acc_partners').insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `واریزکننده-${RID}` }).select('id').single();
+
   /* دو خط بانکی دقیقاً مشابه: همان مبلغ، همان روز، همان حساب */
   const mkLine = async (n) => A.sb.from('acc_bank_lines').insert({
     business_id: bizA, account_id: account.id, date_g: TODAY, amount: 500000,
@@ -40,8 +43,8 @@ export async function run(ctx) {
 
   /* درخواست‌های هم‌زمان طبقه‌بندی */
   const [r1, r2] = await Promise.allSettled([
-    classifyLikeApp(A.sb, { id: bizA }, line1, 'receipt'),
-    classifyLikeApp(A.sb, { id: bizA }, line2, 'receipt'),
+    classifyLikeApp(A.sb, { id: bizA }, line1, 'receipt', partner?.id),
+    classifyLikeApp(A.sb, { id: bizA }, line2, 'receipt', partner?.id),
   ]);
   const id1 = r1.status === 'fulfilled' ? r1.value : null;
   const id2 = r2.status === 'fulfilled' ? r2.value : null;
@@ -69,4 +72,5 @@ export async function run(ctx) {
   await A.sb.from('acc_transactions').delete().eq('business_id', bizA).eq('account_id', account.id);
   await A.sb.from('acc_bank_lines').delete().eq('business_id', bizA).eq('account_id', account.id);
   await A.sb.from('acc_accounts').delete().eq('id', account.id);
+  if (partner?.id) await A.sb.from('acc_partners').delete().eq('id', partner.id);
 }

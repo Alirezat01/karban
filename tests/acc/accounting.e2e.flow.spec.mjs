@@ -20,7 +20,7 @@ export async function run(ctx) {
     business_id: bizB, name: `خدمت مشاوره ${E2E}`, unit: 'ساعت', kind: 'service',
     sale_price: 10000000, purchase_price: 0, vat_rate: 10, vat_exempt: false, track_stock: false, active: true,
   }).select('id').single();
-  const { data: cat } = await B.sb.from('acc_expense_categories').insert({ business_id: bizB, title: `اجاره ${E2E}`, code: '5203', position: 99 }).select('id').single();
+  const { data: cat } = await B.sb.from('acc_expense_categories').insert({ business_id: bizB, title: `اجاره ${E2E}`, code: '5203', position: 99 }).select('id, title').single();
   record('E2E-0', 'ایجاد کسب‌وکار، مشتری، تامین‌کننده، بانک، صندوق، خدمت، دستهٔ هزینه', customer && supplier && bank && cash && service && cat ? 'PASS' : 'FAIL');
 
   /* ── ۱) فروش خدمت ۱۰٬۰۰۰٬۰۰۰×۱۰ + مالیات ۱۰٪ = ۱۱۰٬۰۰۰٬۰۰۰ ── */

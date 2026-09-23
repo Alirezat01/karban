@@ -19,10 +19,11 @@ export async function run(ctx) {
     date_g: TODAY, subtotal: 200000, discount_total: 0, vat_total: 20000, total: 220000, paid_total: 0,
   }).select('id').single();
   if (invErr) { record('IVD-0', 'ساخت فاکتور آزمایشی', 'FAIL', invErr.message); return; }
-  await A.sb.from('acc_invoice_items').insert({
+  const { error: iiErr } = await A.sb.from('acc_invoice_items').insert({
     invoice_id: inv.id, business_id: bizA, item_id: item.id, title: item.name, unit: 'عدد',
     quantity: 2, unit_price: 100000, discount: 0, vat_rate: 10, vat_amount: 20000, row_total: 220000, position: 0,
   });
+  if (iiErr) { record('IVD-0b', 'درج ردیف فاکتور آزمایشی', 'FAIL', iiErr.message.slice(0, 80)); return; }
 
   if (!rpc) {
     /* مسیر قدیمی: صدور فقط status — نه سند، نه موجودی اتمیک */
