@@ -114,14 +114,7 @@ export async function run(ctx) {
     manualId = error ? null : data;
     record('E2E-1', 'سند دستی ۱۰M/۱۰M ثبت شد', manualId ? 'PASS' : 'FAIL', error ? error.message.slice(0, 60) : manualId);
   } else {
-    const { data: mj } = await B.sb.from('acc_journal').insert({
-      business_id: bizB, entry_no: 9700, date_g: TODAY, ref_type: 'manual', ref_action: 'post', description: `سند دستی تسویه ${E2E}`,
-    }).select('id').single();
-    await B.sb.from('acc_journal_lines').insert([
-      { entry_id: mj.id, business_id: bizB, account_code: '1201', account_title: 'موجودی کالا', debit: manualD, credit: 0 },
-      { entry_id: mj.id, business_id: bizB, account_code: '1101', account_title: 'صندوق', debit: 0, credit: manualD },
-    ]);
-    manualId = mj.id;
+    record('E2E-1', 'سند دستی ۱۰M/۱۰M ثبت شد', 'SKIP', 'مایگریشن هنوز اجرا نشده — مسیر مستقیم دیگر وجود ندارد');
   }
 
   /* ══ بررسی‌های سازگاری ══ */

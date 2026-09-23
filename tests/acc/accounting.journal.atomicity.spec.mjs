@@ -52,17 +52,14 @@ export async function run(ctx) {
     record('JAT-4', 'رد مبلغ منفی در ردیف سند', !!negErr ? 'PASS' : 'FAIL', negErr ? negErr.message.slice(0, 60) : 'پذیرفته شد!');
   }
 
-  /* ۵) مسیر قدیمی (پیش از مایگریشن) — مستندسازی رفتار فعلی با درج مستقیم غیرتراز */
-  try {
-    const jid = await insertJournalLegacy(A.sb, bizA, {
-      date_g: TODAY, description: `پروب مسیر قدیمی غیرتراز ${ctx.RID}`,
-      lines: [{ code: '1101', debit: 777 }, { code: '4101', credit: 333 }],
-    });
-    const s = await entrySums(A.sb, jid);
-    record('JAT-5', 'رفتار مسیر قدیمی با سند غیرتراز (مستندسازی وضعیت پیش از مایگریشن)',
-      s.d !== s.c ? 'EXPECTED-FAIL' : 'PASS',
-      s.d !== s.c ? `مسیر قدیمی سند غیرتراز (${s.d}/${s.c}) را پذیرفت — بعد از مایگریشن، تریگر تراز جلوی آن را می‌گیرد` : 'در مسیر قدیمی هم رد شد');
-  } catch (e) {
-    record('JAT-5', 'رفتار مسیر قدیمی با سند غیرتراز', 'PASS', 'درج مستقیم غیرتراز رد شد: ' + e.message.slice(0, 70));
+  /* ۵) قفل مسیر مستقیم (M150000) — درج خام کلاینتی روی دفتر باید رد شود */
+  {
+    const { error: rawErr } = await A.sb.from('acc_journal').insert({
+      business_id: bizA, entry_no: 99990, date_g: TODAY, ref_type: 'manual', ref_action: 'post',
+      description: `پروب نوشتن مستقیم ${ctx.RID}`,
+    }).select('id').single();
+    record('JAT-5', 'نوشتن مستقیم کلاینتی روی acc_journal ممنوع (قفل M150000)',
+      !!rawErr ? 'PASS' : 'FAIL',
+      rawErr ? `رد شد: ${rawErr.message.slice(0, 70)}` : '⚠️ درج مستقیم پذیرفته شد!');
   }
 }

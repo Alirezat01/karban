@@ -9,6 +9,7 @@ import type {
   AccInvoice, AccExpense, AccPartner, AccItem, AccCheck, AccTransaction,
 } from './types';
 import { dateToISO, toGregorian, toJalali, todayJalali } from './jalali';
+import { isMissingRpc } from './rpc';
 
 /* ═════════════════ پروژه‌ها و مراکز درآمد/هزینه ═════════════════ */
 
@@ -485,13 +486,11 @@ export async function listPeriods(businessId: string): Promise<AccPeriod[]> {
 }
 
 export async function setPeriodLock(businessId: string, jyear: number, jmonth: number, locked: boolean): Promise<void> {
-  const { error } = await supabase
-    .from('acc_periods')
-    .upsert(
-      { business_id: businessId, jyear, jmonth, locked, locked_at: locked ? new Date().toISOString() : null },
-      { onConflict: 'business_id,jyear,jmonth' },
-    );
-  if (error) throw error;
+  /* قفل دوره از مسیر RPC اتمیک (M180000) — نوشتن مستقیم acc_periods با M150000 بسته است */
+  const { error } = await supabase.rpc('acc_period_lock_set', {
+    p_business: businessId, p_jyear: jyear, p_jmonth: jmonth, p_locked: locked,
+  });
+  if (error) throw new Error(error.message);
   await logActivity(businessId, locked ? 'قفل دوره مالی' : 'بازکردن دوره مالی', 'period', null, `${jyear}/${jmonth}`);
 }
 
@@ -694,37 +693,54 @@ export interface BackupBundle {
   tables: Record<string, Record<string, unknown>[]>;
 }
 
-export async function exportBackup(businessId: string): Promise<BackupBundle> {
-  const tables: BackupBundle['tables'] = {};
+/* شکل کانونیکال خروجی پشتیبان (M170000 — acc_backup_export) */
+export interface AccBackupPayload {
+  format: string;
+  version: number;
+  exported_at: string;
+  business_id: string;
+  business: Record<string, unknown> | null;
+  counts: { rows: number };
+  data: Record<string, Record<string, unknown>[]>;
+}
+
+export async function exportBackup(businessId: string): Promise<AccBackupPayload> {
+  const { data, error } = await supabase.rpc('acc_backup_export', { p_business: businessId });
+  if (!error) return data as unknown as AccBackupPayload;
+  if (!isMissingRpc(error)) throw new Error(error.message);
+
+  /* مسیر قدیمی (فقط خواندن) — پیش از اجرای M170000 */
+  const tables: Record<string, Record<string, unknown>[]> = {};
+  let totalRows = 0;
   for (const table of BACKUP_TABLES) {
-    const { data } = await supabase.from(table).select('*').eq('business_id', businessId);
-    tables[table] = data || [];
+    const { data: r } = await supabase.from(table).select('*').eq('business_id', businessId);
+    tables[table] = r || [];
+    totalRows += (r || []).length;
   }
   await logActivity(businessId, 'تهیه پشتیبان', 'backup', null, 'خروجی JSON');
-  return { version: 6, business_id: businessId, exported_at: new Date().toISOString(), tables };
+  return { format: 'karban-acc-backup-legacy', version: 6, exported_at: new Date().toISOString(), business_id: businessId, business: null, counts: { rows: totalRows }, data: tables };
 }
 
-export interface RestoreReport {
-  table: string;
-  inserted: number;
-  error?: string;
+export interface RestorePreviewReport {
+  valid: boolean;
+  business_id: string | null;
+  tables: Record<string, { total: number; insert: number }> | null;
+  errors: string[] | null;
+  warnings: string[] | null;
 }
 
-/* بازیابی: ردیف‌های جدید insert می‌شوند (id قبلی حفظ می‌شود اگر ممکن باشد) */
-export async function restoreBackup(businessId: string, bundle: BackupBundle): Promise<RestoreReport[]> {
-  const reports: RestoreReport[] = [];
-  for (const table of BACKUP_TABLES) {
-    const rows = bundle.tables?.[table];
-    if (!rows || !rows.length) {
-      reports.push({ table, inserted: 0 });
-      continue;
-    }
-    const payload = rows.map((r) => ({ ...r, business_id: businessId }));
-    const { error, count } = await supabase.from(table).insert(payload as never, { count: 'exact' });
-    reports.push({ table, inserted: count || 0, error: error?.message });
-  }
-  await logActivity(businessId, 'بازیابی پشتیبان', 'backup', null, 'ورودی JSON');
-  return reports;
+/** گام ۱ بازیابی — اعتبارسنجی کامل (ساختار + مالکیت + تعلق سطرها) بدون هیچ نوشتنی */
+export async function restorePreview(payload: unknown): Promise<RestorePreviewReport> {
+  const { data, error } = await supabase.rpc('acc_restore_preview', { p_payload: payload as never });
+  if (error) throw new Error(error.message);
+  return data as unknown as RestorePreviewReport;
+}
+
+/** گام ۲ بازیابی — اتمیک: ترتیب FK + بدون Duplicate + هر خطا → Rollback کامل */
+export async function restoreBusiness(payload: unknown): Promise<RestorePreviewReport & { restored: boolean; inserted_rows: number }> {
+  const { data, error } = await supabase.rpc('acc_restore_business', { p_payload: payload as never });
+  if (error) throw new Error(error.message);
+  return data as unknown as RestorePreviewReport & { restored: boolean; inserted_rows: number };
 }
 
 /* ═════════════════ بستن سال مالی ═════════════════ */
@@ -737,72 +753,11 @@ export interface YearCloseResult {
   lockedPeriods: number;
 }
 
-/* بستن سال مالی: سند اختتامیه (بستن درآمد/هزینه به سود انباشته) + قفل ۱۲ دوره */
+/* بستن سال مالی — نسخهٔ قدیمی api6 به مسیر اتمیک V2 (api7) سپرده می‌شود:
+   کدینگ قدیمی 4001/3999 با کدینگ نصب‌شده هم‌خوان نبود و نوشتن مستقیم
+   سند/دوره از M150000 بسته است. */
 export async function closeFiscalYear(businessId: string, jyear: number): Promise<YearCloseResult> {
-  const { jalaliYearRange } = await import('./jalali');
-  const { nextEntryNo } = await import('./api');
-  const range = jalaliYearRange(jyear);
-  const { data: journal } = await supabase
-    .from('acc_journal')
-    .select('acc_journal_lines(account_code,debit,credit)')
-    .eq('business_id', businessId)
-    .gte('date_g', range.from)
-    .lte('date_g', range.to);
-  type Line = { account_code: string; debit: number | null; credit: number | null };
-  const lines = ((journal || []) as { acc_journal_lines: Line[] | null }[]).flatMap((j) => j.acc_journal_lines || []);
-  const { data: chart } = await supabase.from('acc_chart').select('*').or(`business_id.is.null,business_id.eq.${businessId}`);
-  const kindOf = (code: string) => ((chart || []) as { code: string; kind: string }[]).find((c) => c.code === code)?.kind;
-  let revenueTotal = 0;
-  let expenseTotal = 0;
-  for (const l of lines) {
-    const kind = kindOf(l.account_code);
-    if (kind === 'income') revenueTotal += (Number(l.credit) || 0) - (Number(l.debit) || 0);
-    if (kind === 'expense') expenseTotal += (Number(l.debit) || 0) - (Number(l.credit) || 0);
-  }
-  const netProfit = revenueTotal - expenseTotal;
-  const closingDate = jalaliYearRange(jyear).to;
-  /* ردیف‌ها اول ساخته می‌شوند؛ سرِسند فقط اگر ردیف مؤثر داریم (بدون سند یتیم و
-     بدون ردیف 0/0 که CHECK دیتابیس ردش می‌کند — ریشهٔ LGI-2).
-     کدینگ استاندارد: بستن درآمد به 4109 و نتیجهٔ سال به 3102 (قبلاً 4001/3999
-     خارج از کدینگ بودند و اعتبارسنج دیتابیس کل بستن سال را رد می‌کرد) */
-  const lineRows: Record<string, unknown>[] = [];
-  if (revenueTotal > 0) {
-    lineRows.push({ account_code: '4109', account_title: 'بستن درآمدهای سال مالی', debit: revenueTotal, credit: 0 });
-  }
-  if (expenseTotal > 0) {
-    lineRows.push({ account_code: '3102', account_title: 'سود (زیان) انباشته', debit: 0, credit: expenseTotal });
-  }
-  /* سطر نتیجهٔ سال — فقط وقتی مبلغ مؤثر دارد (صفرِ مطلق توسط CHECK رد می‌شود) */
-  if (netProfit > 0) {
-    lineRows.push({ account_code: '3102', account_title: 'سود (زیان) انباشته', debit: 0, credit: netProfit });
-  } else if (netProfit < 0) {
-    lineRows.push({ account_code: '3102', account_title: 'سود (زیان) انباشته', debit: -netProfit, credit: 0 });
-  }
-  let entryNo = 0;
-  let entryId: string | null = null;
-  if (lineRows.length) {
-    entryNo = await nextEntryNo(businessId);
-    const { data: entry, error: entryErr } = await supabase
-      .from('acc_journal')
-      .insert({ business_id: businessId, entry_no: entryNo, date_g: closingDate, ref_type: 'manual', ref_action: 'post', description: `سند اختتامیه سال مالی ${jyear}` })
-      .select('id')
-      .single();
-    if (entryErr) throw entryErr;
-    entryId = entry.id as string;
-    const rows = lineRows.map((l) => ({ ...l, entry_id: entryId, business_id: businessId, partner_id: null }));
-    const { error: linesErr } = await supabase.from('acc_journal_lines').insert(rows as never);
-    if (linesErr) {
-      /* جبرانی: سرِسند یتیم نماند (LGI-2) */
-      await supabase.from('acc_journal').delete().eq('id', entryId);
-      throw linesErr;
-    }
-  }
-  /* قفل همه دوره‌های سال */
-  let lockedPeriods = 0;
-  for (let m = 1; m <= 12; m++) {
-    await setPeriodLock(businessId, jyear, m, true);
-    lockedPeriods += 1;
-  }
-  await logActivity(businessId, 'بستن سال مالی', 'journal', entryId, `سال ${jyear} — سود: ${netProfit}${entryId ? '' : ' (بدون گردش — سند اختتامیه نداشت)'}`);
-  return { entryNo, netProfit, revenueTotal, expenseTotal, lockedPeriods };
+  const { closeFiscalYearV2 } = await import('./api7');
+  const r = await closeFiscalYearV2(businessId, jyear);
+  return { entryNo: r.closingEntryNo, netProfit: r.netProfit, revenueTotal: r.revenueTotal, expenseTotal: r.expenseTotal, lockedPeriods: 12 };
 }

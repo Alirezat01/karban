@@ -85,40 +85,45 @@ const DATA_TABLES = ['acc_journal_lines', 'acc_journal', 'acc_invoice_items', 'a
   'acc_details', 'acc_partner_roles', 'acc_cost_centers', 'acc_partners', 'acc_items', 'acc_accounts', 'acc_projects', 'acc_expense_categories', 'acc_reconciliations', 'acc_entry_counters', 'acc_code_counters'];
 export async function cleanup(sb, bizIds) {
   const failed = [];
-  const blocked = [];
   for (const b of bizIds) {
     if (!b) continue;
+    /* مسیر ترجیحی: پاک‌سازی مالک-محور از RPC (M170000) — لایه‌به‌لایه برعکس FK،
+       بنگاه/دسترسی/کدینگ حفظ می‌شود؛ دقیقاً همان قرارداد پاکسازی تست */
+    const { error: purgeErr } = await sb.rpc('acc_purge_business_data', { p_business: b });
+    if (!purgeErr) continue;
+    if (!/could not find the function|schema cache|PGRST202/i.test(purgeErr.message)) {
+      failed.push(`purge: ${purgeErr.message.slice(0, 50)}`);
+    }
+    /* مسیر قدیمی (پیش از M170000) — حذف جدول‌به‌جدول */
     for (const t of DATA_TABLES) {
       const { error } = await sb.from(t).delete().eq('business_id', b);
       if (error && !/Could not find the table|does not exist/i.test(error.message)) {
-        /* رد شدن به‌خاطر گارد حفظ تاریخچهٔ حسابداری (DEL-3/LGI) انتظار طراحی است */
-        if (/قابل حذف نیست|بخشی از تاریخچه|قابل تغییر نیست|گردش حسابداری دارد|گردش مالی دارد|سند باطل‌شده/.test(error.message)) {
-          blocked.push(t);
-        } else {
-          failed.push(`${t}: ${error.message.slice(0, 50)}`);
-        }
+        failed.push(`${t}: ${error.message.slice(0, 50)}`);
       }
     }
   }
-  return { failed, blocked };
+  return failed;
 }
 
-/* درج سند دو مرحله‌ای — همان مسیر قدیمی اپ (برای سنجش رفتار پیش از مایگریشن) */
+/* درج سند آزمایشی — از مسیر موتور اتمیک acc_create_journal.
+   (پیش از M150000 این کمکی درج مستقیم دو مرحله‌ای بود؛ از آن تاریخ نوشتن مستقیم
+   دفتر از سمت کلاینت بسته است و هر سند آزمایشی هم باید از همان دروازهٔ اپ بگذرد.)
+   ورودی نامتعادل/خالی مثل خود اپ رد می‌شود (throw). */
 export async function insertJournalLegacy(sb, businessId, { entry_no, date_g, ref_type = 'manual', ref_action = 'post', ref_id = null, reversal_of = null, description = 'تست', lines = [] }) {
-  let en = entry_no;
-  if (!en) {
-    const { data } = await sb.from('acc_journal').select('entry_no').eq('business_id', businessId).order('entry_no', { ascending: false }).limit(1).maybeSingle();
-    en = (data?.entry_no || 0) + 1;
-  }
-  const { data: entry, error } = await sb.from('acc_journal')
-    .insert({ business_id: businessId, entry_no: en, date_g, ref_type, ref_action, ref_id, reversal_of, description }).select('id').single();
-  if (error) throw error;
-  if (lines.length) {
-    const rows = lines.map(l => ({ entry_id: entry.id, business_id: businessId, account_code: l.code, account_title: l.title || l.code, debit: l.debit || 0, credit: l.credit || 0 }));
-    const { error: le } = await sb.from('acc_journal_lines').insert(rows);
-    if (le) throw le;
-  }
-  return entry.id;
+  const rpcLines = lines.map(l => ({
+    account_code: l.code, account_title: l.title || l.code,
+    debit: l.debit || 0, credit: l.credit || 0,
+    detail_id: l.detail_id ?? null, cost_center_id: l.cost_center_id ?? null,
+    project_id: l.project_id ?? null, line_desc: l.line_desc ?? null,
+  }));
+  const { data: entryId, error } = await sb.rpc('acc_create_journal', {
+    p_business: businessId, p_date: date_g, p_description: description,
+    p_ref_type: ref_type, p_ref_action: ref_action,
+    p_ref_id: ref_id, p_reversal_of: reversal_of,
+    p_lines: rpcLines,
+  });
+  if (error) throw new Error(error.message);
+  return entryId;
 }
 
 /* محاسبهٔ تراز یک سند */

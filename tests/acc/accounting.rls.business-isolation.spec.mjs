@@ -9,8 +9,13 @@ export async function run(ctx) {
   /* داده در هر دو کسب‌وکار */
   const { data: pa } = await A.sb.from('acc_partners').insert({ business_id: bizA, kind: 'customer', person_type: 'real', name: `مشتری-الف-${RID}` }).select('id').single();
   const { data: pb } = await B.sb.from('acc_partners').insert({ business_id: bizB, kind: 'customer', person_type: 'real', name: `مشتری-ب-${RID}` }).select('id').single();
-  const { data: ja } = await A.sb.from('acc_journal').insert({ business_id: bizA, entry_no: 9901, date_g: TODAY, ref_type: 'manual', ref_action: 'post', description: `RLS-A-${RID}` }).select('id').single();
-  const { data: jb } = await B.sb.from('acc_journal').insert({ business_id: bizB, entry_no: 9901, date_g: TODAY, ref_type: 'manual', ref_action: 'post', description: `RLS-B-${RID}` }).select('id').single();
+  /* سندهای آزمایشی از مسیر موتور (نوشتن مستقیم دفتر با M150000 بسته است) */
+  const seedJ = (sb, biz, desc) => sb.rpc('acc_create_journal', {
+    p_business: biz, p_date: TODAY, p_description: desc, p_ref_type: 'manual',
+    p_lines: [{ account_code: '1101', debit: 10, credit: 0 }, { account_code: '4101', debit: 0, credit: 10 }],
+  }).then(r => { if (r.error) throw new Error(r.error.message); return { id: r.data }; });
+  const ja = await seedJ(A.sb, bizA, `RLS-A-${RID}`);
+  const jb = await seedJ(B.sb, bizB, `RLS-B-${RID}`);
   const { data: ia } = await A.sb.from('acc_invoices').insert({ business_id: bizA, number: `RLS-${RID}`, type: 'sale', status: 'draft', date_g: TODAY, subtotal: 1, discount_total: 0, vat_total: 0, total: 1, paid_total: 0 }).select('id').single();
 
   /* ۱) SELECT مستقیم با business_id دیگری */

@@ -8,8 +8,9 @@ import type { AccBusiness, AccPeriod, AccReconciliation, AccActivityRow } from '
 import { closeFiscalYearV2, type YearCloseResultV2 } from '@/lib/acc/api7';
 import {
   deleteReconciliation, exportBackup, listActivity,
-  listPeriods, listReconciliations, restoreBackup, saveReconciliation, setPeriodLock,
-  type RestoreReport, 
+  listPeriods, listReconciliations, restoreBusiness, restorePreview,
+  saveReconciliation, setPeriodLock,
+  type RestorePreviewReport,
 } from '@/lib/acc/api6';
 import { listAccounts } from '@/lib/acc/api';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
@@ -258,7 +259,7 @@ function ReconcileSection({ business }: { business: AccBusiness }) {
 /* ─── ۳) پشتیبان‌گیری و بازیابی ─── */
 function BackupSection({ business }: { business: AccBusiness }) {
   const [busy, setBusy] = useState<'export' | 'import' | null>(null);
-  const [reports, setReports] = useState<RestoreReport[] | null>(null);
+  const [reports, setReports] = useState<(RestorePreviewReport & { restored?: boolean; inserted_rows?: number }) | null>(null);
 
   async function doExport() {
     setBusy('export');
@@ -280,16 +281,32 @@ function BackupSection({ business }: { business: AccBusiness }) {
   }
 
   async function doImport(file: File) {
-    if (!(await confirmAction('همه ردیف‌های فایل پشتیبان به‌عنوان ردیف جدید اضافه می‌شوند. ادامه می‌دهید؟', true))) return;
     setBusy('import');
+    let payload: unknown;
     try {
-      const text = await file.text();
-      const bundle = JSON.parse(text);
-      const r = await restoreBackup(business.id, bundle);
-      setReports(r);
-      toast('بازیابی انجام شد — جدول‌های زیر را ببینید');
+      payload = JSON.parse(await file.text());
     } catch {
-      toast('فایل نامعتبر است یا خطای بازیابی رخ داد', 'error');
+      setBusy(null);
+      toast('فایل JSON نامعتبر است', 'error');
+      return;
+    }
+    try {
+      /* گام ۱ — فقط اعتبارسنجی (ساختار + مالکیت + تعلق سطرها)، بدون نوشتن */
+      const p = await restorePreview(payload);
+      if (!p.valid) {
+        setReports(p);
+        toast('فایل پشتیبان رد شد — خطاها در پایین صفحه', 'error');
+        return;
+      }
+      const newRows = Object.values(p.tables || {}).reduce((s, t) => s + t.insert, 0);
+      const ok = await confirmAction(`اعتبارسنجی شد — ${newRows} ردیف جدید افزوده می‌شود. بازیابی اتمیک است (هر خطا → بازگشت کامل). ادامه می‌دهید؟`, true);
+      if (!ok) { setBusy(null); return; }
+      /* گام ۲ — اتمیک: ترتیب FK + بدون Duplicate + Rollback کامل در خطا */
+      const r = await restoreBusiness(payload);
+      setReports(r);
+      toast(`بازیابی انجام شد — ${r.inserted_rows} ردیف درج شد`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'خطای بازیابی رخ داد', 'error');
     } finally {
       setBusy(null);
     }
@@ -316,17 +333,29 @@ function BackupSection({ business }: { business: AccBusiness }) {
       {reports && (
         <div className="acc-table-wrap">
           <table className="acc-table">
-            <thead><tr><th>جدول</th><th>تعداد ردیف بازیابی‌شده</th><th>خطا</th></tr></thead>
+            <thead><tr><th>جدول</th><th>در فایل</th><th>درج جدید</th></tr></thead>
             <tbody>
-              {reports.map((r) => (
-                <tr key={r.table}>
-                  <td className="num" dir="ltr">{r.table}</td>
-                  <td className="num">{toFaDigits(r.inserted)}</td>
-                  <td style={{ color: '#ef9a94' }}>{r.error || '—'}</td>
+              {Object.entries(reports.tables || {}).map(([t, c]) => (
+                <tr key={t}>
+                  <td className="num" dir="ltr">{t}</td>
+                  <td className="num">{toFaDigits(c.total)}</td>
+                  <td className="num">{toFaDigits(c.insert)}</td>
                 </tr>
               ))}
+              {typeof reports.inserted_rows === 'number' && (
+                <tr>
+                  <td colSpan={2} style={{ fontWeight: 700 }}>جمع ردیف‌های درج‌شده</td>
+                  <td className="num">{toFaDigits(reports.inserted_rows)}</td>
+                </tr>
+              )}
             </tbody>
           </table>
+          {(reports.errors?.length || reports.warnings?.length) ? (
+            <ul style={{ margin: '.6rem 0 0', lineHeight: 2, paddingRight: '1.2rem' }}>
+              {(reports.errors || []).map((x, i) => <li key={`e${i}`} style={{ color: '#ef9a94' }}>خطا: {x}</li>)}
+              {(reports.warnings || []).map((x, i) => <li key={`w${i}`}>هشدار: {x}</li>)}
+            </ul>
+          ) : null}
         </div>
       )}
     </div>

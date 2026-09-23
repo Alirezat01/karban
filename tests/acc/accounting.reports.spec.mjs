@@ -26,7 +26,9 @@ export async function run(ctx) {
   const voidJ = await insertJournalLegacy(A.sb, bizA, {
     date_g: TODAY, description: `${REP}-ابطالی`, lines: [{ code: '1101', debit: 777 }, { code: '4101', credit: 777 }],
   });
-  await A.sb.from('acc_journal').update({ voided_at: new Date().toISOString(), void_reason: 'تست گزارش' }).eq('id', voidJ);
+  /* ابطال از مسیر RPC (نوشتن مستقیم voided_at با M150000 بسته است) */
+  const { error: repVoidErr } = await A.sb.rpc('acc_void_journal', { p_business: bizA, p_entry: voidJ, p_reason: 'تست گزارش' });
+  if (repVoidErr) throw repVoidErr;
 
   /* سند تاریخ‌دار خارج از بازه */
   await insertJournalLegacy(A.sb, bizA, {
