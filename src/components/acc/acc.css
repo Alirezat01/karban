@@ -54,6 +54,8 @@
 /* ── فرم‌ها ── */
 .acc-field { display: flex; flex-direction: column; gap: .4rem; }
 .acc-field > label { font-size: .78rem; color: var(--muted); font-weight: 500; }
+/* ستارهٔ فیلد اجباری — قرمز و پررنگ تا کاربر بداند پر کردن این فیلد الزامی است */
+.acc-req { color: #ef5350; font-weight: 800; font-size: .95em; }
 .acc-input, .acc-select, .acc-textarea { width: 100%; min-height: 46px; padding: .6rem .9rem; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); font-size: .9rem; transition: border-color .2s, box-shadow .2s; }
 .acc-input:focus, .acc-select:focus, .acc-textarea:focus { outline: none; border-color: rgba(216,165,63,.6); box-shadow: 0 0 0 3px rgba(216,165,63,.12); }
 .acc-input::placeholder, .acc-textarea::placeholder { color: rgba(167,179,201,.5); }

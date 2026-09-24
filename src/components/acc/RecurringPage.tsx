@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pencil, Play, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccRecurring } from '@/lib/acc/types';
 import { deleteRecurring, listRecurring, runDueRecurring, saveRecurring } from '@/lib/acc/api6';
-import { listAccounts, listPartners, listExpenseCategories, ensureExpenseCategories } from '@/lib/acc/api';
+import { listAccounts, listPartners, ensureExpenseCategories } from '@/lib/acc/api';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { formatJalali, toFaDigits } from '@/lib/acc/jalali';
 import { Field, Modal, MoneyInput, JalaliDateInput, confirmAction, toast, EmptyState } from './ui';
@@ -133,7 +133,7 @@ export default function RecurringPage({ business }: { business: AccBusiness }) {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="عنوان *"><input className="acc-input" placeholder="مثلاً: اجاره دفتر" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
+              <Field label="عنوان" required><input className="acc-input" placeholder="مثلاً: اجاره دفتر" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
               <Field label="دسته هزینه">
                 <select className="acc-select" value={editing.category || ''} onChange={(e) => setEditing({ ...editing, category: e.target.value || null })}>
                   <option value="">— انتخاب کنید —</option>
@@ -153,7 +153,7 @@ export default function RecurringPage({ business }: { business: AccBusiness }) {
                   <option value="yearly">سالانه</option>
                 </select>
               </Field>
-              <Field label="سررسید بعدی"><JalaliDateInput value={editing.next_date_g || ''} onChange={(iso) => setEditing({ ...editing, next_date_g: iso })} /></Field>
+              <Field label="سررسید بعدی" required><JalaliDateInput value={editing.next_date_g || ''} onChange={(iso) => setEditing({ ...editing, next_date_g: iso })} /></Field>
             </div>
             <div className="acc-form-grid">
               <Field label="حساب پرداخت">

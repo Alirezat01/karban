@@ -68,6 +68,7 @@ export default function BankReconPage({ business }: { business: AccBusiness }) {
   }
 
   async function addLine() {
+    if (!addForm.amount) { toast('مبلغ را وارد کنید', 'error'); return; }
     try {
       await importBankLines(business.id, accountId, `${addForm.date_g}\t${addForm.description || 'برداشت/واریز'}\t${addForm.amount}`);
       toast('خط اضافه شد');
@@ -203,7 +204,7 @@ export default function BankReconPage({ business }: { business: AccBusiness }) {
           <div style={{ display: 'grid', gap: '.7rem' }}>
             <Field label="تاریخ"><JalaliDateInput value={addForm.date_g} onChange={(iso) => setAddForm((f) => ({ ...f, date_g: iso }))} /></Field>
             <Field label="شرح"><input className="acc-input" value={addForm.description} onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))} /></Field>
-            <Field label="مبلغ (واریز + / برداشت −)"><MoneyInput value={addForm.amount} onChange={(n) => setAddForm((f) => ({ ...f, amount: n }))} /></Field>
+            <Field label="مبلغ (واریز + / برداشت −)" required><MoneyInput value={addForm.amount} onChange={(n) => setAddForm((f) => ({ ...f, amount: n }))} /></Field>
             <div style={{ display: 'flex', gap: '.5rem' }}>
               <button className="acc-btn acc-btn-primary" onClick={addLine}>افزودن</button>
               <button className="acc-btn acc-btn-outline" onClick={() => setAddOpen(false)}>انصراف</button>

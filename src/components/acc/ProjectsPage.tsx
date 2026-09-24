@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Briefcase, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react';
 import type { AccBusiness, AccProject } from '@/lib/acc/types';
-import { deleteProject, listProjects, projectPerformance, saveProject, type ProjectPerformance } from '@/lib/acc/api6';
+import { deleteProject, projectPerformance, saveProject, type ProjectPerformance } from '@/lib/acc/api6';
 import { listPartners } from '@/lib/acc/api';
 import { formatMoneyUnit } from '@/lib/acc/money';
 import { formatJalali, toFaDigits } from '@/lib/acc/jalali';
@@ -116,7 +116,7 @@ export default function ProjectsPage({ business }: { business: AccBusiness }) {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="نام پروژه *"><input className="acc-input" placeholder="مثلاً: پروژه ساخت اپ موبایل" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
+              <Field label="نام پروژه" required><input className="acc-input" placeholder="مثلاً: پروژه ساخت اپ موبایل" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
               <Field label="کد پروژه"><input className="acc-input" value={editing.code || ''} onChange={(e) => setEditing({ ...editing, code: e.target.value })} /></Field>
             </div>
             <div className="acc-form-grid">

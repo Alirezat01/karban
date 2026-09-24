@@ -72,7 +72,7 @@ export default function SiteFooter() {
           <p>تغییرات قوانین، مهلت‌های مالیاتی و ابزارهای جدید؛ ماهی یک پیام، بدون اسپم.</p>
         </div>
         <form className="news-form" onSubmit={subscribe}>
-          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); if (state !== 'loading') setState('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل برای خبرنامه" disabled={state === 'loading'} />
+          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); if (state !== 'loading') setState('idle'); }} placeholder="شماره موبایل *" aria-label="شماره موبایل برای خبرنامه (الزامی)" disabled={state === 'loading'} />
           <button className="button" type="submit" disabled={state === 'loading'}>{state === 'loading' ? 'در حال ثبت…' : 'عضویت'}</button>
         </form>
         <div className="news-msg">

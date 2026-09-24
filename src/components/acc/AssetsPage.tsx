@@ -116,7 +116,7 @@ export default function AssetsPage({ business }: { business: AccBusiness }) {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="نام دارایی *"><input className="acc-input" placeholder="مثلاً: خودرو پژو پارس" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
+              <Field label="نام دارایی" required><input className="acc-input" placeholder="مثلاً: خودرو پژو پارس" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
               <Field label="دسته">
                 <select className="acc-select" value={editing.category || ''} onChange={(e) => setEditing({ ...editing, category: e.target.value || null })}>
                   <option value="">— انتخاب کنید —</option>

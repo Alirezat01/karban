@@ -3,7 +3,7 @@ import { ArrowLeft, BadgeCheck, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
-import { notifyAdmin, sendEmail } from '@/lib/notify';
+import { sendEmail } from '@/lib/notify';
 import { notifyTelegram } from '@/lib/acc/telegram';
 import { formatRial, toNumericValue } from '@/lib/format';
 import KarbanLoader from '@/components/KarbanLoader';
@@ -62,6 +62,10 @@ export default function OrderPage({ serviceId }: Props) {
     }
     if (!mobileOk) {
       setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹');
+      return;
+    }
+    if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setError('ایمیل معتبر نیست — یا آن را خالی بگذارید.');
       return;
     }
     if (!terms) {
@@ -162,11 +166,11 @@ export default function OrderPage({ serviceId }: Props) {
 
         <form className="consult-form order-form" onSubmit={submit} noValidate>
           <label>
-            نام و نام خانوادگی *
+            نام و نام خانوادگی <span className="req-star" title="الزامی">*</span>
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="مثلاً: علی رضایی" />
           </label>
           <label>
-            شماره موبایل *
+            شماره موبایل <span className="req-star" title="الزامی">*</span>
             <input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="۰۹۱۲…" inputMode="tel" className={mobile && mobileOk ? 'input-ok' : ''} />
           </label>
           {mobile && mobileOk ? <span className="ok-tick">✓ شماره معتبر است</span> : null}
@@ -186,7 +190,7 @@ export default function OrderPage({ serviceId }: Props) {
           <label className="terms-check">
             <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
             <span>
-              <a href="/قوانین" target="_blank" rel="noreferrer">قوانین و شرایط</a> کاربان را خواندم و می‌پذیرم. *
+              <a href="/قوانین" target="_blank" rel="noreferrer">قوانین و شرایط</a> کاربان را خواندم و می‌پذیرم. <span className="req-star" title="الزامی">*</span>
             </span>
           </label>
 

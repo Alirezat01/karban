@@ -245,6 +245,7 @@ export default function ExpensesPage({ business, access }: {
 
   async function save() {
     if (!editing?.title?.trim()) { toast('عنوان هزینه الزامی است', 'error'); return; }
+    if (!((editing.amount || 0) > 0)) { toast('مبلغ خالص هزینه را وارد کنید', 'error'); return; }
     /* قواعد پرداخت‌کننده (موتور M120000 بند ۱۳):
        company → حساب بانک/صندوق لازم است | شخص ثالث → تفصیلی شخص لازم است | نسیه → طرف‌حساب لازم است */
     if (payerKind === 'company' && !editing.account_id) {
@@ -511,7 +512,7 @@ export default function ExpensesPage({ business, access }: {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="عنوان هزینه *"><input className="acc-input" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
+              <Field label="عنوان هزینه" required><input className="acc-input" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
               <Field label="دسته" hint="سرفصل حسابداری هزینه — قابل ویرایش">
                 <div style={{ display: 'flex', gap: '.4rem' }}>
                   <select className="acc-select" value={editing.category || 'اداری و عمومی'} onChange={(e) => setEditing({ ...editing, category: e.target.value })}>
@@ -522,7 +523,7 @@ export default function ExpensesPage({ business, access }: {
               </Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="مبلغ خالص (ریال)"><MoneyInput value={editing.amount || 0} onChange={(n) => setEditing({ ...editing, amount: n })} /></Field>
+              <Field label="مبلغ خالص (ریال)" required><MoneyInput value={editing.amount || 0} onChange={(n) => setEditing({ ...editing, amount: n })} /></Field>
               <Field label="مالیات ارزش افزوده (ریال)" hint="اعتبار مالیاتی — فقط با فاکتور رسمی">
                 <MoneyInput value={editing.vat_amount || 0} onChange={(n) => setEditing({ ...editing, vat_amount: n })} />
               </Field>
@@ -561,7 +562,7 @@ export default function ExpensesPage({ business, access }: {
               </Field>
             </div>
             {payerKind === 'company' && (
-              <Field label="از حساب" hint="ماندهٔ این حساب کم می‌شود">
+              <Field label="از حساب" required={payerKind === "company"} hint="ماندهٔ این حساب کم می‌شود">
                 <select className="acc-select" value={editing.account_id || ''} onChange={(e) => setEditing({ ...editing, account_id: e.target.value || null })}>
                   <option value="">— انتخاب حساب —</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
@@ -570,7 +571,7 @@ export default function ExpensesPage({ business, access }: {
             )}
             {payerKind === 'person' && (
               <Field
-                label="شخص پرداخت‌کننده *"
+                label="شخص پرداخت‌کننده" required={payerKind === "person"}
                 hint={personDetails.length === 0 ? 'هنوز شخصی ثبت نکرده‌اید — از صفحهٔ «مشتریان و طرف‌حساب‌ها» اضافه کنید' : 'نزد اسم هر شخص، نقش او آمده است'}
               >
                 <select className="acc-select" value={editing.paid_by_detail_id || ''} onChange={(e) => setEditing({ ...editing, paid_by_detail_id: e.target.value || null })}>
@@ -582,7 +583,7 @@ export default function ExpensesPage({ business, access }: {
               </Field>
             )}
             {payerKind === 'unpaid' && (
-              <Field label="طرف‌حساب بستانکار *" hint="سهامدار → جاری شرکا | کارمند → جاری کارکنان | سایر → پرداختنی تجاری">
+              <Field label="طرف‌حساب بستانکار" required={payerKind === "unpaid"} hint="سهامدار → جاری شرکا | کارمند → جاری کارکنان | سایر → پرداختنی تجاری">
                 <select className="acc-select" value={editing.partner_id || ''} onChange={(e) => setEditing({ ...editing, partner_id: e.target.value || null })}>
                   <option value="">— انتخاب طرف‌حساب —</option>
                   {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -699,7 +700,7 @@ export default function ExpensesPage({ business, access }: {
               <div className="k-label">ماندهٔ بدهی (پرداخت‌های شخص منهای بازپرداخت‌ها)</div>
               <div className="k-value">{formatMoney(Number(settleRow.balance))} <small>ریال</small></div>
             </div>
-            <Field label="بازپرداخت از حساب *" hint="مبلغ از این حساب کم می‌شود (۱۱۰۲ بانک / ۱۱۰۱ صندوق)">
+            <Field label="بازپرداخت از حساب" required hint="مبلغ از این حساب کم می‌شود (۱۱۰۲ بانک / ۱۱۰۱ صندوق)">
               <select className="acc-select" value={settleForm.account_id} onChange={(e) => setSettleForm({ ...settleForm, account_id: e.target.value })}>
                 <option value="">— انتخاب حساب —</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
@@ -734,7 +735,7 @@ export default function ExpensesPage({ business, access }: {
             <div className="acc-card" style={{ padding: '.9rem', display: 'grid', gap: '.7rem' }}>
               <b style={{ fontSize: '.86rem' }}>{catEditing.id ? 'ویرایش دسته' : 'دسته جدید'}</b>
               <div className="acc-form-grid">
-                <Field label="عنوان دسته *">
+                <Field label="عنوان دسته" required>
                   <input className="acc-input" value={catEditing.title || ''} onChange={(e) => setCatEditing({ ...catEditing, title: e.target.value })} placeholder="مثلاً: هزینه نرم‌افزار" />
                 </Field>
                 <Field label="کد سرفصل (اختیاری)">

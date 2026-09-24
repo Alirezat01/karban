@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  CheckCircle2, FileSpreadsheet, FileUp, Landmark, Loader2, Paperclip,
+  CheckCircle2, FileSpreadsheet, FileUp, Landmark, Loader2,
   RotateCcw, TriangleAlert, XCircle,
 } from 'lucide-react';
 import type { AccBusiness } from '@/lib/acc/types';
@@ -160,7 +160,7 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
           </p>
         </header>
 
-        <Field label="حساب بانکی / صندوق مقصد">
+        <Field label="حساب بانکی / صندوق مقصد" required>
           <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="acc-input">
             <option value="">— انتخاب کنید —</option>
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({a.kind === 'bank' ? 'بانک' : 'صندوق'})</option>)}

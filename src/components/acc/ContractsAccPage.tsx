@@ -130,7 +130,7 @@ export default function ContractsAccPage({ business }: { business: AccBusiness }
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'ویرایش قرارداد' : 'قرارداد جدید'}>
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
-            <Field label="عنوان قرارداد *"><input className="acc-input" placeholder="مثلاً: قرارداد مشاوره مالی ۱۴۰۵" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
+            <Field label="عنوان قرارداد" required><input className="acc-input" placeholder="مثلاً: قرارداد مشاوره مالی ۱۴۰۵" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
             <div className="acc-form-grid">
               <Field label="طرف‌حساب">
                 <select className="acc-select" value={editing.partner_id || ''} onChange={(e) => setEditing({ ...editing, partner_id: e.target.value || null })}>

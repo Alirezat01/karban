@@ -1,12 +1,12 @@
 /* تنخواه‌گردان — تعریف، شارژ، هزینه‌کرد، تسویه با سند دوبل خودکار */
 
 import React, { useEffect, useState } from 'react';
-import { Ban, Coins, HandCoins, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react';
+import { Coins, HandCoins, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { AccBusiness } from '@/lib/acc/types';
 import { listPetty, savePetty, pettyCharge, pettySpend, pettySettle, deletePetty, voidJournal, AccPetty } from '@/lib/acc/api7';
 import { listAccounts, trialBalance } from '@/lib/acc/api';
 import { formatMoney } from '@/lib/acc/money';
-import { formatJalali, todayJalali, dateToISO } from '@/lib/acc/jalali';
+import { formatJalali, dateToISO } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, confirmAction, toast, EmptyState, Badge } from './ui';
 import { VoidDeleteBtns } from './VoidDeleteBtns';
 
@@ -70,6 +70,7 @@ export default function PettyCashPage({ business }: { business: AccBusiness }) {
 
   async function submitOp() {
     if (!opOpen) return;
+    if (!((opForm.amount || 0) > 0)) { toast('مبلغ را وارد کنید', 'error'); return; }
     try {
       if (opOpen.kind === 'charge') {
         await pettyCharge(business.id, opOpen.petty.id, { amount: opForm.amount, date_g: opForm.date_g, description: opForm.description });
@@ -173,7 +174,7 @@ export default function PettyCashPage({ business }: { business: AccBusiness }) {
       {formOpen && (
         <Modal open onClose={() => setFormOpen(false)} title={editing ? `ویرایش «${editing.name}»` : 'تنخواه جدید'}>
           <div style={{ display: 'grid', gap: '.7rem' }}>
-            <Field label="نام تنخواه"><input className="acc-input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="مثلاً: تنخواه دفتر مرکزی" /></Field>
+            <Field label="نام تنخواه" required><input className="acc-input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="مثلاً: تنخواه دفتر مرکزی" /></Field>
             <Field label="تنخواه‌دار"><input className="acc-input" value={form.custodian} onChange={(e) => setForm((f) => ({ ...f, custodian: e.target.value }))} /></Field>
             <Field label="حساب منبع شارژ">
               <select className="acc-select" value={form.source_account_id} onChange={(e) => setForm((f) => ({ ...f, source_account_id: e.target.value }))}>
@@ -194,7 +195,7 @@ export default function PettyCashPage({ business }: { business: AccBusiness }) {
       {opOpen && (
         <Modal open onClose={() => setOpOpen(null)} title={opOpen.kind === 'charge' ? `شارژ «${opOpen.petty.name}»` : opOpen.kind === 'spend' ? `هزینه‌کرد از «${opOpen.petty.name}»` : `تسویه «${opOpen.petty.name}»`}>
           <div style={{ display: 'grid', gap: '.7rem' }}>
-            <Field label="مبلغ (ریال)">
+            <Field label="مبلغ (ریال)" required>
               <MoneyInput value={opForm.amount} onChange={(n) => setOpForm((f) => ({ ...f, amount: n }))} />
             </Field>
             <Field label="تاریخ">

@@ -106,7 +106,7 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="نام حساب *"><input className="acc-input" placeholder="مثلاً: بانک ملت جاری" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
+              <Field label="نام حساب" required><input className="acc-input" placeholder="مثلاً: بانک ملت جاری" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
               <Field label="نوع">
                 <select className="acc-select" value={editing.kind || 'bank'} onChange={(e) => setEditing({ ...editing, kind: e.target.value as AccAccount['kind'] })}>
                   <option value="bank">حساب بانکی</option>

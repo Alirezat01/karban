@@ -219,7 +219,7 @@ export default function ArticlePage({ title, category, contractId }: Props) {
                     setMobile(event.target.value);
                     setStatus('idle');
                   }}
-                  placeholder="شماره موبایل"
+                  placeholder="شماره موبایل *"
                   aria-label="شماره موبایل"
                   style={{ flex: 1, minWidth: '180px', padding: '0.65rem 1rem', border: '1.5px solid var(--line)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--text)' }}
                 />

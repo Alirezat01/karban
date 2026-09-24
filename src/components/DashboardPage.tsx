@@ -364,7 +364,7 @@ function MyConsults() {
           <option value="بیمه و بازنشستگی">بیمه و بازنشستگی</option>
         </select>
       </label>
-      <label>توضیح مشکل
+      <label>توضیح مشکل <span className="req-star" title="الزامی">*</span>
         <textarea rows={6} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="مسئله را کامل بنویس؛ هرچه دقیق‌تر، پاسخ سریع‌تر…" />
       </label>
       <label>اولویت
@@ -485,7 +485,7 @@ function MyTickets() {
     <>
       <div className="contact-card calc-card dash-card">
         <h2><Plus size={17} /> تیکت جدید</h2>
-        <label>موضوع
+        <label>موضوع <span className="req-star" title="الزامی">*</span>
           <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="خلاصه مشکل را بنویس…" />
         </label>
         <label>اولویت

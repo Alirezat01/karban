@@ -210,8 +210,8 @@ export default function AdminPage() {
           <h1>ورود به پنل مدیریت</h1>
           <p>برای دسترسی، ایمیل و رمز عبور مدیریت را وارد کنید.</p>
           <form onSubmit={signIn}>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ایمیل" aria-label="ایمیل" required />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="رمز عبور" aria-label="رمز عبور" required />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ایمیل *" aria-label="ایمیل (الزامی)" required />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="رمز عبور *" aria-label="رمز عبور (الزامی)" required />
             {loginError && <small className="admin-error">{loginError}</small>}
             <button className="button" type="submit">
               ورود <ArrowLeft size={16} />
@@ -506,7 +506,7 @@ function ServicesTab() {
 
       {showAdd && (
         <div className="admin-form">
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت *" aria-label="عنوان خدمت (الزامی)" />
           <input value={form.price} onChange={(e) => setForm({ ...form, price: safeAmount(e.target.value) })} placeholder="قیمت" />
           <FaNumberInput value={form.discount_percent} onChange={(n) => setForm({ ...form, discount_percent: Math.max(0, Math.min(90, n)) })} placeholder="درصد تخفیف" />
           <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد" />
@@ -907,7 +907,7 @@ function ContractsTab() {
               </option>
             ))}
           </select>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان *" aria-label="عنوان (الزامی)" />
           <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
           <button className="button button-small" onClick={add}>
             <Save size={15} /> ذخیره
@@ -1070,13 +1070,13 @@ function ArticlesTab() {
               </option>
             ))}
           </select>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان مقاله" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان مقاله *" aria-label="عنوان مقاله (الزامی)" />
           <textarea value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="چکیده (۱–۲ خط)" rows={2} style={{ width: '100%', resize: 'vertical' }} />
           <input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="نویسنده" />
           <textarea
             value={form.body}
             onChange={(e) => setForm({ ...form, body: e.target.value })}
-            placeholder={'متن مقاله — پاراگراف‌ها را با یک خط خالی جدا کن؛ برای سرتیتر، اول خط بنویس: ## '}
+            placeholder={'متن مقاله * — پاراگراف‌ها را با یک خط خالی جدا کن؛ برای سرتیتر، اول خط بنویس: ## '}
             rows={14}
             style={{ width: '100%', resize: 'vertical' }}
           />
@@ -1200,12 +1200,12 @@ function RequestsTab() {
               </option>
             ))}
           </select>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان درخواست (مثلاً استعفانامه)" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان درخواست (مثلاً استعفانامه) *" aria-label="عنوان درخواست (الزامی)" />
           <textarea value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="توضیح کوتاه برای کارت" rows={2} style={{ width: '100%', resize: 'vertical' }} />
           <textarea
             value={form.body}
             onChange={(e) => setForm({ ...form, body: e.target.value })}
-            placeholder={'متن کامل درخواست — جاهای خالی را با ……… بگذار'}
+            placeholder={'متن کامل درخواست * — جاهای خالی را با ……… بگذار'}
             rows={12}
             style={{ width: '100%', resize: 'vertical' }}
           />
@@ -1492,7 +1492,7 @@ function ConsultationsTab() {
                       <input
                         value={note[id] || ''}
                         onChange={(e) => setNote({ ...note, [id]: e.target.value })}
-                        placeholder="پاسخ به کاربر…"
+                        placeholder="پاسخ به کاربر… *"
                         style={{ minWidth: 140 }}
                       />
                       <button className="button button-small" onClick={() => reply(item)}>ارسال</button>
@@ -1609,7 +1609,7 @@ function TicketsTab() {
             </div>
           ))}
           <div style={{ display: 'flex', gap: '.5rem', marginTop: '.8rem', flexWrap: 'wrap' }}>
-            <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="پاسخ پشتیبانی…" style={{ flex: 1, minWidth: 200 }} />
+            <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="پاسخ پشتیبانی… *" style={{ flex: 1, minWidth: 200 }} />
             <button className="button button-small" onClick={send}>ارسال پاسخ + اعلان</button>
           </div>
         </div>
@@ -1686,7 +1686,7 @@ function NotifsTab() {
   return (
     <div className="contact-card calc-card" style={{ maxWidth: 560 }}>
       <h2>ارسال اعلان به همه کاربران</h2>
-      <label>عنوان
+      <label>عنوان <span className="req-star">*</span>
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="مثلاً: تغییر قوانین بیمه ۱۴۰۵" />
       </label>
       <label>متن اعلان
@@ -1775,15 +1775,15 @@ function UsersTab() {
       <p>برای امنیت، رمزها با SHA-256 ذخیره می‌شوند و ورود ناموفق ۵ باره، ۵ دقیقه قفل ایجاد می‌کند.</p>
       <div className="settings-grid">
         <label className="settings-field">
-          ایمیل مدیر جدید
+          ایمیل مدیر جدید <span className="req-star">*</span>
           <input value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
         </label>
         <label className="settings-field">
-          رمز مدیر جدید
+          رمز مدیر جدید <span className="req-star">*</span>
           <input type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
         </label>
         <label className="settings-field">
-          رمز جدید حساب فعلی
+          رمز جدید حساب فعلی <span className="req-star">*</span>
           <input type="password" value={changePassword} onChange={(e) => setChangePassword(e.target.value)} />
         </label>
       </div>
@@ -1976,7 +1976,7 @@ function LicensesTab() {
 
       <div className="admin-form" style={{ alignItems: 'end' }}>
         <label className="settings-field" style={{ minWidth: 220 }}>
-          ایمیل کاربر
+          ایمیل کاربر <span className="req-star">*</span>
           <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="user@example.com" dir="ltr" />
         </label>
         <label className="settings-field">
@@ -2042,7 +2042,6 @@ function TelegramTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [testMsg, setTestMsg] = useState('');
   const [testResult, setTestResult] = useState('');
   const [queueCount, setQueueCount] = useState(0);
 
@@ -2078,7 +2077,7 @@ function TelegramTab() {
 
   const sendTest = async () => {
     setTestResult('در حال ارسال…');
-    const r = await sendTelegramDirect(cfg, testMsg.trim() || '✅ اتصال کاربان به تلگرام برقرار شد.');
+    const r = await sendTelegramDirect(cfg, '✅ اتصال کاربان به تلگرام برقرار شد.');
     setTestResult(r.ok ? '✅ پیام به تلگرام ارسال شد — چک کنید.' : `❌ ${r.error}`);
   };
 

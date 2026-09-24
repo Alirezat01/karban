@@ -242,7 +242,7 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
       {editing && (
         <Modal open onClose={() => setEditing(null)} title={editing.node ? `ویرایش «${editing.node.title}»` : editing.parent ? `سرفصل زیرمجموعه «${editing.parent.title}»` : 'سرفصل سطح کل'}>
           <div style={{ display: 'grid', gap: '.7rem' }}>
-            <Field label="عنوان سرفصل">
+            <Field label="عنوان سرفصل" required>
               <input className="acc-input" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
             </Field>
             {!editing.node && (
@@ -269,7 +269,7 @@ export default function ChartTreePage({ business }: { business: AccBusiness }) {
       {detOpen && (
         <Modal open onClose={() => { setDetOpen(false); setDetEditing(null); }} title={detEditing ? 'ویرایش تفصیلی شناور' : 'تفصیلی شناور جدید'}>
           <div style={{ display: 'grid', gap: '.7rem' }}>
-            <Field label="عنوان">
+            <Field label="عنوان" required>
               <input className="acc-input" value={detForm.title} onChange={(e) => setDetForm((f) => ({ ...f, title: e.target.value }))} />
             </Field>
             <Field label="نوع">

@@ -5,7 +5,7 @@ import { Download, Printer, Search } from 'lucide-react';
 import type { AccBusiness } from '@/lib/acc/types';
 import { listChartTree, listDetails, accountCard, moyanLedger, tafsilLedger, trialBalanceMulti, ChartNode, AccountCardResult, TrialBalance6Row, AccDetail } from '@/lib/acc/api7';
 import { formatMoney } from '@/lib/acc/money';
-import { formatJalali, isoToJalaliInput, jalaliInputToISO, todayJalali } from '@/lib/acc/jalali';
+import { formatJalali, isoToJalaliInput, jalaliInputToISO } from '@/lib/acc/jalali';
 import { Field, toast, EmptyState } from './ui';
 import { downloadCsv } from '@/lib/acc/api';
 
@@ -208,7 +208,7 @@ export default function LedgerCardPage({ business }: { business: AccBusiness }) 
                     <input className="acc-input" style={{ paddingRight: 26, minWidth: 200 }} value={search} onChange={(e) => setSearch(e.target.value)} placeholder="کد یا نام…" />
                   </div>
                 </Field>
-                <Field label="سرفصل (کل/معین/تفصیلی)">
+                <Field label="سرفصل (کل/معین/تفصیلی)" required>
                   <select className="acc-select" style={{ minWidth: 260 }} value={code} onChange={(e) => setCode(e.target.value)}>
                     <option value="">— انتخاب —</option>
                     {filtered.map((f) => (
@@ -232,7 +232,7 @@ export default function LedgerCardPage({ business }: { business: AccBusiness }) 
           {tab === 'moyan' && (
             <div>
               <div className="acc-card" style={{ padding: '.7rem .9rem', marginBottom: '.8rem', display: 'flex', gap: '.8rem', flexWrap: 'wrap', alignItems: 'end' }}>
-                <Field label="سرفصل والد (کل)">
+                <Field label="سرفصل والد (کل)" required>
                   <select className="acc-select" style={{ minWidth: 260 }} value={moyanCode} onChange={(e) => setMoyanCode(e.target.value)}>
                     <option value="">— انتخاب —</option>
                     {flat.map((f) => <option key={f.node.id} value={f.node.code}>{f.node.code} — {f.node.title}</option>)}
@@ -251,7 +251,7 @@ export default function LedgerCardPage({ business }: { business: AccBusiness }) 
           {tab === 'tafsil' && (
             <div>
               <div className="acc-card" style={{ padding: '.7rem .9rem', marginBottom: '.8rem', display: 'flex', gap: '.8rem', flexWrap: 'wrap', alignItems: 'end' }}>
-                <Field label="تفصیلی شناور">
+                <Field label="تفصیلی شناور" required>
                   <select className="acc-select" style={{ minWidth: 220 }} value={tafsilDetail} onChange={(e) => setTafsilDetail(e.target.value)}>
                     <option value="">— انتخاب —</option>
                     {details.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}

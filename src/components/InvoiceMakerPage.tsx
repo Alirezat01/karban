@@ -121,7 +121,8 @@ export default function InvoiceMakerPage() {
   }, [rows, vatOn, vatRate]);
 
   const partyValid = (p: Party) => p.name.trim();
-  const canExport = rows.some((r) => r.title.trim() && Number(r.qty) > 0);
+  /* ستاره‌ها صادقانه: خروجی فقط با نام فروشنده/خریدار و حداقل یک ردیف کامل */
+  const canExport = partyValid(seller) && partyValid(buyer) && rows.some((r) => r.title.trim() && Number(r.qty) > 0);
 
   /* ───────────── خروجی‌ها ───────────── */
   function invoiceBodyHtml(): string {
@@ -200,7 +201,7 @@ export default function InvoiceMakerPage() {
   const partyForm = (title: string, p: Party, onChange: (patch: Partial<Party>) => void) => (
     <div className="contact-card calc-card" style={{ flex: 1, minWidth: 260 }}>
       <h3 style={{ marginTop: 0 }}>{title}</h3>
-      <label>نام {title === 'فروشنده' ? 'فروشنده' : 'خریدار'} {title === 'فروشنده' ? '' : ''} *
+      <label>نام {title === 'فروشنده' ? 'فروشنده' : 'خریدار'} <span className="req-star" title="الزامی">*</span>
         <input value={p.name} onChange={(e) => onChange({ name: e.target.value })} placeholder={title === 'فروشنده' ? 'نام کسب‌وکار شما' : 'نام خریدار'} />
       </label>
       <label>کد اقتصادی
@@ -277,9 +278,9 @@ export default function InvoiceMakerPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
                 <thead>
                   <tr style={{ textAlign: 'right', fontSize: '.8rem', color: 'var(--muted)' }}>
-                    <th style={{ padding: '.4rem' }}>شرح *</th>
+                    <th style={{ padding: '.4rem' }}>شرح <span className="req-star">*</span></th>
                     <th style={{ padding: '.4rem', width: 110 }}>واحد</th>
-                    <th style={{ padding: '.4rem', width: 80 }}>مقدار</th>
+                    <th style={{ padding: '.4rem', width: 80 }}>مقدار <span className="req-star">*</span></th>
                     <th style={{ padding: '.4rem', width: 130 }}>مبلغ واحد (ریال)</th>
                     <th style={{ padding: '.4rem', width: 120 }}>تخفیف (ریال)</th>
                     <th style={{ padding: '.4rem', width: 44 }}></th>
@@ -332,7 +333,7 @@ export default function InvoiceMakerPage() {
                   <button className="button button-outline" disabled={!canExport} onClick={doExcel}><FileSpreadsheet size={15} /> اکسل</button>
                   <button className="button button-outline" disabled={!canExport} onClick={doWord}><FileText size={15} /> ورد</button>
                 </div>
-                {!canExport && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '.5rem' }}>برای خروجی، حداقل یک ردیف با شرح و مقدار کامل کنید.</small>}
+                {!canExport && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '.5rem' }}>برای خروجی، نام فروشنده و خریدار و حداقل یک ردیف با شرح و مقدار را کامل کنید.</small>}
                 {!partyValid(seller) && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '.3rem' }}>پیشنهاد: نام فروشنده را کامل کنید تا روی فاکتور درج شود.</small>}
               </div>
             </div>

@@ -116,7 +116,7 @@ export default function LoginPage() {
               <label>نام و نام خانوادگی
                 <input value={form.full_name} onChange={(e) => patch({ full_name: e.target.value })} placeholder="مثلاً: علی رضایی" />
               </label>
-              <label>شماره موبایل
+              <label>شماره موبایل <span className="req-star" title="الزامی">*</span>
                 <input type="tel" inputMode="numeric" value={form.phone} onChange={(e) => patch({ phone: e.target.value })} placeholder="۰۹۱۲…" />
               </label>
               <label>نقش من

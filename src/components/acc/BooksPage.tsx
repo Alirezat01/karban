@@ -440,7 +440,7 @@ export default function BooksPage({ business }: { business: AccBusiness }) {
       {/* مودال سرفصل اضافه */}
       <Modal open={chartModal} onClose={() => setChartModal(false)} title="افزودن سرفصل حسابداری">
         <div style={{ display: 'grid', gap: '.8rem' }}>
-          <Field label="عنوان سرفصل *">
+          <Field label="عنوان سرفصل" required>
             <input className="acc-input" value={newChart.title} onChange={(e) => setNewChart({ ...newChart, title: e.target.value })} placeholder="مثلاً: هزینه پارکینگ" />
           </Field>
           <div className="acc-form-grid">

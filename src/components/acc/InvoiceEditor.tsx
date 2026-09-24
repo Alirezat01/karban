@@ -234,7 +234,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
           ) : (
             <Field label="نوع سند"><input className="acc-input" value={INVOICE_TYPES[type].label} disabled /></Field>
           )}
-          <Field label="شماره صورتحساب"><DigitsInput value={number} onChange={setNumber} allow="-/" /></Field>
+          <Field label="شماره صورتحساب" required><DigitsInput value={number} onChange={setNumber} allow="-/" /></Field>
           <Field label="تاریخ" hint={isoToJalaliInput(dateInput)}>
             <JalaliDateInput value={dateInput} onChange={setDateInput} />
           </Field>
@@ -302,9 +302,9 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
             <thead>
               <tr>
                 <th style={{ width: 34 }}>#</th>
-                <th style={{ width: 300 }}>شرح کالا / خدمت</th>
+                <th style={{ width: 300 }}>شرح کالا / خدمت<span className="acc-req"> *</span></th>
                 <th style={{ width: 90 }}>واحد</th>
-                <th style={{ width: 86 }}>مقدار</th>
+                <th style={{ width: 86 }}>مقدار<span className="acc-req"> *</span></th>
                 <th style={{ width: 180 }}>مبلغ واحد (ریال)</th>
                 <th style={{ width: 150 }}>تخفیف (ریال)</th>
                 <th style={{ width: 84 }}>مالیات ٪</th>
@@ -383,7 +383,7 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
         {quickPartner && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="نام *"><input className="acc-input" value={quickPartner.name} onChange={(e) => setQuickPartner({ ...quickPartner, name: e.target.value })} /></Field>
+              <Field label="نام" required><input className="acc-input" value={quickPartner.name} onChange={(e) => setQuickPartner({ ...quickPartner, name: e.target.value })} /></Field>
               <Field label="شخصیت">
                 <select className="acc-select" value={quickPartner.person_type} onChange={(e) => setQuickPartner({ ...quickPartner, person_type: e.target.value as 'real' | 'legal' })}>
                   <option value="real">حقیقی</option>

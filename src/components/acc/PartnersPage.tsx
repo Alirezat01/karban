@@ -38,6 +38,7 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
 
   async function save() {
     if (!editing?.name?.trim()) { toast('نام طرف‌حساب الزامی است', 'error'); return; }
+    if (!editRoles.length) { toast('حداقل یک نقش (مشتری / تامین‌کننده) را انتخاب کنید', 'error'); return; }
     try {
       if (editing.id) {
         await savePartnerV2(business.id, { ...editing, roles: editRoles } as never);
@@ -183,7 +184,7 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? `ویرایش طرف‌حساب${editing.partner_code ? ` — کد ${editing.partner_code}` : ''}` : 'طرف‌حساب جدید — با نقش‌ها'}>
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
-            <Field label="نقش‌های طرف‌حساب *" hint="یک شخص می‌تواند هم‌زمان مشتری، شریک و کارمند باشد — هر نقش دفتر مستقل خودش را دارد">
+            <Field label="نقش‌های طرف‌حساب" required hint="یک شخص می‌تواند هم‌زمان مشتری، شریک و کارمند باشد — هر نقش دفتر مستقل خودش را دارد">
               <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap' }}>
                 {(Object.keys(PARTNER_ROLE_LABELS) as PartnerRole[]).map((role) => (
                   <label key={role} style={{ display: 'flex', alignItems: 'center', gap: '.3rem', fontSize: '.82rem', cursor: 'pointer' }}>
@@ -198,7 +199,7 @@ export default function PartnersPage({ business, plan }: { business: AccBusiness
               </div>
             </Field>
             <div className="acc-form-grid">
-              <Field label="نام *">
+              <Field label="نام" required>
                 <input className="acc-input" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
               </Field>
               <Field label="نام حقوقی کامل">

@@ -116,7 +116,7 @@ export default function SettingsPage({ business, role, plan, reloadAccess }: { b
       <div className="acc-card">
         <h3><Building2 size={16} /> اطلاعات رسمی کسب‌وکار</h3>
         <div className="acc-form-grid">
-          <Field label="نام رسمی *"><input className="acc-input" value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
+          <Field label="نام رسمی" required><input className="acc-input" value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
           <Field label="نام نمایشی / برند" hint="روی فاکتور و هدر پنل"><input className="acc-input" value={form.brand || ''} onChange={(e) => set('brand', e.target.value)} /></Field>
         </div>
         <div className="acc-form-grid" style={{ marginTop: '.8rem' }}>
@@ -228,7 +228,7 @@ export default function SettingsPage({ business, role, plan, reloadAccess }: { b
       <Modal open={!!invite} onClose={() => setInvite(null)} title="دعوت کاربر جدید">
         {invite && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
-            <Field label="ایمیل کاربر *"><input className="acc-input" dir="ltr" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} /></Field>
+            <Field label="ایمیل کاربر" required><input className="acc-input" dir="ltr" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} /></Field>
             <Field label="نقش">
               <select className="acc-select" value={invite.role} onChange={(e) => setInvite({ ...invite, role: e.target.value as 'accountant' | 'viewer' })}>
                 <option value="accountant">حسابدار (دسترسی کامل عملیات)</option>

@@ -9,7 +9,6 @@ import {
   computePayroll, deleteEmployee, deletePayroll, fetchPayrollParams, listEmployees,
   listPayrolls, payPayroll, saveEmployee, savePayroll, type PayrollParams,
 } from '@/lib/acc/api6';
-import { listAccounts } from '@/lib/acc/api';
 import { formatMoney, formatMoneyUnit } from '@/lib/acc/money';
 import { JALALI_MONTHS, toFaDigits, todayJalali } from '@/lib/acc/jalali';
 import { Field, Modal, MoneyInput, QtyInput, DigitsInput, JalaliDateInput, confirmAction, toast, EmptyState } from './ui';
@@ -18,7 +17,6 @@ export default function PayrollPage({ business }: { business: AccBusiness }) {
   const today = todayJalali();
   const [tab, setTab] = useState<'list' | 'month'>('list');
   const [employees, setEmployees] = useState<AccEmployee[]>([]);
-  const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
   const [params, setParams] = useState<PayrollParams | null>(null);
   const [editing, setEditing] = useState<Partial<AccEmployee> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,9 +32,8 @@ export default function PayrollPage({ business }: { business: AccBusiness }) {
   async function load() {
     setLoading(true);
     try {
-      const [em, ac, pr] = await Promise.all([listEmployees(business.id), listAccounts(business.id), fetchPayrollParams()]);
+      const [em, pr] = await Promise.all([listEmployees(business.id), fetchPayrollParams()]);
       setEmployees(em);
-      setAccounts(ac.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name })));
       setParams(pr);
     } finally {
       setLoading(false);
@@ -270,7 +267,7 @@ export default function PayrollPage({ business }: { business: AccBusiness }) {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="نام و نام خانوادگی *"><input className="acc-input" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
+              <Field label="نام و نام خانوادگی" required><input className="acc-input" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
               <Field label="کد ملی"><DigitsInput value={editing.national_id || ''} onChange={(v) => setEditing({ ...editing, national_id: v })} maxLength={10} /></Field>
             </div>
             <div className="acc-form-grid">
@@ -282,7 +279,7 @@ export default function PayrollPage({ business }: { business: AccBusiness }) {
               <Field label="تاریخ استخدام"><JalaliDateInput value={editing.hire_date_g || ''} onChange={(iso) => setEditing({ ...editing, hire_date_g: iso })} /></Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="بن خواروبار (ریال)"><MoneyInput value={editing.food_allowance || 0} onChange={(n) => setEditing({ ...editing, food_allowance: n })} /></Field>
+              <Field label="بن خواروباری (ریال)"><MoneyInput value={editing.food_allowance || 0} onChange={(n) => setEditing({ ...editing, food_allowance: n })} /></Field>
               <Field label="کمک مسکن (ریال)"><MoneyInput value={editing.housing_allowance || 0} onChange={(n) => setEditing({ ...editing, housing_allowance: n })} /></Field>
             </div>
             <div className="acc-form-grid">

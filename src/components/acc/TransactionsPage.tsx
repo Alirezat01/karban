@@ -189,7 +189,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="مبلغ (ریال) *"><MoneyInput value={editing.amount || 0} onChange={(n) => setEditing({ ...editing, amount: n })} /></Field>
+              <Field label="مبلغ (ریال)" required><MoneyInput value={editing.amount || 0} onChange={(n) => setEditing({ ...editing, amount: n })} /></Field>
               <Field label="تاریخ"><JalaliDateInput value={editing.date_g || ''} onChange={(iso) => setEditing({ ...editing, date_g: iso })} /></Field>
             </div>
             <div className="acc-form-grid">
@@ -239,13 +239,13 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
               هیچ درآمد یا هزینه‌ای در این انتقال ساخته نمی‌شود.
             </p>
             <div className="acc-form-grid">
-              <Field label="از حساب *">
+              <Field label="از حساب" required>
                 <select className="acc-select" value={transfer.from_account} onChange={(e) => setTransfer({ ...transfer, from_account: e.target.value })}>
                   <option value="">— انتخاب کنید —</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
                 </select>
               </Field>
-              <Field label="به حساب *">
+              <Field label="به حساب" required>
                 <select className="acc-select" value={transfer.to_account} onChange={(e) => setTransfer({ ...transfer, to_account: e.target.value })}>
                   <option value="">— انتخاب کنید —</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -253,7 +253,7 @@ export default function TransactionsPage({ business }: { business: AccBusiness }
               </Field>
             </div>
             <div className="acc-form-grid">
-              <Field label="مبلغ (ریال) *"><MoneyInput value={transfer.amount} onChange={(n) => setTransfer({ ...transfer, amount: n })} /></Field>
+              <Field label="مبلغ (ریال)" required><MoneyInput value={transfer.amount} onChange={(n) => setTransfer({ ...transfer, amount: n })} /></Field>
               <Field label="تاریخ"><JalaliDateInput value={transfer.date_g} onChange={(iso) => setTransfer({ ...transfer, date_g: iso })} /></Field>
             </div>
             <Field label="توضیح (اختیاری)"><input className="acc-input" value={transfer.description} onChange={(e) => setTransfer({ ...transfer, description: e.target.value })} placeholder="خالی = توضیح خودکار" /></Field>

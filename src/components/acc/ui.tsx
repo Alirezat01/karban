@@ -9,10 +9,14 @@ import {
 } from '@/lib/acc/jalali';
 import './acc.css';
 
-export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+/* فیلد فرم — required: ستارهٔ قرمز الزامی کنار برچسب (نشانهٔ پر کردن اجباری) */
+export function Field({ label, children, hint, required }: { label: string; children: React.ReactNode; hint?: string; required?: boolean }) {
   return (
     <div className="acc-field">
-      <label>{label}</label>
+      <label>
+        {label}
+        {required ? <span className="acc-req" title="این فیلد الزامی است" aria-hidden="true"> *</span> : null}
+      </label>
       {children}
       {hint ? <span className="acc-hint">{hint}</span> : null}
     </div>

@@ -242,7 +242,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
                   <option value="issued">پرداختی (به تامین‌کننده)</option>
                 </select>
               </Field>
-              <Field label="مبلغ چک (ریال) *">
+              <Field label="مبلغ چک (ریال)" required>
                 <MoneyInput value={editing.amount || 0} onChange={(n) => setEditing({ ...editing, amount: n })} />
               </Field>
               <Field label="وضعیت">
@@ -271,7 +271,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
               <Field label="تاریخ صدور">
                 <JalaliDateInput value={editing.issue_date_g || ''} onChange={(iso) => setEditing({ ...editing, issue_date_g: iso })} />
               </Field>
-              <Field label="تاریخ سررسید *">
+              <Field label="تاریخ سررسید" required>
                 <JalaliDateInput value={editing.due_date_g || ''} onChange={(iso) => setEditing({ ...editing, due_date_g: iso })} />
               </Field>
             </div>

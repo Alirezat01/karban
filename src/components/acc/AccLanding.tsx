@@ -10,6 +10,7 @@ import { fetchAccConfig, DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/co
 import { formatMoney } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { PRO_FEATURES } from '@/lib/acc/plan';
+import { isIranianMobile } from '@/lib/validation';
 import { Field, Modal, toast } from './ui';
 
 const FEATURES = [
@@ -97,7 +98,8 @@ export default function AccLanding() {
   const plans = buildPlans(cfg);
 
   async function submitOrder() {
-    if (!phone.trim()) { toast('شماره تماس را وارد کنید', 'error'); return; }
+    /* اعتبارسنجی واقعی موبایل — هم‌راستا با بقیهٔ سایت (۰۹ + ۱۱ رقم) */
+    if (!isIranianMobile(phone)) { toast('شماره موبایل را با ۰۹ و ۱۱ رقم وارد کنید', 'error'); return; }
     setBusy(true);
     try {
       const amountRial = order?.plan === 'monthly' ? cfg.price_monthly : order?.plan === 'yearly' ? cfg.price_yearly : 0;
@@ -249,7 +251,7 @@ export default function AccLanding() {
           </p>
           <div className="acc-form-grid">
             <Field label="نام و نام خانوادگی"><input className="acc-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-            <Field label="شماره تماس *"><input className="acc-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+            <Field label="شماره تماس" required><input className="acc-input" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
           </div>
           <button className="acc-btn acc-btn-primary" disabled={busy} onClick={submitOrder}>{busy ? 'در حال ثبت…' : 'ثبت درخواست خرید'}</button>
         </div>

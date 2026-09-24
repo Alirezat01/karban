@@ -219,7 +219,7 @@ export default function CostCentersPage({ business }: { business: AccBusiness })
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'ویرایش مرکز هزینه' : 'مرکز هزینه جدید'}>
         {editing && (
           <div style={{ display: 'grid', gap: '.7rem' }}>
-            <Field label="نام *"><input className="acc-input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="مثلاً: بازاریابی" /></Field>
+            <Field label="نام" required><input className="acc-input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="مثلاً: بازاریابی" /></Field>
             <Field label="توضیح"><input className="acc-input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></Field>
             <p style={{ margin: 0, fontSize: '.72rem', opacity: .6 }}>کد CC-### به‌صورت اتمیک تخصیص می‌یابد و پس از غیرفعال‌شدن هرگز تکرار نمی‌شود.</p>
             <div style={{ display: 'flex', gap: '.5rem' }}>

@@ -217,7 +217,7 @@ function ReconcileSection({ business }: { business: AccBusiness }) {
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="حساب بانکی/صندوق *">
+              <Field label="حساب بانکی/صندوق" required>
                 <select
                   className="acc-select"
                   value={editing.account_id || ''}

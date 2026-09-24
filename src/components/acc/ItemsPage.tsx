@@ -271,7 +271,7 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
             <div className="acc-form-grid">
-              <Field label="نام *"><input className="acc-input" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
+              <Field label="نام" required><input className="acc-input" value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
               <Field label="نوع">
                 <select className="acc-select" value={editing.kind} onChange={(e) => setEditing({ ...editing, kind: e.target.value as AccItem['kind'] })}>
                   <option value="service">خدمت</option>

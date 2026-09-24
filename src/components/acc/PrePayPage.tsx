@@ -1,7 +1,7 @@
 /* پیش‌دریافت و پیش‌پرداخت — جدا از بدهی/طلب عادی، با تخصیص به فاکتور/هزینه */
 
 import React, { useEffect, useState } from 'react';
-import { ArrowDownToLine, ArrowUpFromLine, Link2, Plus, X } from 'lucide-react';
+import { Link2, Plus } from 'lucide-react';
 import type { AccBusiness, AccInvoice, AccExpense, AccPartner } from '@/lib/acc/types';
 import { listPrepay, savePrepay, allocatePrepay, voidPrepay, deletePrepayFull, AccPrepayment } from '@/lib/acc/api7';
 import { listAccounts, listExpenses, listInvoices, listPartners } from '@/lib/acc/api';
@@ -169,7 +169,7 @@ export default function PrePayPage({ business }: { business: AccBusiness }) {
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </Field>
-            <Field label="مبلغ (ریال)"><MoneyInput value={form.amount} onChange={(n) => setForm((f) => ({ ...f, amount: n }))} /></Field>
+            <Field label="مبلغ (ریال)" required><MoneyInput value={form.amount} onChange={(n) => setForm((f) => ({ ...f, amount: n }))} /></Field>
             <Field label="تاریخ"><JalaliDateInput value={form.date_g} onChange={(iso) => setForm((f) => ({ ...f, date_g: iso }))} /></Field>
             <Field label="شرح (اختیاری)"><input className="acc-input" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></Field>
             <div style={{ display: 'flex', gap: '.5rem' }}>
