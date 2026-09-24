@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, Bell, Calculator, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
   Mail, MessagesSquare, Newspaper, Phone, Plus, Save, Send, ShieldCheck, ShoppingCart, SlidersHorizontal,
-  Star, Trash2, Users, Wrench, KeyRound, CreditCard,
+  Star, Trash2, Users, Wallet, Wrench, KeyRound, CreditCard,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
@@ -14,7 +14,7 @@ import { useCountUp } from '@/lib/reveal';
 import KarbanLoader from '@/components/KarbanLoader';
 import FaNumberInput from '@/components/FaNumberInput';
 
-type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
+type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'payment' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -254,6 +254,7 @@ export default function AdminPage() {
     { group: 'مالی و حسابداری', items: [
       ['accounting', 'تنظیمات حسابداری', Calculator],
       ['licenses', 'لایسنس‌های اشتراک', CreditCard],
+      ['payment', 'شماره کارت پرداخت', Wallet],
       ['telegram', 'اتصال تلگرام', Send],
     ] },
     { group: 'پشتیبانی', items: [
@@ -303,6 +304,7 @@ export default function AdminPage() {
             {tab === 'accounting' && <AccountingTab />}
             {tab === 'licenses' && <LicensesTab />}
             {tab === 'telegram' && <TelegramTab />}
+            {tab === 'payment' && <PaymentTab />}
             {tab === 'contracts' && <ContractsTab />}
             {tab === 'articles' && <ArticlesTab />}
             {tab === 'requests' && <RequestsTab />}
@@ -2135,6 +2137,180 @@ function TelegramTab() {
           ارسال صف الان
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ═══════════ PaymentTab — مدیریت شماره کارت پرداخت (راند ۷) ═══════════
+   شماره کارت تجاری کاربان در جدول pay_accounts نگهداری می‌شود که RLS آن
+   کاملاً بسته است (هیچ سیاست و گرانتی برای anon/authenticated وجود ندارد).
+   مشتری فقط از طریق RPC امنِ pay_get_account و با کد پیگیریِ یک سفارش
+   واقعی کارت را می‌بیند (با محدودیت نرخ و لاگ کامل دسترسی). ═══════════ */
+
+type PayAccount = {
+  id: string; label: string; holder_name: string; bank_name: string;
+  card_number: string; sheba: string; is_active: boolean; created_at: string;
+};
+type PayLog = { order_code: string | null; ip_hash: string | null; outcome: string; detail: string | null; fetched_at: string };
+
+const PAY_OUTCOME_FA: Record<string, string> = {
+  ok: 'نمایش موفق',
+  bad_code: 'کد نامعتبر',
+  rate_limited: 'محدودیت نرخ',
+  no_account: 'کارت فعال نبود',
+  expired: 'سفارش قدیمی',
+  error: 'خطا',
+};
+
+function PaymentTab() {
+  const [accounts, setAccounts] = useState<PayAccount[] | null>(null);
+  const [log, setLog] = useState<PayLog[]>([]);
+  const [form, setForm] = useState({ label: 'حساب تجاری کاربان', holder_name: '', bank_name: '', card_number: '', sheba: '' });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  const [showFull, setShowFull] = useState(false);
+
+  const load = React.useCallback(async () => {
+    const { data } = await supabase.rpc('pay_account_admin_get');
+    setAccounts((data as PayAccount[]) ?? []);
+    const { data: lg } = await supabase.rpc('pay_account_admin_log', { p_limit: 15 });
+    setLog((lg as PayLog[]) ?? []);
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const save = async () => {
+    setErr(''); setMsg('');
+    setSaving(true);
+    const { error } = await supabase.rpc('pay_account_upsert', {
+      p_holder_name: form.holder_name.trim(),
+      p_bank_name: form.bank_name.trim(),
+      p_card_number: form.card_number.trim(),
+      p_sheba: form.sheba.trim().toUpperCase(),
+      p_label: form.label.trim() || 'حساب تجاری کاربان',
+    });
+    setSaving(false);
+    if (error) { setErr(error.message || 'ثبت انجام نشد'); return; }
+    setMsg('✓ شماره کارت جدید فعال شد — از این لحظه مشتریان در صفحهٔ پرداخت سفارش همین را می‌بینند.');
+    setForm({ ...form, holder_name: '', bank_name: '', card_number: '', sheba: '' });
+    void load();
+  };
+
+  const group4 = (s: string) => s.replace(/(\d{4})(?=\d)/g, '$1 ');
+  const active = accounts?.find((a) => a.is_active) || null;
+  const past = accounts?.filter((a) => !a.is_active) || [];
+  const digitsOnly = (v: string) => v
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[^0-9IR]/g, '');
+
+  return (
+    <div className="admin-settings">
+      <h2>شماره کارت پرداخت (حساب تجاری کاربان)</h2>
+      <p>
+        مشتری بعد از ثبت سفارش، این کارت را در صفحهٔ موفقیت سفارش می‌بیند. کارت در جدولی
+        با امنیت کامل نگهداری می‌شود که هیچ نقشی اجازهٔ خواندن مستقیم آن را ندارد و فقط
+        با «کد پیگیری سفارش واقعی» + محدودیت نرخ + لاگ دسترسی نمایش داده می‌شود؛ یعنی
+        هیچ‌کس نمی‌تواند آن را از دیتابیس بیرون بکشد.
+      </p>
+
+      {accounts === null ? (
+        <KarbanLoader label="در حال بارگذاری کارت…" />
+      ) : (
+        <>
+          {active ? (
+            <div style={{ margin: '.9rem 0', padding: '.9rem 1rem', borderRadius: 12, border: '1px solid var(--line)', background: 'rgba(46,125,50,.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
+                <b>کارت فعال:</b>
+                <span dir="ltr">{showFull ? group4(active.card_number) : `•••• •••• •••• ${active.card_number.slice(-4)}`}</span>
+                <button className="button button-small" onClick={() => setShowFull(!showFull)}>{showFull ? 'پنهان' : 'نمایش کامل'}</button>
+              </div>
+              <div style={{ fontSize: '.85rem', color: 'var(--muted)', marginTop: '.35rem' }}>
+                {active.bank_name} — به نام {active.holder_name} — شبا <span dir="ltr">{active.sheba}</span>
+              </div>
+            </div>
+          ) : (
+            <small className="admin-error" style={{ display: 'block', margin: '.6rem 0' }}>
+              هنوز هیچ کارت فعالی ثبت نشده — مشتریان فعلاً پیام «هماهنگی تلفنی» می‌بینند.
+            </small>
+          )}
+
+          <h3>{active ? 'تعویض کارت (کارت قبلی غیرفعال می‌شود)' : 'ثبت کارت جدید'}</h3>
+          <div className="settings-grid">
+            <label className="settings-field">
+              عنوان نمایشی
+              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="حساب تجاری کاربان" />
+            </label>
+            <label className="settings-field">
+              نام صاحب حساب <b style={{ color: '#ef5350' }}>*</b>
+              <input value={form.holder_name} onChange={(e) => setForm({ ...form, holder_name: e.target.value })} placeholder="دقیقاً مطابق کارت بانکی" />
+            </label>
+            <label className="settings-field">
+              نام بانک <b style={{ color: '#ef5350' }}>*</b>
+              <input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="مثلاً بانک تجارت" />
+            </label>
+            <label className="settings-field">
+              شماره کارت ۱۶ رقمی <b style={{ color: '#ef5350' }}>*</b>
+              <input value={form.card_number} onChange={(e) => setForm({ ...form, card_number: digitsOnly(e.target.value).replace(/[^0-9]/g, '').slice(0, 16) })} placeholder="۶۰۳۷…" dir="ltr" inputMode="numeric" />
+            </label>
+            <label className="settings-field" style={{ gridColumn: 'span 2' }}>
+              شماره شبا (IR + ۲۴ رقم) <b style={{ color: '#ef5350' }}>*</b>
+              <input value={form.sheba} onChange={(e) => setForm({ ...form, sheba: digitsOnly(e.target.value).slice(0, 26) })} placeholder="IR…" dir="ltr" inputMode="numeric" />
+            </label>
+          </div>
+
+          <div className="admin-actions-row">
+            <button className="button button-green" onClick={save} disabled={saving || !form.holder_name || !form.bank_name || form.card_number.length !== 16 || form.sheba.length !== 26}>
+              <Save size={15} /> {saving ? 'در حال ذخیره…' : 'فعال‌سازی کارت'}
+            </button>
+          </div>
+          {msg && <small className="admin-success" style={{ display: 'block', marginTop: '.4rem' }}>{msg}</small>}
+          {err && <small className="admin-error" style={{ display: 'block', marginTop: '.4rem' }}>✕ {err}</small>}
+
+          {past.length > 0 && (
+            <>
+              <h3>کارت‌های قبلی (غیرفعال)</h3>
+              <div className="admin-table-wrap">
+                <table>
+                  <thead><tr><th>عنوان</th><th>کارت</th><th>بانک</th><th>تاریخ ثبت</th></tr></thead>
+                  <tbody>
+                    {past.map((a) => (
+                      <tr key={a.id}>
+                        <td>{a.label}</td>
+                        <td dir="ltr">•••• {a.card_number.slice(-4)}</td>
+                        <td>{a.bank_name}</td>
+                        <td>{formatFaDate(a.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {log.length > 0 && (
+            <>
+              <h3>آخرین دسترسی‌ها به شماره کارت</h3>
+              <div className="admin-table-wrap">
+                <table>
+                  <thead><tr><th>کد سفارش</th><th>نتیجه</th><th>اثر انگشت IP</th><th>زمان</th></tr></thead>
+                  <tbody>
+                    {log.map((l, i) => (
+                      <tr key={i}>
+                        <td dir="ltr">{l.order_code || '—'}</td>
+                        <td>{PAY_OUTCOME_FA[l.outcome] || l.outcome}</td>
+                        <td dir="ltr" style={{ fontSize: '.75rem' }}>{l.ip_hash ? l.ip_hash.slice(0, 10) : '—'}</td>
+                        <td>{formatFaDate(l.fetched_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

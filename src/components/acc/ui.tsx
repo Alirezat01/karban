@@ -65,7 +65,7 @@ export function EmptyState({ icon, title, hint }: { icon?: React.ReactNode; titl
 }
 
 /* ── توست ── */
-type ToastMsg = { id: number; text: string; type: 'ok' | 'error'; report?: string; reportTitle?: string; state?: 'idle' | 'sending' | 'sent' | 'failed' | 'guest'; stateMsg?: string };
+type ToastMsg = { id: number; text: string; type: 'ok' | 'error'; reason?: string; report?: string; reportTitle?: string; state?: 'idle' | 'sending' | 'sent' | 'failed' | 'guest'; stateMsg?: string };
 const TOAST_EVENT = 'acc-toast';
 
 export function toast(text: string, type: 'ok' | 'error' = 'ok') {

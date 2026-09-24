@@ -12,7 +12,7 @@ import { useAccAccess } from '@/lib/acc/access';
 import { createBusiness, startTrial, submitTrialRequest } from '@/lib/acc/api';
 import { featureEnabled, PLAN_TIER_LABEL, planTier, type FeatureKey } from '@/lib/acc/plan';
 import { isIranianMobile } from '@/lib/validation';
-import { Field, ToastHost, ConfirmHost, Modal, DigitsInput, QtyInput, toast } from "./ui";
+import { Field, ToastHost, ConfirmHost, Modal, DigitsInput, QtyInput, toast, toastError } from "./ui";
 import Dashboard from './Dashboard';
 import PartnersPage from './PartnersPage';
 import ItemsPage from './ItemsPage';
@@ -169,7 +169,7 @@ function BusinessWizard({
       toast(mode === 'trial' ? 'نسخه آزمایشی شما فعال شد 🎉' : 'کسب‌وکار جدید ساخته شد');
       onCreated();
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'عملیات ناموفق بود؛ دوباره تلاش کنید', 'error');
+      toastError(e, 'عملیات ناموفق بود؛ دوباره تلاش کنید');
     } finally {
       setBusy(false);
     }

@@ -89,6 +89,7 @@ const SPECS = [
   ['accounting.person-payables', () => import('./accounting.person-payables.spec.mjs')],
   ['accounting.deletion', () => import('./accounting.deletion.spec.mjs')],
   ['accounting.reports', () => import('./accounting.reports.spec.mjs')],
+  ['payments.security', () => import('./payments.security.spec.mjs')],
 ];
 
 for (const [name, loader] of SPECS) {

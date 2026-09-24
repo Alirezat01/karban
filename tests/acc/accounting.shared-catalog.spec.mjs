@@ -29,8 +29,18 @@ export async function run(ctx) {
   record('CAT-2', 'نوشتن کاربر معمولی در کاتالوگ رد می‌شود', 'PASS',
     'رد شد: ' + wErr.message.slice(0, 60));
 
-  /* ۳) خودِ کاربر معمولی نمی‌تواند رد شدن را دور بزند (delete/apply هم بسته است) */
-  const { error: dErr } = await A.sb.from('acc_stuff_catalog').delete().eq('id', probeId);
-  record('CAT-3', 'حذف توسط کاربر معمولی هم رد می‌شود', dErr ? 'PASS' : 'FAIL',
-    dErr ? 'رد شد (گشودن حذف به غیر ادمین ممنوع)' : 'حذف پذیرفته شد!');
+  /* ۳) خودِ کاربر معمولی نمی‌تواند رد شدن را دور بزنه — تأکید روی «اثر»، نه خطا:
+     PostgREST برای DELETEِ ردیفِ فیلترشدهٔ RLS (یا ناموجود) خطا نمی‌دهد و فقط ۰ ردیف حذف
+     می‌کند؛ پس درست‌ترین سنجش این است که یک ردیف واقعیِ موجود بعد از تلاش حذف همچنان
+     سالم باشد. (RCA راند ۷: نسخهٔ قبلی idِ ن inserted را حذف می‌کرد و «no error» را
+     «حذف پذیرفته شد» می‌خواند — خطای منطقی تست بود، نه نشتی دیتابیس.) */
+  const { data: victim } = await A.sb.from('acc_stuff_catalog').select('id').limit(1);
+  if (!victim || !victim.length) {
+    record('CAT-3', 'حذف توسط کاربر معمولی هم رد می‌شود', 'SKIP', 'ردیفی در کاتالوگ برای سنجش حذف نیست');
+    return;
+  }
+  await A.sb.from('acc_stuff_catalog').delete().eq('id', victim[0].id);
+  const { data: survived } = await A.sb.from('acc_stuff_catalog').select('id').eq('id', victim[0].id);
+  record('CAT-3', 'حذف واقعی ردیف کاتالوگ توسط کاربر معمولی رد می‌شود', survived?.length === 1 ? 'PASS' : 'FAIL',
+    survived?.length === 1 ? 'ردیف پس از تلاش حذف سالم ماند (RLS حذف غیرادمین را بست)' : 'حذف پذیرفته شد — نشتی!');
 }
