@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, X } from 'lucide-react';
 import { formatInputMoney, formatMoney } from '@/lib/acc/money';
+import { friendlyError, type FriendlyError } from '@/lib/acc/errors';
+import { reportErrorToSupport } from '@/lib/acc/support';
 import {
   dateToISO, isoToJalaliInput, JALALI_MONTHS, jalaliInputToISO, jalaliMonthLength,
   toEnDigits, toFaDigits, toGregorian, toJalali,
@@ -63,26 +65,62 @@ export function EmptyState({ icon, title, hint }: { icon?: React.ReactNode; titl
 }
 
 /* ── توست ── */
-type ToastMsg = { id: number; text: string; type: 'ok' | 'error' };
+type ToastMsg = { id: number; text: string; type: 'ok' | 'error'; report?: string; reportTitle?: string; state?: 'idle' | 'sending' | 'sent' | 'failed' | 'guest'; stateMsg?: string };
 const TOAST_EVENT = 'acc-toast';
 
 export function toast(text: string, type: 'ok' | 'error' = 'ok') {
   window.dispatchEvent(new CustomEvent(TOAST_EVENT, { detail: { text, type } }));
 }
 
+/** توست خطا با «دلیلِ قابل‌فهم» + کپی گزارش + ارسال به پشتیبانی (درخواست مالک) */
+export function toastError(e: unknown, fallback = 'عملیات ناموفق بود') {
+  let f: FriendlyError;
+  try { f = friendlyError(e, fallback); } catch { f = { title: fallback, reason: e instanceof Error ? e.message : String(e ?? ''), raw: '', report: fallback }; }
+  window.dispatchEvent(new CustomEvent(TOAST_EVENT, {
+    detail: { text: f.title, type: 'error' as const, reason: f.reason, report: f.report, reportTitle: f.title },
+  }));
+}
+
 export function ToastHost() {
   const [items, setItems] = useState<ToastMsg[]>([]);
   useEffect(() => {
     const onToast = (e: Event) => {
-      const { text, type } = (e as CustomEvent).detail as { text: string; type: 'ok' | 'error' };
+      const { text, type, reason, report, reportTitle } = (e as CustomEvent).detail as { text: string; type: 'ok' | 'error'; reason?: string; report?: string; reportTitle?: string };
       const id = Date.now() + Math.random();
-      setItems((prev) => [...prev, { id, text, type }]);
-      setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 3200);
+      setItems((prev) => [...prev, { id, text, type, reason, report, reportTitle, state: 'idle' }]);
+      /* خطا با گزارش، مدت بیشتری می‌ماند تا کاربر بتواند بخواند/بفرستد */
+      const ttl = type === 'error' && report ? 12000 : 3200;
+      setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), ttl);
     };
     window.addEventListener(TOAST_EVENT, onToast);
     return () => window.removeEventListener(TOAST_EVENT, onToast);
   }, []);
-  return <div className="acc-toast-wrap">{items.map((t) => <div key={t.id} className={`acc-toast ${t.type === 'error' ? 'error' : ''}`}>{t.text}</div>)}</div>;
+  return <div className="acc-toast-wrap">{items.map((t) => (
+    <div key={t.id} className={`acc-toast ${t.type === 'error' ? 'error' : ''}`}>
+      <div>{t.text}</div>
+      {t.reason && t.reason !== t.text ? <div className="acc-toast-reason">{t.reason}</div> : null}
+      {t.report && (
+        <div className="acc-toast-report">
+          <button
+            type="button"
+            onClick={async () => {
+              try { await navigator.clipboard.writeText(t.report || ''); toast('گزارش خطا کپی شد — می‌توانید برای پشتیبانی بفرستید'); } catch { toast('کپی ناموفق بود', 'error'); }
+            }}
+          >کپی گزارش</button>
+          <button
+            type="button"
+            onClick={async () => {
+              setItems((prev) => prev.map((x) => (x.id === t.id ? { ...x, state: 'sending', stateMsg: undefined } : x)));
+              const r = await reportErrorToSupport(t.report || '', t.reportTitle || t.text);
+              setItems((prev) => prev.map((x) => (x.id === t.id ? { ...x, state: r.ok ? 'sent' : (r.message.includes('وارد حساب') ? 'guest' : 'failed'), stateMsg: r.message } : x)));
+            }}
+            disabled={t.state === 'sending' || t.state === 'sent'}
+          >{t.state === 'sending' ? 'در حال ارسال…' : t.state === 'sent' ? 'ارسال شد ✓' : 'ارسال به پشتیبانی'}</button>
+          {t.stateMsg ? <div className="acc-toast-stateMsg">{t.stateMsg}</div> : null}
+        </div>
+      )}
+    </div>
+  ))}</div>;
 }
 
 /* ── تأیید.promise ── */

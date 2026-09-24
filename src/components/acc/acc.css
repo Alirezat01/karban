@@ -108,6 +108,12 @@
 .acc-toast-wrap { position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%); z-index: 120; display: flex; flex-direction: column; gap: .5rem; align-items: center; }
 .acc-toast { padding: .75rem 1.3rem; border-radius: 14px; font-size: .86rem; font-weight: 500; background: var(--surface2); border: 1px solid rgba(216,165,63,.45); color: var(--gold2); box-shadow: 0 14px 40px -12px rgba(0,0,0,.6); animation: acc-toast-in .25s ease; }
 .acc-toast.error { border-color: rgba(179,38,30,.6); color: #ef9a94; }
+.acc-toast-reason { font-size: .78rem; font-weight: 400; color: var(--text); opacity: .9; margin-top: .35rem; max-width: 340px; line-height: 1.8; white-space: normal; word-break: break-word; }
+.acc-toast-report { display: flex; gap: .5rem; margin-top: .55rem; }
+.acc-toast-report button { font-size: .7rem; font-weight: 600; padding: .3rem .7rem; border-radius: 999px; cursor: pointer; border: 1px solid rgba(179,38,30,.45); background: transparent; color: #ef9a94; transition: background .15s ease; }
+.acc-toast-report button:hover:not(:disabled) { background: rgba(179,38,30,.12); }
+.acc-toast-report button:disabled { opacity: .55; cursor: default; }
+.acc-toast-stateMsg { font-size: .7rem; color: var(--muted); margin-top: .3rem; }
 @keyframes acc-toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 /* ── نمودار SVG ── */

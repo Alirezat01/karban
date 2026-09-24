@@ -65,7 +65,7 @@ export interface ParseResult {
 function parseAmount(v: unknown): number {
   if (v == null || v === '') return 0;
   if (typeof v === 'number') return Number.isFinite(v) ? Math.round(v) : 0;
-  const s = toEnDigits(String(v)).replace(/[,،\s]/g, '').replace(/[^\d.\-]/g, '');
+  const s = toEnDigits(String(v)).replace(/[,،\s]/g, '').replace(/[^\d.-]/g, '');
   const n = Number(s);
   return Number.isFinite(n) ? Math.round(n) : 0;
 }
@@ -275,7 +275,7 @@ export async function parseBankStatement(file: File): Promise<ParseResult> {
     if (fromCol) meta.accountNo = fromCol;
   }
 
-  const { checks, impliedOpening } = validateChain(out, meta);
+  const { checks } = validateChain(out, meta);
   return { meta, rows: out, checks, headerRow: headerRow + 1, colMap };
 }
 
@@ -283,13 +283,19 @@ export async function parseBankStatement(file: File): Promise<ParseResult> {
 
 export interface ImportOutcome { inserted: number; duplicates: number; batchId: string }
 
+/** اثر انگشت واحد برای تشخیص تکرار — فرمت باید هنگام خواندن و مقایسه «دقیقاً یکی» باشد
+ *  (RCA راند ۶: قبلاً فرمتِ کلیدِ ذخیره‌شده با فرمتِ ردیفِ جدید یکی نبود و آپلود مجدد دوبل می‌زد) */
+function lineFingerprint(date_g: string, amount: number, description: string | null): string {
+  return `${date_g}|${amount}|${(description || '').trim()}`;
+}
+
 /** درج ردیف‌های جدید با تشخیص تکرار — بازگشت شناسه‌ها با خواندن batch (مقاوم به RLS) */
 export async function importStatement(
   businessId: string, accountId: string, parsed: ParseResult,
 ): Promise<ImportOutcome> {
   const existing = await listBankLines(businessId, accountId);
-  const seen = new Set((existing || []).map((l) => `${l.date_g}|${l.amount}|${l.ref_no || ''}|${l.description || ''}`));
-  const fresh = parsed.rows.filter((r) => !seen.has(r.fingerprint));
+  const seen = new Set((existing || []).map((l) => lineFingerprint(l.date_g, l.amount, l.description)));
+  const fresh = parsed.rows.filter((r) => !seen.has(lineFingerprint(r.date_g, r.amount, r.desc)));
   if (!fresh.length) return { inserted: 0, duplicates: parsed.rows.length, batchId: '' };
 
   const batchId = crypto.randomUUID();
@@ -304,6 +310,39 @@ export async function importStatement(
     if (error) throw error;
   }
   return { inserted: payload.length, duplicates: parsed.rows.length - fresh.length, batchId };
+}
+
+/* ───────────── تنظیم موجودی کاربان با ماندهٔ بانک (درخواست مالک، راند ۶) ─────────────
+   ماندهٔ محاسباتی کاربان = مانده اولیه + دریافت‌ها − پرداخت‌ها.
+   با ماندهٔ انتهایی فایل بانک مقایسه و اختلاف به «مانده اولیه» اعمال می‌شود —
+   شفاف و بازگشت‌پذیر (مقدار قبلی به کاربر اعلام می‌شود). */
+export async function reconcileAccountBalance(businessId: string, accountId: string, statementClosing: number): Promise<{ before: number; after: number; oldInitial: number; newInitial: number }> {
+  const { data: acc, error: e1 } = await supabase
+    .from('acc_accounts')
+    .select('id, initial_balance')
+    .eq('id', accountId)
+    .eq('business_id', businessId)
+    .maybeSingle();
+  if (e1 || !acc) throw e1 || new Error('حساب بانکی پیدا نشد');
+  const oldInitial = Number((acc as { initial_balance: number }).initial_balance) || 0;
+  const { data: txs, error: e2 } = await supabase
+    .from('acc_transactions')
+    .select('kind, amount, account_id')
+    .eq('business_id', businessId);
+  if (e2) throw e2;
+  let current = oldInitial;
+  for (const t of (txs || []) as { kind: string; amount: number; account_id: string | null }[]) {
+    if (t.account_id !== accountId) continue;
+    current += t.kind === 'receipt' ? Number(t.amount) : -Number(t.amount);
+  }
+  const delta = statementClosing - current;
+  const newInitial = oldInitial + delta;
+  const { error: e3 } = await supabase
+    .from('acc_accounts')
+    .update({ initial_balance: newInitial })
+    .eq('id', accountId);
+  if (e3) throw e3;
+  return { before: current, after: statementClosing, oldInitial, newInitial };
 }
 
 /* ───────────────────────── طبقه‌بندی خطوط ───────────────────────── */

@@ -10,13 +10,14 @@ import AttachButton from './AttachButton';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, dateToISO, toFaDigits } from '@/lib/acc/jalali';
 import { exportExcel, htmlTable, printHtml, exportWord, exportFilename, brandLogoUrl, type BrandAccess } from '@/lib/acc/export';
-import { Badge, EmptyState, Field, Modal, MoneyInput, DigitsInput, JalaliDateInput, toast, confirmAction } from './ui';
+import { Badge, EmptyState, Field, Modal, MoneyInput, DigitsInput, JalaliDateInput, toast, toastError, confirmAction } from './ui';
 import { CHECK_STATUS_LABEL } from '@/lib/acc/constants';
 
 interface Row extends Partial<AccCheck> { key: number }
 
 const EMPTY: Row = {
-  key: 0, kind: 'received', amount: 0, serial_no: '', bank_name: '', branch: '',
+  key: 0, kind: 'received', amount: 0, serial_no: '', sayadi_id: '', cheque_type: 'ordinary',
+  issuer_name: '', payee_name: '', bank_name: '', branch: '',
   issue_date_g: null, due_date_g: dateToISO(new Date()), status: 'in_hand',
   partner_id: null, account_id: null, description: '',
 };
@@ -74,6 +75,8 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
     if (!editing) return;
     if (!((editing.amount || 0) > 0)) { toast('مبلغ چک را وارد کنید', 'error'); return; }
     if (!editing.due_date_g) { toast('تاریخ سررسید را وارد کنید', 'error'); return; }
+    const sayadi = (editing.sayadi_id || '').replace(/\D/g, '');
+    if (sayadi && sayadi.length !== 16) { toast('شناسهٔ صیادی باید دقیقاً ۱۶ رقم باشد', 'error'); return; }
     setBusy(true);
     try {
       await saveCheck(business.id, {
@@ -83,6 +86,10 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
         account_id: editing.account_id || null,
         amount: editing.amount || 0,
         serial_no: editing.serial_no || null,
+        sayadi_id: sayadi || null,
+        cheque_type: editing.cheque_type || 'ordinary',
+        issuer_name: editing.issuer_name || null,
+        payee_name: editing.payee_name || null,
         bank_name: editing.bank_name || null,
         branch: editing.branch || null,
         issue_date_g: editing.issue_date_g || null,
@@ -94,7 +101,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
       setEditing(null);
       await refresh();
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'ثبت چک ناموفق بود', 'error');
+      toastError(e, 'ثبت چک ناموفق بود');
     } finally {
       setBusy(false);
     }
@@ -131,7 +138,7 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
     await refresh();
   }
 
-  const tableHeaders = ['نوع', 'طرف‌حساب', 'مبلغ (ریال)', 'شماره چک', 'بانک', 'تاریخ صدور', 'سررسید', 'وضعیت'];
+  const tableHeaders = ['نوع', 'طرف‌حساب', 'مبلغ (ریال)', 'شماره چک', 'شناسهٔ صیادی', 'نوع چک', 'صادرکننده', 'گیرنده', 'بانک / شعبه', 'تاریخ صدور', 'سررسید', 'وضعیت'];
 
   function tableRows() {
     return view.map((r) => [
@@ -139,7 +146,11 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
       r.partner?.name || '—',
       r.amount,
       r.serial_no || '—',
-      r.bank_name || '—',
+      r.sayadi_id || '—',
+      r.cheque_type === 'guaranteed' ? 'تضمینی' : 'عادی',
+      r.issuer_name || '—',
+      r.payee_name || '—',
+      [r.bank_name, r.branch].filter(Boolean).join(' — ') || '—',
       r.issue_date_g ? formatJalali(r.issue_date_g) : '—',
       formatJalali(r.due_date_g),
       CHECK_STATUS_LABEL[r.status],
@@ -195,20 +206,22 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
             <table className="acc-table">
               <thead>
                 <tr>
-                  <th>نوع</th><th>طرف‌حساب</th><th>مبلغ (ریال)</th><th>شماره</th><th>بانک</th>
-                  <th>صدور</th><th>سررسید</th><th>وضعیت</th><th>عملیات</th>
+                  <th>نوع</th><th>طرف‌حساب</th><th>مبلغ (ریال)</th><th>شماره</th><th>شناسهٔ صیادی</th><th>نوع</th>
+                  <th>بانک / شعبه</th><th>صدور</th><th>سررسید</th><th>وضعیت</th><th>عملیات</th>
                 </tr>
               </thead>
               <tbody>
                 {view.map((r) => {
                   const overdue = !['cleared', 'canceled', 'bounced', 'returned'].includes(r.status) && r.due_date_g < today;
                   return (
-                    <tr key={r.id} style={overdue ? { background: 'rgba(239,68,68,.06)' } : undefined}>
+                    <tr key={r.id} style={overdue ? { background: 'rgba(239,68,68,.06)' } : undefined} title={r.issuer_name || r.payee_name ? `صادرکننده: ${r.issuer_name || '—'} · گیرنده: ${r.payee_name || '—'}` : undefined}>
                       <td>{r.kind === 'received' ? <Badge tone="ok">دریافتی</Badge> : <Badge tone="warn">پرداختی</Badge>}</td>
                       <td>{r.partner?.name || '—'}</td>
                       <td className="num" style={{ color: 'var(--gold2)', fontWeight: 700 }}>{formatMoney(r.amount)}</td>
                       <td className="num">{toFaDigits(r.serial_no || '—')}</td>
-                      <td>{r.bank_name || '—'}</td>
+                      <td className="num" style={{ fontSize: '.72rem' }}>{toFaDigits(r.sayadi_id || '—')}</td>
+                      <td>{r.cheque_type === 'guaranteed' ? <Badge tone="warn">تضمینی</Badge> : 'عادی'}</td>
+                      <td>{[r.bank_name, r.branch].filter(Boolean).join(' — ') || '—'}</td>
                       <td>{r.issue_date_g ? formatJalali(r.issue_date_g) : '—'}</td>
                       <td>{formatJalali(r.due_date_g)}{overdue ? <Badge tone="bad">گذشته</Badge> : null}</td>
                       <td><Badge tone={STATUS_TONE[r.status]}>{CHECK_STATUS_LABEL[r.status]}</Badge></td>
@@ -268,14 +281,36 @@ export default function ChecksPage({ business, access }: { business: AccBusiness
             </div>
             <div className="acc-form-grid-3">
               <Field label="بانک"><input className="acc-input" value={editing.bank_name || ''} onChange={(e) => setEditing({ ...editing, bank_name: e.target.value })} placeholder="مثلاً: ملت" /></Field>
+              <Field label="شعبه"><input className="acc-input" value={editing.branch || ''} onChange={(e) => setEditing({ ...editing, branch: e.target.value })} placeholder="مثلاً: شعبهٔ مرکزی" /></Field>
+              <Field label="شناسهٔ صیادی (۱۶ رقم)" hint="کد بارکد درگاه بالای چک صیادی">
+                <DigitsInput value={editing.sayadi_id || ''} onChange={(v) => setEditing({ ...editing, sayadi_id: v.replace(/\D/g, '') })} maxLength={16} placeholder="۱۶ رقم" />
+              </Field>
+            </div>
+            <div className="acc-form-grid-3">
+              <Field label="نوع چک">
+                <select className="acc-select" value={editing.cheque_type || 'ordinary'} onChange={(e) => setEditing({ ...editing, cheque_type: e.target.value as 'ordinary' | 'guaranteed' })}>
+                  <option value="ordinary">عادی</option>
+                  <option value="guaranteed">تضمینی</option>
+                </select>
+              </Field>
+              <Field label="صادرکننده">
+                <input className="acc-input" value={editing.issuer_name || ''} onChange={(e) => setEditing({ ...editing, issuer_name: e.target.value })} placeholder="نام صادرکنندهٔ چک" />
+              </Field>
+              <Field label="گیرنده">
+                <input className="acc-input" value={editing.payee_name || ''} onChange={(e) => setEditing({ ...editing, payee_name: e.target.value })} placeholder="نام گیرندهٔ چک" />
+              </Field>
+            </div>
+            <div className="acc-form-grid-3">
               <Field label="تاریخ صدور">
                 <JalaliDateInput value={editing.issue_date_g || ''} onChange={(iso) => setEditing({ ...editing, issue_date_g: iso })} />
               </Field>
               <Field label="تاریخ سررسید" required>
                 <JalaliDateInput value={editing.due_date_g || ''} onChange={(iso) => setEditing({ ...editing, due_date_g: iso })} />
               </Field>
+              <Field label="توضیحات">
+                <input className="acc-input" value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
+              </Field>
             </div>
-            <Field label="توضیحات"><input className="acc-input" value={editing.description || ''} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></Field>
             <button className="acc-btn acc-btn-primary" disabled={busy} onClick={submit}>{busy ? 'در حال ثبت…' : 'ثبت چک'}</button>
           </div>
         )}

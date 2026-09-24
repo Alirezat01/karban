@@ -415,6 +415,14 @@ export interface AccCheck {
   invoice_id: string | null;
   amount: number;
   serial_no: string | null;
+  /** شناسهٔ یکتای صیادی (۱۶ رقم) */
+  sayadi_id: string | null;
+  /** عادی | تضمینی */
+  cheque_type: 'ordinary' | 'guaranteed';
+  /** صادرکنندهٔ چک */
+  issuer_name: string | null;
+  /** گیرندهٔ چک */
+  payee_name: string | null;
   bank_name: string | null;
   branch: string | null;
   issue_date_g: string | null;

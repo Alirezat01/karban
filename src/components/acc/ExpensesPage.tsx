@@ -19,7 +19,7 @@ import type { AccDetail } from '@/lib/acc/api7';
 import { EXPENSE_CATEGORIES } from '@/lib/acc/constants';
 import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, jalaliMonthLength, toGregorian, todayJalali, dateToISO, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
-import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, confirmAction, toast, EmptyState } from './ui';
+import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, confirmAction, toast, toastError, EmptyState } from './ui';
 import { voidExpense, deleteExpenseFull } from '@/lib/acc/api7';
 import { personPayables, settlePersonPayable, type PersonPayableRow } from '@/lib/acc/api6';
 import { VoidDeleteBtns } from './VoidDeleteBtns';
@@ -28,6 +28,7 @@ import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, brandLog
 import { featureEnabled } from '@/lib/acc/plan';
 import { Lock } from 'lucide-react';
 import { resolveAccFileUrl } from '@/lib/acc/rpc';
+import { supabase } from '@/lib/supabase';
 
 interface AccountLite { id: string; name: string; kind: string; balance?: number }
 
@@ -82,9 +83,24 @@ export default function ExpensesPage({ business, access }: {
   const [taxFilter, setTaxFilter] = useState<'all' | ExpenseTaxStatus>('all');
   const [monthIdx, setMonthIdx] = useState(-1);
   const [editing, setEditing] = useState<Partial<AccExpense> | null>(null);
+  const [postedIds, setPostedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const months = useMemo(() => monthOptions(), []);
+
+  /* شناسهٔ هزینه‌های سندخورده (سند فعال) — برای پیام ویرایش شفاف (M220000) */
+  async function loadPosted() {
+    try {
+      const { data } = await supabase
+        .from('acc_journal')
+        .select('ref_id')
+        .eq('business_id', business.id)
+        .eq('ref_type', 'expense')
+        .eq('ref_action', 'post')
+        .is('voided_at', null);
+      setPostedIds(new Set((data || []).map((r: { ref_id: string }) => r.ref_id)));
+    } catch { setPostedIds(new Set()); }
+  }
 
   /* تفکیک پلن: ثبت هزینه پایه برای همه؛ سند مالیاتی و خروجی‌ها پیشرفته */
   const canTax = featureEnabled(access?.plan, 'expense_tax_validation');
@@ -119,6 +135,7 @@ export default function ExpensesPage({ business, access }: {
       listPartners(business.id).then((p) => setPartners(p.filter((x) => x.active !== false).map((x) => ({ id: x.id, name: x.name })))).catch(() => setPartners([]));
       personPayables(business.id).then((pp) => setPayables(pp.filter((x) => Number(x.balance) > 0))).catch(() => setPayables([]));
       listCostCenters(business.id, true).then((cc) => setCostCenters(cc.map((x) => ({ id: x.id, code: x.code, name: x.name })))).catch(() => setCostCenters([]));
+      await loadPosted();
     } finally {
       setLoading(false);
     }
@@ -266,6 +283,7 @@ export default function ExpensesPage({ business, access }: {
             return d?.kind === 'shareholder' ? 'shareholder' : d?.kind === 'employee' ? 'employee' : 'other_person';
           })();
     const tax = computeExpenseTax(editing);
+    const wasPosted = editing.id ? postedIds.has(editing.id) : false;
     try {
       await saveExpense(business.id, {
         ...editing,
@@ -274,11 +292,12 @@ export default function ExpensesPage({ business, access }: {
         account_id: payerKind === 'company' ? editing.account_id : null,
         tax_status: tax.status,
       });
-      toast(tax.status === 'valid' ? 'هزینه ثبت شد — از نظر مالیاتی قابل قبول' : 'هزینه ثبت شد — برای اعتبار مالیاتی سند را کامل کنید');
+      if (wasPosted) toast('هزینه ویرایش شد — سند قبلی ابطال و سند جدید صادر شد');
+      else toast(tax.status === 'valid' ? 'هزینه ثبت شد — از نظر مالیاتی قابل قبول' : 'هزینه ثبت شد — برای اعتبار مالیاتی سند را کامل کنید');
       setEditing(null);
       load();
     } catch (e) {
-      toast('ثبت ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
+      toastError(e, 'ثبت ناموفق بود');
     }
   }
 
@@ -294,7 +313,7 @@ export default function ExpensesPage({ business, access }: {
       setSettleRow(null);
       load();
     } catch (e) {
-      toast('تسویه ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
+      toastError(e, 'تسویه ناموفق بود');
     }
   }
 
@@ -476,14 +495,19 @@ export default function ExpensesPage({ business, access }: {
                   <td>{payerLabel(r)}</td>
                   <td>
                     <div className="row-actions">
-                      <button className="acc-icon-btn" onClick={() => openEditor(r)}><Pencil size={14} /></button>
-                      <button className="acc-icon-btn danger" onClick={() => remove(r)}><Trash2 size={14} /></button>
-                      <VoidDeleteBtns
-                        voidLabel="ابطال هزینه"
-                        deleteLabel="حذف کامل هزینه"
-                        onVoid={async (reason) => { await voidExpense(business.id, r.id, reason); load(); }}
-                        onDelete={async () => { await deleteExpenseFull(business.id, r.id); load(); }}
-                      />
+                      {!r.voided_at && <button className="acc-icon-btn" title="ویرایش هزینه" onClick={() => openEditor(r)}><Pencil size={14} /></button>}
+                      {!r.voided_at && <button className="acc-icon-btn danger" title="حذف هزینه" onClick={() => remove(r)}><Trash2 size={14} /></button>}
+                      {!r.voided_at && (
+                        <VoidDeleteBtns
+                          voidLabel="ابطال هزینه"
+                          deleteLabel="حذف کامل هزینه"
+                          onVoid={async (reason) => { await voidExpense(business.id, r.id, reason); load(); }}
+                          onDelete={async () => { await deleteExpenseFull(business.id, r.id); load(); }}
+                        />
+                      )}
+                      {r.voided_at && (
+                        <button className="acc-icon-btn danger" title="حذف کامل هزینهٔ ابطال‌شده" onClick={async () => { await deleteExpenseFull(business.id, r.id); load(); }}><Trash2 size={14} /></button>
+                      )}
                       <AttachButton business={business} entityType="expense" entityId={r.id} />
                     </div>
                   </td>
@@ -511,6 +535,11 @@ export default function ExpensesPage({ business, access }: {
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'ویرایش هزینه' : 'ثبت هزینه جدید'} wide>
         {editing && (
           <div style={{ display: 'grid', gap: '.8rem' }}>
+            {editing.id && postedIds.has(editing.id) && (
+              <div style={{ background: 'rgba(232,196,118,.14)', border: '1px solid rgba(232,196,118,.45)', borderRadius: 12, padding: '.65rem .8rem', fontSize: '.8rem', lineHeight: 1.9 }}>
+                این هزینه سند حسابداری فعال دارد. با ذخیره، اگر <b>مبلغ، تاریخ، دسته، حساب‌ها، طرف‌حساب یا پروژه</b> تغییر کرده باشد، سند فعلی به‌صورت اتمیک ابطال و سند جدید با مقادیر جدید صادر می‌شود (تاریخچهٔ سند قبلی حفظ می‌ماند). تغییر عنوان/توضیحات/فروشنده بدون دست‌زدن به سند اعمال می‌شود.
+              </div>
+            )}
             <div className="acc-form-grid">
               <Field label="عنوان هزینه" required><input className="acc-input" value={editing.title || ''} onChange={(e) => setEditing({ ...editing, title: e.target.value })} /></Field>
               <Field label="دسته" hint="سرفصل حسابداری هزینه — قابل ویرایش">

@@ -127,7 +127,7 @@ async function mutateSafe(
   run: (cleanRow: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>,
 ): Promise<void> {
   const clean = { ...row };
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const { error } = await run(clean);
     if (!error) return;
@@ -559,13 +559,16 @@ export async function saveExpense(businessId: string, row: Partial<AccExpense>) 
     receipt_url: row.receipt_url ?? null,
     tax_status: row.tax_status || 'incomplete',
     tax_note: row.tax_note ?? null,
-    /* اتصال کامل به کدینگ (بند ۲۰): حساب هزینه + تفصیلی + مرکز هزینه */
+    /* اتصال کامل به کدینگ (بند ۲۰): حساب هزینه + تفصیلی + مرکز هزینه + پروژه (M220000) */
     expense_account_id: row.expense_account_id ?? null,
     detail_id: row.detail_id ?? null,
     cost_center_id: row.cost_center_id ?? null,
+    project_id: row.project_id ?? null,
   };
   if (row.id) {
-    const { error } = await supabase.from('acc_expenses').update(payload).eq('id', row.id);
+    /* ویرایش اتمیک (M220000): اگر فیلد مالی تغییر کرده باشد، سند فعال ابطال و
+       سند جدید با مقادیر جدید صادر می‌شود؛ تغییر غیرمالی بدون دست‌زدن به سند */
+    const { error } = await supabase.rpc('acc_edit_expense', { p_expense_id: row.id, p_patch: payload });
     if (error) throw error;
     return row.id;
   }
@@ -881,6 +884,16 @@ export async function stuffCatalogCount(): Promise<number> {
   return count || 0;
 }
 
+/** کاربر فعلی ادمین کل سایت است؟ (کاتالوگ مشترک مودیان فقط از مسیر ادمین بارگذاری می‌شود — راند ۶) */
+export async function isSiteAdmin(): Promise<boolean> {
+  try {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth?.user?.id) return false;
+    const { data } = await supabase.from('profiles').select('role').eq('id', auth.user.id).maybeSingle();
+    return (data as { role?: string } | null)?.role === 'admin';
+  } catch { return false; }
+}
+
 /** درج دسته‌ای شناسه‌ها (چانک ۵۰۰تایی، upsert روی id) */
 export async function importStuffCatalog(rows: AccStuffCatalogRow[]): Promise<number> {
   const CHUNK = 500;
@@ -997,6 +1010,9 @@ export async function listChecks(businessId: string, opts: { kind?: CheckKind; s
 }
 
 export async function saveCheck(businessId: string, row: Partial<AccCheck> & { kind: CheckKind; amount: number; due_date_g: string }): Promise<string> {
+  /* مشخصات کامل چک صیادی (M160000): شناسهٔ صیادی ۱۶رقمی + نوع چک + صادرکننده/گیرنده */
+  const sayadi = (row.sayadi_id || '').replace(/\D/g, '');
+  if (sayadi && sayadi.length !== 16) throw new Error('شناسهٔ صیادی چک باید دقیقاً ۱۶ رقم باشد');
   const payload = {
     kind: row.kind,
     partner_id: row.partner_id || null,
@@ -1004,6 +1020,10 @@ export async function saveCheck(businessId: string, row: Partial<AccCheck> & { k
     invoice_id: row.invoice_id || null,
     amount: Math.max(0, Math.round(row.amount || 0)),
     serial_no: row.serial_no || null,
+    sayadi_id: sayadi || null,
+    cheque_type: row.cheque_type || 'ordinary',
+    issuer_name: row.issuer_name || null,
+    payee_name: row.payee_name || null,
     bank_name: row.bank_name || null,
     branch: row.branch || null,
     issue_date_g: row.issue_date_g || null,

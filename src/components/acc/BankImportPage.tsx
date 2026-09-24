@@ -8,13 +8,14 @@ import {
 import type { AccBusiness } from '@/lib/acc/types';
 import {
   parseBankStatement, importStatement, classifyBankLine, revertBankLine, summarizeLines,
+  reconcileAccountBalance,
   type ParseResult, type ClassifyAction,
 } from '@/lib/acc/api8';
 import { listAccounts, listPartners, listExpenseCategories } from '@/lib/acc/api';
 import { listBankLines, type AccBankLine } from '@/lib/acc/api7';
 import { formatJalali } from '@/lib/acc/jalali';
 import { formatMoney } from '@/lib/acc/money';
-import { Field, Modal, confirmAction, toast, Badge, EmptyState } from './ui';
+import { Field, Modal, confirmAction, toast, toastError, Badge, EmptyState } from './ui';
 import AttachButton from './AttachButton';
 
 type Step = 'upload' | 'preview' | 'manage';
@@ -35,6 +36,8 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
   const [parsed, setParsed] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [batchId, setBatchId] = useState('');
+  const [lastClosing, setLastClosing] = useState<number | null>(null); /* مانده انتهایی فایل — برای تنظیم موجودی */
+  const [reconciling, setReconciling] = useState(false);
 
   /* مدیریت */
   const [lines, setLines] = useState<AccBankLine[]>([]);
@@ -72,7 +75,7 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
       setStep('preview');
       toast(`فایل خوانده شد: ${result.rows.length} تراکنش`);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'خواندن فایل ناموفق بود', 'error');
+      toastError(e, 'خواندن فایل ناموفق بود');
     } finally {
       setParsing(false);
     }
@@ -82,6 +85,7 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
     if (!parsed) return;
     setImporting(true);
     try {
+      setLastClosing(parsed.meta.closing);
       const out = await importStatement(business.id, accountId, parsed);
       setBatchId(out.batchId);
       toast(out.inserted > 0
@@ -91,9 +95,29 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
       setStep('manage');
       await openManage(accountId);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'واردات ناموفق بود', 'error');
+      toastError(e, 'واردات ناموفق بود');
     } finally {
       setImporting(false);
+    }
+  }
+
+  /* تنظیم موجودی کاربان با ماندهٔ بانک — اختلاف به «مانده اولیه» اعمال می‌شود */
+  async function doReconcile() {
+    if (lastClosing == null) return;
+    const ok = await confirmAction(
+      `مانده کاربان با ماندهٔ انتهایی فایل بانک (${formatMoney(lastClosing)} ریال) تنظیم شود؟ اختلاف به «مانده اولیه» همان حساب اعمال می‌شود — سند و تراکنشی حذف یا تغییر نمی‌کند.`,
+    );
+    if (!ok) return;
+    setReconciling(true);
+    try {
+      const r = await reconcileAccountBalance(business.id, accountId, lastClosing);
+      toast(`موجودی تنظیم شد — از ${formatMoney(r.before)} به ${formatMoney(r.after)} ریال (مانده اولیه: ${formatMoney(r.oldInitial)} → ${formatMoney(r.newInitial)})`);
+      listAccounts(business.id).then((a) => setAccounts((a || []) as unknown as AccountLite[])).catch(() => {});
+      setLastClosing(null);
+    } catch (e) {
+      toastError(e, 'تنظیم موجودی ناموفق بود');
+    } finally {
+      setReconciling(false);
     }
   }
 
@@ -107,7 +131,7 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
       else if (action === 'needs_doc') toast('به فهرست «نیاز به سند» رفت — پیوست را آپلود کنید');
       await openManage(accountId);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'عملیات ناموفق بود', 'error');
+      toastError(e, 'عملیات ناموفق بود');
     } finally {
       setBusyLine(null);
     }
@@ -121,7 +145,7 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
       toast('بازگشت و پاک‌سازی انجام شد');
       await openManage(accountId);
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'بازگشت ناموفق بود', 'error');
+      toastError(e, 'بازگشت ناموفق بود');
     } finally {
       setBusyLine(null);
     }
@@ -278,6 +302,13 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
             {importing ? 'در حال واردات…' : `واردات ${parsed.rows.length} تراکنش به سیستم`}
           </button>
         </div>
+
+        {parsed.meta.closing != null && (
+          <div className="acc-card p-3 flex flex-wrap items-center gap-3 text-xs bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+            <Landmark size={16} className="text-emerald-700 shrink-0" />
+            <span>ماندهٔ انتهایی این فایل: <b>{formatMoney(parsed.meta.closing)}</b> ریال — بعد از واردات می‌توانید با یک کلیک، موجودی این حساب در کاربان را دقیقاً با ماندهٔ بانک تنظیم کنید.</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -294,6 +325,19 @@ export default function BankImportPage({ business }: { business: AccBusiness }) 
           <FileUp size={14} /> واردات فایل جدید
         </button>
       </header>
+
+      {lastClosing != null && (
+        <div className="acc-card p-3 flex flex-wrap items-center gap-3 text-xs bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+          <Landmark size={16} className="text-emerald-700 shrink-0" />
+          <span>ماندهٔ انتهایی فایل واردشده: <b>{formatMoney(lastClosing)}</b> ریال — موجودی کاربان را با بانک تنظیم کنید؟</span>
+          <div className="flex-1" />
+          <button className="acc-btn-primary text-xs" disabled={reconciling} onClick={doReconcile}>
+            {reconciling ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+            تنظیم موجودی با ماندهٔ بانک
+          </button>
+          <button className="text-[11px] opacity-60 underline" onClick={() => setLastClosing(null)}>بی‌خیال</button>
+        </div>
+      )}
 
       {/* نوار خلاصه */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">

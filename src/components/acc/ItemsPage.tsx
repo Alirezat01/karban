@@ -5,12 +5,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, FileUp, Loader2, Package, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import type { AccBusiness, AccItem, AccStuffCatalogRow } from '@/lib/acc/types';
 import {
-  deleteItem, importStuffCatalog, listItems, saveItem,
+  deleteItem, importStuffCatalog, isSiteAdmin, listItems, saveItem,
   searchStuffCatalog, stuffCatalogCount,
 } from '@/lib/acc/api';
 import { parseStuffFile } from '@/lib/acc/stuff-file';
 import { UNITS, VAT_DEFAULT_RATE } from '@/lib/acc/constants';
-import { Field, Modal, MoneyInput, QtyInput, confirmAction, toast, EmptyState } from './ui';
+import { Field, Modal, MoneyInput, QtyInput, confirmAction, toast, toastError, EmptyState } from './ui';
+import { friendlyError } from '@/lib/acc/errors';
 import { formatMoney } from '@/lib/acc/money';
 import { toFaDigits } from '@/lib/acc/jalali';
 import { featureEnabled } from '@/lib/acc/plan';
@@ -111,12 +112,12 @@ function ImportCatalogModal({ open, onClose, onDone }: {
       const rows = await parseStuffFile(file);
       const count = await importStuffCatalog(rows);
       setResult(`✓ ${count.toLocaleString('fa-IR')} شناسه با موفقیت وارد شد.`);
-      toast('کاتالوگ شناسه‌ها به‌روزرسانی شد');
+      toast('کاتالوگ شناسه‌ها به‌روزرسانی شد — برای همهٔ کاربران مشترک است');
       onDone();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'واردات ناموفق بود';
-      setResult(msg);
-      toast(msg, 'error');
+      const f = friendlyError(e, 'واردات ناموفق بود');
+      setResult(f.reason);
+      toastError(e, 'واردات ناموفق بود');
     } finally {
       setBusy(false);
     }
@@ -159,6 +160,7 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [catalogCount, setCatalogCount] = useState(0);
+  const [siteAdmin, setSiteAdmin] = useState(false);
 
   const canStuff = featureEnabled(plan, 'stuff_catalog');
   const canInventory = featureEnabled(plan, 'inventory');
@@ -169,6 +171,7 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
       const [items, count] = await Promise.all([listItems(business.id), stuffCatalogCount()]);
       setRows(items);
       setCatalogCount(count);
+      isSiteAdmin().then(setSiteAdmin).catch(() => setSiteAdmin(false));
     } finally {
       setLoading(false);
     }
@@ -214,11 +217,15 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
           <Search size={15} style={{ position: 'absolute', top: 14, right: 12, color: 'var(--muted)' }} />
           <input className="acc-input" placeholder="جست‌وجوی کالا یا خدمت…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ paddingRight: '2.3rem' }} />
         </div>
-        {canStuff ? (
-          <button className="acc-btn acc-btn-outline" onClick={() => setImportOpen(true)} title="واردات شناسه‌های رسمی مالیات">
-            <FileUp size={15} /> شناسه‌های مودیان
+        {canStuff && siteAdmin ? (
+          <button className="acc-btn acc-btn-outline" onClick={() => setImportOpen(true)} title="واردات شناسه‌های رسمی مالیات — کاتالوگ مشترک همهٔ کاربران">
+            <FileUp size={15} /> شناسه‌های مودیان (ادمین)
             {catalogCount > 0 ? <span className="acc-badge ok">{catalogCount.toLocaleString('fa-IR')}</span> : null}
           </button>
+        ) : canStuff ? (
+          <span className="acc-badge ok" style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }} title="کاتالوگ رسمی مشترک است و توسط ادمین سایت بارگذاری می‌شود">
+            <Package size={12} /> کاتالوگ مشترک مودیان{catalogCount > 0 ? ` — ${catalogCount.toLocaleString('fa-IR')} شناسه` : ''}
+          </span>
         ) : (
           <span className="acc-badge draft" style={{ display: 'inline-flex', alignItems: 'center', gap: '.3rem' }}><Lock size={12} /> شناسه‌های مودیان — پیشرفته</span>
         )}
@@ -228,7 +235,9 @@ export default function ItemsPage({ business, plan }: { business: AccBusiness; p
       {catalogCount === 0 && !loading && (
         <div className="acc-tax-hint" style={{ display: 'flex', gap: '.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Download size={15} />
-          <span>هنوز شناسه رسمی «کالا و خدمات» وارد نشده — با دکمه «شناسه‌های مودیان» فایل رسمی مالیات را وارد کنید تا هنگام ثبت کالا قابل انتخاب باشد.</span>
+          <span>{siteAdmin
+            ? 'هنوز شناسه رسمی «کالا و خدمات» وارد نشده — با دکمه «شناسه‌های مودیان» فایل رسمی مالیات را وارد کنید تا برای همهٔ کاربران مشترک شود.'
+            : 'کاتالوگ رسمی شناسه‌ها مشترک است و توسط ادمین سایت یک‌بار بارگذاری می‌شود — اگر فعلاً خالی است، از پشتیبانی بخواهید فایل رسمی را وارد کند.'}</span>
         </div>
       )}
 
