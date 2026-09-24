@@ -8,7 +8,7 @@ import type {
   AccProject, AccReconciliation, AccRecurring, BalanceSheet, PayrollCalc,
   AccInvoice, AccExpense, AccPartner, AccItem, AccCheck, AccTransaction,
 } from './types';
-import { dateToISO, toGregorian, toJalali, todayJalali } from './jalali';
+import { dateToISO, toGregorian, toJalali } from './jalali';
 import { isMissingRpc } from './rpc';
 
 /* ═════════════════ پروژه‌ها و مراکز درآمد/هزینه ═════════════════ */
@@ -760,4 +760,41 @@ export async function closeFiscalYear(businessId: string, jyear: number): Promis
   const { closeFiscalYearV2 } = await import('./api7');
   const r = await closeFiscalYearV2(businessId, jyear);
   return { entryNo: r.closingEntryNo, netProfit: r.netProfit, revenueTotal: r.revenueTotal, expenseTotal: r.expenseTotal, lockedPeriods: 12 };
+}
+
+/* ═══════════════ پرداختنی به اشخاص (بند ۵ — پولی که شخص ثالث برای شرکت پرداخت کرده) ═══════════════ */
+
+export interface PersonPayableRow {
+  detail_id: string;
+  title: string;
+  kind: string | null;
+  ref_id: string | null;
+  partner_name: string | null;
+  total_paid: number | string;
+  total_settled: number | string;
+  balance: number | string;
+}
+
+/** گزارش ماندهٔ پرداختنی به اشخاص — بستانکار 2112 به تفکیک تفصیلی شخص */
+export async function personPayables(businessId: string): Promise<PersonPayableRow[]> {
+  const { data, error } = await supabase.rpc('acc_person_payables', { p_business: businessId });
+  if (error) throw new Error(error.message);
+  return (data || []) as unknown as PersonPayableRow[];
+}
+
+/** تسویهٔ اتمیک بدهی به شخص — DR 2112 (تفصیلی شخص) / CR بانک یا صندوق (M170000 §۲) */
+export async function settlePersonPayable(
+  businessId: string, detailId: string, accountId: string,
+  amount: number, date: string, description: string,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('acc_settle_person_payable', {
+    p_business: businessId,
+    p_detail: detailId,
+    p_account: accountId,
+    p_amount: amount,
+    p_date: date,
+    p_description: description,
+  });
+  if (error) throw new Error(error.message);
+  return data as string;
 }

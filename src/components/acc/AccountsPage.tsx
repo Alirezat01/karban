@@ -25,6 +25,11 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
 
   async function save() {
     if (!editing?.name?.trim()) { toast('نام حساب الزامی است', 'error'); return; }
+    const rawSheba = (editing.sheba || '').replace(/[\s-]/g, '').toUpperCase();
+    if (rawSheba) {
+      const full = /^\d{24}$/.test(rawSheba) ? `IR${rawSheba}` : rawSheba;
+      if (!/^IR\d{24}$/.test(full)) { toast('شبا نامعتبر است — فرمت صحیح: IR + ۲۴ رقم', 'error'); return; }
+    }
     try {
       await saveAccount(business.id, editing);
       toast('ذخیره شد');
@@ -68,7 +73,7 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
       <div className="acc-table-wrap">
         <table className="acc-table">
           <thead>
-            <tr><th>نام حساب</th><th>نوع</th><th>شماره حساب/کارت</th><th>مانده اولیه (ریال)</th><th>مانده فعلی (ریال)</th><th></th></tr>
+            <tr><th>نام حساب</th><th>نوع</th><th>شماره حساب/کارت</th><th>شبا</th><th>مانده اولیه (ریال)</th><th>مانده فعلی (ریال)</th><th></th></tr>
           </thead>
           <tbody>
             {rows.map((r) => {
@@ -78,6 +83,7 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
                   <td style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '.5rem' }}><Icon size={15} color="var(--gold)" /> {r.name}</td>
                   <td>{r.kind === 'cash' ? 'صندوق' : r.kind === 'card' ? 'کارت بانکی' : 'حساب بانکی'}</td>
                   <td className="num">{r.account_number || '—'}</td>
+                  <td className="num" style={{ fontSize: '.82rem', direction: 'ltr', textAlign: 'right' }}>{r.sheba ? toFaDigits(r.sheba) : '—'}</td>
                   <td className="num">{formatMoney(r.initial_balance)}</td>
                   <td className="num" style={{ color: (r.balance || 0) >= 0 ? 'var(--gold2)' : '#ef9a94', fontWeight: 700 }}>{formatMoney(r.balance || 0)}</td>
                   <td>
@@ -115,6 +121,20 @@ export default function AccountsPage({ business }: { business: AccBusiness }) {
                 <MoneyInput value={editing.initial_balance || 0} onChange={(n) => setEditing({ ...editing, initial_balance: n })} />
               </Field>
             </div>
+            <Field
+              label="شماره شبا (اختیاری)"
+              hint="۲۶ نویسه: IR + ۲۴ رقم — این اطلاعات موقع صدور صورتحساب، زیر صورتحساب نمایش داده می‌شود"
+            >
+              <input
+                className="acc-input"
+                dir="ltr"
+                placeholder="IR062980000000123456789001"
+                value={editing.sheba || ''}
+                onChange={(e) => setEditing({ ...editing, sheba: e.target.value })}
+                style={{ textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}
+                maxLength={34}
+              />
+            </Field>
             <div style={{ display: 'flex', gap: '.6rem' }}>
               <button className="acc-btn acc-btn-primary" onClick={save}>ذخیره</button>
               <button className="acc-btn acc-btn-outline" onClick={() => setEditing(null)}>انصراف</button>

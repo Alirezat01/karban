@@ -4,13 +4,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   BadgeCheck, CalendarDays, FileSpreadsheet, FileText, Image as ImageIcon,
-  Link2, Loader2, Pencil, Plus, Receipt, Search, Settings2, Trash2, Upload, X,
+  Link2, Loader2, Pencil, Plus, Receipt, Search, Settings2, Trash2, Upload, Users, X,
 } from 'lucide-react';
 import type { AccBusiness, AccExpense, AccExpenseCategory, ExpenseTaxStatus } from '@/lib/acc/types';
 import { listProjects } from '@/lib/acc/api6';
 import {
   computeExpenseTax, deleteExpense, deleteExpenseCategory, ensureExpenseCategories,
-  listAccounts, listExpenses, saveExpense, saveExpenseCategory,
+  listAccounts, listExpenses, listPartners, saveExpense, saveExpenseCategory,
   TAX_STATUS_LABEL, uploadAccMedia,
 } from '@/lib/acc/api';
 import { listChartTree, listDetails } from '@/lib/acc/api7';
@@ -21,6 +21,7 @@ import { formatMoney } from '@/lib/acc/money';
 import { formatJalali, jalaliMonthLength, toGregorian, todayJalali, dateToISO, toFaDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
 import { Field, JalaliDateInput, Modal, MoneyInput, DigitsInput, confirmAction, toast, EmptyState } from './ui';
 import { voidExpense, deleteExpenseFull } from '@/lib/acc/api7';
+import { personPayables, settlePersonPayable, type PersonPayableRow } from '@/lib/acc/api6';
 import { VoidDeleteBtns } from './VoidDeleteBtns';
 import AttachButton from './AttachButton';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, brandLogoUrl } from '@/lib/acc/export';
@@ -68,6 +69,12 @@ export default function ExpensesPage({ business, access }: {
   const [categories, setCategories] = useState<CategoryLite[]>([]);
   const [expenseAccounts, setExpenseAccounts] = useState<{ id: string; label: string }[]>([]);
   const [details, setDetails] = useState<AccDetail[]>([]);
+  const [partners, setPartners] = useState<{ id: string; name: string }[]>([]);
+  const [payables, setPayables] = useState<PersonPayableRow[]>([]);
+  /* پرداخت‌کنندهٔ هزینه (بند ۵ و ۱۳): شرکت | شخص ثالث | نسیه */
+  const [payerKind, setPayerKind] = useState<'company' | 'person' | 'unpaid'>('company');
+  const [settleRow, setSettleRow] = useState<PersonPayableRow | null>(null);
+  const [settleForm, setSettleForm] = useState<{ account_id: string; amount: number; date_g: string; description: string }>({ account_id: '', amount: 0, date_g: '', description: '' });
   const [costCenters, setCostCenters] = useState<{ id: string; code: string; name: string }[]>([]);
   const [catManager, setCatManager] = useState(false);
   const [catEditing, setCatEditing] = useState<Partial<AccExpenseCategory> | null>(null);
@@ -109,12 +116,47 @@ export default function ExpensesPage({ business, access }: {
         setExpenseAccounts(accs);
       }).catch(() => setExpenseAccounts([]));
       listDetails(business.id).then((d) => setDetails(d.filter((x) => x.active !== false))).catch(() => setDetails([]));
+      listPartners(business.id).then((p) => setPartners(p.filter((x) => x.active !== false).map((x) => ({ id: x.id, name: x.name })))).catch(() => setPartners([]));
+      personPayables(business.id).then((pp) => setPayables(pp.filter((x) => Number(x.balance) > 0))).catch(() => setPayables([]));
       listCostCenters(business.id, true).then((cc) => setCostCenters(cc.map((x) => ({ id: x.id, code: x.code, name: x.name })))).catch(() => setCostCenters([]));
     } finally {
       setLoading(false);
     }
   }
   useEffect(() => { load(); }, [business.id]);
+
+  /* ───────────── پرداخت‌کنندهٔ هزینه (بند ۵ و ۱۳) ───────────── */
+  const PERSON_DETAIL_KINDS = ['shareholder', 'employee', 'customer', 'supplier', 'other', 'partner'];
+  const DETAIL_KIND_FA: Record<string, string> = {
+    shareholder: 'شریک/سهامدار', employee: 'کارمند', customer: 'مشتری',
+    supplier: 'تامین‌کننده', other: 'شخص', partner: 'شریک',
+  };
+  const personDetails = details.filter((d) => PERSON_DETAIL_KINDS.includes(d.kind));
+  const detailTitleMap = useMemo(() => new Map(details.map((d) => [d.id, d.title])), [details]);
+
+  /** برچسب ستون «پرداخت از» — شخص ثالث/نسیه/حساب */
+  function payerLabel(r: AccExpense): string {
+    if (r.paid_by_kind && ['partner', 'employee', 'shareholder', 'other_person'].includes(r.paid_by_kind)) {
+      const name = (r.paid_by_detail_id && detailTitleMap.get(r.paid_by_detail_id)) || 'شخص ثالث';
+      return `شخص ثالث — ${name}`;
+    }
+    if (r.paid_by_kind === 'unpaid') return 'نسیه (پرداختنی)';
+    if (r.paid_by_kind === 'company') return r.account?.name || 'شرکت (بدون حساب)';
+    /* ردیف‌های قدیمی قبل از paid_by_kind */
+    return r.is_paid ? (r.account?.name || 'نسیه (پرداختنی)') : 'ثبت نشده';
+  }
+
+  /** باز کردن ادیتور — استخراج پرداخت‌کننده از ردیف موجود */
+  function openEditor(row?: Partial<AccExpense>) {
+    if (row?.id) {
+      const k = row.paid_by_kind || (row.is_paid ? 'company' : 'unpaid');
+      setPayerKind(['partner', 'employee', 'shareholder', 'other_person'].includes(k) ? 'person' : (k === 'unpaid' ? 'unpaid' : 'company'));
+      setEditing({ ...row });
+    } else {
+      setPayerKind('company');
+      setEditing({ category: 'اداری و عمومی', is_paid: true, date_g: summary.todayIso, tax_status: 'incomplete' });
+    }
+  }
 
   /* دسته‌بندی‌ها از دیتابیس (seed خودکار ۲۲ دسته پیش‌فرض) — خطا = لیست ثابت */
   useEffect(() => {
@@ -203,14 +245,55 @@ export default function ExpensesPage({ business, access }: {
 
   async function save() {
     if (!editing?.title?.trim()) { toast('عنوان هزینه الزامی است', 'error'); return; }
+    /* قواعد پرداخت‌کننده (موتور M120000 بند ۱۳):
+       company → حساب بانک/صندوق لازم است | شخص ثالث → تفصیلی شخص لازم است | نسیه → طرف‌حساب لازم است */
+    if (payerKind === 'company' && !editing.account_id) {
+      toast('حساب پرداخت را انتخاب کنید — یا پرداخت‌کننده را «شخص ثالث» یا «نسیه» بگذارید', 'error'); return;
+    }
+    if (payerKind === 'person' && !editing.paid_by_detail_id) {
+      toast('شخص پرداخت‌کننده را انتخاب کنید', 'error'); return;
+    }
+    if (payerKind === 'unpaid' && !editing.partner_id) {
+      toast('برای هزینهٔ نسیه، طرف‌حساب را انتخاب کنید', 'error'); return;
+    }
+    const paidByKind = payerKind === 'company'
+      ? 'company'
+      : payerKind === 'unpaid'
+        ? 'unpaid'
+        : (() => {
+            const d = personDetails.find((x) => x.id === editing?.paid_by_detail_id);
+            return d?.kind === 'shareholder' ? 'shareholder' : d?.kind === 'employee' ? 'employee' : 'other_person';
+          })();
     const tax = computeExpenseTax(editing);
     try {
-      await saveExpense(business.id, { ...editing, tax_status: tax.status });
+      await saveExpense(business.id, {
+        ...editing,
+        is_paid: payerKind !== 'unpaid',
+        paid_by_kind: paidByKind,
+        account_id: payerKind === 'company' ? editing.account_id : null,
+        tax_status: tax.status,
+      });
       toast(tax.status === 'valid' ? 'هزینه ثبت شد — از نظر مالیاتی قابل قبول' : 'هزینه ثبت شد — برای اعتبار مالیاتی سند را کامل کنید');
       setEditing(null);
       load();
-    } catch {
-      toast('ثبت ناموفق بود', 'error');
+    } catch (e) {
+      toast('ثبت ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
+    }
+  }
+
+  /** تسویهٔ بدهی به شخص — اتمیک از مسیر RPC (DR 2112 / CR بانک یا صندوق) */
+  async function doSettle() {
+    if (!settleRow) return;
+    if (!settleForm.account_id) { toast('حساب بازپرداخت را انتخاب کنید', 'error'); return; }
+    if (!settleForm.amount || settleForm.amount <= 0) { toast('مبلغ تسویه را وارد کنید', 'error'); return; }
+    if (settleForm.amount > Number(settleRow.balance)) { toast('مبلغ از ماندهٔ بدهی بیشتر است', 'error'); return; }
+    try {
+      await settlePersonPayable(business.id, settleRow.detail_id, settleForm.account_id, settleForm.amount, settleForm.date_g, settleForm.description);
+      toast('تسویه ثبت شد — سند بازپرداخت صادر شد');
+      setSettleRow(null);
+      load();
+    } catch (e) {
+      toast('تسویه ناموفق بود — ' + (e instanceof Error ? e.message : ''), 'error');
     }
   }
 
@@ -286,6 +369,51 @@ export default function ExpensesPage({ business, access }: {
         </div>
       </div>
 
+      {/* پرداختنی به اشخاص — پولی که شخص ثالث (مثلاً خود کاربر با حساب شخصی) برای شرکت پرداخت کرده */}
+      {payables.length > 0 && (
+        <div className="acc-card" style={{ borderColor: 'rgba(216,165,63,.45)' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '.45rem' }}>
+            <Users size={16} color="var(--gold)" /> پرداختنی به اشخاص — بازپرداخت به کسانی که برای شرکت پرداخت کرده‌اند
+          </h3>
+          <div className="acc-table-wrap" style={{ marginTop: '.6rem' }}>
+            <table className="acc-table">
+              <thead>
+                <tr><th>شخص</th><th>نقش</th><th>جمع پرداخت‌ها</th><th>تسویه‌شده</th><th>ماندهٔ بدهی (ریال)</th><th></th></tr>
+              </thead>
+              <tbody>
+                {payables.map((p) => (
+                  <tr key={p.detail_id}>
+                    <td style={{ fontWeight: 600 }}>{p.title}{p.partner_name && p.partner_name !== p.title ? <small style={{ color: 'var(--muted)' }}> ({p.partner_name})</small> : null}</td>
+                    <td>{DETAIL_KIND_FA[p.kind || 'other'] || 'شخص'}</td>
+                    <td className="num">{formatMoney(Number(p.total_paid))}</td>
+                    <td className="num">{formatMoney(Number(p.total_settled))}</td>
+                    <td className="num" style={{ color: 'var(--gold2)', fontWeight: 700 }}>{formatMoney(Number(p.balance))}</td>
+                    <td>
+                      <button
+                        className="acc-btn acc-btn-outline"
+                        style={{ minHeight: 34, fontSize: '.78rem' }}
+                        onClick={() => {
+                          setSettleRow(p);
+                          setSettleForm({
+                            account_id: accounts[0]?.id || '',
+                            amount: Number(p.balance),
+                            date_g: summary.todayIso,
+                            description: '',
+                          });
+                        }}
+                      >تسویه</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="acc-hint" style={{ marginTop: '.5rem' }}>
+            این مانده‌ها در حساب «۲۱۱۲ پرداختنی به اشخاص» نگهداری می‌شوند — با «تسویه»، بازپرداخت از بانک/صندوق به شخص سند می‌شود.
+          </div>
+        </div>
+      )}
+
       {/* نوار ابزار */}
       <div style={{ display: 'flex', gap: '.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
@@ -296,7 +424,7 @@ export default function ExpensesPage({ business, access }: {
           <option value={-1}>همه ماه‌ها</option>
           {months.map((m, i) => <option key={m.label} value={i}>{m.label}</option>)}
         </select>
-        <button className="acc-btn acc-btn-primary" onClick={() => setEditing({ category: 'اداری و عمومی', is_paid: true, date_g: summary.todayIso, tax_status: 'incomplete' })}><Plus size={15} /> ثبت هزینه امروز</button>
+        <button className="acc-btn acc-btn-primary" onClick={() => openEditor()}><Plus size={15} /> ثبت هزینه امروز</button>
         <button className="acc-btn acc-btn-outline" onClick={() => setCatManager(true)}><Settings2 size={15} /> دسته‌ها</button>
       </div>
 
@@ -344,10 +472,10 @@ export default function ExpensesPage({ business, access }: {
                       ? <a href={receiptUrls[r.id] || r.receipt_url} target="_blank" rel="noreferrer" className="acc-icon-btn" title="مشاهده سند پیوست"><Link2 size={14} /></a>
                       : <span style={{ color: 'var(--muted)', fontSize: '.75rem' }}>ندارد</span>}
                   </td>
-                  <td>{r.is_paid ? (r.account?.name || 'نسیه (پرداختنی)') : 'ثبت نشده'}</td>
+                  <td>{payerLabel(r)}</td>
                   <td>
                     <div className="row-actions">
-                      <button className="acc-icon-btn" onClick={() => setEditing(r)}><Pencil size={14} /></button>
+                      <button className="acc-icon-btn" onClick={() => openEditor(r)}><Pencil size={14} /></button>
                       <button className="acc-icon-btn danger" onClick={() => remove(r)}><Trash2 size={14} /></button>
                       <VoidDeleteBtns
                         voidLabel="ابطال هزینه"
@@ -405,13 +533,62 @@ export default function ExpensesPage({ business, access }: {
             </div>
             <div className="acc-form-grid">
               <Field label="تاریخ"><JalaliDateInput value={editing.date_g || ''} onChange={(iso) => setEditing({ ...editing, date_g: iso })} /></Field>
-              <Field label="پرداخت از حساب" hint="«نسیه» یعنی در حساب‌های پرداختنی">
-                <select className="acc-select" value={editing.account_id || ''} onChange={(e) => setEditing({ ...editing, account_id: e.target.value || null })}>
-                  <option value="">نسیه (پرداختنی)</option>
-                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
+              <Field
+                label="پرداخت‌کننده"
+                hint={payerKind === 'person'
+                  ? 'مبلغ از جیب شخص ثبت می‌شود و در «پرداختنی به اشخاص» برای بازپرداخت می‌ماند'
+                  : payerKind === 'unpaid'
+                    ? 'هزینه ثبت می‌شود اما هنوز پولی پرداخت نشده — در حساب‌های پرداختنی می‌ماند'
+                    : 'از حساب بانکی/صندوق شرکت پرداخت می‌شود'}
+              >
+                <select
+                  className="acc-select"
+                  value={payerKind}
+                  onChange={(e) => {
+                    const k = e.target.value as 'company' | 'person' | 'unpaid';
+                    setPayerKind(k);
+                    setEditing({
+                      ...editing,
+                      account_id: k === 'company' ? editing.account_id : null,
+                      paid_by_detail_id: k === 'person' ? editing.paid_by_detail_id : null,
+                    });
+                  }}
+                >
+                  <option value="company">شرکت — از حساب بانکی/صندوق</option>
+                  <option value="person">شخص ثالث پرداخت کرده (حساب شخصی خودم یا دیگران)</option>
+                  <option value="unpaid">پرداخت نشده — نسیه (پرداختنی)</option>
                 </select>
               </Field>
             </div>
+            {payerKind === 'company' && (
+              <Field label="از حساب" hint="ماندهٔ این حساب کم می‌شود">
+                <select className="acc-select" value={editing.account_id || ''} onChange={(e) => setEditing({ ...editing, account_id: e.target.value || null })}>
+                  <option value="">— انتخاب حساب —</option>
+                  {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
+                </select>
+              </Field>
+            )}
+            {payerKind === 'person' && (
+              <Field
+                label="شخص پرداخت‌کننده *"
+                hint={personDetails.length === 0 ? 'هنوز شخصی ثبت نکرده‌اید — از صفحهٔ «مشتریان و طرف‌حساب‌ها» اضافه کنید' : 'نزد اسم هر شخص، نقش او آمده است'}
+              >
+                <select className="acc-select" value={editing.paid_by_detail_id || ''} onChange={(e) => setEditing({ ...editing, paid_by_detail_id: e.target.value || null })}>
+                  <option value="">— انتخاب شخص —</option>
+                  {personDetails.map((d) => (
+                    <option key={d.id} value={d.id}>{d.title}{DETAIL_KIND_FA[d.kind] ? ` — ${DETAIL_KIND_FA[d.kind]}` : ''}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+            {payerKind === 'unpaid' && (
+              <Field label="طرف‌حساب بستانکار *" hint="سهامدار → جاری شرکا | کارمند → جاری کارکنان | سایر → پرداختنی تجاری">
+                <select className="acc-select" value={editing.partner_id || ''} onChange={(e) => setEditing({ ...editing, partner_id: e.target.value || null })}>
+                  <option value="">— انتخاب طرف‌حساب —</option>
+                  {partners.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </Field>
+            )}
             {projects.length > 0 && (
               <Field label="پروژه مرتبط" hint="هزینه به پروژه اضافه می‌شود و در گزارش عملکرد پروژه‌ها دیده می‌شود">
                 <select className="acc-select" value={editing.project_id || ''} onChange={(e) => setEditing({ ...editing, project_id: e.target.value || null })}>
@@ -503,13 +680,45 @@ export default function ExpensesPage({ business, access }: {
               </>
             )}
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '.5rem', fontSize: '.84rem', color: 'var(--text)' }}>
-              <input type="checkbox" checked={editing.is_paid ?? true} onChange={(e) => setEditing({ ...editing, is_paid: e.target.checked })} />
-              این هزینه قطعی شده است (سند حسابداری ثبت شود)
-            </label>
+            <div className="acc-hint" style={{ fontSize: '.78rem' }}>
+              سند حسابداری بر اساس «پرداخت‌کننده» ثبت می‌شود — بستانکار: {payerKind === 'company' ? 'حساب بانک/صندوق' : payerKind === 'person' ? '۲۱۱۲ پرداختنی به اشخاص (به نام همان شخص)' : 'حساب پرداختنی طرف‌حساب'}
+            </div>
             <div style={{ display: 'flex', gap: '.6rem' }}>
               <button className="acc-btn acc-btn-primary" onClick={save}>ذخیره</button>
               <button className="acc-btn acc-btn-outline" onClick={() => setEditing(null)}>انصراف</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* مودال تسویهٔ پرداختنی شخص */}
+      <Modal open={!!settleRow} onClose={() => setSettleRow(null)} title={`تسویهٔ بدهی به «${settleRow?.title || ''}»`}>
+        {settleRow && (
+          <div style={{ display: 'grid', gap: '.8rem' }}>
+            <div className="acc-kpi" style={{ display: 'grid', gap: '.2rem' }}>
+              <div className="k-label">ماندهٔ بدهی (پرداخت‌های شخص منهای بازپرداخت‌ها)</div>
+              <div className="k-value">{formatMoney(Number(settleRow.balance))} <small>ریال</small></div>
+            </div>
+            <Field label="بازپرداخت از حساب *" hint="مبلغ از این حساب کم می‌شود (۱۱۰۲ بانک / ۱۱۰۱ صندوق)">
+              <select className="acc-select" value={settleForm.account_id} onChange={(e) => setSettleForm({ ...settleForm, account_id: e.target.value })}>
+                <option value="">— انتخاب حساب —</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} — مانده {formatMoney(a.balance || 0)}</option>)}
+              </select>
+            </Field>
+            <div className="acc-form-grid">
+              <Field label="مبلغ تسویه (ریال)">
+                <MoneyInput value={settleForm.amount} onChange={(n) => setSettleForm({ ...settleForm, amount: n })} />
+              </Field>
+              <Field label="تاریخ">
+                <JalaliDateInput value={settleForm.date_g} onChange={(iso) => setSettleForm({ ...settleForm, date_g: iso })} />
+              </Field>
+            </div>
+            <Field label="شرح (اختیاری)">
+              <input className="acc-input" placeholder="مثلاً: بازپرداخت هزینهٔ آبان ماه" value={settleForm.description} onChange={(e) => setSettleForm({ ...settleForm, description: e.target.value })} />
+            </Field>
+            <div style={{ display: 'flex', gap: '.6rem' }}>
+              <button className="acc-btn acc-btn-primary" onClick={doSettle}>ثبت تسویه</button>
+              <button className="acc-btn acc-btn-outline" onClick={() => setSettleRow(null)}>انصراف</button>
             </div>
           </div>
         )}

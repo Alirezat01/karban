@@ -111,7 +111,7 @@ function PartyCard({ title, p }: { title: string; p: Partial<AccPartner> | AccBu
   );
 }
 
-function TemplateSheet({ tpl, inv, biz, buyer, title, isCash, notes, logoUrl, accountName }: TplProps) {
+function TemplateSheet({ tpl, inv, biz, buyer, title, isCash, notes, logoUrl, accountName, accountNumber, accountSheba }: TplProps & { accountNumber?: string | null; accountSheba?: string | null }) {
   const items = inv.acc_invoice_items || [];
   const isProforma = inv.type === 'proforma';
   const buyerTypeLabel = BUYER_TYPES[inv.buyer_type === 'final' ? 'final' : 'business'];
@@ -187,6 +187,15 @@ function TemplateSheet({ tpl, inv, biz, buyer, title, isCash, notes, logoUrl, ac
           <span className={!isCash ? 'on' : ''}>{!isCash ? '☑' : '☐'} غیر نقدی</span>
           {accountName ? <span style={{ marginRight: 'auto' }}>حساب تسویه: <b>{accountName}</b></span> : null}
         </div>
+        {(accountNumber || accountSheba) ? (
+          <div className="tpl-terms-row" style={{ display: 'block', lineHeight: 1.9 }}>
+            <b>اطلاعات پرداخت:</b>
+            <span style={{ display: 'block' }}>
+              {accountNumber ? <>شماره حساب: <b style={{ fontVariantNumeric: 'tabular-nums' }}>{toFaDigits(accountNumber)}</b>{accountSheba ? ' — ' : null}</> : null}
+              {accountSheba ? <>شماره شبا: <b style={{ direction: 'ltr', unicodeBidi: 'isolate', fontVariantNumeric: 'tabular-nums' }}>{toFaDigits(accountSheba)}</b></> : null}
+            </span>
+          </div>
+        ) : null}
         {inv.pay_id ? (
           <div className="tpl-terms-row">شناسه یکتای پرداخت (payId): <b>{toFaDigits(inv.pay_id)}</b></div>
         ) : null}
@@ -436,6 +445,14 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
               <span className={`fr-check${isCash ? ' on' : ''}`}>{isCash ? '☑' : '☐'} نقدی</span>
               <span className={`fr-check${!isCash ? ' on' : ''}`}>{!isCash ? '☑' : '☐'} غیر نقدی</span>
             </div>
+            {(inv.account?.account_number || inv.account?.sheba) ? (
+              <div style={{ flexBasis: '100%', width: '100%', border: '1.5px solid #232a35', padding: '.5rem .9rem', fontSize: '.76rem', color: '#333', lineHeight: 1.9 }}>
+                <b style={{ color: '#10151d' }}>اطلاعات پرداخت:</b>
+                {inv.account?.name ? <> حساب تسویه: <b style={{ color: '#10151d' }}>{inv.account.name}</b> —</> : null}
+                {inv.account?.account_number ? <> شماره حساب: <b style={{ color: '#10151d', fontVariantNumeric: 'tabular-nums' }}>{toFaDigits(inv.account.account_number)}</b> —</> : null}
+                {inv.account?.sheba ? <> شماره شبا: <b style={{ color: '#10151d', direction: 'ltr', unicodeBidi: 'isolate', fontVariantNumeric: 'tabular-nums' }}>{toFaDigits(inv.account.sheba)}</b></> : null}
+              </div>
+            ) : null}
             <div className="fr-terms-notes">
               <b>توضیحات:</b>
               {notes ? <span style={{ whiteSpace: 'pre-line' }}>{notes}</span> : null}
@@ -482,6 +499,8 @@ export default function InvoicePrint({ invoiceId }: { invoiceId: string }) {
           notes={notes}
           logoUrl={logoUrl}
           accountName={inv.account?.name || undefined}
+          accountNumber={inv.account?.account_number || undefined}
+          accountSheba={inv.account?.sheba || undefined}
         />
       )}
     </div>

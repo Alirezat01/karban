@@ -3,7 +3,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CalendarDays, X } from 'lucide-react';
 import { formatInputMoney, formatMoney } from '@/lib/acc/money';
-import { isoToJalaliInput, jalaliInputToISO, toFaDigits, toEnDigits } from '@/lib/acc/jalali';
+import {
+  dateToISO, isoToJalaliInput, JALALI_MONTHS, jalaliInputToISO, jalaliMonthLength,
+  toEnDigits, toFaDigits, toGregorian, toJalali,
+} from '@/lib/acc/jalali';
 import './acc.css';
 
 export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
@@ -231,23 +234,114 @@ export function QtyInput({
   );
 }
 
-/* ── فیلد تاریخ شمسی ── */
+/* ── تقویم شمسی سراسری — پاپ‌آپ ماهانه ──
+   تقویم ایرانی برای همهٔ فیلدهای تاریخ پنل (یک کامپوننت، ۳۳+ نقطهٔ استفاده).
+   کلیک روز → ISO؛ ناوبری ماه/سال؛ دکمهٔ «امروز»؛ بستن با کلیک بیرون یا Escape */
+function JalaliCalendar({ iso, onPick, onClose }: { iso: string; onPick: (d: string) => void; onClose: () => void }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const initial = iso ? isoToJalaliParts(iso) : todayJalaliParts();
+  const [viewY, setViewY] = useState(initial.jy);
+  const [viewM, setViewM] = useState(initial.jm);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  const monthLen = jalaliMonthLength(viewY, viewM);
+  /* روز هفتهٔ اول ماه: ۰ = شنبه */
+  const firstG = toGregorian(viewY, viewM, 1);
+  const firstDow = (new Date(firstG.gy, firstG.gm - 1, firstG.gd).getDay() + 1) % 7;
+  const todayJ = todayJalaliParts();
+  const selJ = iso ? isoToJalaliParts(iso) : null;
+
+  const shift = (dm: number) => {
+    let m = viewM + dm, y = viewY;
+    if (m > 12) { m = 1; y++; } if (m < 1) { m = 12; y--; }
+    setViewM(m); setViewY(y);
+  };
+
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= monthLen; d++) cells.push(d);
+
+  return (
+    <div ref={wrapRef} className="acc-cal" role="dialog" aria-label="تقویم شمسی">
+      <div className="acc-cal-head">
+        <button type="button" className="acc-icon-btn" aria-label="سال قبل" onClick={() => setViewY(viewY - 1)}>«</button>
+        <button type="button" className="acc-icon-btn" aria-label="ماه قبل" onClick={() => shift(-1)}>‹</button>
+        <b style={{ flex: 1, textAlign: 'center' }}>{JALALI_MONTHS[viewM - 1]} {toFaDigits(viewY)}</b>
+        <button type="button" className="acc-icon-btn" aria-label="ماه بعد" onClick={() => shift(1)}>›</button>
+        <button type="button" className="acc-icon-btn" aria-label="سال بعد" onClick={() => setViewY(viewY + 1)}>»</button>
+      </div>
+      <div className="acc-cal-grid">
+        {['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map((d) => <span key={d} className="acc-cal-dow">{d}</span>)}
+        {cells.map((d, i) => {
+          if (d === null) return <span key={`e${i}`} />;
+          const g = toGregorian(viewY, viewM, d);
+          const cellIso = dateToISO(new Date(g.gy, g.gm - 1, g.gd));
+          const isToday = todayJ.jy === viewY && todayJ.jm === viewM && todayJ.jd === d;
+          const isSel = !!selJ && selJ.jy === viewY && selJ.jm === viewM && selJ.jd === d;
+          return (
+            <button
+              type="button"
+              key={d}
+              className={`acc-cal-day${isToday ? ' is-today' : ''}${isSel ? ' is-sel' : ''}`}
+              onClick={() => { onPick(cellIso); onClose(); }}
+            >{toFaDigits(d)}</button>
+          );
+        })}
+      </div>
+      <button type="button" className="acc-cal-today" onClick={() => { onPick(dateToISO(new Date(toGregorian(todayJ.jy, todayJ.jm, todayJ.jd).gy, toGregorian(todayJ.jy, todayJ.jm, todayJ.jd).gm - 1, toGregorian(todayJ.jy, todayJ.jm, todayJ.jd).gd))); onClose(); }}>
+        امروز — {toFaDigits(`${todayJ.jy}/${String(todayJ.jm).padStart(2, '0')}/${String(todayJ.jd).padStart(2, '0')}`)}
+      </button>
+    </div>
+  );
+}
+
+/* ابزار کوچک: تبدیل ISO به اجزای جلالی (بدون وابستگی جدید) */
+function isoToJalaliParts(iso: string): { jy: number; jm: number; jd: number } {
+  const d = new Date(iso + 'T00:00:00');
+  return toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+}
+function todayJalaliParts(): { jy: number; jm: number; jd: number } {
+  return isoToJalaliParts(dateToISO(new Date()));
+}
+
+/* ── فیلد تاریخ شمسی (تقویم + تایپ دستی) ── */
 export function JalaliDateInput({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
   const [text, setText] = useState(() => isoToJalaliInput(value));
+  const [open, setOpen] = useState(false);
   useEffect(() => { setText(isoToJalaliInput(value)); }, [value]);
   return (
-    <div style={{ display: 'flex', gap: '.4rem' }}>
+    <div style={{ display: 'flex', gap: '.4rem', position: 'relative' }}>
       <input
         className="acc-input"
         inputMode="numeric"
         placeholder="۱۴۰۵/۰۶/۲۶"
         value={text}
         onChange={(e) => { setText(e.target.value); onChange(jalaliInputToISO(e.target.value)); }}
+        onFocus={() => setOpen(true)}
         style={{ fontVariantNumeric: 'tabular-nums' }}
       />
-      <button type="button" className="acc-icon-btn" title="امروز" onClick={() => { const iso = jalaliInputToISO(''); setText(isoToJalaliInput(iso)); onChange(iso); }}>
+      <button type="button" className="acc-icon-btn" title="تقویم" onClick={() => setOpen((v) => !v)}>
         <CalendarDays size={16} />
       </button>
+      {open && (
+        <JalaliCalendar
+          iso={value}
+          onPick={(iso) => { setText(isoToJalaliInput(iso)); onChange(iso); }}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </div>
   );
 }

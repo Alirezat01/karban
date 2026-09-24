@@ -194,8 +194,8 @@
 .fr-grand-words b { color: #10151d; margin-left: .4rem; }
 .fr-grand-amount { padding: .5rem 1rem; font-weight: 800; font-size: .92rem; color: #10151d; white-space: nowrap; border-right: 1.5px solid #232a35; background: #fff; }
 
-/* شرایط فروش و توضیحات */
-.fr-terms { display: flex; gap: .9rem; margin-bottom: 1rem; align-items: stretch; }
+/* شرایط فروش و توضیحات — flex-wrap: ردیف «اطلاعات پرداخت» (شماره حساب/شبا) کل عرض می‌گیرد */
+.fr-terms { display: flex; flex-wrap: wrap; gap: .9rem; margin-bottom: 1rem; align-items: stretch; }
 .fr-terms-right { border: 1.5px solid #232a35; padding: .5rem .9rem; display: flex; align-items: center; gap: .8rem; font-size: .78rem; white-space: nowrap; align-self: flex-start; }
 .fr-terms-right b { color: #10151d; }
 .fr-check { color: #333; font-weight: 600; }
@@ -438,3 +438,32 @@
 .acc-search-row span.num { margin-inline-start: auto; }
 
 .acc-grid-12 button { display: flex; align-items: center; gap: .35rem; }
+
+/* ───────── تقویم شمسی (پاپ‌آپ JalaliDateInput) ───────── */
+.acc-cal {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+  width: 264px; padding: .6rem;
+  background: var(--surface, #141a26); color: var(--text, #e8e6e3);
+  border: 1px solid var(--line, rgba(216,165,63,.3)); border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.45);
+}
+.acc-cal-head { display: flex; align-items: center; gap: .25rem; margin-bottom: .45rem; }
+.acc-cal-head .acc-icon-btn { min-width: 26px; width: 26px; height: 26px; font-weight: 700; }
+.acc-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.acc-cal-dow { font-size: .68rem; color: var(--muted, #9a938a); text-align: center; padding: .2rem 0; }
+.acc-cal-day {
+  aspect-ratio: 1 / 1; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--text, #e8e6e3);
+  font-size: .74rem; font-variant-numeric: tabular-nums; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.acc-cal-day:hover { background: rgba(216,165,63,.14); border-color: rgba(216,165,63,.35); }
+.acc-cal-day.is-today { border-color: var(--gold, #d8a53f); }
+.acc-cal-day.is-sel { background: var(--gold, #d8a53f); color: #17130c; font-weight: 800; }
+.acc-cal-today {
+  width: 100%; margin-top: .5rem; padding: .45rem;
+  border: 1px dashed rgba(216,165,63,.4); border-radius: 10px;
+  background: rgba(216,165,63,.08); color: var(--gold2, #e7c77a);
+  font-size: .74rem; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.acc-cal-today:hover { background: rgba(216,165,63,.16); }

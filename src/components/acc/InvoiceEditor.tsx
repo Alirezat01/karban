@@ -273,6 +273,19 @@ export default function InvoiceEditor({ business, invoiceId, presetType }: { bus
             </select>
           </Field>
         </div>
+        {(() => {
+          const selAcc = accounts.find((a) => a.id === accountId);
+          if (!selAcc || (!selAcc.account_number && !selAcc.sheba)) return null;
+          return (
+            <div className="acc-hint" style={{ marginTop: '.5rem', fontSize: '.78rem', lineHeight: 1.9 }}>
+              اطلاعات پرداخت این حساب (زیر صورتحساب چاپ می‌شود):
+              {selAcc.account_number ? <> شماره حساب <b style={{ fontVariantNumeric: 'tabular-nums' }}>{selAcc.account_number}</b></> : null}
+              {selAcc.account_number && selAcc.sheba ? ' —' : null}
+              {selAcc.sheba ? <> شبا <b style={{ direction: 'ltr', unicodeBidi: 'isolate', fontVariantNumeric: 'tabular-nums' }}>{selAcc.sheba}</b></> : null}
+              {!selAcc.account_number || !selAcc.sheba ? ' — برای تکمیل، از صفحهٔ «بانک و صندوق» ویرایش کنید' : null}
+            </div>
+          );
+        })()}
         <div style={{ marginTop: '.9rem', display: 'flex', alignItems: 'center', gap: '.8rem', flexWrap: 'wrap' }}>
           <span className="acc-hint" style={{ fontSize: '.78rem' }}>نحوه فروش (چاپ در فرم رسمی):</span>
           <div style={{ display: 'flex', gap: '.4rem' }}>

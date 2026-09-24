@@ -272,15 +272,24 @@ export async function listAccounts(businessId: string) {
 export async function saveAccount(businessId: string, row: Partial<AccAccount>) {
   /* فقط ستون‌های واقعی جدول ارسال می‌شود — فیلد «balance» محاسباتیِ لیست هرگز
      به دیتابیس نمی‌رود (باگ «ذخیره نشدن اطلاعات بانک» از همین‌جا بود) */
+  /* نرمال‌سازی شبا: حذف فاصله/خط تیره + حروف بزرگ؛ اگر ۲۴ رقم بدون IR بود، پیشوند IR اضافه می‌شود */
+  const shebaNorm = (() => {
+    const raw = (row.sheba || '').replace(/[\s-]/g, '').toUpperCase();
+    if (!raw) return null;
+    return /^\d{24}$/.test(raw) ? `IR${raw}` : raw;
+  })();
   const payload = {
     name: row.name,
     kind: row.kind,
     account_number: row.account_number ?? null,
+    sheba: shebaNorm,
     initial_balance: Number(row.initial_balance) || 0,
   };
   if (row.id) {
-    const { error } = await supabase.from('acc_accounts').update(payload).eq('id', row.id);
-    if (error) throw error;
+    /* mutateSafe: اگر M210000 هنوز اجرا نشده باشد، ستون sheba خودکار کنار گذاشته می‌شود */
+    await mutateSafe('acc_accounts', payload, (clean) =>
+      supabase.from('acc_accounts').update(clean).eq('id', row.id!),
+    );
     return row.id;
   }
   const { data, error } = await supabase
@@ -288,7 +297,21 @@ export async function saveAccount(businessId: string, row: Partial<AccAccount>) 
     .insert({ ...payload, business_id: businessId })
     .select('id')
     .single();
-  if (error) throw error;
+  if (error) {
+    /* fallback همان — درج مجدد بدون sheba اگر ستون نصب نیست */
+    if (/sheba/i.test(error.message || '')) {
+      const rest = { ...payload } as Record<string, unknown>;
+      delete rest.sheba;
+      const retry = await supabase
+        .from('acc_accounts')
+        .insert({ ...rest, business_id: businessId })
+        .select('id')
+        .single();
+      if (retry.error) throw retry.error;
+      return retry.data!.id as string;
+    }
+    throw error;
+  }
   return data.id as string;
 }
 
@@ -328,11 +351,21 @@ export async function listInvoices(businessId: string, opts: { type?: InvoiceTyp
 }
 
 export async function getInvoice(id: string) {
-  const { data, error } = await supabase
+  /* ستون‌های account_number/sheba فقط بعد از اجرای M210000 وجود دارند —
+     اگر مایگریشن هنوز اجرا نشده، با select ساده تکرار می‌کنیم تا صفحه‌های فاکتور نشکنند */
+  let res = await supabase
     .from('acc_invoices')
-    .select('*, partner:acc_partners(*), account:acc_accounts(id, name, kind), acc_invoice_items(*)')
+    .select('*, partner:acc_partners(*), account:acc_accounts(id, name, kind, account_number, sheba), acc_invoice_items(*)')
     .eq('id', id)
     .maybeSingle();
+  if (res.error && /sheba|account_number|PGRST204|column/i.test(res.error.message || '')) {
+    res = await supabase
+      .from('acc_invoices')
+      .select('*, partner:acc_partners(*), account:acc_accounts(id, name, kind), acc_invoice_items(*)')
+      .eq('id', id)
+      .maybeSingle();
+  }
+  const { data, error } = res;
   if (error) throw error;
   if (!data) return null;
   const inv = data as AccInvoice;
@@ -507,6 +540,8 @@ export async function listExpenses(businessId: string, from?: string, to?: strin
 }
 
 export async function saveExpense(businessId: string, row: Partial<AccExpense>) {
+  /* موتور سند (M120000 بند ۱۳): بستانکار بر اساس paid_by_kind انتخاب می‌شود —
+     company → بانک/صندوق | شخص ثالث → 2112 با تفصیلی شخص | unpaid → پرداختنی طرف‌حساب */
   const payload = {
     category: row.category || 'اداری و عمومی',
     title: row.title,
@@ -516,6 +551,8 @@ export async function saveExpense(businessId: string, row: Partial<AccExpense>) 
     account_id: row.account_id,
     partner_id: row.partner_id,
     is_paid: row.is_paid ?? true,
+    paid_by_kind: row.paid_by_kind || 'company',
+    paid_by_detail_id: row.paid_by_detail_id ?? null,
     description: row.description,
     vendor_name: row.vendor_name ?? null,
     receipt_no: row.receipt_no ?? null,
@@ -1209,11 +1246,7 @@ export async function saveManualJournal(
     }));
   if (lines.length) {
     const { error: lineErr } = await supabase.from('acc_journal_lines').insert(lines);
-    if (lineErr) {
-      /* جبرانی: سرِسند یتیم نماند (LGI-2) */
-      await supabase.from('acc_journal').delete().eq('id', entry.id);
-      throw lineErr;
-    }
+    if (lineErr) throw lineErr;
   }
   return entry.id as string;
 }

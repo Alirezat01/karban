@@ -139,6 +139,8 @@ export interface AccAccount {
   name: string;
   kind: AccountKind;
   account_number: string | null;
+  /** شماره شبا (IBAN) — ۲۶ نویسه IR + ۲۴ رقم؛ زیر صورتحساب نمایش داده می‌شود */
+  sheba: string | null;
   initial_balance: number;
   /** حساب معین مرتبط در کدینگ (پیش‌فرض 1102 بانک / 1101 صندوق) */
   chart_code: string | null;
@@ -228,6 +230,11 @@ export interface AccExpense {
   expense_account_id: string | null;
   /** تفصیلی سطر هزینه (تامین‌کننده/شریک/…) */
   detail_id: string | null;
+  /** چه کسی هزینه را پرداخت کرده (بند ۵ و ۱۳ دستور):
+      company | partner | employee | shareholder | other_person | unpaid */
+  paid_by_kind: string | null;
+  /** تفصیلی شخص پرداخت‌کننده — الزامی وقتی paid_by_kind شخصی است */
+  paid_by_detail_id: string | null;
   /** مرکز هزینه (بند ۲۲) */
   cost_center_id: string | null;
   created_by: string | null;
@@ -238,6 +245,8 @@ export interface AccExpense {
   account?: AccAccount | null;
   expense_account?: AccChartRow | null;
   detail?: { id: string; title: string; detail_code: string | null } | null;
+  /** شخص پرداخت‌کننده (embed از acc_details بر paid_by_detail_id) */
+  paid_by_detail?: { id: string; title: string } | null;
   cost_center?: AccCostCenter | null;
 }
 
