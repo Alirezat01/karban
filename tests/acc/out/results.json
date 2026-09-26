@@ -1,6 +1,6 @@
 {
-  "runId": "fafbbd",
-  "at": "2026-09-20T12:31:28.011Z",
+  "runId": "d04caa",
+  "at": "2026-09-26T09:09:55.308Z",
   "results": [
     {
       "id": "SETUP",
@@ -64,7 +64,7 @@
       "id": "BIS-7",
       "name": "INSERT سند با business_id دیگر",
       "status": "PASS",
-      "detail": "new row violates row-level security policy for table \"acc_jo",
+      "detail": "permission denied for table acc_journal",
       "evidence": null
     },
     {
@@ -124,17 +124,155 @@
       "evidence": null
     },
     {
-      "id": "accounting.master-data",
-      "name": "اجرای سناریو",
-      "status": "FAIL",
-      "detail": "خطای غیرمنتظره: record is not a function",
+      "id": "MD1",
+      "name": "۲۰ طرف‌حساب هم‌زمان → ۲۰ کد یکتا",
+      "status": "PASS",
+      "detail": "ok=20 uniq=20 errs=0",
       "evidence": null
     },
     {
-      "id": "accounting.subledger",
-      "name": "اجرای سناریو",
-      "status": "FAIL",
-      "detail": "خطای غیرمنتظره: Cannot read properties of null (reading 'id')",
+      "id": "MD2",
+      "name": "یک شخص + ۴ نقش هم‌زمان؛ نقش تکراری رد شود",
+      "status": "PASS",
+      "detail": "partner_code=100022 dupBlocked=true",
+      "evidence": null
+    },
+    {
+      "id": "MD3",
+      "name": "زنجیرهٔ Partner→Role→Detail (۴ تفصیلی سیستمی کددار)",
+      "status": "PASS",
+      "detail": "kinds=customer,employee,shareholder,supplier",
+      "evidence": null
+    },
+    {
+      "id": "MD4",
+      "name": "۲۰ مرکز هزینه هم‌زمان → کدهای CC-### یکتا + بذر ۵تایی",
+      "status": "PASS",
+      "detail": "seeded=5 created=20 uniq=20",
+      "evidence": null
+    },
+    {
+      "id": "MD5",
+      "name": "حذف طرف‌حساب دارای گردش → رد با پیام غیرفعال‌سازی",
+      "status": "PASS",
+      "detail": "طرف‌حساب «MD-d04caa-باگردش» گردش حسابداری دارد (1 رکورد وابسته) — حذف ",
+      "evidence": null
+    },
+    {
+      "id": "MD6",
+      "name": "حذف طرف‌حساب بدون گردش مجاز است",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "id": "MD7",
+      "name": "کسب‌وکار B داده‌های Master کسب‌وکار A را نمی‌بیند",
+      "status": "PASS",
+      "detail": "roles=0 cc=0 partners=0",
+      "evidence": null
+    },
+    {
+      "id": "MD8",
+      "name": "شمارندهٔ کد مستقل برای هر کسب‌وکار",
+      "status": "PARTIAL",
+      "detail": "bizB first code=100002 (اگر B قبلاً در تست‌های دیگر طرف‌حساب ساخته باشد > ۱۰۰۰۰۱ است)",
+      "evidence": null
+    },
+    {
+      "id": "SL0",
+      "name": "بانک/صندوق: کد معین + تفصیلی اختصاصی خودکار",
+      "status": "PASS",
+      "detail": "bank=1102/true cash=1101/true",
+      "evidence": null
+    },
+    {
+      "id": "SL1",
+      "name": "واریز شریک ۱۰۰م: بانک بدهکار / 3103 بستانکار (تفصیلی سهامدار)",
+      "status": "PASS",
+      "detail": "[[\"1102\",100000000,0,\"bank\"],[\"3103\",0,100000000,\"shareholder\"]]",
+      "evidence": null
+    },
+    {
+      "id": "SL2",
+      "name": "هزینه پرداخت‌شده توسط شریک: هزینه بدهکار / جاری شریک بستانکار",
+      "status": "PASS",
+      "detail": "[[\"5205\",10000000,0,null],[\"3103\",0,10000000,\"shareholder\"]]",
+      "evidence": null
+    },
+    {
+      "id": "SL3a",
+      "name": "هزینه توسط کارمند: هزینه بدهکار / جاری کارکنان بستانکار",
+      "status": "PASS",
+      "detail": "[[\"5203\",5000000,0,null],[\"2108\",0,5000000,\"employee\"]]",
+      "evidence": null
+    },
+    {
+      "id": "SL3b",
+      "name": "بازپرداخت به کارمند: جاری کارکنان بدهکار / بانک بستانکار",
+      "status": "PASS",
+      "detail": "[[\"2108\",2000000,0],[\"1102\",0,2000000]]",
+      "evidence": null
+    },
+    {
+      "id": "SL4",
+      "name": "هزینه ۲۰م با حساب/مرکز هزینه/پروژه/تفصیلی بانک روی سطر سند",
+      "status": "PASS",
+      "detail": "[[\"5401\",20000000,0,true,true,true],[\"1102\",0,20000000,true,false,false]]",
+      "evidence": null
+    },
+    {
+      "id": "SL5",
+      "name": "دریافت ۵۰م: بانک بدهکار / 1103 بستانکار با تفصیلی مشتری",
+      "status": "PASS",
+      "detail": "[[\"1102\",50000000,0,\"bank\"],[\"1103\",0,50000000,\"customer\"]]",
+      "evidence": null
+    },
+    {
+      "id": "SL6",
+      "name": "انتقال بانک→صندوق: فقط دو سطر خزانه؛ بدون درآمد/هزینه",
+      "status": "PASS",
+      "detail": "[[\"1101\",10000000,0],[\"1102\",0,10000000]]",
+      "evidence": null
+    },
+    {
+      "id": "SL7a",
+      "name": "دریافتنی + تفصیلی تامین‌کننده → رد",
+      "status": "PASS",
+      "detail": "تفصیلی از نوع «supplier» برای حساب «1103» مجاز نیست (انواع مجاز: custo",
+      "evidence": null
+    },
+    {
+      "id": "SL7b",
+      "name": "دریافتنی + تفصیلی مشتری → پذیرفته",
+      "status": "PASS",
+      "evidence": null
+    },
+    {
+      "id": "SL7c",
+      "name": "دریافتنی بدون تفصیلی → رد (الزام دیتابیسی)",
+      "status": "PASS",
+      "detail": "حساب «1103 — حساب‌های دریافتنی تجاری» به تفصیلی نیاز دارد (انواع مجاز:",
+      "evidence": null
+    },
+    {
+      "id": "SL7d",
+      "name": "حساب خارج از کدینگ → رد",
+      "status": "PASS",
+      "detail": "حساب «9999» در کدینگ حسابداری وجود ندارد",
+      "evidence": null
+    },
+    {
+      "id": "SL8",
+      "name": "مانده جاری شریک = ۱۱۰م بستانکار (۱۰۰ واریز + ۱۰ هزینه پرداختی)",
+      "status": "PASS",
+      "detail": "balance=110000000",
+      "evidence": null
+    },
+    {
+      "id": "SL9",
+      "name": "گزارش مرکز هزینه و پروژه از ردیف‌های سند (۲۰م + ۱۰م)",
+      "status": "PARTIAL",
+      "detail": "ccTotal=20000000 prjTotal=20000000",
       "evidence": null
     },
     {
@@ -178,9 +316,9 @@
       "id": "JAT-2",
       "name": "Rollback کامل هنگام خطای ردیف (بدون سرِسند یتیم)",
       "status": "PASS",
-      "detail": "تراکنش برگشت: insert or update on table \"acc_journal_lines\" violates forei · سرِسند یتیم: 0",
+      "detail": "تراکنش برگشت: پروژهٔ ردیف سند متعلق به این کسب‌وکار نیست · سرِسند یتیم: 0",
       "evidence": {
-        "error": "insert or update on table \"acc_journal_lines\" violates foreign key constraint \"acc_journal_lines_project_id_fkey\""
+        "error": "پروژهٔ ردیف سند متعلق به این کسب‌وکار نیست"
       }
     },
     {
@@ -199,58 +337,193 @@
     },
     {
       "id": "JAT-5",
-      "name": "رفتار مسیر قدیمی با سند غیرتراز",
+      "name": "نوشتن مستقیم کلاینتی روی acc_journal ممنوع (قفل M150000)",
       "status": "PASS",
-      "detail": "درج مستقیم غیرتراز رد شد: سند شماره 22 تراز نیست — جمع بدهکار 777 و بستانکار 333 باید برابر شود",
+      "detail": "رد شد: permission denied for table acc_journal",
       "evidence": null
     },
     {
-      "id": "IVD-0",
-      "name": "ساخت فاکتور آزمایشی",
-      "status": "FAIL",
-      "detail": "function public.acc_ensure_detail(uuid, text, text, uuid) does not exist",
+      "id": "IVD-1",
+      "name": "صدور اتمیک فاکتور (RPC)",
+      "status": "PASS",
+      "detail": "سند آینه‌ای: ساخته شد · موجودی: 50 → 48",
+      "evidence": {
+        "journalId": "da48854a-1639-49f0-b274-c0e0b2046c52"
+      }
+    },
+    {
+      "id": "IVD-2",
+      "name": "کسر موجودی هنگام صدور (۵۰ → ۴۸)",
+      "status": "PASS",
+      "detail": "موجودی: 48",
+      "evidence": null
+    },
+    {
+      "id": "IVD-3",
+      "name": "سند آینه‌ای فاکتور تراز و کامل (فروش + COGS)",
+      "status": "PASS",
+      "detail": "بدهکار 340000 / بستانکار 340000 · 1103=220000 · 4101=200000 · 2102=20000 · 5101=120000 · 1201=120000",
+      "evidence": null
+    },
+    {
+      "id": "IVD-4",
+      "name": "ابطال اتمیک فاکتور (RPC)",
+      "status": "PASS",
+      "detail": "سندهای معکوس: 1",
+      "evidence": null
+    },
+    {
+      "id": "IVD-5",
+      "name": "فاکتور بعد از ابطال = cancelled + مهر زمانی",
+      "status": "PASS",
+      "detail": "status=cancelled voided=true",
+      "evidence": null
+    },
+    {
+      "id": "IVD-6",
+      "name": "برگشت موجودی هنگام ابطال (۴۸ → ۵۰)",
+      "status": "PASS",
+      "detail": "موجودی: 50",
+      "evidence": null
+    },
+    {
+      "id": "IVD-7",
+      "name": "سند اصلی voided + سند معکوس با ارجاع متقابل",
+      "status": "PASS",
+      "detail": "voided=true · معکوس‌ها: 1",
+      "evidence": null
+    },
+    {
+      "id": "IVD-8",
+      "name": "سند معکوس تراز و قرینهٔ کامل است",
+      "status": "PASS",
+      "detail": "340000/340000 (5 ردیف)",
+      "evidence": null
+    },
+    {
+      "id": "IVD-9",
+      "name": "ابطال مجدد فاکتور ممنوع",
+      "status": "PASS",
+      "detail": "این فاکتور قبلاً ابطال شده است",
+      "evidence": null
+    },
+    {
+      "id": "IVD-10",
+      "name": "صدور مجدد فاکتور ابطال‌شده ممنوع",
+      "status": "PASS",
+      "detail": "فاکتور ابطال‌شده قابل صدور مجدد نیست",
+      "evidence": null
+    },
+    {
+      "id": "IVD-11",
+      "name": "حذف فاکتور صادره/ابطال‌شده ممنوع (DELETE guard)",
+      "status": "PASS",
+      "detail": "صورتحساب صادره قابل حذف نیست — برای اصلاح آن را ابطال کنید",
+      "evidence": null
+    },
+    {
+      "id": "IVD-12",
+      "name": "ویرایش فاکتور ابطال‌شده ممنوع",
+      "status": "PASS",
+      "detail": "0 ردیف",
       "evidence": null
     },
     {
       "id": "BRC-1",
       "name": "هر دو طبقه‌بندی هم‌زمان موفق",
-      "status": "FAIL",
-      "detail": "خطاها: duplicate key value violates unique constraint \"ac / duplicate key value violates unique constraint \"ac",
+      "status": "PASS",
+      "detail": "خطاها: - / -",
       "evidence": null
     },
     {
       "id": "BRC-2",
       "name": "دو سند خزانهٔ متمایز برای دو خط (بدون دوبل)",
-      "status": "FAIL",
-      "detail": "null / null",
+      "status": "PASS",
+      "detail": "2940e2e0-5424-43cc-8ecb-99c3e6b89b64 / 9382acb2-036b-42cc-a9a2-8d613e7828af",
       "evidence": null
     },
     {
       "id": "BRC-3",
       "name": "هر خط بانکی به سند صحیح خودش متصل است",
       "status": "PASS",
-      "detail": "خط۱→undefined / خط۲→undefined",
+      "detail": "خط۱→2940e2e0 / خط۲→9382acb2",
       "evidence": null
     },
     {
       "id": "BRC-4",
       "name": "تعداد تراکنش‌های ساخته‌شده = ۲ (بدون تکرار)",
-      "status": "FAIL",
-      "detail": "0 تراکنش",
+      "status": "PASS",
+      "detail": "2 تراکنش",
+      "evidence": null
+    },
+    {
+      "id": "BKP-1",
+      "name": "خروجی Backup کانونیکال (format + counts)",
+      "status": "PASS",
+      "detail": "format=karban-acc-backup · rows=284",
+      "evidence": null
+    },
+    {
+      "id": "BKP-2",
+      "name": "Preview فایل خودش: valid + صفر درج جدید (بدون Duplicate)",
+      "status": "PASS",
+      "detail": "valid=true · درج جدید=0",
+      "evidence": null
+    },
+    {
+      "id": "BKP-3",
+      "name": "فایل با format نامعتبر رد می‌شود",
+      "status": "PASS",
+      "detail": "valid=false · خطاها: 1",
+      "evidence": null
+    },
+    {
+      "id": "BKP-4",
+      "name": "سطر متعلق به Business دیگر → رد کل بازیابی",
+      "status": "PASS",
+      "detail": "valid=false · خطاها: 1 سطر در acc_partners به کسب‌وکار دیگری تعلق دارد — بازیابی رد شد",
+      "evidence": null
+    },
+    {
+      "id": "BKP-5",
+      "name": "Restore اتمیک فایل سالم (idempotent — همه Duplicate)",
+      "status": "PASS",
+      "detail": "inserted=0",
+      "evidence": null
+    },
+    {
+      "id": "BKP-6",
+      "name": "بازیابی فایل بنگاه دیگر توسط غیرمالک ممنوع",
+      "status": "PASS",
+      "detail": "رد شد ✓ بازیابی رد شد: [\"اجازهٔ بازیابی در این کسب‌وکار را ندارید (ف",
+      "evidence": null
+    },
+    {
+      "id": "BKP-7",
+      "name": "Preview فایل بازخوانده‌شده از JSON (مسیر فرانت) سالم است",
+      "status": "PASS",
+      "detail": "valid=true",
       "evidence": null
     },
     {
       "id": "FIS-1",
-      "name": "ثبت سند اختتامیهٔ تراز",
-      "status": "FAIL",
-      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "name": "بستن اتمیک سال (اختتامیه + قفل ۱۲ ماه در یک تراکنش)",
+      "status": "PASS",
+      "detail": "سند: a3753c62-3b2b-4d1c-839c-77fd8f3bdd84",
       "evidence": null
     },
     {
       "id": "FIS-2",
       "name": "اختتامیه تراز است (۸۰۰٬۰۰۰ = ۳۰۰٬۰۰۰ + ۵۰۰٬۰۰۰)",
-      "status": "FAIL",
-      "detail": "0/0",
+      "status": "PASS",
+      "detail": "800000/800000",
+      "evidence": null
+    },
+    {
+      "id": "FIS-CTX",
+      "name": "سال بسته + هر ۱۲ ماه قفل شد (اتمیک)",
+      "status": "PASS",
+      "detail": "status=closed · ماه‌های قفل=12",
       "evidence": null
     },
     {
@@ -262,51 +535,44 @@
     },
     {
       "id": "FIS-4",
-      "name": "درج مستقیم در سال بسته ممنوع (تریگر)",
+      "name": "نوشتن مستقیم کلاینتی روی acc_periods ممنوع (قفل M150000)",
       "status": "PASS",
-      "detail": "رد شد ✓",
+      "detail": "رد شد: permission denied for table acc_periods",
       "evidence": null
     },
     {
       "id": "FIS-5",
-      "name": "بستن مجدد (اختتامیهٔ دوم) ممنوع",
+      "name": "بستن مجدد سال (اختتامیهٔ دوم) ممنوع",
       "status": "PASS",
-      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "detail": "سند اختتامیهٔ سال 1403 قبلاً صادر شده است — بستن دوبارهٔ دوره مجاز نیس",
       "evidence": null
     },
     {
       "id": "FIS-6",
-      "name": "ثبت سند در ماه قفل‌شده ممنوع",
+      "name": "بازکردن دورهٔ سال بسته ممنوع (acc_period_lock_set)",
       "status": "PASS",
-      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "detail": "سال مالی 1403 بسته شده است — دوره‌های آن قابل بازکردن نیستند",
       "evidence": null
     },
     {
       "id": "FIS-7",
-      "name": "ثبت سند افتتاحیهٔ سال بعد",
-      "status": "FAIL",
-      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "name": "افتتاح اتمیک سال بعد (سند + ثبت سال در یک تراکنش)",
+      "status": "PASS",
+      "detail": "سند: cdb10d9d-12a5-43f9-95f2-2fc10521594b",
       "evidence": null
     },
     {
       "id": "FIS-8",
       "name": "افتتاحیهٔ دوم برای همان سال ممنوع",
       "status": "PASS",
-      "detail": "شماره‌گذاری سند با تداخل مکرر ناموفق ماند",
+      "detail": "سند افتتاحیهٔ سال 1404 قبلاً ثبت شده است",
       "evidence": null
     },
     {
       "id": "FIS-9",
       "name": "ابطال سند (سند معکوس) از مسیر RPC کار می‌کند",
-      "status": "FAIL",
-      "detail": "duplicate key value violates unique constraint \"acc_journal_business_i",
-      "evidence": null
-    },
-    {
-      "id": "FIS-CTX",
-      "name": "دورهٔ 1403 بسته شد + اختتامیه/افتتاحیه ثبت شد",
       "status": "PASS",
-      "detail": "ok",
+      "detail": "معکوس: d69fbe9e-e68f-4b16-8b46-0a2729a8e30b",
       "evidence": null
     },
     {
@@ -334,14 +600,14 @@
       "id": "LGI-1",
       "name": "همهٔ سندهای دارای ردیف، تراز هستند",
       "status": "PASS",
-      "detail": "28/28 تراز",
+      "detail": "41/41 تراز",
       "evidence": null
     },
     {
       "id": "LGI-2",
       "name": "هیچ سرِسند بدون ردیف در دفتر نیست",
-      "status": "FAIL",
-      "detail": "سندهای یتیم: #22",
+      "status": "PASS",
+      "detail": "41 سند بررسی شد",
       "evidence": null
     },
     {
@@ -414,10 +680,304 @@
       "evidence": null
     },
     {
-      "id": "accounting.e2e.flow",
-      "name": "اجرای سناریو",
-      "status": "FAIL",
-      "detail": "خطای غیرمنتظره: Cannot read properties of null (reading 'id')",
+      "id": "E2E-I",
+      "name": "صدور رسمی فاکتور فروش از مسیر RPC",
+      "status": "PASS",
+      "detail": "صادر شد",
+      "evidence": null
+    },
+    {
+      "id": "E2E-T",
+      "name": "سند آینه‌ای دریافت ثبت شد",
+      "status": "PASS",
+      "detail": "ثبت شد",
+      "evidence": null
+    },
+    {
+      "id": "E2E-1",
+      "name": "سند دستی ۱۰M/۱۰M ثبت شد",
+      "status": "PASS",
+      "detail": "de850121-34ae-4ab2-9572-3f039dfb864d",
+      "evidence": null
+    },
+    {
+      "id": "E2E-2",
+      "name": "مانده مشتری = فاکتورها − تسویه‌شده (۱۱۰M − ۵۰M = ۶۰M)",
+      "status": "PASS",
+      "detail": "فاکتور: ۱۱۰٬۰۰۰٬۰۰۰ · تسویه: ۵۰٬۰۰۰٬۰۰۰ · دریافت مستقیم: ۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-3",
+      "name": "تراز آزمایشی سرتاسری: جمع بدهکار = جمع بستانکار",
+      "status": "PASS",
+      "detail": "۱۹۰٬۰۰۰٬۰۰۰ / ۱۹۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-4",
+      "name": "ثبت سند آینه‌ای خرید/هزینه",
+      "status": "PASS",
+      "detail": "سندها ثبت شدند",
+      "evidence": null
+    },
+    {
+      "id": "E2E-5",
+      "name": "درآمد شناسایی‌شده در دفتر = ۱۰۰٬۰۰۰٬۰۰۰",
+      "status": "PASS",
+      "detail": "۱۰۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-6",
+      "name": "هزینه شناسایی‌شده در دفتر = ۲۰٬۰۰۰٬۰۰۰",
+      "status": "PASS",
+      "detail": "۲۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-7",
+      "name": "سود خالص دفتر = ۸۰٬۰۰۰٬۰۰۰",
+      "status": "PASS",
+      "detail": "۸۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-8",
+      "name": "مالیات فروش در حساب ۲۱۰۲ = ۱۰٬۰۰۰٬۰۰۰",
+      "status": "PASS",
+      "detail": "۱۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-9",
+      "name": "دریافتنی (۱۱۰۳) بعد از دریافت ۵۰M = ۶۰M",
+      "status": "PASS",
+      "detail": "۶۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-10",
+      "name": "سند آینه‌ای فاکتور فروش تراز و کامل",
+      "status": "PASS",
+      "detail": "110000000/110000000 (3 ردیف)",
+      "evidence": null
+    },
+    {
+      "id": "E2E-11",
+      "name": "گردش خالص بانک از تراکنش‌ها = ۵۰٬۰۰۰٬۰۰۰",
+      "status": "PASS",
+      "detail": "۵۰٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "E2E-12",
+      "name": "چک، تنخواه و پیش‌دریافت/پیش‌پرداخت ثبت شدند",
+      "status": "PASS",
+      "detail": "چک:1 پیش‌ها:2 تنخواه:1",
+      "evidence": null
+    },
+    {
+      "id": "SAY-1",
+      "name": "درج چک با شناسهٔ صیادی ۱۶رقمی + نوع + صادرکننده/گیرنده",
+      "status": "PASS",
+      "detail": "چک: 95c8dfdd",
+      "evidence": null
+    },
+    {
+      "id": "SAY-2",
+      "name": "شناسهٔ صیادی تکراری در همان کسب‌وکار ممنوع",
+      "status": "PASS",
+      "detail": "رد شد (unique) ✓",
+      "evidence": null
+    },
+    {
+      "id": "SAY-3",
+      "name": "شناسهٔ صیادی یکسان در کسب‌وکار دیگر مجاز است",
+      "status": "PASS",
+      "detail": "یگانکی per-business برقرار",
+      "evidence": null
+    },
+    {
+      "id": "SAY-4",
+      "name": "شناسهٔ صیادی غیر۱۶رقمی ممنوع (CHECK)",
+      "status": "PASS",
+      "detail": "رد شد (format) ✓",
+      "evidence": null
+    },
+    {
+      "id": "SAY-5",
+      "name": "گذار برگشتی از وضعیت نهایی (cleared→in_hand) ممنوع",
+      "status": "PASS",
+      "detail": "رد شد ✓",
+      "evidence": null
+    },
+    {
+      "id": "SAY-6",
+      "name": "گذارهای مجاز چرخهٔ عمر (in_hand→deposited→bounced→deposited)",
+      "status": "PASS",
+      "detail": "زنجیره پذیرفته شد",
+      "evidence": null
+    },
+    {
+      "id": "SAY-7",
+      "name": "گذار غیرمجاز (returned→cleared) ممنوع",
+      "status": "PASS",
+      "detail": "گذار وضعیت چک «returned → cleared» مجاز نیست",
+      "evidence": null
+    },
+    {
+      "id": "SAY-8",
+      "name": "گزارش یکپارچهٔ چک‌ها (صیادی + نوع + طرف‌حساب + سند مرتبط)",
+      "status": "PASS",
+      "detail": "3 چک آزمون در گزارش · sayadi: 1234567812345678",
+      "evidence": null
+    },
+    {
+      "id": "SAY-9",
+      "name": "نوع چک «تضمینی» پذیرفته می‌شود",
+      "status": "PASS",
+      "detail": "ثبت شد",
+      "evidence": null
+    },
+    {
+      "id": "EXE-1",
+      "name": "ثبت هزینهٔ پرداخت‌شدهٔ شرکت ← سند خودکار",
+      "status": "PASS",
+      "detail": "هزینه: e88becc5",
+      "evidence": null
+    },
+    {
+      "id": "EXE-2",
+      "name": "سند post فعال دقیقاً یکی است",
+      "status": "PASS",
+      "detail": "سند فعال: 1 — 612780c4",
+      "evidence": null
+    },
+    {
+      "id": "EXE-3",
+      "name": "آپدیت مستقیم هزینهٔ سندخورده رد می‌شود (گارد)",
+      "status": "PASS",
+      "detail": "رد شد: هزینهٔ سندخورده قابل ویرایش نیست — ابتدا سند را ابطال کنید، ",
+      "evidence": null
+    },
+    {
+      "id": "EXE-4",
+      "name": "ویرایش غیرمالی (عنوان/فروشنده) بدون تغییر سند",
+      "status": "PASS",
+      "detail": "financial_changed: false — سند همان: true",
+      "evidence": null
+    },
+    {
+      "id": "EXE-5",
+      "name": "ویرایش مالی ← سند قبلی ابطال و سند جدید صادر شد",
+      "status": "PASS",
+      "detail": "سندهای فعال: 1 — سند جدید: 93a8a32a",
+      "evidence": null
+    },
+    {
+      "id": "EXE-6",
+      "name": "سند جدید با مبلغ جدید + project_id روی ردیف و رکورد",
+      "status": "PASS",
+      "detail": "بدهکار سند: ۲۵۰٬۰۰۰ — پروژهٔ ردیف: درست",
+      "evidence": null
+    },
+    {
+      "id": "EXE-7",
+      "name": "ویرایش هزینهٔ ابطال‌شده رد می‌شود",
+      "status": "PASS",
+      "detail": "رد شد: هزینهٔ ابطال‌شده قابل ویرایش نیست — حذف کامل کنید و هزینهٔ ج",
+      "evidence": null
+    },
+    {
+      "id": "EXE-8",
+      "name": "چک با شناسهٔ صیادی ۱۶رقمی ثبت می‌شود",
+      "status": "PASS",
+      "detail": "نوع: guaranteed",
+      "evidence": null
+    },
+    {
+      "id": "EXE-9",
+      "name": "شناسهٔ صیادی تکراری در همان بنگاه رد می‌شود",
+      "status": "PASS",
+      "detail": "رد شد (یگانگی)",
+      "evidence": null
+    },
+    {
+      "id": "EXE-10",
+      "name": "شناسهٔ صیادی ۱۵رقمی رد می‌شود (قید فرمت)",
+      "status": "PASS",
+      "detail": "رد شد (فرمت)",
+      "evidence": null
+    },
+    {
+      "id": "CAT-1",
+      "name": "خواندن کاتالوگ مشترک برای کاربر معمولی",
+      "status": "PASS",
+      "detail": "5 ردیف (خواندن آزاد)",
+      "evidence": null
+    },
+    {
+      "id": "CAT-2",
+      "name": "نوشتن کاربر معمولی در کاتالوگ رد می‌شود",
+      "status": "PASS",
+      "detail": "رد شد: new row violates row-level security policy for table \"acc_st",
+      "evidence": null
+    },
+    {
+      "id": "CAT-3",
+      "name": "حذف واقعی ردیف کاتالوگ توسط کاربر معمولی رد می‌شود",
+      "status": "PASS",
+      "detail": "ردیف پس از تلاش حذف سالم ماند (RLS حذف غیرادمین را بست)",
+      "evidence": null
+    },
+    {
+      "id": "PAY-1",
+      "name": "ساخت تفصیلی شخص پرداخت‌کننده",
+      "status": "PASS",
+      "detail": "تفصیلی: bc7b3c7b",
+      "evidence": null
+    },
+    {
+      "id": "PAY-2",
+      "name": "ثبت هزینهٔ شخص ثالث ← بستانکار 2112 (نه 2110، نه 7101)",
+      "status": "PASS",
+      "detail": "سند: 4ac78405",
+      "evidence": null
+    },
+    {
+      "id": "PAY-3",
+      "name": "کد بستانکار دقیقاً 2112 است",
+      "status": "PASS",
+      "detail": "کد: 2112",
+      "evidence": null
+    },
+    {
+      "id": "PAY-4",
+      "name": "گزارش پرداختنی: ماندهٔ شخص = مبلغ هزینه",
+      "status": "PASS",
+      "detail": "مانده: ۶٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "PAY-5",
+      "name": "تسویهٔ اتمیک بخشی از بدهی (DR 2112 / CR صندوق)",
+      "status": "PASS",
+      "detail": "سند تسویه: 8e631daa",
+      "evidence": null
+    },
+    {
+      "id": "PAY-6",
+      "name": "مانده پس از تسویه = ۴٬۰۰۰٬۰۰۰",
+      "status": "PASS",
+      "detail": "مانده: ۴٬۰۰۰٬۰۰۰",
+      "evidence": null
+    },
+    {
+      "id": "PAY-7",
+      "name": "تسویهٔ بیش از ماندهٔ بدهی ممنوع",
+      "status": "PASS",
+      "detail": "رد شد ✓ مبلغ تسویه (999999999) از ماندهٔ بدهی به «شریک پرداخت‌کننده ",
       "evidence": null
     },
     {
@@ -437,8 +997,8 @@
     {
       "id": "DEL-3",
       "name": "حذف فاکتور صادره ممنوع (حتی بدون خطا، اثری ندارد)",
-      "status": "FAIL",
-      "detail": "1 ردیف حذف شد",
+      "status": "PASS",
+      "detail": "0 ردیف حذف شد",
       "evidence": null
     },
     {
@@ -456,10 +1016,17 @@
       "evidence": null
     },
     {
-      "id": "accounting.deletion",
-      "name": "اجرای سناریو",
-      "status": "FAIL",
-      "detail": "خطای غیرمنتظره: Cannot read properties of null (reading 'id')",
+      "id": "DEL-6",
+      "name": "حذف حساب با تراکنش: تراکنش یتیم نمی‌ماند (FK on-delete رفتار مشخص دارد)",
+      "status": "PASS",
+      "detail": "حذف حساب رد شد: حساب «بانک-DEL-d04caa» گردش مالی دارد (1",
+      "evidence": null
+    },
+    {
+      "id": "DEL-7",
+      "name": "حذف مشتری دارای فاکتور: فاکتور یتیم/حذف نمی‌شود ناگهانی",
+      "status": "PASS",
+      "detail": "حذف مشتری رد شد (پالیسی/FK)",
       "evidence": null
     },
     {
@@ -512,10 +1079,66 @@
       "evidence": null
     },
     {
+      "id": "PAY-CAP",
+      "name": "RPC pay_get_account (M250000) نصب است",
+      "status": "PASS",
+      "detail": null,
+      "evidence": null
+    },
+    {
+      "id": "PAY-1",
+      "name": "anon نمی‌تواند جدول pay_accounts را بخواند",
+      "status": "PASS",
+      "detail": "deny: 42501",
+      "evidence": null
+    },
+    {
+      "id": "PAY-2",
+      "name": "anon نمی‌تواند pay_account_access_log را بخواند",
+      "status": "PASS",
+      "detail": "deny: 42501",
+      "evidence": null
+    },
+    {
+      "id": "PAY-3",
+      "name": "کاربر واردشده (غیر ادمین) هم جدول کارت را نمی‌بیند",
+      "status": "PASS",
+      "detail": "deny: 42501",
+      "evidence": null
+    },
+    {
+      "id": "PAY-4",
+      "name": "کد پیگیری با شکل غلط رد می‌شود",
+      "status": "PASS",
+      "detail": "«کد پیگیری معتبر نیست»",
+      "evidence": null
+    },
+    {
+      "id": "PAY-5",
+      "name": "کد ناموجود رد می‌شود (بدون افشای وجود سفارش)",
+      "status": "PASS",
+      "detail": "«سفارشی با این کد پیگیری پیدا نشد»",
+      "evidence": null
+    },
+    {
+      "id": "PAY-6",
+      "name": "RPCهای ادمین برای anon قابل فراخوانی نیستند",
+      "status": "PASS",
+      "detail": "deny: permission denied for function pay_account_upsert",
+      "evidence": null
+    },
+    {
+      "id": "PAY-7",
+      "name": "کاربر غیرادمین نمی‌تواند فهرست کارت را بگیرد",
+      "status": "PASS",
+      "detail": "deny: فقط ادمین سایت مجاز است",
+      "evidence": null
+    },
+    {
       "id": "CLEANUP",
       "name": "پاکسازی داده‌های تست (لایسنس برای اجرای بعدی حفظ شد)",
-      "status": "FAIL",
-      "detail": "جدول‌های باقی‌مانده: acc_journal_lines: ردیف‌های سند قطعی/سیستمی قابل تغییر نیستند — برای  · acc_journal: سند باطل‌شده بخشی از تاریخچهٔ حسابداری است و حذف ن",
+      "status": "PASS",
+      "detail": "داده‌های تست پاک شدند",
       "evidence": null
     }
   ]
