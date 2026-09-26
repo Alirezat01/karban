@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-20T08:13:59.759Z",
-  "duration_ms": 20087,
+  "generated_at": "2026-09-26T14:50:35.233Z",
+  "duration_ms": 21876,
   "summary": {
-    "pass": 56,
-    "fail": 1
+    "pass": 45,
+    "fail": 10
   },
   "schema_tables": [
     "acc_invoices",
@@ -15,6 +15,7 @@
     "acc_invoice_items",
     "acc_activity",
     "acc_transactions",
+    "acc_partner_roles",
     "profiles",
     "acc_fiscal_years",
     "acc_contracts",
@@ -26,6 +27,7 @@
     "acc_projects",
     "acc_journal",
     "acc_recurring",
+    "acc_code_counters",
     "acc_attachments",
     "acc_petty",
     "telegram_queue",
@@ -33,6 +35,7 @@
     "acc_prepayments",
     "acc_expenses",
     "acc_chart",
+    "acc_cost_centers",
     "acc_businesses",
     "acc_assets",
     "app_settings",
@@ -58,7 +61,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mu9jhu8h@gmail.com"
+      "detail": "karban.audit.muiiaxio@gmail.com"
     },
     {
       "id": "B2",
@@ -79,21 +82,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=fbce8f71-7aff-4f4a-89dc-328dcfd8f4b8"
+      "detail": "biz=ec34ccf2-dd2f-4c9b-bdeb-1e8e0105b6e6"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"846209d7-b66a-4ff3-ad7c-f685dd224303\",\"business_id\":\"fbce8f71-7aff-4f4a-89dc-328dcfd8f4b8\",\"user_id\":\"741aae2f-5a67-4a30-a380-31ff391f9c26\",\"email\":\"karban.audit.mu9jhu8h@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"c2d2fa1b-9982-4b1f-ae25-b5eefeaaeb04\",\"business_id\":\"ec34ccf2-dd2f-4c9b-bdeb-1e8e0105b6e6\",\"user_id\":\"25fde09a-ac96-4741-892a-07a2531812ca\",\"email\":\"karban.audit.muiiaxio@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=eea3176b-6d33-42aa-9fc9-dd652857382d"
+      "detail": "id=bf7f4613-6a4d-4961-bb9d-bfe41425a118"
     },
     {
       "id": "B7",
@@ -114,35 +117,35 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=d41f821e-3d8b-448d-9a8c-c3b943b52567"
+      "detail": "id=37b280ef-3c2b-4298-801f-265f86785c64"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=4273296a-0c71-48cf-ad53-d08fa51ece49"
+      "detail": "id=4ca38929-a1ff-42e2-9ca8-9a6177176850"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=f66f8b68-db3d-44fb-898c-e645b9c723d5 | SELECT کاربر: 1 ردیف"
+      "detail": "404 {\"code\":\"42883\",\"details\":null,\"hint\":\"No function matches the given name and argument types. You might need to add explicit type casts.\",\"message\":\"function public.acc_mirror_journal(uuid, date, unkn"
     },
     {
       "id": "B12",
       "title": "ثبت صندوق نقدی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "ok"
+      "detail": "404 {\"code\":\"42883\",\"details\":null,\"hint\":\"No function matches the given name and argument types. You might need to add explicit type casts.\",\"message\":\"function public.acc_mirror_journal(uuid, date, unkn"
     },
     {
       "id": "B13",
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=5332fdfb-737b-452b-8d3c-57b58d008373 total=2,310,000,000"
+      "detail": "id=843ca253-115d-460d-a3cb-56a4a5076b5f total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -163,7 +166,7 @@
       "title": "سند حسابداری خودکار هنگام صدور",
       "ok": true,
       "severity": "high",
-      "detail": "3 سند"
+      "detail": "1 سند"
     },
     {
       "id": "B17",
@@ -196,9 +199,9 @@
     {
       "id": "B21",
       "title": "ثبت دریافت وجه مرتبط با فاکتور",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"حساب بانک/صندوق دریافت مشخص نشده است\"}"
     },
     {
       "id": "B22",
@@ -210,9 +213,9 @@
     {
       "id": "B23",
       "title": "ثبت هزینه (با وضعیت مالیاتی)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"هزینهٔ پرداخت‌شدهٔ شرکت بدون حساب بانک/صندوق مجاز نیست — حساب پرداخت‌کننده را انتخاب کنید یا پرداخت‌کنندهٔ شخصی/پرداخت‌نشده را مشخص کنید\"}"
     },
     {
       "id": "B24",
@@ -226,7 +229,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=cfb588e0-a965-4b64-8987-793ff1164e2a"
+      "detail": "id=ced7991e-2625-4904-a208-f3fd8be08d36"
     },
     {
       "id": "B26",
@@ -266,16 +269,9 @@
     {
       "id": "B31a",
       "title": "ثبت سربرگ سند دستی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=fe205f3a-4ad2-4f5b-b218-448c29ee3055"
-    },
-    {
-      "id": "B31b",
-      "title": "ثبت سطرهای بدهکار/بستانکار سند دوبل",
-      "ok": true,
-      "severity": "",
-      "detail": "۲ سطر"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT INSERT ON public.acc_journal TO authenticated;\",\"message\":\"permission denied for table acc_journal\"}"
     },
     {
       "id": "B32",
@@ -287,9 +283,9 @@
     {
       "id": "B33",
       "title": "قفل دوره مالی (جلوگیری از تغییر اسناد قطعی)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "ok"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT INSERT ON public.acc_periods TO authenticated;\",\"message\":\"permission denied for table acc_periods\"}"
     },
     {
       "id": "B34",
@@ -303,7 +299,7 @@
       "title": "کوئری تراز آزمایشی (join داخلی)",
       "ok": true,
       "severity": "",
-      "detail": "rows=17"
+      "detail": "rows=6"
     },
     {
       "id": "B36",
@@ -336,9 +332,9 @@
     {
       "id": "B40",
       "title": "مغایرت‌گیری بانکی",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
+      "ok": false,
+      "severity": "high",
+      "detail": "400 {\"code\":\"23502\",\"details\":null,\"hint\":null,\"message\":\"null value in column \\\"account_id\\\" of relation \\\"acc_reconciliations\\\" violates not-null constraint\"} ← جدول acc_reconciliations در دیتابیس نیست — sql-4 را اجرا کن"
     },
     {
       "id": "C1",
@@ -420,23 +416,16 @@
     {
       "id": "B44",
       "title": "خطوط صورت‌حساب بانک (مغایرت واقعی)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "ok"
+      "detail": "400 {\"code\":\"23502\",\"details\":null,\"hint\":null,\"message\":\"null value in column \\\"account_id\\\" of relation \\\"acc_bank_lines\\\" violates not-null constraint\"}"
     },
     {
       "id": "B45",
       "title": "دوره مالی سالانه",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "ok"
-    },
-    {
-      "id": "B46",
-      "title": "ویرایش اطلاعات حساب بانکی ذخیره می‌شود",
-      "ok": true,
-      "severity": "",
-      "detail": "ok — UPDATE پالیسی و ذخیره برقرار"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT INSERT ON public.acc_fiscal_years TO authenticated;\",\"message\":\"permission deni"
     },
     {
       "id": "B47",
@@ -448,22 +437,27 @@
   ],
   "findings": [
     {
+      "id": "B40",
+      "title": "مغایرت‌گیری بانکی",
+      "severity": "high"
+    },
+    {
       "id": "C4",
       "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
       "severity": "critical"
     }
   ],
   "business_stats": {
-    "count": 5,
+    "count": 10,
     "orphan_license": 2,
     "trial_quota_full": 2
   },
   "cleanup": {
     "attempted": true,
-    "ok": 31,
-    "fail": 1
+    "ok": 28,
+    "fail": 4
   },
   "test_context": {
-    "email": "karban.audit.mu9jhu8h@gmail.com"
+    "email": "karban.audit.muiiaxio@gmail.com"
   }
 }
