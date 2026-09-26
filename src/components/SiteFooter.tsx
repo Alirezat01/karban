@@ -35,7 +35,10 @@ export default function SiteFooter() {
       <div className="footer-pattern" />
       <div className="container footer-grid">
         <div className="footer-brand">
-          <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
+          <picture>
+            <source type="image/webp" srcSet="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.webp" />
+            <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" width={669} height={373} />
+          </picture>
           <p>مرجع هوشمند مدیریت کسب‌وکار برای کارفرمایان، کارمندان و فریلنسرها؛ از قرارداد تا آرامش.</p>
           <div className="socials">
             <a href="https://www.instagram.com/karbanapp" target="_blank" rel="noopener" aria-label="اینستاگرام کاربان"><Instagram size={18} /></a>
@@ -72,7 +75,7 @@ export default function SiteFooter() {
           <p>تغییرات قوانین، مهلت‌های مالیاتی و ابزارهای جدید؛ ماهی یک پیام، بدون اسپم.</p>
         </div>
         <form className="news-form" onSubmit={subscribe}>
-          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); if (state !== 'loading') setState('idle'); }} placeholder="شماره موبایل *" aria-label="شماره موبایل برای خبرنامه (الزامی)" disabled={state === 'loading'} />
+          <input type="tel" inputMode="tel" value={mobile} onChange={(e) => { setMobile(e.target.value); if (state !== 'loading') setState('idle'); }} placeholder="شماره موبایل" aria-label="شماره موبایل برای خبرنامه" disabled={state === 'loading'} />
           <button className="button" type="submit" disabled={state === 'loading'}>{state === 'loading' ? 'در حال ثبت…' : 'عضویت'}</button>
         </form>
         <div className="news-msg">

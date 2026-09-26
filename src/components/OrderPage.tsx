@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BadgeCheck, Copy, Check, ShieldCheck, CreditCard, Landmark } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
@@ -20,23 +20,6 @@ type Service = {
 
 type Props = { serviceId: string };
 
-type PayInfo = {
-  label: string;
-  holder_name: string;
-  bank_name: string;
-  card_number: string;
-  sheba: string;
-  order: { code: string; title: string; amount: number | string; status: string; created_at: string };
-};
-
-/* نمایش کارت/شبا به شکل گروه‌چهاررقمی — اعداد LTR برای خوانایی بانکی */
-const group4 = (s: string) => s.replace(/(\d{4})(?=\d)/g, '$1 ');
-const formatSheba = (s: string) => {
-  const clean = s.toUpperCase().replace(/\s|-/g, '');
-  if (!clean.startsWith('IR')) return clean;
-  return 'IR ' + clean.slice(2).replace(/(\d{4})(?=\d)/g, '$1 ');
-};
-
 export default function OrderPage({ serviceId }: Props) {
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,8 +32,6 @@ export default function OrderPage({ serviceId }: Props) {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [doneCode, setDoneCode] = useState('');
-  const [payInfo, setPayInfo] = useState<PayInfo | null>(null);
-  const [copied, setCopied] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -81,10 +62,6 @@ export default function OrderPage({ serviceId }: Props) {
     }
     if (!mobileOk) {
       setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹');
-      return;
-    }
-    if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) {
-      setError('ایمیل معتبر نیست — یا آن را خالی بگذارید.');
       return;
     }
     if (!terms) {
@@ -121,29 +98,6 @@ export default function OrderPage({ serviceId }: Props) {
       );
     }
     setDoneCode(code);
-    void loadPayInfo(code);
-  }
-
-  /* ═══ پرداخت امن: شماره کارت فقط از RPC کانونی — جدولِ کارت برای کلاینت غیرقابل‌خواندن است.
-     اگر کارت فعالی نباشد یا خطا بدهد، بی‌صدا به هماهنگی تلفنی برمی‌گردیم. ═══ */
-  async function loadPayInfo(code: string) {
-    const { data, error } = await supabase.rpc('pay_get_account', { p_order_code: code });
-    if (!error && data) setPayInfo(data as PayInfo);
-  }
-
-  async function copyText(value: string, tag: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = value;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    setCopied(tag);
-    setTimeout(() => setCopied(''), 1800);
   }
 
   if (loading) {
@@ -180,43 +134,6 @@ export default function OrderPage({ serviceId }: Props) {
             <h1>سفارش شما ثبت شد</h1>
             <p>کد پیگیری: <strong>{doneCode}</strong></p>
             <p>اگر ایمیل وارد کرده باشید، رسید سفارش همین حالا برایتان ارسال شد؛ همکاران ما نیز به‌زودی تماس می‌گیرند.</p>
-
-            {payInfo ? (
-              <div className="contact-card pay-card-box" style={{ textAlign: 'right', marginTop: '1.2rem', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', justifyContent: 'center', marginBottom: '.2rem' }}>
-                  <CreditCard size={18} />
-                  <strong style={{ fontSize: '1rem' }}>پرداخت سفارش — {payInfo.label}</strong>
-                </div>
-                <div className="order-line"><span>مبلغ قابل واریز</span><strong>{formatRial(payInfo.order.amount)}</strong></div>
-                <div className="order-line">
-                  <span>شماره کارت ({payInfo.bank_name})</span>
-                  <strong dir="ltr" style={{ letterSpacing: '.06em', display: 'inline-flex', alignItems: 'center', gap: '.4rem' }}>
-                    {group4(payInfo.card_number)}
-                    <button type="button" aria-label="کپی شماره کارت" onClick={() => void copyText(payInfo.card_number, 'card')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', padding: 2, color: 'inherit' }}>
-                      {copied === 'card' ? <Check size={15} color="#2e7d32" /> : <Copy size={15} />}
-                    </button>
-                  </strong>
-                </div>
-                <div className="order-line">
-                  <span>شماره شبا</span>
-                  <strong dir="ltr" style={{ letterSpacing: '.04em', display: 'inline-flex', alignItems: 'center', gap: '.4rem', fontSize: '.92em' }}>
-                    {formatSheba(payInfo.sheba)}
-                    <button type="button" aria-label="کپی شماره شبا" onClick={() => void copyText(payInfo.sheba, 'sheba')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', padding: 2, color: 'inherit' }}>
-                      {copied === 'sheba' ? <Check size={15} color="#2e7d32" /> : <Copy size={15} />}
-                    </button>
-                  </strong>
-                </div>
-                <div className="order-line"><span>به نام</span><strong>{payInfo.holder_name}</strong></div>
-                <p style={{ fontSize: '.82rem', color: 'var(--muted)', margin: '.6rem 0 0', display: 'flex', alignItems: 'center', gap: '.35rem', justifyContent: 'center' }}>
-                  <Landmark size={13} /> پس از واریز، رسید را برای پشتیبانی بفرستید تا سفارش سریع‌تر ثبت شود.
-                </p>
-              </div>
-            ) : (
-              <p className="muted-note" style={{ display: 'inline-flex', alignItems: 'center', gap: '.4rem', marginTop: '.6rem' }}>
-                <ShieldCheck size={14} /> هماهنگی پرداخت به‌صورت تلفنی انجام می‌شود.
-              </p>
-            )}
-
             <a className="button" href="/">بازگشت به خانه</a>
           </div>
         </div>
@@ -245,11 +162,11 @@ export default function OrderPage({ serviceId }: Props) {
 
         <form className="consult-form order-form" onSubmit={submit} noValidate>
           <label>
-            نام و نام خانوادگی <span className="req-star" title="الزامی">*</span>
+            نام و نام خانوادگی *
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="مثلاً: علی رضایی" />
           </label>
           <label>
-            شماره موبایل <span className="req-star" title="الزامی">*</span>
+            شماره موبایل *
             <input value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="۰۹۱۲…" inputMode="tel" className={mobile && mobileOk ? 'input-ok' : ''} />
           </label>
           {mobile && mobileOk ? <span className="ok-tick">✓ شماره معتبر است</span> : null}
@@ -269,13 +186,13 @@ export default function OrderPage({ serviceId }: Props) {
           <label className="terms-check">
             <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
             <span>
-              <a href="/قوانین" target="_blank" rel="noreferrer">قوانین و شرایط</a> کاربان را خواندم و می‌پذیرم. <span className="req-star" title="الزامی">*</span>
+              <a href="/قوانین" target="_blank" rel="noreferrer">قوانین و شرایط</a> کاربان را خواندم و می‌پذیرم. *
             </span>
           </label>
 
           {error ? <div className="form-error">{error}</div> : null}
 
-          <button className="button" disabled={sending}>
+          <button className="button" type="submit" disabled={sending}>
             {sending ? 'در حال ثبت…' : 'ثبت سفارش'} <ArrowLeft size={16} />
           </button>
           <p className="muted-note">

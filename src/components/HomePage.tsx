@@ -10,10 +10,10 @@ const icons: Record<string, typeof Sparkles> = {
 };
 
 const mainSections = [
-  { img: '/assets/images/sec-services.png', title: 'خدمات', desc: 'مشاوره تخصصی و نگارش اختصاصی', href: '/خدمات' },
-  { img: '/assets/images/sec-contracts.png', title: 'قراردادها', desc: 'بانک قرارداد تخصصی به تفکیک صنف', href: '/قراردادها' },
-  { img: '/assets/images/sec-requests.png', title: 'درخواست‌های اداری', desc: 'متن رسمی آماده برای هر نیاز', href: '/درخواست‌های-اداری' },
-  { img: '/assets/images/sec-knowledge.png', title: 'دانشنامه', desc: 'مقاله‌های حقوقی با استناد قانون', href: '/دانشنامه' },
+  { img: '/assets/images/sec-services.png', webp: '/assets/images/sec-services.webp', title: 'خدمات', desc: 'مشاوره تخصصی و نگارش اختصاصی', href: '/خدمات' },
+  { img: '/assets/images/sec-contracts.png', webp: '/assets/images/sec-contracts.webp', title: 'قراردادها', desc: 'بانک قرارداد تخصصی به تفکیک صنف', href: '/قراردادها' },
+  { img: '/assets/images/sec-requests.png', webp: '/assets/images/sec-requests.webp', title: 'درخواست‌های اداری', desc: 'متن رسمی آماده برای هر نیاز', href: '/درخواست‌های-اداری' },
+  { img: '/assets/images/sec-knowledge.png', webp: '/assets/images/sec-knowledge.webp', title: 'دانشنامه', desc: 'مقاله‌های حقوقی با استناد قانون', href: '/دانشنامه' },
 ];
 
 const serviceMenu = [
@@ -27,10 +27,10 @@ const serviceMenu = [
 ];
 
 const tools = [
-  { img: '/assets/images/tool-contract.png', title: 'ساخت قرارداد هوشمند', desc: 'قرارداد متناسب با نیاز شما، در چند مرحله.', href: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد' },
-  { img: '/assets/images/tool-salary.png', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق، بیمه و مالیات را دقیق برآورد کنید.', href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق' },
-  { img: '/assets/images/tool-retirement.png', title: 'ماشین‌حساب بازنشستگی', desc: 'تصویری روشن از مسیر بازنشستگی تأمین اجتماعی.', href: '/ابزارهای-هوش-مصنوعی/بازنشستگی' },
-  { img: '/assets/images/tool-health.png', title: 'تست سلامت کسب‌وکار', desc: 'نقاط قوت و ریسک کسب‌وکار را بشناسید.', href: '/ابزارهای-هوش-مصنوعی/تست-سلامت' },
+  { img: '/assets/images/tool-contract.png', webp: '/assets/images/tool-contract.webp', title: 'ساخت قرارداد هوشمند', desc: 'قرارداد متناسب با نیاز شما، در چند مرحله.', href: '/ابزارهای-هوش-مصنوعی/ساخت-قرارداد' },
+  { img: '/assets/images/tool-salary.png', webp: '/assets/images/tool-salary.webp', title: 'محاسبه حقوق و دستمزد ۱۴۰۵', desc: 'حقوق، بیمه و مالیات را دقیق برآورد کنید.', href: '/ابزارهای-هوش-مصنوعی/محاسبه-حقوق' },
+  { img: '/assets/images/tool-retirement.png', webp: '/assets/images/tool-retirement.webp', title: 'ماشین‌حساب بازنشستگی', desc: 'تصویری روشن از مسیر بازنشستگی تأمین اجتماعی.', href: '/ابزارهای-هوش-مصنوعی/بازنشستگی' },
+  { img: '/assets/images/tool-health.png', webp: '/assets/images/tool-health.webp', title: 'تست سلامت کسب‌وکار', desc: 'نقاط قوت و ریسک کسب‌وکار را بشناسید.', href: '/ابزارهای-هوش-مصنوعی/تست-سلامت' },
 ];
 
 export default function HomePage() {
@@ -66,7 +66,10 @@ export default function HomePage() {
       {/* ═══ هیرو: متن راست، تصویر بزرگ چپ ═══ */}
       <section className="hero-lux">
         <div className="hero-lux-media" aria-hidden="true">
-          <img src="/assets/images/hero-main.png" alt="" />
+          <picture>
+            <source type="image/webp" srcSet="/assets/images/hero-main.webp" />
+            <img src="/assets/images/hero-main.png" alt="" width={807} height={450} />
+          </picture>
         </div>
         <div className="container hero-lux-inner">
           <div className="hero-copy">
@@ -98,7 +101,10 @@ export default function HomePage() {
           {mainSections.map((item) => (
             <a className="section-card" href={item.href} key={item.title}>
               <div className="section-card-media">
-                <img src={item.img} alt={item.title} loading="lazy" />
+                <picture>
+                  <source type="image/webp" srcSet={item.webp} />
+                  <img src={item.img} alt={item.title} loading="lazy" width={807} height={450} />
+                </picture>
               </div>
               <h2>{item.title}</h2>
               <p>{item.desc}</p>
@@ -143,7 +149,10 @@ export default function HomePage() {
             {tools.map((item) => (
               <a className="tool-lux-card" href={item.href} key={item.title}>
                 <div className="tool-lux-media">
-                  <img src={item.img} alt={item.title} loading="lazy" />
+                  <picture>
+                    <source type="image/webp" srcSet={item.webp} />
+                    <img src={item.img} alt={item.title} loading="lazy" width={807} height={450} />
+                  </picture>
                 </div>
                 <h3>{item.title}</h3>
                 <p>{item.desc}</p>

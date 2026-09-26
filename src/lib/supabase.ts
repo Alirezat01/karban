@@ -7,9 +7,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    /* خواندن #access_token برمی‌گردد از فلوی OAuth گوگل */
+    /* خواندن ?code= (PKCE) یا #access_token (legacy) پس از برگشت OAuth گوگل */
     detectSessionInUrl: true,
-    /* فلوی implicit: توکن در fragment برمی‌گردد (رفتار فعلی پروژه) */
-    flowType: 'implicit',
+    /* فلوی PKCE (توصیهٔ supabase-js v2): کد یک‌بارمصرف به‌جای توکن در fragment —
+       نشست با exchangeCodeForSession در سرور ساپابیس مبادله می‌شود و توکن
+       دیگر در تاریخچهٔ مرورگر/ریفرر دیده نمی‌شود */
+    flowType: 'pkce',
   },
 });

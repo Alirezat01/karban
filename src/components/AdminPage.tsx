@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, Bell, Calculator, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
   Mail, MessagesSquare, Newspaper, Phone, Plus, Save, Send, ShieldCheck, ShoppingCart, SlidersHorizontal,
-  Star, Trash2, Users, Wallet, Wrench, KeyRound, CreditCard,
+  Star, Trash2, Users, Wrench, KeyRound, CreditCard,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
@@ -14,7 +14,7 @@ import { useCountUp } from '@/lib/reveal';
 import KarbanLoader from '@/components/KarbanLoader';
 import FaNumberInput from '@/components/FaNumberInput';
 
-type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'payment' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
+type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -210,8 +210,8 @@ export default function AdminPage() {
           <h1>ورود به پنل مدیریت</h1>
           <p>برای دسترسی، ایمیل و رمز عبور مدیریت را وارد کنید.</p>
           <form onSubmit={signIn}>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ایمیل *" aria-label="ایمیل (الزامی)" required />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="رمز عبور *" aria-label="رمز عبور (الزامی)" required />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ایمیل" aria-label="ایمیل" required />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="رمز عبور" aria-label="رمز عبور" required />
             {loginError && <small className="admin-error">{loginError}</small>}
             <button className="button" type="submit">
               ورود <ArrowLeft size={16} />
@@ -229,7 +229,7 @@ export default function AdminPage() {
           <ShieldCheck size={32} />
           <h1>دسترسی غیرمجاز</h1>
           <p>این حساب نقش مدیر ندارد. نقش کاربری باید در جدول profiles به admin تغییر کند.</p>
-          <button className="button" onClick={signOut}>
+          <button type="button" className="button" onClick={signOut}>
             خروج <LogOut size={16} />
           </button>
         </div>
@@ -254,7 +254,6 @@ export default function AdminPage() {
     { group: 'مالی و حسابداری', items: [
       ['accounting', 'تنظیمات حسابداری', Calculator],
       ['licenses', 'لایسنس‌های اشتراک', CreditCard],
-      ['payment', 'شماره کارت پرداخت', Wallet],
       ['telegram', 'اتصال تلگرام', Send],
     ] },
     { group: 'پشتیبانی', items: [
@@ -278,7 +277,7 @@ export default function AdminPage() {
             <h1>پنل مدیریت کاربان</h1>
             <span className="admin-badge">مدیر</span>
           </div>
-          <button className="admin-logout" onClick={signOut}>
+          <button type="button" className="admin-logout" onClick={signOut}>
             خروج <LogOut size={15} />
           </button>
         </div>
@@ -289,7 +288,7 @@ export default function AdminPage() {
               <div className="admin-side-group" key={g.group}>
                 <div className="admin-side-label">{g.group}</div>
                 {g.items.map(([key, label, Icon]) => (
-                  <button key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
+                  <button type="button" key={key} className={tab === key ? 'active' : ''} onClick={() => setTab(key)}>
                     <Icon size={15} aria-hidden /> {label}
                   </button>
                 ))}
@@ -304,7 +303,6 @@ export default function AdminPage() {
             {tab === 'accounting' && <AccountingTab />}
             {tab === 'licenses' && <LicensesTab />}
             {tab === 'telegram' && <TelegramTab />}
-            {tab === 'payment' && <PaymentTab />}
             {tab === 'contracts' && <ContractsTab />}
             {tab === 'articles' && <ArticlesTab />}
             {tab === 'requests' && <RequestsTab />}
@@ -406,7 +404,7 @@ function OverviewTab({ go }: { go: (tab: Tab) => void }) {
               </div>
             ))
           )}
-          <button className="button button-small" style={{ marginTop: '.7rem' }} onClick={() => go('orders')}>مدیریت سفارش‌ها</button>
+          <button type="button" className="button button-small" style={{ marginTop: '.7rem' }} onClick={() => go('orders')}>مدیریت سفارش‌ها</button>
         </div>
 
         <div className="admin-mini">
@@ -421,7 +419,7 @@ function OverviewTab({ go }: { go: (tab: Tab) => void }) {
               </div>
             ))
           )}
-          <button className="button button-small" style={{ marginTop: '.7rem' }} onClick={() => go('tickets')}>مدیریت تیکت‌ها</button>
+          <button type="button" className="button button-small" style={{ marginTop: '.7rem' }} onClick={() => go('tickets')}>مدیریت تیکت‌ها</button>
         </div>
       </div>
     </>
@@ -501,14 +499,14 @@ function ServicesTab() {
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
         <h2>مدیریت خدمات</h2>
-        <button className="button button-small" onClick={() => setShowAdd(!showAdd)}>
+        <button type="button" className="button button-small" onClick={() => setShowAdd(!showAdd)}>
           <Plus size={15} /> افزودن خدمت
         </button>
       </div>
 
       {showAdd && (
         <div className="admin-form">
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت *" aria-label="عنوان خدمت (الزامی)" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان خدمت" />
           <input value={form.price} onChange={(e) => setForm({ ...form, price: safeAmount(e.target.value) })} placeholder="قیمت" />
           <FaNumberInput value={form.discount_percent} onChange={(n) => setForm({ ...form, discount_percent: Math.max(0, Math.min(90, n)) })} placeholder="درصد تخفیف" />
           <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} placeholder="واحد" />
@@ -521,7 +519,7 @@ function ServicesTab() {
           <label>
             <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> پیشنهاد ویژه
           </label>
-          <button className="button button-small" onClick={add}>
+          <button type="button" className="button button-small" onClick={add}>
             <Save size={15} /> ذخیره
           </button>
         </div>
@@ -585,15 +583,15 @@ function ServicesTab() {
               <td>{editing === service.id ? <input type="checkbox" checked={service.featured} onChange={(e) => updateField(service.id, 'featured', e.target.checked)} /> : service.featured ? 'بله' : '—'}</td>
               <td className="admin-actions">
                 {editing === service.id ? (
-                  <button className="button button-small" onClick={() => save(service.id)}>
+                  <button type="button" className="button button-small" onClick={() => save(service.id)}>
                     <Save size={14} />
                   </button>
                 ) : (
-                  <button className="button button-small" onClick={() => setEditing(service.id)}>
+                  <button type="button" className="button button-small" onClick={() => setEditing(service.id)}>
                     ویرایش
                   </button>
                 )}
-                <button className="admin-delete" onClick={() => remove(service.id)}>
+                <button type="button" className="admin-delete" onClick={() => remove(service.id)}>
                   <Trash2 size={14} />
                 </button>
               </td>
@@ -713,7 +711,7 @@ function SettingsTab() {
         <NumField label="سابقه بدون شرط سن (سال)" value={p.retirement.max_years} onChange={(n) => setP({ ...p, retirement: { ...p.retirement, max_years: n } })} />
       </div>
 
-      <button className="button button-green" onClick={save}>
+      <button type="button" className="button button-green" onClick={save}>
         <Save size={16} /> ذخیره تنظیمات
       </button>
       {saved && <small className="admin-success">✓ تنظیمات ذخیره شد و در همه ماشین‌حساب‌ها اعمال می‌شود.</small>}
@@ -814,7 +812,7 @@ function AccountingTab() {
         </label>
       </div>
 
-      <button className="button button-green" onClick={save}>
+      <button type="button" className="button button-green" onClick={save}>
         <Save size={16} /> ذخیره تنظیمات حسابداری
       </button>
       {saved && <small className="admin-success">✓ ذخیره شد — در پنل کاربران و صفحه فرود حسابداری اعمال می‌شود.</small>}
@@ -887,7 +885,7 @@ function ContractsTab() {
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
         <h2>قراردادها</h2>
-        <button className="button button-small" onClick={() => setShowAdd(!showAdd)}>
+        <button type="button" className="button button-small" onClick={() => setShowAdd(!showAdd)}>
           <Plus size={15} /> افزودن قرارداد
         </button>
       </div>
@@ -909,9 +907,9 @@ function ContractsTab() {
               </option>
             ))}
           </select>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان *" aria-label="عنوان (الزامی)" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان" />
           <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
-          <button className="button button-small" onClick={add}>
+          <button type="button" className="button button-small" onClick={add}>
             <Save size={15} /> ذخیره
           </button>
         </div>
@@ -937,10 +935,10 @@ function ContractsTab() {
                 <td>{contract.industry || '—'}</td>
                 <td>{contract.summary || '—'}</td>
                 <td className="admin-actions">
-                  <button className="button button-small" onClick={() => (editing === contract.id ? setEditing(null) : startEdit(contract))}>
+                  <button type="button" className="button button-small" onClick={() => (editing === contract.id ? setEditing(null) : startEdit(contract))}>
                     {editing === contract.id ? 'لغو' : 'ویرایش'}
                   </button>
-                  <button className="admin-delete" onClick={() => remove(contract.id)}>
+                  <button type="button" className="admin-delete" onClick={() => remove(contract.id)}>
                     <Trash2 size={14} />
                   </button>
                 </td>
@@ -969,7 +967,7 @@ function ContractsTab() {
                       <textarea value={editForm.summary} onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })} placeholder="خلاصه" rows={3} style={{ width: '100%', resize: 'vertical' }} />
                       <textarea value={editForm.body} onChange={(e) => setEditForm({ ...editForm, body: e.target.value })} placeholder="متن قرارداد" rows={8} style={{ width: '100%', resize: 'vertical' }} />
                       <input value={editForm.pdf_url} onChange={(e) => setEditForm({ ...editForm, pdf_url: e.target.value })} placeholder="آدرس PDF" />
-                      <button className="button button-small" onClick={() => saveEdit(contract.id)}>
+                      <button type="button" className="button button-small" onClick={() => saveEdit(contract.id)}>
                         <Save size={15} /> ذخیره
                       </button>
                     </div>
@@ -983,7 +981,7 @@ function ContractsTab() {
               <td colSpan={6}>
                 <div className="admin-empty">
                   <p>هیچ قراردادی ثبت نشده است.</p>
-                  <button className="button button-small" onClick={migrateLegacy} disabled={migrating}>
+                  <button type="button" className="button button-small" onClick={migrateLegacy} disabled={migrating}>
                     <ArrowLeft size={15} /> {migrating ? 'در حال انتقال...' : 'انتقال ۶۰ قرارداد از نسخه قدیمی'}
                   </button>
                 </div>
@@ -1058,7 +1056,7 @@ function ArticlesTab() {
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
         <h2>مدیریت مقاله‌های دانشنامه</h2>
-        <button className="button button-small" onClick={() => (showForm ? setShowForm(false) : openAdd())}>
+        <button type="button" className="button button-small" onClick={() => (showForm ? setShowForm(false) : openAdd())}>
           <Plus size={15} /> {showForm ? 'بستن فرم' : 'افزودن مقاله'}
         </button>
       </div>
@@ -1072,17 +1070,17 @@ function ArticlesTab() {
               </option>
             ))}
           </select>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان مقاله *" aria-label="عنوان مقاله (الزامی)" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان مقاله" />
           <textarea value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="چکیده (۱–۲ خط)" rows={2} style={{ width: '100%', resize: 'vertical' }} />
           <input value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} placeholder="نویسنده" />
           <textarea
             value={form.body}
             onChange={(e) => setForm({ ...form, body: e.target.value })}
-            placeholder={'متن مقاله * — پاراگراف‌ها را با یک خط خالی جدا کن؛ برای سرتیتر، اول خط بنویس: ## '}
+            placeholder={'متن مقاله — پاراگراف‌ها را با یک خط خالی جدا کن؛ برای سرتیتر، اول خط بنویس: ## '}
             rows={14}
             style={{ width: '100%', resize: 'vertical' }}
           />
-          <button className="button button-small" onClick={save}>
+          <button type="button" className="button button-small" onClick={save}>
             <Save size={15} /> {editingId ? 'به‌روزرسانی' : 'انتشار مقاله'}
           </button>
           {status && <small className="admin-success">{status}</small>}
@@ -1107,10 +1105,10 @@ function ArticlesTab() {
               <td>{article.category}</td>
               <td>{article.author}</td>
               <td className="admin-actions">
-                <button className="button button-small" onClick={() => openEdit(article)}>
+                <button type="button" className="button button-small" onClick={() => openEdit(article)}>
                   ویرایش
                 </button>
-                <button className="admin-delete" onClick={() => remove(article.id)}>
+                <button type="button" className="admin-delete" onClick={() => remove(article.id)}>
                   <Trash2 size={14} />
                 </button>
               </td>
@@ -1188,7 +1186,7 @@ function RequestsTab() {
     <div className="admin-table-wrap">
       <div className="admin-toolbar">
         <h2>مدیریت درخواست‌های اداری</h2>
-        <button className="button button-small" onClick={() => (showForm ? setShowForm(false) : openAdd())}>
+        <button type="button" className="button button-small" onClick={() => (showForm ? setShowForm(false) : openAdd())}>
           <Plus size={15} /> {showForm ? 'بستن فرم' : 'افزودن درخواست'}
         </button>
       </div>
@@ -1202,16 +1200,16 @@ function RequestsTab() {
               </option>
             ))}
           </select>
-          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان درخواست (مثلاً استعفانامه) *" aria-label="عنوان درخواست (الزامی)" />
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان درخواست (مثلاً استعفانامه)" />
           <textarea value={form.intro} onChange={(e) => setForm({ ...form, intro: e.target.value })} placeholder="توضیح کوتاه برای کارت" rows={2} style={{ width: '100%', resize: 'vertical' }} />
           <textarea
             value={form.body}
             onChange={(e) => setForm({ ...form, body: e.target.value })}
-            placeholder={'متن کامل درخواست * — جاهای خالی را با ……… بگذار'}
+            placeholder={'متن کامل درخواست — جاهای خالی را با ……… بگذار'}
             rows={12}
             style={{ width: '100%', resize: 'vertical' }}
           />
-          <button className="button button-small" onClick={save}>
+          <button type="button" className="button button-small" onClick={save}>
             <Save size={15} /> {editingId ? 'به‌روزرسانی' : 'انتشار درخواست'}
           </button>
           {status && <small className="admin-success">{status}</small>}
@@ -1236,10 +1234,10 @@ function RequestsTab() {
               <td>{item.category}</td>
               <td>{item.intro || '—'}</td>
               <td className="admin-actions">
-                <button className="button button-small" onClick={() => openEdit(item)}>
+                <button type="button" className="button button-small" onClick={() => openEdit(item)}>
                   ویرایش
                 </button>
-                <button className="admin-delete" onClick={() => remove(item.id)}>
+                <button type="button" className="admin-delete" onClick={() => remove(item.id)}>
                   <Trash2 size={14} />
                 </button>
               </td>
@@ -1311,7 +1309,7 @@ function LeadsTab() {
               <td>{fmtDate(lead.created_at)}</td>
               <td>{ordered.has(lead.mobile) ? <small className="admin-success">سفارش داده ✓</small> : <small className="admin-error">هنوز سفارش نداده</small>}</td>
               <td>
-                <button className="admin-delete" onClick={() => remove(lead.id)}>
+                <button type="button" className="admin-delete" onClick={() => remove(lead.id)}>
                   <Trash2 size={14} />
                 </button>
               </td>
@@ -1392,7 +1390,7 @@ function OrdersTab() {
               </td>
               <td>{fmtDate(order.created_at)}</td>
               <td>
-                <button className="admin-delete" onClick={() => remove(order.id)}>
+                <button type="button" className="admin-delete" onClick={() => remove(order.id)}>
                   <Trash2 size={14} />
                 </button>
               </td>
@@ -1494,10 +1492,10 @@ function ConsultationsTab() {
                       <input
                         value={note[id] || ''}
                         onChange={(e) => setNote({ ...note, [id]: e.target.value })}
-                        placeholder="پاسخ به کاربر… *"
+                        placeholder="پاسخ به کاربر…"
                         style={{ minWidth: 140 }}
                       />
-                      <button className="button button-small" onClick={() => reply(item)}>ارسال</button>
+                      <button type="button" className="button button-small" onClick={() => reply(item)}>ارسال</button>
                     </div>
                     {item.admin_note ? <small style={{ display: 'block', marginTop: '.3rem' }}>قبلی: {String(item.admin_note)}</small> : null}
                   </td>
@@ -1590,7 +1588,7 @@ function TicketsTab() {
                   </select>
                 </td>
                 <td>{fmtDate(t.created_at)}</td>
-                <td><button className="button button-small" onClick={() => openTicket(t.id)}>{openId === t.id ? 'باز است' : 'نمایش'}</button></td>
+                <td><button type="button" className="button button-small" onClick={() => openTicket(t.id)}>{openId === t.id ? 'باز است' : 'نمایش'}</button></td>
               </tr>
             ))}
             {tickets.length === 0 && <tr><td colSpan={5}>تیکتی ثبت نشده است.</td></tr>}
@@ -1606,13 +1604,13 @@ function TicketsTab() {
               <header><strong>{m.sender === 'admin' ? 'پشتیبانی' : 'کاربر'}</strong> <small>{fmtDate(m.created_at)}</small></header>
               <p>{m.body}</p>
               {m.attachment_path && (
-                <button className="text-link" onClick={() => openFile(m.attachment_path!)}>فایل پیوست</button>
+                <button type="button" className="text-link" onClick={() => openFile(m.attachment_path!)}>فایل پیوست</button>
               )}
             </div>
           ))}
           <div style={{ display: 'flex', gap: '.5rem', marginTop: '.8rem', flexWrap: 'wrap' }}>
-            <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="پاسخ پشتیبانی… *" style={{ flex: 1, minWidth: 200 }} />
-            <button className="button button-small" onClick={send}>ارسال پاسخ + اعلان</button>
+            <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="پاسخ پشتیبانی…" style={{ flex: 1, minWidth: 200 }} />
+            <button type="button" className="button button-small" onClick={send}>ارسال پاسخ + اعلان</button>
           </div>
         </div>
       )}
@@ -1654,7 +1652,7 @@ function FeedbackTab() {
               <td>{'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)}</td>
               <td style={{ maxWidth: 300 }}>{f.comment || '—'}</td>
               <td>{fmtDate(f.created_at)}</td>
-              <td><button className="button button-small button-outline" onClick={() => remove(f.id)}>حذف</button></td>
+              <td><button type="button" className="button button-small button-outline" onClick={() => remove(f.id)}>حذف</button></td>
             </tr>
           ))}
           {items.length === 0 && <tr><td colSpan={6}>بازخوردی ثبت نشده است.</td></tr>}
@@ -1688,7 +1686,7 @@ function NotifsTab() {
   return (
     <div className="contact-card calc-card" style={{ maxWidth: 560 }}>
       <h2>ارسال اعلان به همه کاربران</h2>
-      <label>عنوان <span className="req-star">*</span>
+      <label>عنوان
         <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="مثلاً: تغییر قوانین بیمه ۱۴۰۵" />
       </label>
       <label>متن اعلان
@@ -1697,7 +1695,7 @@ function NotifsTab() {
       <label>لینک (اختیاری)
         <input value={form.href} onChange={(e) => setForm({ ...form, href: e.target.value })} placeholder="/داشبورد" />
       </label>
-      <button className="button" onClick={broadcast} disabled={state === 'sending'}>
+      <button type="button" className="button" onClick={broadcast} disabled={state === 'sending'}>
         {state === 'sending' ? 'در حال ارسال…' : 'ارسال به همه'}
       </button>
       {state === 'done' && <small className="admin-success">اعلان برای همه کاربران ثبت شد.</small>}
@@ -1777,23 +1775,23 @@ function UsersTab() {
       <p>برای امنیت، رمزها با SHA-256 ذخیره می‌شوند و ورود ناموفق ۵ باره، ۵ دقیقه قفل ایجاد می‌کند.</p>
       <div className="settings-grid">
         <label className="settings-field">
-          ایمیل مدیر جدید <span className="req-star">*</span>
+          ایمیل مدیر جدید
           <input value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
         </label>
         <label className="settings-field">
-          رمز مدیر جدید <span className="req-star">*</span>
+          رمز مدیر جدید
           <input type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
         </label>
         <label className="settings-field">
-          رمز جدید حساب فعلی <span className="req-star">*</span>
+          رمز جدید حساب فعلی
           <input type="password" value={changePassword} onChange={(e) => setChangePassword(e.target.value)} />
         </label>
       </div>
       <div className="admin-actions-row">
-        <button className="button button-green" onClick={addAdmin}>
+        <button type="button" className="button button-green" onClick={addAdmin}>
           <Plus size={15} /> افزودن مدیر
         </button>
-        <button className="button button-green" onClick={changeOwnPassword}>
+        <button type="button" className="button button-green" onClick={changeOwnPassword}>
           <Save size={15} /> تغییر رمز
         </button>
       </div>
@@ -1817,7 +1815,7 @@ function UsersTab() {
               <td className="mono">{user.password_sha256 || '—'}</td>
               <td>
                 {user.role !== 'admin' && (
-                  <button className="button button-small" onClick={() => promoteToAdmin(user.id)}>
+                  <button type="button" className="button button-small" onClick={() => promoteToAdmin(user.id)}>
                     مدیر کن
                   </button>
                 )}
@@ -1978,7 +1976,7 @@ function LicensesTab() {
 
       <div className="admin-form" style={{ alignItems: 'end' }}>
         <label className="settings-field" style={{ minWidth: 220 }}>
-          ایمیل کاربر <span className="req-star">*</span>
+          ایمیل کاربر
           <input value={grantEmail} onChange={(e) => setGrantEmail(e.target.value)} placeholder="user@example.com" dir="ltr" />
         </label>
         <label className="settings-field">
@@ -1993,13 +1991,13 @@ function LicensesTab() {
           مدت (ماه)
           <FaNumberInput value={grantMonths} onChange={(n) => setGrantMonths(Math.max(1, Math.round(n)))} style={{ minWidth: 90 }} />
         </label>
-        <button className="button button-green" onClick={grant}><KeyRound size={15} /> فعال‌سازی / تمدید</button>
+        <button type="button" className="button button-green" onClick={grant}><KeyRound size={15} /> فعال‌سازی / تمدید</button>
       </div>
       {status && <small className="admin-success">{status}</small>}
 
       <div style={{ display: 'flex', gap: '.4rem', margin: '1rem 0 .6rem' }}>
         {([['all', 'همه'], ['active', 'فعال'], ['trial', 'آزمایشی'], ['suspended', 'معلق']] as const).map(([k, l]) => (
-          <button key={k} className={`button button-small ${filter === k ? 'button-green' : 'button-outline'}`} onClick={() => setFilter(k)}>
+          <button type="button" key={k} className={`button button-small ${filter === k ? 'button-green' : 'button-outline'}`} onClick={() => setFilter(k)}>
             {l} {formatFaNumber(rows.filter((r) => k === 'all' || r.status === k).length)}
           </button>
         ))}
@@ -2025,7 +2023,7 @@ function LicensesTab() {
               <td>{row.expires_at ? fmtDate(row.expires_at) : '—'}</td>
               <td>{fmtDate(row.created_at)}</td>
               <td className="admin-actions">
-                <button className="button button-small" onClick={() => extend(row)}>تمدید</button>
+                <button type="button" className="button button-small" onClick={() => extend(row)}>تمدید</button>
               </td>
             </tr>
           ))}
@@ -2044,6 +2042,7 @@ function TelegramTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [testMsg] = useState('');
   const [testResult, setTestResult] = useState('');
   const [queueCount, setQueueCount] = useState(0);
 
@@ -2079,7 +2078,7 @@ function TelegramTab() {
 
   const sendTest = async () => {
     setTestResult('در حال ارسال…');
-    const r = await sendTelegramDirect(cfg, '✅ اتصال کاربان به تلگرام برقرار شد.');
+    const r = await sendTelegramDirect(cfg, testMsg.trim() || '✅ اتصال کاربان به تلگرام برقرار شد.');
     setTestResult(r.ok ? '✅ پیام به تلگرام ارسال شد — چک کنید.' : `❌ ${r.error}`);
   };
 
@@ -2122,8 +2121,8 @@ function TelegramTab() {
       </label>
 
       <div className="admin-actions-row">
-        <button className="button button-green" onClick={save} disabled={saving}><Save size={15} /> {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}</button>
-        <button className="button" onClick={sendTest}><Send size={15} /> ارسال پیام تست</button>
+        <button type="button" className="button button-green" onClick={save} disabled={saving}><Save size={15} /> {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}</button>
+        <button type="button" className="button" onClick={sendTest}><Send size={15} /> ارسال پیام تست</button>
       </div>
       {saved && <small className="admin-success">✓ تنظیمات ذخیره شد (به‌صورت امن در site_secrets — فقط ادمین).</small>}
       {testResult && <small className="admin-success">{testResult}</small>}
@@ -2133,184 +2132,10 @@ function TelegramTab() {
         <p style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: '.3rem' }}>
           پیام‌های رویدادهای کاربران ابتدا در صف امن ذخیره می‌شوند و هر بار که این تب را باز کنید، خودکار به تلگرام ارسال و از صف حذف می‌شوند.
         </p>
-        <button className="button button-small" onClick={() => drainTelegramQueue(cfg).then((n) => { setTestResult(`${n} پیام ارسال شد.`); setQueueCount(0); })}>
+        <button type="button" className="button button-small" onClick={() => drainTelegramQueue(cfg).then((n) => { setTestResult(`${n} پیام ارسال شد.`); setQueueCount(0); })}>
           ارسال صف الان
         </button>
       </div>
-    </div>
-  );
-}
-
-/* ═══════════ PaymentTab — مدیریت شماره کارت پرداخت (راند ۷) ═══════════
-   شماره کارت تجاری کاربان در جدول pay_accounts نگهداری می‌شود که RLS آن
-   کاملاً بسته است (هیچ سیاست و گرانتی برای anon/authenticated وجود ندارد).
-   مشتری فقط از طریق RPC امنِ pay_get_account و با کد پیگیریِ یک سفارش
-   واقعی کارت را می‌بیند (با محدودیت نرخ و لاگ کامل دسترسی). ═══════════ */
-
-type PayAccount = {
-  id: string; label: string; holder_name: string; bank_name: string;
-  card_number: string; sheba: string; is_active: boolean; created_at: string;
-};
-type PayLog = { order_code: string | null; ip_hash: string | null; outcome: string; detail: string | null; fetched_at: string };
-
-const PAY_OUTCOME_FA: Record<string, string> = {
-  ok: 'نمایش موفق',
-  bad_code: 'کد نامعتبر',
-  rate_limited: 'محدودیت نرخ',
-  no_account: 'کارت فعال نبود',
-  expired: 'سفارش قدیمی',
-  error: 'خطا',
-};
-
-function PaymentTab() {
-  const [accounts, setAccounts] = useState<PayAccount[] | null>(null);
-  const [log, setLog] = useState<PayLog[]>([]);
-  const [form, setForm] = useState({ label: 'حساب تجاری کاربان', holder_name: '', bank_name: '', card_number: '', sheba: '' });
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-  const [showFull, setShowFull] = useState(false);
-
-  const load = React.useCallback(async () => {
-    const { data } = await supabase.rpc('pay_account_admin_get');
-    setAccounts((data as PayAccount[]) ?? []);
-    const { data: lg } = await supabase.rpc('pay_account_admin_log', { p_limit: 15 });
-    setLog((lg as PayLog[]) ?? []);
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const save = async () => {
-    setErr(''); setMsg('');
-    setSaving(true);
-    const { error } = await supabase.rpc('pay_account_upsert', {
-      p_holder_name: form.holder_name.trim(),
-      p_bank_name: form.bank_name.trim(),
-      p_card_number: form.card_number.trim(),
-      p_sheba: form.sheba.trim().toUpperCase(),
-      p_label: form.label.trim() || 'حساب تجاری کاربان',
-    });
-    setSaving(false);
-    if (error) { setErr(error.message || 'ثبت انجام نشد'); return; }
-    setMsg('✓ شماره کارت جدید فعال شد — از این لحظه مشتریان در صفحهٔ پرداخت سفارش همین را می‌بینند.');
-    setForm({ ...form, holder_name: '', bank_name: '', card_number: '', sheba: '' });
-    void load();
-  };
-
-  const group4 = (s: string) => s.replace(/(\d{4})(?=\d)/g, '$1 ');
-  const active = accounts?.find((a) => a.is_active) || null;
-  const past = accounts?.filter((a) => !a.is_active) || [];
-  const digitsOnly = (v: string) => v
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-    .replace(/[^0-9IR]/g, '');
-
-  return (
-    <div className="admin-settings">
-      <h2>شماره کارت پرداخت (حساب تجاری کاربان)</h2>
-      <p>
-        مشتری بعد از ثبت سفارش، این کارت را در صفحهٔ موفقیت سفارش می‌بیند. کارت در جدولی
-        با امنیت کامل نگهداری می‌شود که هیچ نقشی اجازهٔ خواندن مستقیم آن را ندارد و فقط
-        با «کد پیگیری سفارش واقعی» + محدودیت نرخ + لاگ دسترسی نمایش داده می‌شود؛ یعنی
-        هیچ‌کس نمی‌تواند آن را از دیتابیس بیرون بکشد.
-      </p>
-
-      {accounts === null ? (
-        <KarbanLoader label="در حال بارگذاری کارت…" />
-      ) : (
-        <>
-          {active ? (
-            <div style={{ margin: '.9rem 0', padding: '.9rem 1rem', borderRadius: 12, border: '1px solid var(--line)', background: 'rgba(46,125,50,.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
-                <b>کارت فعال:</b>
-                <span dir="ltr">{showFull ? group4(active.card_number) : `•••• •••• •••• ${active.card_number.slice(-4)}`}</span>
-                <button className="button button-small" onClick={() => setShowFull(!showFull)}>{showFull ? 'پنهان' : 'نمایش کامل'}</button>
-              </div>
-              <div style={{ fontSize: '.85rem', color: 'var(--muted)', marginTop: '.35rem' }}>
-                {active.bank_name} — به نام {active.holder_name} — شبا <span dir="ltr">{active.sheba}</span>
-              </div>
-            </div>
-          ) : (
-            <small className="admin-error" style={{ display: 'block', margin: '.6rem 0' }}>
-              هنوز هیچ کارت فعالی ثبت نشده — مشتریان فعلاً پیام «هماهنگی تلفنی» می‌بینند.
-            </small>
-          )}
-
-          <h3>{active ? 'تعویض کارت (کارت قبلی غیرفعال می‌شود)' : 'ثبت کارت جدید'}</h3>
-          <div className="settings-grid">
-            <label className="settings-field">
-              عنوان نمایشی
-              <input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="حساب تجاری کاربان" />
-            </label>
-            <label className="settings-field">
-              نام صاحب حساب <b style={{ color: '#ef5350' }}>*</b>
-              <input value={form.holder_name} onChange={(e) => setForm({ ...form, holder_name: e.target.value })} placeholder="دقیقاً مطابق کارت بانکی" />
-            </label>
-            <label className="settings-field">
-              نام بانک <b style={{ color: '#ef5350' }}>*</b>
-              <input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} placeholder="مثلاً بانک تجارت" />
-            </label>
-            <label className="settings-field">
-              شماره کارت ۱۶ رقمی <b style={{ color: '#ef5350' }}>*</b>
-              <input value={form.card_number} onChange={(e) => setForm({ ...form, card_number: digitsOnly(e.target.value).replace(/[^0-9]/g, '').slice(0, 16) })} placeholder="۶۰۳۷…" dir="ltr" inputMode="numeric" />
-            </label>
-            <label className="settings-field" style={{ gridColumn: 'span 2' }}>
-              شماره شبا (IR + ۲۴ رقم) <b style={{ color: '#ef5350' }}>*</b>
-              <input value={form.sheba} onChange={(e) => setForm({ ...form, sheba: digitsOnly(e.target.value).slice(0, 26) })} placeholder="IR…" dir="ltr" inputMode="numeric" />
-            </label>
-          </div>
-
-          <div className="admin-actions-row">
-            <button className="button button-green" onClick={save} disabled={saving || !form.holder_name || !form.bank_name || form.card_number.length !== 16 || form.sheba.length !== 26}>
-              <Save size={15} /> {saving ? 'در حال ذخیره…' : 'فعال‌سازی کارت'}
-            </button>
-          </div>
-          {msg && <small className="admin-success" style={{ display: 'block', marginTop: '.4rem' }}>{msg}</small>}
-          {err && <small className="admin-error" style={{ display: 'block', marginTop: '.4rem' }}>✕ {err}</small>}
-
-          {past.length > 0 && (
-            <>
-              <h3>کارت‌های قبلی (غیرفعال)</h3>
-              <div className="admin-table-wrap">
-                <table>
-                  <thead><tr><th>عنوان</th><th>کارت</th><th>بانک</th><th>تاریخ ثبت</th></tr></thead>
-                  <tbody>
-                    {past.map((a) => (
-                      <tr key={a.id}>
-                        <td>{a.label}</td>
-                        <td dir="ltr">•••• {a.card_number.slice(-4)}</td>
-                        <td>{a.bank_name}</td>
-                        <td>{formatFaDate(a.created_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {log.length > 0 && (
-            <>
-              <h3>آخرین دسترسی‌ها به شماره کارت</h3>
-              <div className="admin-table-wrap">
-                <table>
-                  <thead><tr><th>کد سفارش</th><th>نتیجه</th><th>اثر انگشت IP</th><th>زمان</th></tr></thead>
-                  <tbody>
-                    {log.map((l, i) => (
-                      <tr key={i}>
-                        <td dir="ltr">{l.order_code || '—'}</td>
-                        <td>{PAY_OUTCOME_FA[l.outcome] || l.outcome}</td>
-                        <td dir="ltr" style={{ fontSize: '.75rem' }}>{l.ip_hash ? l.ip_hash.slice(0, 10) : '—'}</td>
-                        <td>{formatFaDate(l.fetched_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </>
-      )}
     </div>
   );
 }

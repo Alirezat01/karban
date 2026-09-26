@@ -138,7 +138,10 @@ export default function ArticlePage({ title, category, contractId }: Props) {
     <section className="inner-page">
       <div className="container article-shell">
         <div className="print-only print-head">
-          <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
+          <picture>
+            <source type="image/webp" srcSet="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.webp" />
+            <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" width={669} height={373} />
+          </picture>
           <div>
             <strong>کاربان | karbanapp.ir</strong>
             <span>{contractData?.title || title}</span>
@@ -219,7 +222,7 @@ export default function ArticlePage({ title, category, contractId }: Props) {
                     setMobile(event.target.value);
                     setStatus('idle');
                   }}
-                  placeholder="شماره موبایل *"
+                  placeholder="شماره موبایل"
                   aria-label="شماره موبایل"
                   style={{ flex: 1, minWidth: '180px', padding: '0.65rem 1rem', border: '1.5px solid var(--line)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--text)' }}
                 />

@@ -48,7 +48,7 @@ export function RequestsListPage() {
           <strong>دسته‌بندی درخواست‌ها</strong>
           <div className="filter-row">
             {['همه', ...REQUEST_CATEGORIES].map((c) => (
-              <button key={c} className={`button button-small ${cat === c ? 'button-green' : ''}`} onClick={() => setCat(c)}>
+              <button type="button" key={c} className={`button button-small ${cat === c ? 'button-green' : ''}`} onClick={() => setCat(c)}>
                 {c}
               </button>
             ))}
@@ -214,7 +214,10 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
     <section className="inner-page">
       <div className="container narrow-content">
         <div className="print-only print-head">
-          <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" />
+          <picture>
+            <source type="image/webp" srcSet="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.webp" />
+            <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="کاربان" width={669} height={373} />
+          </picture>
           <div>
             <strong>کاربان | karbanapp.ir</strong>
             <span>{item.title}</span>
@@ -230,10 +233,10 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
         <div className="print-only print-watermark">کاربان</div>
 
         <div className="no-print" style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-          <button className="button" onClick={copy}>
+          <button type="button" className="button" onClick={copy}>
             <Copy size={16} /> {copied ? 'کپی شد ✓' : 'کپی متن'}
           </button>
-          <button className="button" onClick={() => setGateOpen((v) => !v)}>
+          <button type="button" className="button" onClick={() => setGateOpen((v) => !v)}>
             <Printer size={16} /> دانلود PDF
           </button>
           <a className="button" href="/درخواست‌های-اداری">بازگشت به فهرست</a>
@@ -254,7 +257,7 @@ export function RequestViewPage({ requestId }: { requestId: string }) {
                     setMobile(event.target.value);
                     setStatus('idle');
                   }}
-                  placeholder="شماره موبایل *"
+                  placeholder="شماره موبایل"
                   aria-label="شماره موبایل"
                   style={{ flex: 1, minWidth: '180px', padding: '0.65rem 1rem', border: '1.5px solid var(--line)', borderRadius: '12px', background: 'var(--surface2)', color: 'var(--text)' }}
                 />

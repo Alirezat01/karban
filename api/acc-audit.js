@@ -4,11 +4,12 @@
    فراخوانی:
      • GET  /api/acc-audit        → Vercel Cron (روزانه) + مرورگر
      • POST /api/acc-audit        → GitHub Actions / دستی
-   احراز هویت (اختیاری ولی توصیه‌شده):
+   احراز هویت (اجباری — fail-closed):
      • env ورسل: AUDIT_TOKEN → فراخواننده باید ?key=... یا هدر x-audit-key بفرستد
      • env ورسل: CRON_SECRET  → Vercel Cron خودش «Authorization: Bearer» می‌فرستد
-     • اگر هیچ‌کدام تنظیم نشده باشد: اجرای آزاد با محدودیت زمانی (هر ۱۰ دقیقه یک‌بار)
-       و پاسخ فقط نسخه عمومی (بدون داده‌های واقعی مشتریان)
+     • اگر هیچ‌کدام تنظیم نشده باشد: endpoint با 503 رد می‌شود (بدون اجرای آزاد)
+     • فراخوانندهٔ فاقد توکن معتبر: فقط گزارش کش‌شده (site_secrets.acc_audit_report)
+       را می‌بیند — هرگز اجرای کامل با service_role راه نمی‌افتد
    ذخیره گزارش کامل: site_secrets.key = 'acc_audit_report'
    اعلان: تلگرام ادمین با TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID (از env ورسل)
    نکته: موتور حسابرسی در lib-audit/audit-core.js است (خارج از api/ تا ورسل
@@ -95,6 +96,9 @@ export default async function handler(req, res) {
   try {
     if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { ok: false, error: 'method_not_allowed' });
 
+    /* نکته: اینجا از URL گلوبال استفاده می‌کنیم؛ متغیر ساپابیس عمداً SB_URL نام دارد
+       تا خطای TDZ («Cannot access 'URL' before initialization») که نسخهٔ قبلی را
+       روی production کاملاً از کار می‌انداخت تکرار نشود. */
     const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const q = u.searchParams;
     const AUDIT_TOKEN = process.env.AUDIT_TOKEN || '';
@@ -102,12 +106,21 @@ export default async function handler(req, res) {
     const authHeader = req.headers.authorization || '';
     const providedKey = q.get('key') || req.headers['x-audit-key'] || '';
 
+    /* fail-closed: بدون هیچ توکنی، endpoint اصلاً سرویس نمی‌شود */
+    if (!AUDIT_TOKEN && !CRON_SECRET) {
+      return json(res, 503, {
+        ok: false,
+        error: 'service_not_configured',
+        hint: 'در Vercel → Settings → Environment Variables مقدار AUDIT_TOKEN (و برای کرون CRON_SECRET) را تنظیم کنید و redeploy کنید.',
+      });
+    }
+
     const authorized = AUDIT_TOKEN
       ? (providedKey === AUDIT_TOKEN || (CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`))
       : !!(CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`); /* بدون AUDIT_TOKEN: فقط کرون مجاز شناخته می‌شود؛ بقیه مهمان هستند */
 
-    /* ── پیکربندی ساپابیس از env ورسل ── */
-    const { URL, SRK } = resolveConfig(process.env);
+    /* ── پیکربندی ساپابیس از env ورسل (نام SB_URL تا سایه روی URL گلوبال نیفتد) ── */
+    const { URL: SB_URL, SRK } = resolveConfig(process.env);
     if (!SRK) {
       return json(res, 500, {
         ok: false,
@@ -116,14 +129,31 @@ export default async function handler(req, res) {
       });
     }
 
-    /* ── محدودیت زمانی: هر ۱۰ دقیقه یک اجرا (مگر force با توکن معتبر) ── */
+    /* ── محدودیت زمانی: هر ۱۰ دقیقه یک اجرا (مگر force با توکن معتبر) ──
+       مهمان (بدون توکن معتبر) هرگز به اجرای کامل نمی‌رسد؛ فقط گزارش کش‌شده. */
     const force = q.get('force') === '1' && authorized;
     if (!force) {
-      const last = await readSecret(URL, SRK, KEY_LAST);
+      const last = await readSecret(SB_URL, SRK, KEY_LAST);
       const lastAt = last?.value ? new Date(String(typeof last.value === 'string' ? last.value.replace(/^"|"$/g, '') : last.value)) : null;
-      if (lastAt && !Number.isNaN(lastAt.getTime()) && Date.now() - lastAt.getTime() < RATE_LIMIT_MS) {
-        const cachedFull = await readSecret(URL, SRK, KEY_REPORT);
-        const cached = cachedFull?.value ? safeParse(cachedFull.value) : null;
+      const withinWindow = lastAt && !Number.isNaN(lastAt.getTime()) && Date.now() - lastAt.getTime() < RATE_LIMIT_MS;
+      const cachedFull = await readSecret(SB_URL, SRK, KEY_REPORT);
+      const cached = cachedFull?.value ? safeParse(cachedFull.value) : null;
+      if (!authorized) {
+        /* مسیر عمومی: فقط-خواندنی از کش — بدون service_role scan */
+        if (cached) {
+          const pub = publicReport(cached);
+          return json(res, 200, {
+            ok: true, cached: true, authorized: false,
+            generated_at: cached.generated_at,
+            summary: cached.summary, report: pub, md: buildMd(pub),
+          });
+        }
+        return json(res, 404, {
+          ok: false, error: 'no_cached_report',
+          hint: 'برای اجرای حسابرسی، هدر x-audit-key یا ?key=... با مقدار AUDIT_TOKEN را بفرستید.',
+        });
+      }
+      if (withinWindow) {
         if (cached) {
           const pub = publicReport(cached);
           return json(res, 200, {
@@ -136,18 +166,18 @@ export default async function handler(req, res) {
       }
     }
 
-    /* ── اجرای حسابرسی ── */
+    /* ── اجرای حسابرسی (فقط فراخوانندهٔ مجاز) ── */
     const keep = q.get('keep') === '1';
     let full;
     try {
-      full = await runAudit({ URL, SRK, cleanup: !keep });
+      full = await runAudit({ URL: SB_URL, SRK, cleanup: !keep });
     } catch (e) {
       return json(res, 500, { ok: false, error: 'audit_failed', detail: String(e?.stack || e).slice(0, 600) });
     }
 
     /* ── ذخیره گزارش کامل + زمان آخرین اجرا ── */
-    const save1 = await writeSecret(URL, SRK, KEY_REPORT, full);
-    const save2 = await writeSecret(URL, SRK, KEY_LAST, new Date().toISOString());
+    const save1 = await writeSecret(SB_URL, SRK, KEY_REPORT, full);
+    const save2 = await writeSecret(SB_URL, SRK, KEY_LAST, new Date().toISOString());
 
     /* ── تلگرام ادمین ── */
     const tg = await sendTelegram(full.summary, full.findings);

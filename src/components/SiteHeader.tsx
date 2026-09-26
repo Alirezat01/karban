@@ -145,7 +145,10 @@ export default function SiteHeader({ path }: { path?: string }) {
     <header className={`site-header${scrolled ? ' is-scrolled' : ''}`}>
       <div className="container header-inner">
         <a className="brand" href="/" aria-label="کاربان">
-          <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="لوگوی کاربان" />
+          <picture>
+            <source type="image/webp" srcSet="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.webp" />
+            <img src="/assets/images/Gemini_Generated_Image_3xp4kz3xp4kz3xp4-removebg-preview.png" alt="لوگوی کاربان" width={669} height={373} />
+          </picture>
         </a>
 
         {/* منوی دسکتاپ */}
@@ -201,7 +204,7 @@ export default function SiteHeader({ path }: { path?: string }) {
           </a>
         </nav>
 
-        <button className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label="باز و بسته کردن منو">
+        <button type="button" className="mobile-menu-button" onClick={() => setOpen((value) => !value)} aria-label="باز و بسته کردن منو">
           {open ? <X /> : <Menu />}
         </button>
       </div>

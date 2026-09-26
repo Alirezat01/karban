@@ -11,8 +11,7 @@ import { supabase } from '@/lib/supabase';
 import { useAccAccess } from '@/lib/acc/access';
 import { createBusiness, startTrial, submitTrialRequest } from '@/lib/acc/api';
 import { featureEnabled, PLAN_TIER_LABEL, planTier, type FeatureKey } from '@/lib/acc/plan';
-import { isIranianMobile } from '@/lib/validation';
-import { Field, ToastHost, ConfirmHost, Modal, DigitsInput, QtyInput, toast, toastError } from "./ui";
+import { Field, ToastHost, ConfirmHost, Modal, DigitsInput, QtyInput, toast } from "./ui";
 import Dashboard from './Dashboard';
 import PartnersPage from './PartnersPage';
 import ItemsPage from './ItemsPage';
@@ -169,7 +168,7 @@ function BusinessWizard({
       toast(mode === 'trial' ? 'نسخه آزمایشی شما فعال شد 🎉' : 'کسب‌وکار جدید ساخته شد');
       onCreated();
     } catch (e) {
-      toastError(e, 'عملیات ناموفق بود؛ دوباره تلاش کنید');
+      toast(e instanceof Error ? e.message : 'عملیات ناموفق بود؛ دوباره تلاش کنید', 'error');
     } finally {
       setBusy(false);
     }
@@ -179,7 +178,7 @@ function BusinessWizard({
     <div style={{ textAlign: 'right' }}>
       <div style={{ display: 'grid', gap: '.7rem', marginTop: '1rem' }}>
         <div className="acc-form-grid">
-          <Field label="نام کسب‌وکار / شرکت" required>
+          <Field label="نام کسب‌وکار / شرکت *">
             <input className="acc-input" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="مثلاً: شرکت بازرگانی نمونه" />
           </Field>
           <Field label="نام نمایشی / برند" hint="روی سربرگ فاکتور چاپ می‌شود">
@@ -244,7 +243,7 @@ function NoAccessGate() {
   const [busy, setBusy] = useState(false);
 
   async function submitRequest() {
-    if (!isIranianMobile(phone)) { toast('شماره موبایل را با ۰۹ و ۱۱ رقم وارد کنید', 'error'); return; }
+    if (!phone.trim()) { toast('شماره تماس را وارد کنید', 'error'); return; }
     setBusy(true);
     try {
       await submitTrialRequest({ name: name.trim(), phone: phone.trim(), plan: 'contact' });
@@ -281,7 +280,7 @@ function NoAccessGate() {
             {contactMode ? (
               <div style={{ display: 'grid', gap: '.6rem', textAlign: 'right', marginTop: '.4rem' }}>
                 <Field label="نام و نام خانوادگی"><input className="acc-input" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-                <Field label="شماره تماس" required><DigitsInput value={phone} onChange={setPhone} maxLength={14} /></Field>
+                <Field label="شماره تماس *"><DigitsInput value={phone} onChange={setPhone} maxLength={14} /></Field>
                 <button className="acc-btn acc-btn-outline" disabled={busy} onClick={submitRequest}>{busy ? 'در حال ثبت…' : 'ثبت درخواست مشاوره خرید'}</button>
               </div>
             ) : (
@@ -387,7 +386,7 @@ function Layout({
           ) : (
             <span className="acc-biz-chip"><Building2 size={13} />{business.brand || business.name}</span>
           )}
-          <button className="acc-icon-btn" title="کسب‌وکار جدید" onClick={onAddBusiness}><Plus size={16} /></button>
+          <button className="acc-icon-btn" title="کسب‌وکار جدید" aria-label="کسب‌وکار جدید" onClick={onAddBusiness}><Plus size={16} /></button>
           <span className={`acc-plan-chip${trialBadge ? ' is-trial' : ''}`} title={`پلن فعلی: ${PLAN_LABEL[plan] || plan} — نسخه ${PLAN_TIER_LABEL[planTier(plan)]} — سقف ${businessLimit} کسب‌وکار`}>
             {trialBadge ? <Sparkles size={12} /> : <Crown size={12} />}
             {PLAN_LABEL[plan] || plan}

@@ -7,11 +7,13 @@ import './acc/acc.css'; /* استایل acc-gate-card و acc-btn */
 
 /* ───────────────── /auth/callback ─────────────────
    مقصد برگشت OAuth گوگل. مسیر ASCII پایدار است (به‌جای /ورود فارسی).
-   supabase-js با detectSessionInUrl توکن #access_token را مصرف و نشست را
-   می‌سازد؛ این صفحه فقط منتظر نشست می‌ماند و کاربر را به مقصد درست می‌برد:
+   فلوی PKCE: supabase-js با detectSessionInUrl کد ?code= را در init مشتری
+   مبادله می‌کند؛ این صفحه صریحاً هم exchange را تلاش می‌کند (اگر هنوز نشست
+   نیامده و کد در URL است) و بعد منتظر نشست می‌ماند و کاربر را به مقصد درست می‌برد:
    • اگر از پنل حسابداری آمده → next ذخیره‌شده (مثلاً /حسابداری/پنل)
    • در غیر این صورت → /داشبورد
-   خطاهای گوگل (رد دسترسی و…) و اتمام وقت انتظار، پیام دوستانه دارند. */
+   خطاهای گوگل (رد دسترسی و…) در hash (legacy implicit) یا query (PKCE)
+   برمی‌گردند — هر دو خوانده می‌شوند؛ اتمام وقت انتظار هم پیام دوستانه دارد. */
 
 type State = 'waiting' | 'error';
 
@@ -19,13 +21,20 @@ const WAIT_MS = 10_000;
 const TICK_MS = 350;
 
 function readHashError(): string | null {
-  const hash = window.location.hash.replace(/^#/, '');
-  if (!hash) return null;
-  const params = new URLSearchParams(hash);
-  const error = params.get('error');
-  if (!error) return null;
-  const desc = params.get('error_description');
-  return desc ? `${desc} (${error})` : error;
+  /* خطا هم در fragment (legacy implicit) و هم در query (PKCE) ممکن است بیاید */
+  const sources = [
+    window.location.hash.replace(/^#/, ''),
+    window.location.search.replace(/^\?/, ''),
+  ];
+  for (const src of sources) {
+    if (!src) continue;
+    const params = new URLSearchParams(src);
+    const error = params.get('error');
+    if (!error) continue;
+    const desc = params.get('error_description');
+    return desc ? `${desc} (${error})` : error;
+  }
+  return null;
 }
 
 function friendlyError(raw: string): string {
@@ -63,6 +72,7 @@ export default function AuthCallbackPage() {
 
     const poll = async () => {
       const startedAt = Date.now();
+      let exchanged = false;
       while (Date.now() - startedAt < WAIT_MS) {
         if (cancelled) return;
         try {
@@ -72,6 +82,17 @@ export default function AuthCallbackPage() {
             return;
           }
         } catch { /* تلاش بعدی */ }
+        /* fallback صریح PKCE: اگر init مشتری کد ?code= را هنوز مبادله نکرده
+           و کد هنوز در URL است، یک‌بار صریحاً مبادله می‌کنیم. خطا بی‌اثر است
+           (مثلاً کد قبلاً مصرف شده) — حلقهٔ انتظار ادامه می‌یابد. */
+        const code = new URLSearchParams(window.location.search).get('code');
+        if (code && !exchanged) {
+          exchanged = true;
+          try {
+            await supabase.auth.exchangeCodeForSession(window.location.href);
+          } catch { /* کد مصرف‌شده/نامعتبر — انتظار برای نشست یا تایم‌اوت */ }
+          continue;
+        }
         await new Promise((r) => { timer = setTimeout(r, TICK_MS); });
       }
       if (cancelled) return;
