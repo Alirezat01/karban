@@ -1,6 +1,6 @@
 {
-  "runId": "d04caa",
-  "at": "2026-09-26T09:09:55.308Z",
+  "runId": "4ba5f4",
+  "at": "2026-10-03T09:42:55.591Z",
   "results": [
     {
       "id": "SETUP",
@@ -64,7 +64,7 @@
       "id": "BIS-7",
       "name": "INSERT سند با business_id دیگر",
       "status": "PASS",
-      "detail": "permission denied for table acc_journal",
+      "detail": "new row violates row-level security policy for table \"acc_jo",
       "evidence": null
     },
     {
@@ -155,7 +155,7 @@
       "id": "MD5",
       "name": "حذف طرف‌حساب دارای گردش → رد با پیام غیرفعال‌سازی",
       "status": "PASS",
-      "detail": "طرف‌حساب «MD-d04caa-باگردش» گردش حسابداری دارد (1 رکورد وابسته) — حذف ",
+      "detail": "طرف‌حساب «MD-4ba5f4-باگردش» گردش حسابداری دارد (1 رکورد وابسته) — حذف ",
       "evidence": null
     },
     {
@@ -338,8 +338,8 @@
     {
       "id": "JAT-5",
       "name": "نوشتن مستقیم کلاینتی روی acc_journal ممنوع (قفل M150000)",
-      "status": "PASS",
-      "detail": "رد شد: permission denied for table acc_journal",
+      "status": "FAIL",
+      "detail": "⚠️ درج مستقیم پذیرفته شد!",
       "evidence": null
     },
     {
@@ -348,7 +348,7 @@
       "status": "PASS",
       "detail": "سند آینه‌ای: ساخته شد · موجودی: 50 → 48",
       "evidence": {
-        "journalId": "da48854a-1639-49f0-b274-c0e0b2046c52"
+        "journalId": "ce5601d5-9f4b-4e25-a8cb-18530d48763f"
       }
     },
     {
@@ -439,14 +439,14 @@
       "id": "BRC-2",
       "name": "دو سند خزانهٔ متمایز برای دو خط (بدون دوبل)",
       "status": "PASS",
-      "detail": "2940e2e0-5424-43cc-8ecb-99c3e6b89b64 / 9382acb2-036b-42cc-a9a2-8d613e7828af",
+      "detail": "17e97d8e-d371-478c-8a3a-2e623c836be5 / 36084c25-7df1-40b5-a8e8-7a3da4882ee3",
       "evidence": null
     },
     {
       "id": "BRC-3",
       "name": "هر خط بانکی به سند صحیح خودش متصل است",
       "status": "PASS",
-      "detail": "خط۱→2940e2e0 / خط۲→9382acb2",
+      "detail": "خط۱→17e97d8e / خط۲→36084c25",
       "evidence": null
     },
     {
@@ -460,7 +460,7 @@
       "id": "BKP-1",
       "name": "خروجی Backup کانونیکال (format + counts)",
       "status": "PASS",
-      "detail": "format=karban-acc-backup · rows=284",
+      "detail": "format=karban-acc-backup · rows=286",
       "evidence": null
     },
     {
@@ -509,7 +509,7 @@
       "id": "FIS-1",
       "name": "بستن اتمیک سال (اختتامیه + قفل ۱۲ ماه در یک تراکنش)",
       "status": "PASS",
-      "detail": "سند: a3753c62-3b2b-4d1c-839c-77fd8f3bdd84",
+      "detail": "سند: 7663d010-1331-45e3-b96c-697cf2bfdac0",
       "evidence": null
     },
     {
@@ -536,8 +536,8 @@
     {
       "id": "FIS-4",
       "name": "نوشتن مستقیم کلاینتی روی acc_periods ممنوع (قفل M150000)",
-      "status": "PASS",
-      "detail": "رد شد: permission denied for table acc_periods",
+      "status": "FAIL",
+      "detail": "⚠️ پذیرفته شد!",
       "evidence": null
     },
     {
@@ -558,7 +558,7 @@
       "id": "FIS-7",
       "name": "افتتاح اتمیک سال بعد (سند + ثبت سال در یک تراکنش)",
       "status": "PASS",
-      "detail": "سند: cdb10d9d-12a5-43f9-95f2-2fc10521594b",
+      "detail": "سند: 66d98972-d580-4c47-b07a-6429943c71c6",
       "evidence": null
     },
     {
@@ -572,7 +572,7 @@
       "id": "FIS-9",
       "name": "ابطال سند (سند معکوس) از مسیر RPC کار می‌کند",
       "status": "PASS",
-      "detail": "معکوس: d69fbe9e-e68f-4b16-8b46-0a2729a8e30b",
+      "detail": "معکوس: 007a9263-17fb-4a41-aa48-66fcd447125e",
       "evidence": null
     },
     {
@@ -606,8 +606,8 @@
     {
       "id": "LGI-2",
       "name": "هیچ سرِسند بدون ردیف در دفتر نیست",
-      "status": "PASS",
-      "detail": "41 سند بررسی شد",
+      "status": "FAIL",
+      "detail": "سندهای یتیم: #99990",
       "evidence": null
     },
     {
@@ -697,7 +697,7 @@
       "id": "E2E-1",
       "name": "سند دستی ۱۰M/۱۰M ثبت شد",
       "status": "PASS",
-      "detail": "de850121-34ae-4ab2-9572-3f039dfb864d",
+      "detail": "f6203d92-89a7-4000-9d57-422fa7efd2f3",
       "evidence": null
     },
     {
@@ -781,7 +781,7 @@
       "id": "SAY-1",
       "name": "درج چک با شناسهٔ صیادی ۱۶رقمی + نوع + صادرکننده/گیرنده",
       "status": "PASS",
-      "detail": "چک: 95c8dfdd",
+      "detail": "چک: bf78b5fd",
       "evidence": null
     },
     {
@@ -844,14 +844,14 @@
       "id": "EXE-1",
       "name": "ثبت هزینهٔ پرداخت‌شدهٔ شرکت ← سند خودکار",
       "status": "PASS",
-      "detail": "هزینه: e88becc5",
+      "detail": "هزینه: 6b75c5bc",
       "evidence": null
     },
     {
       "id": "EXE-2",
       "name": "سند post فعال دقیقاً یکی است",
       "status": "PASS",
-      "detail": "سند فعال: 1 — 612780c4",
+      "detail": "سند فعال: 1 — 00e53b14",
       "evidence": null
     },
     {
@@ -872,7 +872,7 @@
       "id": "EXE-5",
       "name": "ویرایش مالی ← سند قبلی ابطال و سند جدید صادر شد",
       "status": "PASS",
-      "detail": "سندهای فعال: 1 — سند جدید: 93a8a32a",
+      "detail": "سندهای فعال: 1 — سند جدید: 57cb4aa5",
       "evidence": null
     },
     {
@@ -935,14 +935,14 @@
       "id": "PAY-1",
       "name": "ساخت تفصیلی شخص پرداخت‌کننده",
       "status": "PASS",
-      "detail": "تفصیلی: bc7b3c7b",
+      "detail": "تفصیلی: 13f25744",
       "evidence": null
     },
     {
       "id": "PAY-2",
       "name": "ثبت هزینهٔ شخص ثالث ← بستانکار 2112 (نه 2110، نه 7101)",
       "status": "PASS",
-      "detail": "سند: 4ac78405",
+      "detail": "سند: 45960f42",
       "evidence": null
     },
     {
@@ -963,7 +963,7 @@
       "id": "PAY-5",
       "name": "تسویهٔ اتمیک بخشی از بدهی (DR 2112 / CR صندوق)",
       "status": "PASS",
-      "detail": "سند تسویه: 8e631daa",
+      "detail": "سند تسویه: 9c2bdab3",
       "evidence": null
     },
     {
@@ -1019,7 +1019,7 @@
       "id": "DEL-6",
       "name": "حذف حساب با تراکنش: تراکنش یتیم نمی‌ماند (FK on-delete رفتار مشخص دارد)",
       "status": "PASS",
-      "detail": "حذف حساب رد شد: حساب «بانک-DEL-d04caa» گردش مالی دارد (1",
+      "detail": "حذف حساب رد شد: حساب «بانک-DEL-4ba5f4» گردش مالی دارد (1",
       "evidence": null
     },
     {
@@ -1088,22 +1088,22 @@
     {
       "id": "PAY-1",
       "name": "anon نمی‌تواند جدول pay_accounts را بخواند",
-      "status": "PASS",
-      "detail": "deny: 42501",
+      "status": "FAIL",
+      "detail": "نشتی! anon جدول کارت را می‌بیند",
       "evidence": null
     },
     {
       "id": "PAY-2",
       "name": "anon نمی‌تواند pay_account_access_log را بخواند",
-      "status": "PASS",
-      "detail": "deny: 42501",
+      "status": "FAIL",
+      "detail": "نشتی! anon لاگ دسترسی را می‌بیند",
       "evidence": null
     },
     {
       "id": "PAY-3",
       "name": "کاربر واردشده (غیر ادمین) هم جدول کارت را نمی‌بیند",
-      "status": "PASS",
-      "detail": "deny: 42501",
+      "status": "FAIL",
+      "detail": "نشتی! کاربر عادی جدول کارت را می‌بیند",
       "evidence": null
     },
     {
