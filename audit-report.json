@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-09-27T08:53:09.060Z",
-  "duration_ms": 34212,
+  "generated_at": "2026-10-04T09:15:54.776Z",
+  "duration_ms": 21936,
   "summary": {
-    "pass": 45,
-    "fail": 10
+    "pass": 49,
+    "fail": 7
   },
   "schema_tables": [
     "acc_invoices",
@@ -61,7 +61,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mujkyva3@gmail.com"
+      "detail": "karban.audit.mutlvd8r@gmail.com"
     },
     {
       "id": "B2",
@@ -82,21 +82,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=9187c44d-15fb-4814-a650-ce89c158e780"
+      "detail": "biz=4bb2ab0b-0ed3-4ef2-9b02-240887db4672"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"09fbbc07-b264-492d-92e6-9c8c6fcd95f1\",\"business_id\":\"9187c44d-15fb-4814-a650-ce89c158e780\",\"user_id\":\"09e69080-09b7-424b-b606-bbccb5f4e0cd\",\"email\":\"karban.audit.mujkyva3@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"ee7d1cc9-bd1e-488a-a866-1d1b33154b36\",\"business_id\":\"4bb2ab0b-0ed3-4ef2-9b02-240887db4672\",\"user_id\":\"080db32f-7567-413b-b7af-2436009a7902\",\"email\":\"karban.audit.mutlvd8r@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=ca7730a9-e064-49ea-8372-2e8e3c5e9863"
+      "detail": "id=bcc23b32-e083-499c-9814-487e66a02f46"
     },
     {
       "id": "B7",
@@ -117,14 +117,14 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=e1b44ea8-00cb-4abd-8ee2-187ec7c2a8b6"
+      "detail": "id=bc074edf-9ae9-454d-bca0-577bcac7c2c4"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=95786c30-c7ca-4c70-a0c8-a6cdfe6290d2"
+      "detail": "id=97b0606b-4fba-4e53-8ede-8f4d3d53ee92"
     },
     {
       "id": "B11",
@@ -145,7 +145,7 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=1ad15752-c194-423c-9b12-2cc42dffedf1 total=2,310,000,000"
+      "detail": "id=efcf9c64-c3ec-473c-a26a-612f0f654818 total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -229,7 +229,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=adb31140-87f4-4805-8739-9d8ebf3fed55"
+      "detail": "id=c13dbdc9-5079-4354-b787-9cb357aac934"
     },
     {
       "id": "B26",
@@ -269,9 +269,16 @@
     {
       "id": "B31a",
       "title": "ثبت سربرگ سند دستی",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT INSERT ON public.acc_journal TO authenticated;\",\"message\":\"permission denied for table acc_journal\"}"
+      "detail": "id=32ce3e1e-01fc-4d2f-a3d2-6b3a8a9ffa09"
+    },
+    {
+      "id": "B31b",
+      "title": "ثبت سطرهای بدهکار/بستانکار سند دوبل",
+      "ok": true,
+      "severity": "",
+      "detail": "۲ سطر"
     },
     {
       "id": "B32",
@@ -283,9 +290,9 @@
     {
       "id": "B33",
       "title": "قفل دوره مالی (جلوگیری از تغییر اسناد قطعی)",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT INSERT ON public.acc_periods TO authenticated;\",\"message\":\"permission denied for table acc_periods\"}"
+      "detail": "ok"
     },
     {
       "id": "B34",
@@ -299,7 +306,7 @@
       "title": "کوئری تراز آزمایشی (join داخلی)",
       "ok": true,
       "severity": "",
-      "detail": "rows=6"
+      "detail": "rows=8"
     },
     {
       "id": "B36",
@@ -423,9 +430,9 @@
     {
       "id": "B45",
       "title": "دوره مالی سالانه",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":\"Grant the required privileges to the current role with: GRANT INSERT ON public.acc_fiscal_years TO authenticated;\",\"message\":\"permission deni"
+      "detail": "ok"
     },
     {
       "id": "B47",
@@ -448,9 +455,9 @@
     }
   ],
   "business_stats": {
-    "count": 11,
-    "orphan_license": 3,
-    "trial_quota_full": 2
+    "count": 12,
+    "orphan_license": 4,
+    "trial_quota_full": 1
   },
   "cleanup": {
     "attempted": true,
@@ -458,6 +465,6 @@
     "fail": 4
   },
   "test_context": {
-    "email": "karban.audit.mujkyva3@gmail.com"
+    "email": "karban.audit.mutlvd8r@gmail.com"
   }
 }
