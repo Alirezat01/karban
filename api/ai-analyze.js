@@ -1,12 +1,17 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — تحلیل قرارداد با هوش مصنوعی (Phase 3.1)
-   از Z.ai API مستقیم استفاده می‌کند (بدون SDK).
-   متغیرهای لازم در Vercel: ZAI_TOKEN, ZAI_USER_ID, ZAI_CHAT_ID
+   از API عمومی Z.ai (open.bigmodel.cn) استفاده می‌کند.
+   این API از هر جای دنیا قابل دسترسی است (Vercel-friendly).
+
+   متغیر لازم در Vercel:
+     ZAI_API_KEY — کلید API که از https://z.ai گرفتی
+
+   مدل: glm-4-flash (رایگان و سریع)
    ═════════════════════════════════════════════════════════════════════ */
 
 const MAX_CHARS = 30000;
-const ZAI_BASE = 'https://internal-api.z.ai/v1';
-const ZAI_API_KEY = 'Z.ai';
+const ZAI_BASE = 'https://open.bigmodel.cn/api/paas/v4';
+const ZAI_MODEL = 'glm-4-flash';
 
 function buildPrompt(text, title) {
   return `تو یک وکیل حقوقی ایرانی هستی. قرارداد زیر را تحلیل کن و خروجی را به‌صورت JSON معتبر برگردان.
@@ -55,55 +60,60 @@ function extractJson(text) {
 }
 
 async function callZai(prompt) {
-  const token = process.env.ZAI_TOKEN;
-  const userId = process.env.ZAI_USER_ID;
-  const chatId = process.env.ZAI_CHAT_ID;
-
-  if (!token || !userId || !chatId) {
-    throw new Error('ZAI_TOKEN, ZAI_USER_ID, ZAI_CHAT_ID env vars not set');
+  const apiKey = process.env.ZAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('ZAI_API_KEY env var not set. Get a free key at https://z.ai');
   }
 
-  /* هدرها دقیقاً مطابق z-ai-web-dev-sdk:
-     - Authorization: Bearer Z.ai
-     - X-Chat-Id, X-User-Id, X-Token
-  */
   const url = `${ZAI_BASE}/chat/completions`;
   const headers = {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${ZAI_API_KEY}`,
-    'X-Z-AI-From': 'Z',
-    'X-Chat-Id': chatId,
-    'X-User-Id': userId,
-    'X-Token': token,
+    Authorization: `Bearer ${apiKey}`,
   };
   const body = JSON.stringify({
+    model: ZAI_MODEL,
     messages: [
-      { role: 'assistant', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
+      { role: 'system', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
       { role: 'user', content: prompt },
     ],
-    thinking: { type: 'disabled' },
+    temperature: 0.3,
+    max_tokens: 4000,
   });
 
   const res = await fetch(url, { method: 'POST', headers, body });
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    throw new Error(`Z.ai HTTP ${res.status}: ${t.slice(0, 300)}`);
+    throw new Error(`Z.ai API ${res.status}: ${t.slice(0, 300)}`);
   }
   const j = await res.json();
   return j.choices?.[0]?.message?.content || '';
 }
 
-/* تابع کمکی برای دیباگ: تست اتصال به Z.ai */
 async function testConnection() {
   const results = { env: null, fetch: null };
   results.env = {
-    ZAI_TOKEN: process.env.ZAI_TOKEN ? `set (${process.env.ZAI_TOKEN.length} chars)` : 'NOT SET',
-    ZAI_USER_ID: process.env.ZAI_USER_ID ? 'set' : 'NOT SET',
-    ZAI_CHAT_ID: process.env.ZAI_CHAT_ID ? 'set' : 'NOT SET',
+    ZAI_API_KEY: process.env.ZAI_API_KEY ? `set (${process.env.ZAI_API_KEY.length} chars)` : 'NOT SET',
   };
   try {
-    const testRes = await fetch('https://internal-api.z.ai/v1/', { method: 'GET' });
-    results.fetch = { ok: true, status: testRes.status, statusText: testRes.statusText };
+    const testRes = await fetch(`${ZAI_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.ZAI_API_KEY || 'invalid'}`,
+      },
+      body: JSON.stringify({
+        model: ZAI_MODEL,
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 5,
+      }),
+    });
+    const t = await testRes.text().catch(() => '');
+    results.fetch = {
+      ok: testRes.ok,
+      status: testRes.status,
+      statusText: testRes.statusText,
+      body: t.slice(0, 200),
+    };
   } catch (e) {
     results.fetch = { ok: false, error: e.message, code: e.code, cause: e.cause?.message || 'no cause' };
   }
@@ -111,7 +121,6 @@ async function testConnection() {
 }
 
 export default async function handler(req, res) {
-  /* مسیر دیباگ: GET /api/ai-analyze?debug=1 */
   if (req.method === 'GET' && req.query.debug === '1') {
     const diag = await testConnection();
     return res.json({ ok: true, diagnostic: diag, time: new Date().toISOString() });
@@ -137,7 +146,7 @@ export default async function handler(req, res) {
       summary: parsed.summary || '',
       risk_level: parsed.risk_level || 'medium',
       clauses: Array.isArray(parsed.clauses) ? parsed.clauses : [],
-      model: 'glm-zai-direct',
+      model: ZAI_MODEL,
     });
   } catch (e) {
     console.error('ai-analyze failed', e.message);
