@@ -1,8 +1,104 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — دستیار حقوقی چت‌بات (Phase 3.2)
+   ─────────────────────────────────────────────────────────────────
    از Google Gemini API رایگان استفاده می‌کند.
    متغیر لازم: GEMINI_API_KEY
+
+   محدودیت:
+   - نیاز به لاگین
+   - کاربر رایگان: ۵ سوال در روز
+   - کاربر پولی (پرو): ۲۰ سوال در روز
+   - بنیان‌گذار: نامحدود
    ═════════════════════════════════════════════════════════════════════ */
+
+const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-002'];
+
+const SUPA_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPA_ANON = process.env.VITE_SUPABASE_ANON_KEY;
+
+async function getAuthUser(authHeader) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const res = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      headers: { apikey: SUPA_ANON, Authorization: authHeader },
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    return j.id ? { id: j.id, email: j.email } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getUserPlan(userId) {
+  try {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const res = await fetch(`${SUPA_URL}/rest/v1/acc_access?user_id=eq.${userId}&status=eq.active&select=plan,expires_at`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    });
+    const data = await res.json();
+    if (!data || data.length === 0) return 'free';
+    if (data.some((r) => r.plan === 'founder')) return 'founder';
+    const active = data.find((r) => {
+      if (!['monthly', 'yearly', 'founder'].includes(r.plan)) return false;
+      if (!r.expires_at) return true;
+      return new Date(r.expires_at).getTime() > Date.now();
+    });
+    return active ? (active.plan === 'founder' ? 'founder' : 'pro') : 'free';
+  } catch {
+    return 'free';
+  }
+}
+
+function getPlanLimit(plan) {
+  switch (plan) {
+    case 'founder': return -1;
+    case 'pro': return 20;
+    default: return 5;
+  }
+}
+
+async function checkAndIncrement(userId, type) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const today = new Date().toISOString().slice(0, 10);
+  const field = type === 'chat' ? 'chat_count' : 'analyze_count';
+
+  const selRes = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${userId}&day=eq.${today}&select=id,${field}`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  });
+  const existing = await selRes.json();
+  const currentCount = existing[0]?.[field] || 0;
+
+  if (existing[0]?.id) {
+    await fetch(`${SUPA_URL}/rest/v1/ai_usage?id=eq.${existing[0].id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ [field]: currentCount + 1 }),
+    });
+  } else {
+    await fetch(`${SUPA_URL}/rest/v1/ai_usage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        day: today,
+        chat_count: type === 'chat' ? 1 : 0,
+        analyze_count: type === 'analyze' ? 1 : 0,
+      }),
+    });
+  }
+  return currentCount;
+}
 
 const LAWS = {
   'قانون کار': [
@@ -52,9 +148,9 @@ function buildPrompt(question, citations, history) {
   const historyStr = (history || []).slice(-4).map((m) => `${m.role === 'user' ? 'کاربر' : 'دستیار'}: ${m.content}`).join('\n');
   return `تو دستیار حقوقی کاربان هستی. به سؤال کاربر پاسخ بده و به مواد قانونی استناد کن.
 
- ${ctx}
+${ctx}
 
- ${historyStr ? 'گفت‌وگوی قبلی:\n' + historyStr : ''}
+${historyStr ? 'گفت‌وگوی قبلی:\n' + historyStr : ''}
 
 سؤال کاربر: ${question}
 
@@ -63,51 +159,93 @@ function buildPrompt(question, citations, history) {
 هرگز توصیه حقوقی قطعی نده — هم بنویس «برای پرونده خاص به مشاور مراجعه کنید».`;
 }
 
-const GEMINI_MODEL = 'gemini-1.5-flash';
-const GEMINI_BASE = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-
 async function callGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY env var not set');
-  }
+  if (!apiKey) throw new Error('GEMINI_API_KEY env var not set');
 
-  const url = `${GEMINI_BASE}?key=${apiKey}`;
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }], role: 'user' }],
-    generationConfig: {
-      temperature: 0.5,
-      maxOutputTokens: 800,
-    },
-    systemInstruction: {
-      parts: [{ text: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' }],
-    },
+    generationConfig: { temperature: 0.5, maxOutputTokens: 800 },
+    systemInstruction: { parts: [{ text: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' }] },
   });
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Gemini API ${res.status}: ${t.slice(0, 300)}`);
-  }
-  const j = await res.json();
-  const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  if (!content) {
-    if (j.promptFeedback?.blockReason) {
-      throw new Error(`محتوای مسدودشده توسط Gemini: ${j.promptFeedback.blockReason}`);
+  let lastError = '';
+  for (const model of GEMINI_MODELS) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (content) return content;
+        lastError = `${model}: empty`;
+      } else {
+        const t = await res.text().catch(() => '');
+        if (res.status === 404 || res.status === 400 || res.status === 403) {
+          lastError = `${model}: ${res.status}`;
+          continue;
+        }
+        throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
+      }
+    } catch (e) {
+      lastError = `${model}: ${e.message.slice(0, 80)}`;
+      continue;
     }
-    throw new Error('پاسخ خالی از Gemini');
   }
-  return content;
+  throw new Error(`هیچ مدلی کار نکرد: ${lastError}`);
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
+
+  /* ─── احراز هویت ─── */
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).json({
+      ok: false,
+      error: 'برای استفاده از دستیار حقوقی، باید وارد حساب کاربری شوید',
+      needLogin: true,
+    });
+  }
+  const user = await getAuthUser(authHeader);
+  if (!user) {
+    return res.status(401).json({
+      ok: false,
+      error: 'نشست شما منقضی شده است. دوباره وارد شوید',
+      needLogin: true,
+    });
+  }
+
+  /* ─── بررسی محدودیت روزانه ─── */
+  const plan = await getUserPlan(user.id);
+  const limit = getPlanLimit(plan);
+
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const today = new Date().toISOString().slice(0, 10);
+  const selRes = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${user.id}&day=eq.${today}&select=chat_count`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  });
+  const usage = await selRes.json();
+  const used = usage[0]?.chat_count || 0;
+
+  if (limit !== -1 && used >= limit) {
+    const planLabel = plan === 'founder' ? 'بنیان‌گذار' : plan === 'pro' ? 'پیشرفته' : 'رایگان';
+    return res.status(429).json({
+      ok: false,
+      error: `سقف روزانه سؤال (${limit.toLocaleString('fa-IR')} در روز برای پلن ${planLabel}) تکمیل شده است. فردا دوباره تلاش کنید یا به پلن بالاتر ارتقا دهید.`,
+      limitReached: true,
+      used,
+      limit,
+      plan,
+    });
+  }
+
   const { question, history } = req.body || {};
   if (!question || typeof question !== 'string' || question.trim().length < 3) {
     return res.status(400).json({ ok: false, error: 'سؤال بسیار کوتاه است' });
@@ -117,7 +255,21 @@ export default async function handler(req, res) {
     const citations = searchLaws(question);
     const prompt = buildPrompt(question, citations, history);
     const answer = await callGemini(prompt);
-    return res.json({ ok: true, answer, citations });
+
+    /* افزایش شمارنده */
+    await checkAndIncrement(user.id, 'chat');
+
+    return res.json({
+      ok: true,
+      answer,
+      citations,
+      usage: {
+        used: used + 1,
+        limit,
+        remaining: limit === -1 ? -1 : Math.max(0, limit - used - 1),
+        plan,
+      },
+    });
   } catch (e) {
     console.error('ai-chat failed', e.message);
     return res.status(502).json({ ok: false, error: 'پاسخ‌گویی ناموفق بود؛ دوباره تلاش کنید', detail: e.message });
