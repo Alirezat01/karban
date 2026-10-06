@@ -1187,3 +1187,49 @@ html[data-theme="light"] .page-fade { color: var(--text); }
 /* ─── Dashboard vault link tab ─── */
 .dash-tab-link { display: inline-flex; align-items: center; gap: .35rem; padding: .55rem .9rem; border-radius: 12px; font-size: .85rem; font-weight: 500; color: var(--muted); transition: all .2s; }
 .dash-tab-link:hover { color: var(--gold2); background: rgba(216,165,63,.08); }
+
+/* ─── Checkbox row in calculators (Phase 5.1) ─── */
+.checkbox-row { display: flex; align-items: center; gap: .6rem; cursor: pointer; flex-direction: row !important; }
+.checkbox-row span { flex: 1; font-size: .9rem; color: var(--text); }
+.checkbox-row input[type="checkbox"] { width: 20px; height: 20px; min-width: 20px; }
+
+/* ─── Tax return page (Phase 5.2/5.3) ─── */
+.calc-bracket-row { display: grid; grid-template-columns: 2fr 1.5fr 0.7fr 1.5fr; gap: .8rem; padding: .55rem .8rem; border-radius: 8px; background: var(--surface2); margin-bottom: .4rem; font-size: .85rem; align-items: center; }
+.calc-bracket-row .bracket-range { color: var(--text); font-weight: 500; }
+.calc-bracket-row .bracket-amount { color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.calc-bracket-row .bracket-rate { color: var(--gold2); font-weight: 700; text-align: center; }
+.calc-bracket-row .bracket-tax { color: var(--text); text-align: left; font-weight: 600; font-variant-numeric: tabular-nums; }
+.calc-summary { display: flex; flex-direction: column; gap: .5rem; }
+.calc-summary-row { display: flex; justify-content: space-between; padding: .5rem 0; border-bottom: 1px dashed var(--line); font-size: .92rem; }
+.calc-summary-row:last-child { border-bottom: none; }
+.calc-summary-row.is-total { padding-top: .7rem; margin-top: .3rem; border-top: 2px solid var(--gold); font-weight: 800; font-size: 1rem; }
+.calc-summary-row.is-minus strong { color: var(--red); }
+.calc-summary-row strong { font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .calc-bracket-row { grid-template-columns: 1fr; gap: .2rem; padding: .4rem; }
+  .calc-bracket-row > * { text-align: right !important; }
+}
+
+/* ─── API Keys Manager (Phase 5.4) ─── */
+.api-keys-page { display: flex; flex-direction: column; gap: 1rem; }
+.api-keys-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.api-keys-head h2 { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.api-keys-list { display: flex; flex-direction: column; gap: .8rem; }
+.api-key-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .6rem; }
+.api-key-card.is-disabled { opacity: .6; }
+.api-key-head { display: flex; justify-content: space-between; align-items: center; }
+.api-key-head strong { color: var(--text); font-size: .95rem; }
+.api-key-prefix { background: var(--surface2); padding: .15rem .45rem; border-radius: 5px; font-family: monospace; font-size: .75rem; color: var(--muted); margin-inline-start: .5rem; }
+.api-key-status { font-size: .72rem; padding: .2rem .6rem; border-radius: 999px; font-weight: 600; background: rgba(255,255,255,.05); color: var(--muted); }
+.api-key-status.is-active { background: rgba(76,175,80,.15); color: #66bb6a; }
+.api-key-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .78rem; color: var(--muted); align-items: center; }
+.api-key-scopes { display: flex; gap: .3rem; flex-wrap: wrap; }
+.api-key-scopes .badge { font-size: .68rem; background: rgba(216,165,63,.12); color: var(--gold2); padding: .12rem .45rem; border-radius: 6px; }
+.api-key-actions { display: flex; gap: .4rem; padding-top: .5rem; border-top: 1px dashed var(--line); }
+.code-block { background: var(--surface2); border: 1px solid var(--line); border-radius: 8px; padding: .8rem; font-family: monospace; font-size: .8rem; overflow-x: auto; color: var(--text); direction: ltr; text-align: left; margin-top: .5rem; }
+
+/* ─── Article AI summary (Phase 3.4) ─── */
+.article-summary { margin: 1rem 0 1.5rem; }
+.article-summary-box { margin-top: .7rem; padding: 1rem 1.1rem; background: linear-gradient(135deg, rgba(216,165,63,.06), rgba(216,165,63,.02)); border: 1px solid rgba(216,165,63,.25); border-radius: 12px; }
+.article-summary-box h4 { display: flex; align-items: center; gap: .4rem; color: var(--gold2); margin-bottom: .6rem; font-size: .9rem; }
+.summary-text { font-family: inherit; white-space: pre-wrap; line-height: 1.9; color: var(--text); font-size: .9rem; background: none; border: none; padding: 0; }

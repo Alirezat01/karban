@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ArrowLeft, Bell, Calculator, Crown, FileText, Headphones, LayoutDashboard, LifeBuoy,
+  ArrowLeft, Bell, Calculator, Code2, Crown, FileText, Headphones, LayoutDashboard, LifeBuoy,
   Lock, MessageSquare, Paperclip, Plus, Archive, Send, Sparkles, Trash2, User,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -65,6 +65,7 @@ export default function DashboardPage() {
           <button className={tab === 'tickets' ? 'active' : ''} onClick={() => setTab('tickets')}><LifeBuoy size={16} /> پشتیبانی و تیکت</button>
           <button className={tab === 'notifs' ? 'active' : ''} onClick={() => setTab('notifs')}><Bell size={16} /> اعلان‌ها</button>
           <a className="dash-tab-link" href="/گاوصندوق"><Archive size={16} /> گاوصندوق اسناد</a>
+          <a className="dash-tab-link" href="/api-keys"><Code2 size={16} /> کلیدهای API</a>
         </nav>
 
         <div className="dash-content">

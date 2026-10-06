@@ -6,6 +6,7 @@ import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 import { notifyAdmin } from '@/lib/notify';
 import RatingWidget from '@/components/RatingWidget';
+import ArticleSummary from '@/components/ArticleSummary';
 import contractRelated from '@/data/contract-related.json';
 
 const contractRelatedMap = contractRelated as Record<string, { href: string; label: string }[]>;
@@ -162,6 +163,10 @@ export default function ArticlePage({ title, category, contractId }: Props) {
               ? 'قرارداد کار مهم‌ترین سند حقوقی میان کارگر و کارفرماست؛ حقوق و تعهدات هر دو طرف را تعریف می‌کند و مرجع حل اختلاف است.'
               : 'راهنمای کاربردی کاربان برای صاحبان کسب‌وکار، کارگران و متخصصان ایرانی.')}
         </p>
+
+        {contractData?.body && (
+          <ArticleSummary text={contractData.body} title={contractData.title || title} />
+        )}
 
         <div className="article-body">
           {contractData?.body && (

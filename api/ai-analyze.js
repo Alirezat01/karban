@@ -5,10 +5,16 @@
      body: { text: string, title?: string }
      → { ok, summary, risk_level, clauses: [{index, title, text, risk, reason, suggestion}] }
 
-   از Z.ai GLM SDK استفاده می‌کند — رایگان، بدون نیاز به API key.
+   دو راه برای کانفیگ:
+   ۱. اگر متغیرهای محیطی ZAI_TOKEN و ZAI_USER_ID و ZAI_CHAT_ID ست شده باشند،
+      از آن‌ها استفاده می‌کند (پایدار روی Vercel).
+   ۲. در غیر این صورت، از z-ai-web-dev-sdk پیش‌فرض استفاده می‌کند
+      (که نیاز به .z-ai-config دارد — روی محیط dev کار می‌کند).
    ═════════════════════════════════════════════════════════════════════ */
 
 const MAX_CHARS = 30000;
+const ZAI_BASE = 'https://internal-api.z.ai/v1';
+const ZAI_API_KEY = 'Z.ai';
 
 function buildPrompt(text, title) {
   return `تو یک وکیل حقوقی ایرانی هستی. قرارداد زیر را تحلیل کن و خروجی را به‌صورت JSON معتبر برگردان.
@@ -44,7 +50,6 @@ ${text.slice(0, MAX_CHARS)}
 }
 
 function extractJson(text) {
-  /* پیدا کردن JSON در پاسخ LLM (گاهی با ```json ... ``` می‌آید) */
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = fence ? fence[1] : text;
   const start = raw.indexOf('{');
@@ -61,6 +66,17 @@ let _zai = null;
 async function getZai() {
   if (_zai) return _zai;
   const ZAI = (await import('z-ai-web-dev-sdk')).default;
+
+  /* راه ۱: کانفیگ از env vars (پایدار روی Vercel) */
+  const token = process.env.ZAI_TOKEN;
+  const userId = process.env.ZAI_USER_ID;
+  const chatId = process.env.ZAI_CHAT_ID;
+  if (token && userId && chatId) {
+    _zai = new ZAI({ baseUrl: ZAI_BASE, apiKey: ZAI_API_KEY, token, userId, chatId });
+    return _zai;
+  }
+
+  /* راه ۲: SDK پیش‌فرض (نیاز به .z-ai-config دارد) */
   _zai = await ZAI.create();
   return _zai;
 }

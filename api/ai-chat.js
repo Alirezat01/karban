@@ -75,6 +75,17 @@ let _zai = null;
 async function getZai() {
   if (_zai) return _zai;
   const ZAI = (await import('z-ai-web-dev-sdk')).default;
+
+  /* راه ۱: کانفیگ از env vars (پایدار روی Vercel) */
+  const token = process.env.ZAI_TOKEN;
+  const userId = process.env.ZAI_USER_ID;
+  const chatId = process.env.ZAI_CHAT_ID;
+  if (token && userId && chatId) {
+    _zai = new ZAI({ baseUrl: 'https://internal-api.z.ai/v1', apiKey: 'Z.ai', token, userId, chatId });
+    return _zai;
+  }
+
+  /* راه ۲: SDK پیش‌فرض (نیاز به .z-ai-config دارد) */
   _zai = await ZAI.create();
   return _zai;
 }

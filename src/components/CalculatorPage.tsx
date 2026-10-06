@@ -16,7 +16,7 @@ type CalcSeoEntry = {
 };
 const calcSeoMap = calcSeo as unknown as Record<string, CalcSeoEntry>;
 
-export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination';
+export type CalcType = 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination' | 'company-reg';
 
 type Props = { type: CalcType; title: string; description: string };
 
@@ -62,6 +62,7 @@ const noteKey: Record<CalcType, string> = {
   insurance: 'بیمه-تامین-اجتماعی',
   leave: 'مرخصی',
   termination: 'مزایای-پایان-همکاری',
+  'company-reg': 'ثبت-شرکت',
 };
 
 function CalcTable({ valueHeader = 'مبلغ (ریال)', children }: { valueHeader?: string; children: ReactNode }) {
@@ -122,6 +123,11 @@ export default function CalculatorPage({ type, title, description }: Props) {
   const [usedDays, setUsedDays] = useState(14);
   const [termMonths, setTermMonths] = useState(12);
   const [remainingLeave, setRemainingLeave] = useState(6);
+
+  /* ماشین‌حساب ثبت شرکت/برند */
+  const [companyType, setCompanyType] = useState<'private' | 'llp' | 'individual'>('private');
+  const [hasBrand, setHasBrand] = useState(true);
+  const [extraShares, setExtraShares] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -274,6 +280,38 @@ export default function CalculatorPage({ type, title, description }: Props) {
     const leaveValue = remainingLeave * Math.round(base / 30);
     return { severance, eydi, leaveValue, total: severance + eydi + leaveValue };
   }, [base, years, termMonths, remainingLeave]);
+
+  /* ماشین‌حساب ثبت شرکت و برند — هزینه‌های ثبت در اداره ثبت شرکت‌ها و مالکیت معنوی (۱۴۰۵) */
+  const companyRegResult = useMemo(() => {
+    /* تعرفه‌های پایه (ریال) — بر اساس تعرفه‌های ۱۴۰۴ که هنوز معتبر است */
+    const baseFees = {
+      private: 1_700_000,    /* شرکت سهامی خاص */
+      llp: 1_500_000,        /* شرکت با مسئولیت محدود */
+      individual: 500_000,    /* کسب و کار فردی */
+    };
+    const regFee = baseFees[companyType];
+
+    /* هزینه‌های جانبی */
+    const notary = companyType === 'individual' ? 0 : 800_000;       /* دفتر اسناد رسمی */
+    const gazette = companyType === 'individual' ? 0 : 350_000;     /* آگهی روزنامه رسمی */
+    const unionFee = companyType === 'individual' ? 200_000 : 600_000; /* اتاق بازرگانی/صنف */
+    const seal = companyType === 'individual' ? 0 : 450_000;          /* لوح و مهر */
+    const statCard = companyType === 'individual' ? 0 : 250_000;      /* کارت آمار */
+    const extraShareFee = extraShares * 50_000;                      /* هر سهام اضافه */
+
+    /* ثبت برند در مالکیت معنوی */
+    const brandReg = hasBrand ? 1_200_000 : 0;                       /* حق ثبت برای یک کلاس */
+    const brandClasses = hasBrand ? 1 : 0;
+    const attorneyFee = hasBrand ? 3_000_000 : 0;                    /* حق‌الزحمه وکیل مالکیت صنعتی */
+
+    const total = regFee + notary + gazette + unionFee + seal + statCard + extraShareFee + brandReg + attorneyFee;
+    return {
+      regFee, notary, gazette, unionFee, seal, statCard, extraShareFee,
+      brandReg, brandClasses, attorneyFee,
+      total,
+      companyLabel: companyType === 'private' ? 'شرکت سهامی خاص' : companyType === 'llp' ? 'با مسئولیت محدود' : 'کسب و کار فردی',
+    };
+  }, [companyType, hasBrand, extraShares]);
 
   const notes = legalNotes[noteKey[type]] || [];
   const seo = calcSeoMap[noteKey[type]];
@@ -536,6 +574,47 @@ export default function CalculatorPage({ type, title, description }: Props) {
                 <TRow label="جمع مزایای پایان همکاری (خسارت اخراج)" value={formatRial(terminationResult.total)} strong />
               </CalcTable>
               <p className="muted-note">حقوق و مزایای معوق ماه جاری جداگانه به این جمع اضافه می‌شود (ماده ۲۷ قانون کار).</p>
+            </>
+          )}
+
+          {type === 'company-reg' && (
+            <>
+              <label>نوع شخصیت حقوقی
+                <select value={companyType} onChange={(e) => setCompanyType(e.target.value as 'private' | 'llp' | 'individual')}>
+                  <option value="private">شرکت سهامی خاص</option>
+                  <option value="llp">شرکت با مسئولیت محدود</option>
+                  <option value="individual">کسب و کار فردی</option>
+                </select>
+              </label>
+              {companyType !== 'individual' && (
+                <label>تعداد سهامداران اضافه (بیش از ۲ نفر)
+                  <FaNumberInput value={extraShares} onChange={setExtraShares} />
+                </label>
+              )}
+              <label className="checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={hasBrand}
+                  onChange={(e) => setHasBrand(e.target.checked)}
+                />
+                <span>ثبت برند (در اداره مالکیت معنوی — یک کلاس)</span>
+              </label>
+              <CalcTable>
+                <TRow label={`تعرفه ثبت ${companyRegResult.companyLabel}`} value={formatRial(companyRegResult.regFee)} />
+                {companyRegResult.notary > 0 && <TRow label="دستگاه ثبت اسناد و املاک (دفترخانه)" value={formatRial(companyRegResult.notary)} />}
+                {companyRegResult.gazette > 0 && <TRow label="آگهی روزنامه رسمی" value={formatRial(companyRegResult.gazette)} />}
+                <TRow label={companyType === 'individual' ? 'هزینه اتحادیه/صنف' : 'اتاق بازرگانی/صنعت'} value={formatRial(companyRegResult.unionFee)} />
+                {companyRegResult.seal > 0 && <TRow label="لوح و مهر شرکت" value={formatRial(companyRegResult.seal)} />}
+                {companyRegResult.statCard > 0 && <TRow label="کارت آمار شرکت‌ها" value={formatRial(companyRegResult.statCard)} />}
+                {companyRegResult.extraShareFee > 0 && <TRow label={`سهامداران اضافه (${formatFaNumber(extraShares)} نفر)`} value={formatRial(companyRegResult.extraShareFee)} />}
+                {companyRegResult.brandReg > 0 && <TRow label="حق ثبت برند (یک کلاس)" value={formatRial(companyRegResult.brandReg)} />}
+                {companyRegResult.attorneyFee > 0 && <TRow label="حق‌الزحمه وکیل مالکیت صنعتی" value={formatRial(companyRegResult.attorneyFee)} />}
+                <TRow label="هزینه کل ثبت شرکت و برند" value={formatRial(companyRegResult.total)} strong />
+              </CalcTable>
+              <p className="muted-note">
+                هزینه‌های تقریبی بر اساس تعرفه‌های ۱۴۰۴–۱۴۰۵ هستند. هزینه‌های ثبت برند (۱۰ سال اعتبار) شامل حق‌الزحمه وکیل و کارشناسی می‌شود.
+                برای ثبت قطعی، با کارشناس کاربان مشاوره کنید.
+              </p>
             </>
           )}
         </div>

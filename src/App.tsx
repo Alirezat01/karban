@@ -55,6 +55,8 @@ const VaultPage = React.lazy(() => import('@/components/VaultPage'));
 const ContractAnalyzerPage = React.lazy(() => import('@/components/ContractAnalyzerPage'));
 const LegalChatbot = React.lazy(() => import('@/components/LegalChatbot'));
 const ContractSignPage = React.lazy(() => import('@/components/ContractSignPage'));
+const TaxReturnPage = React.lazy(() => import('@/components/TaxReturnPage'));
+const ApiKeysManager = React.lazy(() => import('@/components/ApiKeysManager'));
 const RequestsListPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestsListPage })),
 );
@@ -116,7 +118,7 @@ function AccPanelShell({ sub }: { sub: string[] }) {
 
 /* هشدار: AccPanel و AdminPage هر دو React.lazy هستند؛ بدون مرز Suspense،
    ناوبری SPA (کلیک داخلی) حین suspend خطای React #426 می‌دهد و صفحه کاملاً سیاه می‌شود. */
-const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination'; title: string; desc: string }> = {
+const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirement' | 'overtime' | 'business-tax' | 'vat' | 'salary-tax' | 'eydi' | 'insurance' | 'leave' | 'termination' | 'company-reg'; title: string; desc: string }> = {
   'محاسبه-حقوق': { type: 'salary', title: META_TOOLS['محاسبه-حقوق'].title, desc: META_TOOLS['محاسبه-حقوق'].description },
   'هزینه-استخدام': { type: 'hire', title: META_TOOLS['هزینه-استخدام'].title, desc: META_TOOLS['هزینه-استخدام'].description },
   'سنوات': { type: 'severance', title: META_TOOLS['سنوات'].title, desc: META_TOOLS['سنوات'].description },
@@ -129,6 +131,7 @@ const calcMap: Record<string, { type: 'salary' | 'hire' | 'severance' | 'retirem
   'بیمه-تامین-اجتماعی': { type: 'insurance', title: META_TOOLS['بیمه-تامین-اجتماعی'].title, desc: META_TOOLS['بیمه-تامین-اجتماعی'].description },
   'مرخصی': { type: 'leave', title: META_TOOLS['مرخصی'].title, desc: META_TOOLS['مرخصی'].description },
   'مزایای-پایان-همکاری': { type: 'termination', title: META_TOOLS['مزایای-پایان-همکاری'].title, desc: META_TOOLS['مزایای-پایان-همکاری'].description },
+  'ثبت-شرکت': { type: 'company-reg', title: 'ماشین‌حساب هزینه ثبت شرکت و برند ۱۴۰۵ | کاربان', desc: 'برآورد هزینه ثبت شرکت (سهامی، با مسئولیت محدود، فردی) و ثبت برند با تعرفه‌های رسمی ۱۴۰۵.' },
 };
 
 const faqJsonLd = {
@@ -334,6 +337,22 @@ export default function App() {
     return (
       <Page title="دستیار حقوقی هوشمند | کاربان" description="پرسش حقوقی خود را بپرس، دستیار AI کاربان با استناد به قانون پاسخ می‌دهد." breadcrumb={[{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, 'دستیار حقوقی']} noindex>
         <LegalChatbot />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'اظهارنامه-مالیات') {
+    return (
+      <Page title="کمک‌حساب اظهارنامه مالیات بر درآمد | کاربان" description="محاسبه مالیات تشخیصی اشخاص حقیقی و عملکرد سالانه اشخاص حقوقی با خروجی XML." breadcrumb={[{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, 'اظهارنامه مالیات']}>
+        <TaxReturnPage />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'api-keys') {
+    return (
+      <Page title="کلیدهای API | کاربان" description="مدیریت کلیدهای API برای اتصال اپ‌های خارجی به کاربان." breadcrumb={['داشبورد', 'کلیدهای API']} noindex>
+        <ApiKeysManager />
       </Page>
     );
   }
