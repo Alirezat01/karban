@@ -1,17 +1,13 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — تحلیل قرارداد با هوش مصنوعی (Phase 3.1)
    از API عمومی Z.ai (open.bigmodel.cn) استفاده می‌کند.
-   این API از هر جای دنیا قابل دسترسی است (Vercel-friendly).
-
-   متغیر لازم در Vercel:
-     ZAI_API_KEY — کلید API که از https://z.ai گرفتی
-
-   مدل: glm-4-flash (رایگان و سریع)
+   متغیر لازم: ZAI_API_KEY
+   مدل‌ها به ترتیب امتحان می‌شوند تا یکی جواب بدهد.
    ═════════════════════════════════════════════════════════════════════ */
 
 const MAX_CHARS = 30000;
 const ZAI_BASE = 'https://open.bigmodel.cn/api/paas/v4';
-const ZAI_MODEL = 'glm-4-flash';
+const ZAI_MODELS = ['glm-4-flash', 'glm-4-flashx', 'glm-4-air', 'glm-4-airx', 'glm-4', 'glm-3-turbo'];
 
 function buildPrompt(text, title) {
   return `تو یک وکیل حقوقی ایرانی هستی. قرارداد زیر را تحلیل کن و خروجی را به‌صورت JSON معتبر برگردان.
@@ -70,57 +66,112 @@ async function callZai(prompt) {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
   };
-  const body = JSON.stringify({
-    model: ZAI_MODEL,
+  const baseBody = {
     messages: [
       { role: 'system', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
       { role: 'user', content: prompt },
     ],
     temperature: 0.3,
     max_tokens: 4000,
-  });
+  };
 
-  const res = await fetch(url, { method: 'POST', headers, body });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Z.ai API ${res.status}: ${t.slice(0, 300)}`);
+  /* مدل‌ها رو به‌ترتیب امتحان می‌کنیم تا یکی جواب بده */
+  let lastError = '';
+  for (const model of ZAI_MODELS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...baseBody, model }),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const content = j.choices?.[0]?.message?.content || '';
+        if (content) {
+          console.log('AI model used:', model);
+          return { content, model };
+        }
+      } else {
+        const t = await res.text().catch(() => '');
+        lastError = `${model}: ${res.status} ${t.slice(0, 100)}`;
+        /* اگه 401 (کلید نامعتبر) بود، بقیه مدل‌ها هم همین مشکل رو دارن */
+        if (res.status === 401) {
+          throw new Error(`Z.ai API 401: کلید API نامعتبر است — ${t.slice(0, 200)}`);
+        }
+        /* اگه 1211 (مدل وجود ندارد) یا 400 بود، مدل بعدی رو امتحان کن */
+        continue;
+      }
+    } catch (e) {
+      /* اگه 401 بود، break کن */
+      if (e.message.includes('401')) throw e;
+      lastError = `${model}: ${e.message.slice(0, 100)}`;
+      continue;
+    }
   }
-  const j = await res.json();
-  return j.choices?.[0]?.message?.content || '';
+  throw new Error(`هیچ مدلی کار نکرد. آخرین خطا: ${lastError}`);
 }
 
+/* تابع کمکی برای دیباگ: تست اتصال به Z.ai و امتحان همه مدل‌ها */
 async function testConnection() {
-  const results = { env: null, fetch: null };
+  const results = { env: null, models: [] };
   results.env = {
     ZAI_API_KEY: process.env.ZAI_API_KEY ? `set (${process.env.ZAI_API_KEY.length} chars)` : 'NOT SET',
   };
-  try {
-    const testRes = await fetch(`${ZAI_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.ZAI_API_KEY || 'invalid'}`,
-      },
-      body: JSON.stringify({
-        model: ZAI_MODEL,
-        messages: [{ role: 'user', content: 'hi' }],
-        max_tokens: 5,
-      }),
-    });
-    const t = await testRes.text().catch(() => '');
-    results.fetch = {
-      ok: testRes.ok,
-      status: testRes.status,
-      statusText: testRes.statusText,
-      body: t.slice(0, 200),
-    };
-  } catch (e) {
-    results.fetch = { ok: false, error: e.message, code: e.code, cause: e.cause?.message || 'no cause' };
+
+  const apiKey = process.env.ZAI_API_KEY;
+  if (!apiKey) {
+    results.fetch = { ok: false, error: 'ZAI_API_KEY not set' };
+    return results;
   }
+
+  const url = `${ZAI_BASE}/chat/completions`;
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+  };
+
+  /* تست هر مدل با درخواست ساده */
+  let workingModel = null;
+  for (const model of ZAI_MODELS) {
+    try {
+      const testRes = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 5,
+        }),
+      });
+      const t = await testRes.text().catch(() => '');
+      const entry = {
+        model,
+        ok: testRes.ok,
+        status: testRes.status,
+        body: t.slice(0, 200),
+      };
+      results.models.push(entry);
+      if (testRes.ok) {
+        workingModel = model;
+        break;
+      }
+    } catch (e) {
+      results.models.push({
+        model,
+        ok: false,
+        error: e.message.slice(0, 100),
+      });
+    }
+  }
+
+  results.fetch = workingModel
+    ? { ok: true, working_model: workingModel }
+    : { ok: false, error: 'No model worked', tested: ZAI_MODELS };
   return results;
 }
 
 export default async function handler(req, res) {
+  /* مسیر دیباگ: GET /api/ai-analyze?debug=1 */
   if (req.method === 'GET' && req.query.debug === '1') {
     const diag = await testConnection();
     return res.json({ ok: true, diagnostic: diag, time: new Date().toISOString() });
@@ -136,7 +187,7 @@ export default async function handler(req, res) {
 
   try {
     const prompt = buildPrompt(text, title);
-    const raw = await callZai(prompt);
+    const { content: raw, model } = await callZai(prompt);
     const parsed = extractJson(raw);
     if (!parsed) {
       return res.status(502).json({ ok: false, error: 'پاسخ هوش مصنوعی قابل parse نبود؛ دوباره تلاش کنید', raw: raw.slice(0, 300) });
@@ -146,7 +197,7 @@ export default async function handler(req, res) {
       summary: parsed.summary || '',
       risk_level: parsed.risk_level || 'medium',
       clauses: Array.isArray(parsed.clauses) ? parsed.clauses : [],
-      model: ZAI_MODEL,
+      model,
     });
   } catch (e) {
     console.error('ai-analyze failed', e.message);
