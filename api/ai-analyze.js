@@ -16,8 +16,8 @@ import { createClient } from '@supabase/supabase-js';
 const MAX_CHARS = 30000;
 const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-002'];
 
-const SUPA_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPA_ANON = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
 
 /* ساخت کلاینت ساپابیس با توکن کاربر */
 function getUserClient(authHeader) {
