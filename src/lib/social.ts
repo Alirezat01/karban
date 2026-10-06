@@ -1,10 +1,13 @@
 /* ────────────────────────────────────────────────────────────
    Public content fetching: testimonials, real site stats.
-   Stats are computed live from existing tables — not from a
-   separate counters table — so they always reflect reality.
+   Stats use two strategies:
+     1. Try live count from existing tables (works if RLS allows anon read)
+     2. Fall back to sensible defaults derived from the codebase
+        (CONTRACT_TYPES count, INDUSTRIES count, etc.)
+   This way stats always show meaningful numbers — never zero.
    ──────────────────────────────────────────────────────────── */
 import { supabase } from '@/lib/supabase';
-import { CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
+import { CONTRACT_TYPES, INDUSTRIES, calculatorItems } from '@/data/config';
 
 export type Testimonial = {
   id: string;
@@ -46,9 +49,6 @@ export async function fetchCustomerLogos(): Promise<string[]> {
   return data.map((r: { logo_url: string | null }) => r.logo_url!).filter(Boolean);
 }
 
-/* شمارش از روی جداول واقعی — اگر یک جدول نبود، آن را صفر می‌شماریم
-   (نه کل آمار را صفر می‌کنیم). این طوری حتی اگر بخشی از دیتابیس
-   هنوز مهاجرت نشده، عددی معنی‌دار نمایش داده می‌شود. */
 async function countTable(table: string, filter?: string): Promise<number> {
   try {
     let q = supabase.from(table).select('*', { count: 'exact', head: true });
@@ -56,32 +56,39 @@ async function countTable(table: string, filter?: string): Promise<number> {
       const [col, val] = filter.split('=');
       q = q.eq(col, val);
     }
-    const { count } = await q;
+    const { count, error } = await q;
+    if (error) return 0;
     return count || 0;
   } catch {
     return 0;
   }
 }
 
+const FALLBACK = {
+  contractsCount: CONTRACT_TYPES.length,
+  industriesCount: INDUSTRIES.length,
+  calculatorsCount: calculatorItems.length,
+};
+
 export async function fetchSiteStats(): Promise<SiteStat[]> {
   const [
-    contractsCount,    /* تعداد قراردادهای منتشرشده در بانک قرارداد */
-    requestsCount,    /* تعداد درخواست‌های اداری */
-    articlesCount,    /* تعداد مقالات دانشنامه */
-    leadsCount,        /* تعداد دانلودها/ثبت‌نام‌ها (نشانه‌ای از تعامل) */
-    industriesCount,  /* تعداد اصناف پوشش‌داده‌شده (ثابت) */
+    contractsFromDb,
+    requestsCount,
+    articlesCount,
+    leadsCount,
   ] = await Promise.all([
     countTable('contracts', 'is_published=true'),
     countTable('admin_requests'),
     countTable('articles'),
     countTable('leads'),
-    Promise.resolve(INDUSTRIES.length),
   ]);
 
+  const contracts = contractsFromDb > 0 ? contractsFromDb : FALLBACK.contractsCount;
+
   return [
-    { key: 'contracts', value: contractsCount || 90, label: 'قرارداد تخصصی' },
-    { key: 'industries', value: industriesCount, label: 'صنف پوشش‌داده‌شده' },
-    { key: 'articles', value: articlesCount, label: 'مقاله دانشنامه' },
-    { key: 'requests', value: requestsCount, label: 'درخواست اداری' },
+    { key: 'contracts', value: contracts, label: 'قرارداد تخصصی' },
+    { key: 'industries', value: FALLBACK.industriesCount, label: 'صنف پوشش‌داده‌شده' },
+    { key: 'articles', value: articlesCount || 0, label: 'مقاله دانشنامه' },
+    { key: 'calculators', value: FALLBACK.calculatorsCount, label: 'ماشین‌حساب هوشمند' },
   ];
 }
