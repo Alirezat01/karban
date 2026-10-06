@@ -1233,3 +1233,274 @@ html[data-theme="light"] .page-fade { color: var(--text); }
 .article-summary-box { margin-top: .7rem; padding: 1rem 1.1rem; background: linear-gradient(135deg, rgba(216,165,63,.06), rgba(216,165,63,.02)); border: 1px solid rgba(216,165,63,.25); border-radius: 12px; }
 .article-summary-box h4 { display: flex; align-items: center; gap: .4rem; color: var(--gold2); margin-bottom: .6rem; font-size: .9rem; }
 .summary-text { font-family: inherit; white-space: pre-wrap; line-height: 1.9; color: var(--text); font-size: .9rem; background: none; border: none; padding: 0; }
+/* ════════════════════════════════════════════════════════════════
+   AI GEMINI-STYLE VISUAL ELEMENTS — Phase 3 enhancement
+   - Animated gradient orbs (Google Gemini signature look)
+   - Glow effects on chat window
+   - Typing indicator with bouncing dots
+   - Login gate with orb centerpiece
+   - Usage badge
+   ════════════════════════════════════════════════════════════════ */
+
+/* ─── Gemini-style orb (large, for login gates) ─── */
+.gemini-orb-large {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  margin: 0 auto 1.5rem;
+  background: conic-gradient(from 0deg, #4285F4, #9B72CB, #D96570, #F29900, #4285F4);
+  position: relative;
+  animation: orbSpin 8s linear infinite, orbPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 60px rgba(155, 114, 203, .5), 0 0 100px rgba(66, 133, 244, .3);
+}
+.gemini-orb-large::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background: var(--bg);
+  filter: blur(2px);
+}
+.gemini-orb-large::before {
+  content: '';
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg, #4285F4, #9B72CB, #D96570, #F29900);
+  filter: blur(8px);
+  animation: orbSpin 6s linear infinite reverse;
+}
+@keyframes orbSpin { to { transform: rotate(360deg); } }
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 60px rgba(155, 114, 203, .5), 0 0 100px rgba(66, 133, 244, .3); }
+  50% { transform: scale(1.05); box-shadow: 0 0 80px rgba(155, 114, 203, .7), 0 0 120px rgba(66, 133, 244, .5); }
+}
+
+/* ─── Gemini orb (small, for chat header) ─── */
+.gemini-orb-chat {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #4285F4, #9B72CB, #D96570, #F29900, #4285F4);
+  animation: orbSpin 8s linear infinite;
+  position: relative;
+  box-shadow: 0 0 30px rgba(155, 114, 203, .4);
+}
+.gemini-orb-chat::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+.gemini-orb-chat::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg, #4285F4, #9B72CB, #D96570, #F29900);
+  filter: blur(4px);
+  animation: orbSpin 5s linear infinite reverse;
+}
+
+/* ─── Orb loader (for loading screens) ─── */
+.gemini-orb-loader {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #4285F4, #9B72CB, #D96570, #F29900, #4285F4);
+  animation: orbSpin 1.5s linear infinite, orbPulse 2s ease-in-out infinite;
+  position: relative;
+  box-shadow: 0 0 50px rgba(155, 114, 203, .5);
+}
+.gemini-orb-loader::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+.ai-loading-screen {
+  text-align: center;
+  padding: 4rem 1rem;
+}
+.ai-loading-screen p { color: var(--muted); margin-top: 1rem; }
+
+/* ─── AI Login gate ─── */
+.ai-login-gate {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.ai-login-gate h1 { margin: 1rem 0; font-size: clamp(1.5rem, 4vw, 2.2rem); }
+.ai-login-gate .lead { margin-bottom: 2rem; }
+.ai-login-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+.ai-login-feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .6rem;
+  padding: 1.2rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  font-size: .88rem;
+  transition: all .25s ease;
+}
+.ai-login-feature:hover {
+  border-color: rgba(155, 114, 203, .4);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px -10px rgba(155, 114, 203, .3);
+}
+.ai-login-feature svg { color: #9B72CB; }
+.ai-cta-button {
+  background: linear-gradient(135deg, #4285F4, #9B72CB 50%, #D96570) !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 1rem 2rem !important;
+  font-size: 1rem !important;
+  box-shadow: 0 8px 30px -8px rgba(66, 133, 244, .5), 0 0 0 1px rgba(155, 114, 203, .3) !important;
+  animation: aiCtaGlow 3s ease-in-out infinite;
+}
+.ai-cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -8px rgba(66, 133, 244, .7), 0 0 0 1px rgba(155, 114, 203, .5) !important;
+}
+@keyframes aiCtaGlow {
+  0%, 100% { box-shadow: 0 8px 30px -8px rgba(66, 133, 244, .5), 0 0 0 1px rgba(155, 114, 203, .3); }
+  50% { box-shadow: 0 12px 40px -8px rgba(155, 114, 203, .7), 0 0 0 1px rgba(217, 101, 112, .5); }
+}
+
+/* ─── AI Chat header with orb ─── */
+.ai-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+.ai-chat-orb-wrap { flex-shrink: 0; }
+.ai-chat-header-text { flex: 1; }
+.ai-chat-header-text h1 { margin: .3rem 0; font-size: clamp(1.3rem, 3vw, 1.8rem); }
+.ai-chat-header-text .eyebrow { margin-bottom: .3rem; }
+
+/* ─── Usage badge ─── */
+.ai-usage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .7rem;
+  background: linear-gradient(135deg, rgba(66, 133, 244, .12), rgba(155, 114, 203, .12));
+  border: 1px solid rgba(155, 114, 203, .3);
+  border-radius: 999px;
+  color: #9B72CB;
+  font-size: .8rem;
+  font-weight: 600;
+  margin-top: .3rem;
+}
+.ai-usage-badge svg { color: #F29900; }
+
+/* ─── Chat window with glow ─── */
+.ai-glow-window {
+  position: relative;
+  overflow: visible;
+}
+.ai-glow-window::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #4285F4, #9B72CB, #D96570, #F29900);
+  background-size: 300% 300%;
+  z-index: -1;
+  opacity: .3;
+  animation: aiBorderGlow 6s ease infinite;
+  filter: blur(4px);
+}
+@keyframes aiBorderGlow {
+  0%, 100% { background-position: 0% 50%; opacity: .25; }
+  50% { background-position: 100% 50%; opacity: .5; }
+}
+
+/* ─── AI message with glow ─── */
+.ai-msg-glow { position: relative; }
+.chat-msg.is-bot.ai-msg-glow {
+  border-color: rgba(155, 114, 203, .25);
+  background: linear-gradient(135deg, var(--surface2), rgba(155, 114, 203, .04));
+}
+.chat-msg.is-bot.ai-msg-glow .msg-icon { color: #9B72CB; }
+.chat-msg.is-user .msg-icon { color: #4285F4; }
+.msg-icon { display: inline; margin-inline-end: .3rem; vertical-align: middle; }
+.msg-content { display: inline; }
+
+/* ─── Typing indicator (bouncing dots) ─── */
+.ai-typing-indicator {
+  display: inline-flex;
+  gap: .3rem;
+  padding: .5rem .8rem;
+  align-items: center;
+}
+.ai-typing-indicator span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285F4, #9B72CB);
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+.ai-typing-indicator span:nth-child(2) { animation-delay: .2s; background: linear-gradient(135deg, #9B72CB, #D96570); }
+.ai-typing-indicator span:nth-child(3) { animation-delay: .4s; background: linear-gradient(135deg, #D96570, #F29900); }
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .5; }
+  30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* ─── AI suggestion chips with glow ─── */
+.ai-suggestion-glow {
+  background: linear-gradient(135deg, rgba(66, 133, 244, .04), rgba(155, 114, 203, .04)) !important;
+  border-color: rgba(155, 114, 203, .2) !important;
+}
+.ai-suggestion-glow:hover {
+  border-color: rgba(155, 114, 203, .5) !important;
+  background: linear-gradient(135deg, rgba(66, 133, 244, .08), rgba(155, 114, 203, .08)) !important;
+  box-shadow: 0 4px 12px -4px rgba(155, 114, 203, .3);
+}
+
+/* ─── AI send button ─── */
+.ai-send-button {
+  background: linear-gradient(135deg, #4285F4, #9B72CB) !important;
+  border: none !important;
+  color: #fff !important;
+}
+.ai-send-button:hover {
+  background: linear-gradient(135deg, #5a95f7, #ab82d3) !important;
+  box-shadow: 0 4px 16px -4px rgba(155, 114, 203, .5);
+}
+
+/* ─── Chat error banner ─── */
+.chat-error-banner {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .8rem;
+  margin: .5rem 1.2rem .8rem;
+  background: rgba(217, 101, 112, .1);
+  border: 1px solid rgba(217, 101, 112, .3);
+  border-radius: 10px;
+  color: #D96570;
+  font-size: .82rem;
+  line-height: 1.6;
+}
+.chat-error-banner svg { flex-shrink: 0; }
+
+/* ─── Light theme overrides for AI elements ─── */
+html[data-theme="light"] .ai-login-feature { background: var(--surface); }
+html[data-theme="light"] .ai-usage-badge { color: #6b4d8a; }
+html[data-theme="light"] .ai-msg-glow.is-bot { background: linear-gradient(135deg, var(--surface2), rgba(155, 114, 203, .03)); }
+html[data-theme="light"] .chat-error-banner { color: #a02030; }
