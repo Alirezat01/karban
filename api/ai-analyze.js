@@ -87,13 +87,36 @@ async function callZai(prompt) {
   const res = await fetch(url, { method: 'POST', headers, body });
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    throw new Error(`Z.ai ${res.status}: ${t.slice(0, 300)}`);
+    throw new Error(`Z.ai HTTP ${res.status}: ${t.slice(0, 300)}`);
   }
   const j = await res.json();
   return j.choices?.[0]?.message?.content || '';
 }
 
+/* تابع کمکی برای دیباگ: تست اتصال به Z.ai */
+async function testConnection() {
+  const results = { env: null, fetch: null };
+  results.env = {
+    ZAI_TOKEN: process.env.ZAI_TOKEN ? `set (${process.env.ZAI_TOKEN.length} chars)` : 'NOT SET',
+    ZAI_USER_ID: process.env.ZAI_USER_ID ? 'set' : 'NOT SET',
+    ZAI_CHAT_ID: process.env.ZAI_CHAT_ID ? 'set' : 'NOT SET',
+  };
+  try {
+    const testRes = await fetch('https://internal-api.z.ai/v1/', { method: 'GET' });
+    results.fetch = { ok: true, status: testRes.status, statusText: testRes.statusText };
+  } catch (e) {
+    results.fetch = { ok: false, error: e.message, code: e.code, cause: e.cause?.message || 'no cause' };
+  }
+  return results;
+}
+
 export default async function handler(req, res) {
+  /* مسیر دیباگ: GET /api/ai-analyze?debug=1 */
+  if (req.method === 'GET' && req.query.debug === '1') {
+    const diag = await testConnection();
+    return res.json({ ok: true, diagnostic: diag, time: new Date().toISOString() });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
