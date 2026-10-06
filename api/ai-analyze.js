@@ -1,13 +1,14 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — تحلیل قرارداد با هوش مصنوعی (Phase 3.1)
-   از API عمومی Z.ai (open.bigmodel.cn) استفاده می‌کند.
-   متغیر لازم: ZAI_API_KEY
-   مدل‌ها به ترتیب امتحان می‌شوند تا یکی جواب بدهد.
+   از Google Gemini API رایگان استفاده می‌کند.
+   متغیر لازم: GEMINI_API_KEY
+   دریافت کلید رایگان: https://aistudio.google.com/app/apikey
+   مدل: gemini-1.5-flash (رایگان، ۱۵۰۰ درخواست در روز)
    ═════════════════════════════════════════════════════════════════════ */
 
 const MAX_CHARS = 30000;
-const ZAI_BASE = 'https://open.bigmodel.cn/api/paas/v4';
-const ZAI_MODELS = ['glm-4-flash', 'glm-4-flashx', 'glm-4-air', 'glm-4-airx', 'glm-4', 'glm-3-turbo'];
+const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_BASE = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 function buildPrompt(text, title) {
   return `تو یک وکیل حقوقی ایرانی هستی. قرارداد زیر را تحلیل کن و خروجی را به‌صورت JSON معتبر برگردان.
@@ -19,7 +20,7 @@ function buildPrompt(text, title) {
  ${text.slice(0, MAX_CHARS)}
 """
 
-خروجی باید دقیقاً این ساختار JSON باشد (بدون متن اضافه قبل یا بعد):
+خروجی باید دقیقاً این ساختار JSON باشد (بدون متن اضافه قبل یا بعد، بدون \`\`\`json):
 {
   "summary": "خلاصه ۲-۳ جمله‌ای کلی قرارداد",
   "risk_level": "low" | "medium" | "high" | "critical",
@@ -55,154 +56,70 @@ function extractJson(text) {
   }
 }
 
-async function callZai(prompt) {
-  const apiKey = process.env.ZAI_API_KEY;
+async function callGemini(prompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('ZAI_API_KEY env var not set. Get a free key at https://z.ai');
+    throw new Error('GEMINI_API_KEY env var not set. Get a free key at https://aistudio.google.com/app/apikey');
   }
 
-  const url = `${ZAI_BASE}/chat/completions`;
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
-  };
-  const baseBody = {
-    messages: [
-      { role: 'system', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
-      { role: 'user', content: prompt },
+  const url = `${GEMINI_BASE}?key=${apiKey}`;
+  const headers = { 'Content-Type': 'application/json' };
+  const body = JSON.stringify({
+    contents: [
+      {
+        parts: [{ text: prompt }],
+        role: 'user',
+      },
     ],
-    temperature: 0.3,
-    max_tokens: 4000,
-  };
+    generationConfig: {
+      temperature: 0.3,
+      maxOutputTokens: 4000,
+      responseMimeType: 'application/json',
+    },
+    systemInstruction: {
+      parts: [{ text: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' }],
+    },
+  });
 
-  /* مدل‌ها رو به‌ترتیب امتحان می‌کنیم تا یکی جواب بده */
-  let lastError = '';
-  for (const model of ZAI_MODELS) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ ...baseBody, model }),
-      });
-      if (res.ok) {
-        const j = await res.json();
-        const content = j.choices?.[0]?.message?.content || '';
-        if (content) {
-          console.log('AI model used:', model);
-          return { content, model };
-        }
-      } else {
-        const t = await res.text().catch(() => '');
-        lastError = `${model}: ${res.status} ${t.slice(0, 100)}`;
-        /* اگه 401 (کلید نامعتبر) بود، بقیه مدل‌ها هم همین مشکل رو دارن */
-        if (res.status === 401) {
-          throw new Error(`Z.ai API 401: کلید API نامعتبر است — ${t.slice(0, 200)}`);
-        }
-        /* اگه 1211 (مدل وجود ندارد) یا 400 بود، مدل بعدی رو امتحان کن */
-        continue;
-      }
-    } catch (e) {
-      /* اگه 401 بود، break کن */
-      if (e.message.includes('401')) throw e;
-      lastError = `${model}: ${e.message.slice(0, 100)}`;
-      continue;
-    }
+  const res = await fetch(url, { method: 'POST', headers, body });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`Gemini API ${res.status}: ${t.slice(0, 300)}`);
   }
-  throw new Error(`هیچ مدلی کار نکرد. آخرین خطا: ${lastError}`);
+  const j = await res.json();
+  const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!content) {
+    if (j.promptFeedback?.blockReason) {
+      throw new Error(`محتوای مسدودشده توسط Gemini: ${j.promptFeedback.blockReason}`);
+    }
+    throw new Error('پاسخ خالی از Gemini');
+  }
+  return content;
 }
 
-/* تابع کمکی برای دیباگ: تست اتصال به Z.ai و امتحان همه مدل‌ها */
 async function testConnection() {
-  const results = { env: null, models: [] };
+  const results = { env: null, fetch: null };
   results.env = {
-    ZAI_API_KEY: process.env.ZAI_API_KEY ? `set (${process.env.ZAI_API_KEY.length} chars)` : 'NOT SET',
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY ? `set (${process.env.GEMINI_API_KEY.length} chars)` : 'NOT SET',
   };
 
-  const apiKey = process.env.ZAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    results.fetch = { ok: false, error: 'ZAI_API_KEY not set' };
+    results.fetch = { ok: false, error: 'GEMINI_API_KEY not set' };
     return results;
   }
 
-  const url = `${ZAI_BASE}/chat/completions`;
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
-  };
-
-  /* تست هر مدل با درخواست ساده */
-  let workingModel = null;
-  for (const model of ZAI_MODELS) {
-    try {
-      const testRes = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: 'hi' }],
-          max_tokens: 5,
-        }),
-      });
-      const t = await testRes.text().catch(() => '');
-      const entry = {
-        model,
-        ok: testRes.ok,
-        status: testRes.status,
-        body: t.slice(0, 200),
-      };
-      results.models.push(entry);
-      if (testRes.ok) {
-        workingModel = model;
-        break;
-      }
-    } catch (e) {
-      results.models.push({
-        model,
-        ok: false,
-        error: e.message.slice(0, 100),
-      });
-    }
-  }
-
-  results.fetch = workingModel
-    ? { ok: true, working_model: workingModel }
-    : { ok: false, error: 'No model worked', tested: ZAI_MODELS };
-  return results;
-}
-
-export default async function handler(req, res) {
-  /* مسیر دیباگ: GET /api/ai-analyze?debug=1 */
-  if (req.method === 'GET' && req.query.debug === '1') {
-    const diag = await testConnection();
-    return res.json({ ok: true, diagnostic: diag, time: new Date().toISOString() });
-  }
-
-  if (req.method !== 'POST') {
-    return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
-  }
-  const { text, title } = req.body || {};
-  if (!text || typeof text !== 'string' || text.trim().length < 50) {
-    return res.status(400).json({ ok: false, error: 'متن قرارداد بسیار کوتاه است (حداقل ۵۰ کاراکتر)' });
-  }
-
   try {
-    const prompt = buildPrompt(text, title);
-    const { content: raw, model } = await callZai(prompt);
-    const parsed = extractJson(raw);
-    if (!parsed) {
-      return res.status(502).json({ ok: false, error: 'پاسخ هوش مصنوعی قابل parse نبود؛ دوباره تلاش کنید', raw: raw.slice(0, 300) });
-    }
-    return res.json({
-      ok: true,
-      summary: parsed.summary || '',
-      risk_level: parsed.risk_level || 'medium',
-      clauses: Array.isArray(parsed.clauses) ? parsed.clauses : [],
-      model,
+    const url = `${GEMINI_BASE}?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: 'سلام' }], role: 'user' }],
+        generationConfig: { maxOutputTokens: 10 },
+      }),
     });
-  } catch (e) {
-    console.error('ai-analyze failed', e.message);
-    return res.status(502).json({ ok: false, error: 'تحلیل ناموفق بود؛ دوباره تلاش کنید', detail: e.message });
-  }
-}
-
-export const config = { maxDuration: 60 };
+    const t = await res.text().catch(() => '');
+    results.fetch = {
+      ok: res.ok,
+      status: res.status,
