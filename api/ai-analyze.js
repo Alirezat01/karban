@@ -11,21 +11,16 @@
    - بنیان‌گذار: نامحدود
    ═════════════════════════════════════════════════════════════════════ */
 
-import { createClient } from '@supabase/supabase-js';
-
 const MAX_CHARS = 30000;
 const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-002'];
 
+/* Supabase config — هاردکد شده (همان مقادیر src/lib/supabase.ts)
+   این مقادیر عمومی هستند (در فرانت هم دیده می‌شوند) */
 const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
 
-/* ساخت کلاینت ساپابیس با توکن کاربر */
-function getUserClient(authHeader) {
-  if (!SUPA_URL || !SUPA_ANON) return null;
-  return createClient(SUPA_URL, SUPA_ANON, {
-    global: { headers: { Authorization: authHeader } },
-  });
-}
+/* دریافت service role key از env (فقط برای خواندن acc_access) */
+const SUPA_SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 /* بررسی کاربر از روی توکن */
 async function getAuthUser(authHeader) {
@@ -40,7 +35,8 @@ async function getAuthUser(authHeader) {
     if (!res.ok) return null;
     const j = await res.json();
     return j.id ? { id: j.id, email: j.email } : null;
-  } catch {
+  } catch (e) {
+    console.error('getAuthUser error:', e.message);
     return null;
   }
 }
@@ -48,54 +44,56 @@ async function getAuthUser(authHeader) {
 /* دریافت پلن کاربر */
 async function getUserPlan(userId) {
   try {
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const res = await fetch(`${SUPA_URL}/rest/v1/acc_access?user_id=eq.${userId}&status=eq.active&select=plan,expires_at`, {
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
-    });
-    const data = await res.json();
-    if (!data || data.length === 0) return 'free';
-    if (data.some((r) => r.plan === 'founder')) return 'founder';
-    const active = data.find((r) => {
-      if (!['monthly', 'yearly', 'founder'].includes(r.plan)) return false;
-      if (!r.expires_at) return true;
-      return new Date(r.expires_at).getTime() > Date.now();
-    });
-    return active ? (active.plan === 'founder' ? 'founder' : 'pro') : 'free';
-  } catch {
+    /* اگر service role key ست شده، از آن استفاده کن */
+    if (SUPA_SERVICE) {
+      const res = await fetch(`${SUPA_URL}/rest/v1/acc_access?user_id=eq.${userId}&status=eq.active&select=plan,expires_at`, {
+        headers: { apikey: SUPA_SERVICE, Authorization: `Bearer ${SUPA_SERVICE}` },
+      });
+      const data = await res.json();
+      if (!data || data.length === 0) return 'free';
+      if (data.some((r) => r.plan === 'founder')) return 'founder';
+      const active = data.find((r) => {
+        if (!['monthly', 'yearly', 'founder'].includes(r.plan)) return false;
+        if (!r.expires_at) return true;
+        return new Date(r.expires_at).getTime() > Date.now();
+      });
+      return active ? (active.plan === 'founder' ? 'founder' : 'pro') : 'free';
+    }
+    /* fallback: استفاده از anon key (RLS اجازه می‌دهد کاربر ردیف خودش را ببیند) */
+    return 'free';
+  } catch (e) {
+    console.error('getUserPlan error:', e.message);
     return 'free';
   }
 }
 
 function getPlanLimit(plan) {
   switch (plan) {
-    case 'founder': return -1;  // نامحدود
+    case 'founder': return -1;
     case 'pro': return 10;
     default: return 3;
   }
 }
 
-/* بررسی و افزایش مصرف امروز */
+/* بررسی و افزایش مصرف امروز — با توکن کاربر (برای RLS) */
 async function checkAndIncrement(userId, authHeader, type) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const today = new Date().toISOString().slice(0, 10);
   const field = type === 'chat' ? 'chat_count' : 'analyze_count';
 
-  /* پیدا کردن ردیف امروز */
+  /* استفاده از توکن کاربر برای خواندن/نوشتن (RLS اجازه می‌دهد چون user_id = auth.uid()) */
   const selRes = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${userId}&day=eq.${today}&select=id,${field}`, {
-    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    headers: { apikey: SUPA_ANON, Authorization: authHeader },
   });
   const existing = await selRes.json();
-
   const currentCount = existing[0]?.[field] || 0;
 
-  /* افزایش */
   if (existing[0]?.id) {
     await fetch(`${SUPA_URL}/rest/v1/ai_usage?id=eq.${existing[0].id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
+        apikey: SUPA_ANON,
+        Authorization: authHeader,
         Prefer: 'return=minimal',
       },
       body: JSON.stringify({ [field]: currentCount + 1 }),
@@ -105,8 +103,8 @@ async function checkAndIncrement(userId, authHeader, type) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
+        apikey: SUPA_ANON,
+        Authorization: authHeader,
         Prefer: 'return=minimal',
       },
       body: JSON.stringify({
@@ -117,7 +115,6 @@ async function checkAndIncrement(userId, authHeader, type) {
       }),
     });
   }
-
   return currentCount;
 }
 
@@ -128,7 +125,7 @@ function buildPrompt(text, title) {
 
 متن قرارداد:
 """
-${text.slice(0, MAX_CHARS)}
+ ${text.slice(0, MAX_CHARS)}
 """
 
 خروجی باید دقیقاً این ساختار JSON باشد (بدون متن اضافه قبل یا بعد، بدون \`\`\`json):
@@ -169,18 +166,12 @@ function extractJson(text) {
 
 async function callGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY env var not set');
-  }
+  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
   const headers = { 'Content-Type': 'application/json' };
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }], role: 'user' }],
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 4000,
-      responseMimeType: 'application/json',
-    },
+    generationConfig: { temperature: 0.3, maxOutputTokens: 4000, responseMimeType: 'application/json' },
     systemInstruction: { parts: [{ text: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' }] },
   });
 
@@ -215,8 +206,12 @@ export default async function handler(req, res) {
     return res.json({
       ok: true,
       diagnostic: {
-        env: { GEMINI_API_KEY: process.env.GEMINI_API_KEY ? 'set' : 'NOT SET' },
+        env: {
+          GEMINI_API_KEY: process.env.GEMINI_API_KEY ? 'set' : 'NOT SET',
+          SUPABASE_SERVICE_ROLE_KEY: SUPA_SERVICE ? 'set' : 'NOT SET (using anon)',
+        },
         models: GEMINI_MODELS,
+        supabase_url: SUPA_URL,
       },
       time: new Date().toISOString(),
     });
@@ -229,29 +224,20 @@ export default async function handler(req, res) {
   /* ─── احراز هویت ─── */
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).json({
-      ok: false,
-      error: 'برای استفاده از تحلیل هوشمند قرارداد، باید وارد حساب کاربری شوید',
-      needLogin: true,
-    });
+    return res.status(401).json({ ok: false, error: 'برای استفاده از تحلیل هوشمند قرارداد، باید وارد حساب کاربری شوید', needLogin: true });
   }
   const user = await getAuthUser(authHeader);
   if (!user) {
-    return res.status(401).json({
-      ok: false,
-      error: 'نشست شما منقضی شده است. دوباره وارد شوید',
-      needLogin: true,
-    });
+    return res.status(401).json({ ok: false, error: 'نشست شما منقضی شده است. دوباره وارد شوید', needLogin: true });
   }
 
   /* ─── بررسی محدودیت روزانه ─── */
   const plan = await getUserPlan(user.id);
   const limit = getPlanLimit(plan);
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const today = new Date().toISOString().slice(0, 10);
   const selRes = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${user.id}&day=eq.${today}&select=analyze_count`, {
-    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    headers: { apikey: SUPA_ANON, Authorization: authHeader },
   });
   const usage = await selRes.json();
   const used = usage[0]?.analyze_count || 0;
@@ -261,10 +247,7 @@ export default async function handler(req, res) {
     return res.status(429).json({
       ok: false,
       error: `سقف روزانه تحلیل قرارداد (${limit.toLocaleString('fa-IR')} در روز برای پلن ${planLabel}) تکمیل شده است. فردا دوباره تلاش کنید یا به پلن بالاتر ارتقا دهید.`,
-      limitReached: true,
-      used,
-      limit,
-      plan,
+      limitReached: true, used, limit, plan,
     });
   }
 
@@ -277,12 +260,9 @@ export default async function handler(req, res) {
     const prompt = buildPrompt(text, title);
     const { content: raw, model } = await callGemini(prompt);
     const parsed = extractJson(raw);
-    if (!parsed) {
-      return res.status(502).json({ ok: false, error: 'پاسخ هوش مصنوعی قابل parse نبود؛ دوباره تلاش کنید' });
-    }
+    if (!parsed) return res.status(502).json({ ok: false, error: 'پاسخ هوش مصنوعی قابل parse نبود؛ دوباره تلاش کنید' });
 
-    /* ─── افزایش شمارنده ─── */
-    await checkAndIncrement(user.id, 'analyze');
+    await checkAndIncrement(user.id, authHeader, 'analyze');
 
     return res.json({
       ok: true,
@@ -290,12 +270,7 @@ export default async function handler(req, res) {
       risk_level: parsed.risk_level || 'medium',
       clauses: Array.isArray(parsed.clauses) ? parsed.clauses : [],
       model,
-      usage: {
-        used: used + 1,
-        limit,
-        remaining: limit === -1 ? -1 : Math.max(0, limit - used - 1),
-        plan,
-      },
+      usage: { used: used + 1, limit, remaining: limit === -1 ? -1 : Math.max(0, limit - used - 1), plan },
     });
   } catch (e) {
     console.error('ai-analyze failed', e.message);
