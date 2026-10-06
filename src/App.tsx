@@ -51,6 +51,10 @@ const LoginPage = React.lazy(() => import('@/components/LoginPage'));
 const DashboardPage = React.lazy(() => import('@/components/DashboardPage'));
 const ProfilePage = React.lazy(() => import('@/components/ProfilePage'));
 const InvoiceMakerPage = React.lazy(() => import('@/components/InvoiceMakerPage'));
+const VaultPage = React.lazy(() => import('@/components/VaultPage'));
+const ContractAnalyzerPage = React.lazy(() => import('@/components/ContractAnalyzerPage'));
+const LegalChatbot = React.lazy(() => import('@/components/LegalChatbot'));
+const ContractSignPage = React.lazy(() => import('@/components/ContractSignPage'));
 const RequestsListPage = React.lazy(() =>
   import('@/components/RequestsPage').then((m) => ({ default: m.RequestsListPage })),
 );
@@ -307,6 +311,40 @@ export default function App() {
       <Page title="پروفایل کاربری | کاربان" description="ویرایش نام، شماره تماس و نقش کاری حساب کاربری کاربان." breadcrumb={['پروفایل']} noindex>
         <ProfilePage />
       </Page>
+    );
+  }
+
+  if (segments[0] === 'گاوصندوق') {
+    return (
+      <Page title="گاوصندوق اسناد | کاربان" description="ذخیره امن قراردادها، مدارک و اسناد مهم حقوقی." breadcrumb={['گاوصندوق']} noindex>
+        <VaultPage />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'تحلیل-قرارداد') {
+    return (
+      <Page title="تحلیل هوشمند قرارداد با AI | کاربان" description="قراردادت را آپلود کن، هوش مصنوعی بندهای پرخطر و نکات حقوقی را علامت‌گذاری می‌کند." breadcrumb={[{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, 'تحلیل قرارداد']} noindex>
+        <ContractAnalyzerPage />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'دستیار-حقوقی') {
+    return (
+      <Page title="دستیار حقوقی هوشمند | کاربان" description="پرسش حقوقی خود را بپرس، دستیار AI کاربان با استناد به قانون پاسخ می‌دهد." breadcrumb={[{ name: 'ابزارهای هوش مصنوعی', href: '/ابزارهای-هوش-مصنوعی' }, 'دستیار حقوقی']} noindex>
+        <LegalChatbot />
+      </Page>
+    );
+  }
+
+  if (segments[0] === 'امضای-قرارداد' && segments[1]) {
+    return (
+      <div dir="rtl" className="app-root">
+        <Suspense fallback={<div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)' }}><KarbanLoader label="در حال باز کردن صفحه امضا…" /></div>}>
+          <ContractSignPage token={segments[1]} />
+        </Suspense>
+      </div>
     );
   }
 

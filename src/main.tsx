@@ -49,6 +49,16 @@ if (window.location.hash && window.location.hash.startsWith('#/')) {
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
+/* ─── PWA Service Worker registration (Phase 2.2) ───
+   بعد از load ثبت می‌کنیم تا رقابت با بوت اصلی نباشد؛ فقط در production. */
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('SW registration failed', err);
+    });
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
