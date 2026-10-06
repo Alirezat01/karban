@@ -75,7 +75,7 @@ function getPlanLimit(plan) {
 }
 
 /* بررسی و افزایش مصرف امروز */
-async function checkAndIncrement(userId, type) {
+async function checkAndIncrement(userId, authHeader, type) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const today = new Date().toISOString().slice(0, 10);
   const field = type === 'chat' ? 'chat_count' : 'analyze_count';
