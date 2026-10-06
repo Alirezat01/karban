@@ -7,6 +7,12 @@ Karban (karbanapp.ir) is a Persian smart assistant for Iranian labor law and emp
 - [AI calculators](https://karbanapp.ir/%D8%A7%D8%A8%D8%B2%D8%A7%D8%B1%D9%87%D8%A7%DB%8C-%D9%87%D9%88%D8%B4-%D9%85%D8%B5%D9%86%D9%88%D8%B9%DB%8C): Salary, severance, overtime, tax, VAT and retirement calculators
 - [Knowledge base](https://karbanapp.ir/%D8%AF%D8%A7%D9%86%D8%B4%D9%86%D8%A7%D9%85%D9%87): Labor-law and tax articles with legal citations
 - [Services](https://karbanapp.ir/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA): Text/phone consulting and custom contract drafting
+- [Invoice maker](https://karbanapp.ir/%D9%81%D8%A7%DA%A9%D8%AA%D9%88%D8%B1%D8%B3%D8%A7%D8%B2): Free online invoice generator with VAT and PDF/Excel/Word export
+- [Accounting SaaS](https://karbanapp.ir/%D8%AD%D8%B3%D8%A7%D8%A8%D8%AF%D8%A7%D8%B1%DB%8C): Full double-entry accounting software for Iranian SMEs (chart of accounts, journal, invoices, checks, payroll, fiscal year, reports)
+
+## AI features
+- AI Contract Analyzer: upload a contract, get clause-by-clause risk assessment
+- Legal Chatbot: ask labor-law, insurance, and tax questions, get answers with legal citations
 
 ## Contact
 - Email: hello@karbanapp.ir
