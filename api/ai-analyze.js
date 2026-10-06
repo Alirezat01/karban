@@ -1,15 +1,7 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — تحلیل قرارداد با هوش مصنوعی (Phase 3.1)
-   ─────────────────────────────────────────────────────────────────
-   POST /api/ai-analyze
-     body: { text: string, title?: string }
-     → { ok, summary, risk_level, clauses: [{index, title, text, risk, reason, suggestion}] }
-
-   دو راه برای کانفیگ:
-   ۱. اگر متغیرهای محیطی ZAI_TOKEN و ZAI_USER_ID و ZAI_CHAT_ID ست شده باشند،
-      از آن‌ها استفاده می‌کند (پایدار روی Vercel).
-   ۲. در غیر این صورت، از z-ai-web-dev-sdk پیش‌فرض استفاده می‌کند
-      (که نیاز به .z-ai-config دارد — روی محیط dev کار می‌کند).
+   از Z.ai API مستقیم استفاده می‌کند (بدون SDK).
+   متغیرهای لازم در Vercel: ZAI_TOKEN, ZAI_USER_ID, ZAI_CHAT_ID
    ═════════════════════════════════════════════════════════════════════ */
 
 const MAX_CHARS = 30000;
@@ -23,7 +15,7 @@ function buildPrompt(text, title) {
 
 متن قرارداد:
 """
-${text.slice(0, MAX_CHARS)}
+ ${text.slice(0, MAX_CHARS)}
 """
 
 خروجی باید دقیقاً این ساختار JSON باشد (بدون متن اضافه قبل یا بعد):
@@ -62,35 +54,43 @@ function extractJson(text) {
   }
 }
 
-let _zai = null;
-async function getZai() {
-  if (_zai) return _zai;
-  const ZAI = (await import('z-ai-web-dev-sdk')).default;
-
-  /* راه ۱: کانفیگ از env vars (پایدار روی Vercel) */
+async function callZai(prompt) {
   const token = process.env.ZAI_TOKEN;
   const userId = process.env.ZAI_USER_ID;
   const chatId = process.env.ZAI_CHAT_ID;
-  if (token && userId && chatId) {
-    _zai = new ZAI({ baseUrl: ZAI_BASE, apiKey: ZAI_API_KEY, token, userId, chatId });
-    return _zai;
+
+  if (!token || !userId || !chatId) {
+    throw new Error('ZAI_TOKEN, ZAI_USER_ID, ZAI_CHAT_ID env vars not set');
   }
 
-  /* راه ۲: SDK پیش‌فرض (نیاز به .z-ai-config دارد) */
-  _zai = await ZAI.create();
-  return _zai;
-}
-
-async function callZai(prompt) {
-  const zai = await getZai();
-  const completion = await zai.chat.completions.create({
+  /* هدرها دقیقاً مطابق z-ai-web-dev-sdk:
+     - Authorization: Bearer Z.ai
+     - X-Chat-Id, X-User-Id, X-Token
+  */
+  const url = `${ZAI_BASE}/chat/completions`;
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${ZAI_API_KEY}`,
+    'X-Z-AI-From': 'Z',
+    'X-Chat-Id': chatId,
+    'X-User-Id': userId,
+    'X-Token': token,
+  };
+  const body = JSON.stringify({
     messages: [
       { role: 'assistant', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
       { role: 'user', content: prompt },
     ],
     thinking: { type: 'disabled' },
   });
-  return completion.choices?.[0]?.message?.content || '';
+
+  const res = await fetch(url, { method: 'POST', headers, body });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`Z.ai ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  return j.choices?.[0]?.message?.content || '';
 }
 
 export default async function handler(req, res) {
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       summary: parsed.summary || '',
       risk_level: parsed.risk_level || 'medium',
       clauses: Array.isArray(parsed.clauses) ? parsed.clauses : [],
-      model: 'glm-zai',
+      model: 'glm-zai-direct',
     });
   } catch (e) {
     console.error('ai-analyze failed', e.message);
