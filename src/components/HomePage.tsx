@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { ArrowLeft, BadgeCheck, BookMarked, ClipboardCheck, Coins, Compass, FileSignature, Gavel, Palette, Sparkles, Users } from 'lucide-react';
 import { roleCards } from '@/data/config';
 import { useRevealGroup } from '@/lib/reveal';
+import LiveStats from '@/components/LiveStats';
+import Testimonials from '@/components/Testimonials';
 
 const icons: Record<string, typeof Sparkles> = {
   briefcase: Sparkles,
@@ -95,6 +97,9 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ═══ آمار زنده کاربان ═══ */}
+      <LiveStats />
+
       {/* ═══ ۴ بخش اصلی با تصاویر سه‌بعدی ═══ */}
       <section className="sections-strip">
         <div className="container section-cards" ref={stripRef}>
@@ -162,6 +167,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ═══ نظرات مشتریان و لوگوی کسب‌وکارها ═══ */}
+      <Testimonials />
     </div>
   );
 }

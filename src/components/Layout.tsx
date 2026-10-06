@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
+import FloatingCTA from '@/components/FloatingCTA';
 import { useSEO, type JsonLd } from '@/lib/seo';
 import {
   breadcrumbJsonLd,
@@ -73,6 +74,7 @@ export default function Layout({ children, title, description, breadcrumb, jsonL
       {/* جابه‌جایی سریع صفحات: با هر تغییر مسیر، fade کوتاه ۲۰۰ms پخش می‌شود */}
       <main key={path} className="page-fade">{children}</main>
       <SiteFooter />
+      <FloatingCTA />
     </>
   );
 }

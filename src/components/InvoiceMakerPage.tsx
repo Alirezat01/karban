@@ -1,13 +1,15 @@
 /* فاکتورساز آنلاین کاربان — ابزار رایگان عمومی (بدون نیاز به ورود)
    یک فاکتور ساده با لوگوی کاربان تولید می‌کند؛ خروجی چاپ/PDF، اکسل و ورد.
-   پیش‌نویس در همین مرورگر ذخیره می‌شود. */
+   پیش‌نویس در همین مرورگر ذخیره می‌شود.
+   نسخه ۲: ویزارد ۳ مرحله‌ای با Step Indicator */
 
 import { useEffect, useMemo, useState } from 'react';
-import { FileSpreadsheet, FileText, Plus, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FileSpreadsheet, FileText, Plus, Printer, Trash2 } from 'lucide-react';
 import { formatMoney, numberToWords } from '@/lib/acc/money';
 import { exportExcel, exportFilename, exportWord, htmlTable, printHtml, KARBAN_LOGO_URL, escapeHtml } from '@/lib/acc/export';
 import { todayJalali, toFaDigits, toEnDigits, JALALI_MONTHS } from '@/lib/acc/jalali';
 import KarbanLoader from '@/components/KarbanLoader';
+import StepIndicator from '@/components/StepIndicator';
 
 interface Party { name: string; economic_code: string; national_id: string; address: string; phone: string }
 interface Row { key: number; title: string; unit: string; qty: number; price: number; discount: number }
@@ -64,6 +66,7 @@ function todayJalaliText(): string {
 export default function InvoiceMakerPage() {
   const [ready, setReady] = useState(false);
   const [disabled, setDisabled] = useState(false);
+  const [step, setStep] = useState(0);  /* 0=seller, 1=buyer+invoice, 2=items+totals */
   const [seller, setSeller] = useState<Party>(EMPTY_PARTY);
   const [buyer, setBuyer] = useState<Party>(EMPTY_PARTY);
   const [rows, setRows] = useState<Row[]>([newRow()]);
@@ -237,105 +240,129 @@ export default function InvoiceMakerPage() {
           </div>
         ) : (
           <>
-            {/* طرفین */}
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1.4rem' }}>
-              {partyForm('فروشنده', seller, (patch) => setSeller({ ...seller, ...patch }))}
-              {partyForm('خریدار', buyer, (patch) => setBuyer({ ...buyer, ...patch }))}
-            </div>
+            <StepIndicator steps={['فروشنده', 'خریدار و فاکتور', 'کالاها و خروجی']} current={step} onStepClick={(i) => i < step && setStep(i)} />
 
-            {/* مشخصات سند */}
-            <div className="contact-card calc-card" style={{ marginTop: '1rem' }}>
-              <h3 style={{ marginTop: 0 }}>مشخصات فاکتور</h3>
-              <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap' }}>
-                <label>شماره فاکتور
-                  <FaDigitsInput value={number} onChange={setNumber} placeholder="مثلاً ۱۰۲" />
-                </label>
-                <label>تاریخ
-                  <input value={dateText} onChange={(e) => setDateText(e.target.value)} />
-                </label>
-                <label style={{ maxWidth: 150 }}>قالب چاپ
-                  <select value={tpl} onChange={(e) => setTpl(e.target.value as 'official' | 'minimal')}>
-                    <option value="official">جدولی رسمی</option>
-                    <option value="minimal">مینیمال کاربان</option>
-                  </select>
-                </label>
-                <label style={{ maxWidth: 130 }}>ارزش افزوده
-                  <select value={vatOn ? String(vatRate) : 'off'} onChange={(e) => {
-                    if (e.target.value === 'off') setVatOn(false);
-                    else { setVatOn(true); setVatRate(Number(e.target.value) || 10); }
-                  }}>
-                    <option value="10">۱۰٪ (۱۴۰۵)</option>
-                    <option value="9">۹٪</option>
-                    <option value="off">بدون مالیات</option>
-                  </select>
-                </label>
+            {/* مرحله ۱: فروشنده */}
+            {step === 0 && (
+              <div className="wizard-step" style={{ marginTop: '1rem' }}>
+                {partyForm('فروشنده', seller, (patch) => setSeller({ ...seller, ...patch }))}
               </div>
-            </div>
+            )}
 
-            {/* ردیف‌ها */}
-            <div className="contact-card calc-card" style={{ marginTop: '1rem', overflowX: 'auto' }}>
-              <h3 style={{ marginTop: 0 }}>کالاها و خدمات</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-                <thead>
-                  <tr style={{ textAlign: 'right', fontSize: '.8rem', color: 'var(--muted)' }}>
-                    <th style={{ padding: '.4rem' }}>شرح <span className="req-star">*</span></th>
-                    <th style={{ padding: '.4rem', width: 110 }}>واحد</th>
-                    <th style={{ padding: '.4rem', width: 80 }}>مقدار <span className="req-star">*</span></th>
-                    <th style={{ padding: '.4rem', width: 130 }}>مبلغ واحد (ریال)</th>
-                    <th style={{ padding: '.4rem', width: 120 }}>تخفیف (ریال)</th>
-                    <th style={{ padding: '.4rem', width: 44 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.key}>
-                      <td style={{ padding: '.25rem' }}><input value={r.title} onChange={(e) => setRow(r.key, { title: e.target.value })} placeholder="مثلاً: طراحی سایت" /></td>
-                      <td style={{ padding: '.25rem' }}>
-                        <select value={r.unit} onChange={(e) => setRow(r.key, { unit: e.target.value })}>
-                          {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: '.25rem' }}><FaNumInput decimal value={r.qty} onChange={(n) => setRow(r.key, { qty: n })} /></td>
-                      <td style={{ padding: '.25rem' }}><FaNumInput value={r.price} onChange={(n) => setRow(r.key, { price: n })} placeholder="۰" /></td>
-                      <td style={{ padding: '.25rem' }}><FaNumInput value={r.discount} onChange={(n) => setRow(r.key, { discount: n })} placeholder="۰" /></td>
-                      <td style={{ padding: '.25rem' }}>
-                        <button type="button" className="button button-outline" style={{ padding: '.4rem .55rem' }} title="حذف ردیف"
-                          onClick={() => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.key !== r.key) : [newRow()]))}>
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <button className="button button-outline" style={{ marginTop: '.7rem' }} onClick={() => setRows((rs) => [...rs, newRow()])}><Plus size={15} /> افزودن ردیف</button>
-            </div>
-
-            {/* جمع‌بندی + توضیحات */}
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem', alignItems: 'stretch' }}>
-              <div className="contact-card calc-card" style={{ flex: 1, minWidth: 260 }}>
-                <h3 style={{ marginTop: 0 }}>توضیحات فاکتور</h3>
-                <textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثلاً: شرایط پرداخت، شماره پیگیری واریز…" />
-              </div>
-              <div className="contact-card calc-card" style={{ flex: 1, minWidth: 260 }}>
-                <h3 style={{ marginTop: 0 }}>جمع‌بندی</h3>
-                <div style={{ display: 'grid', gap: '.45rem', fontSize: '.92rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>جمع کل</span><span className="num">{formatMoney(totals.subtotal)} ریال</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>تخفیف</span><span className="num">− {formatMoney(totals.discountTotal)} ریال</span></div>
-                  {vatOn && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>مالیات ارزش افزوده ({toFaDigits(String(vatRate))}٪)</span><span className="num">{formatMoney(totals.vat)} ریال</span></div>}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', paddingTop: '.5rem', fontWeight: 800 }}>
-                    <span>قابل پرداخت</span><span className="num">{formatMoney(totals.total)} ریال</span>
+            {/* مرحله ۲: خریدار + مشخصات فاکتور */}
+            {step === 1 && (
+              <div className="wizard-step" style={{ marginTop: '1rem' }}>
+                {partyForm('خریدار', buyer, (patch) => setBuyer({ ...buyer, ...patch }))}
+                <div className="contact-card calc-card">
+                  <h3 style={{ marginTop: 0 }}>مشخصات فاکتور</h3>
+                  <div style={{ display: 'flex', gap: '.8rem', flexWrap: 'wrap' }}>
+                    <label>شماره فاکتور
+                      <FaDigitsInput value={number} onChange={setNumber} placeholder="مثلاً ۱۰۲" />
+                    </label>
+                    <label>تاریخ
+                      <input value={dateText} onChange={(e) => setDateText(e.target.value)} />
+                    </label>
+                    <label style={{ maxWidth: 150 }}>قالب چاپ
+                      <select value={tpl} onChange={(e) => setTpl(e.target.value as 'official' | 'minimal')}>
+                        <option value="official">جدولی رسمی</option>
+                        <option value="minimal">مینیمال کاربان</option>
+                      </select>
+                    </label>
+                    <label style={{ maxWidth: 130 }}>ارزش افزوده
+                      <select value={vatOn ? String(vatRate) : 'off'} onChange={(e) => {
+                        if (e.target.value === 'off') setVatOn(false);
+                        else { setVatOn(true); setVatRate(Number(e.target.value) || 10); }
+                      }}>
+                        <option value="10">۱۰٪ (۱۴۰۵)</option>
+                        <option value="9">۹٪</option>
+                        <option value="off">بدون مالیات</option>
+                      </select>
+                    </label>
                   </div>
-                  <small style={{ color: 'var(--muted)' }}>به حروف: {numberToWords(totals.total)} ریال</small>
                 </div>
-                <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                  <button className="button" disabled={!canExport} onClick={doPrint} title="چاپ یا ذخیره PDF"><Printer size={15} /> چاپ / PDF</button>
-                  <button className="button button-outline" disabled={!canExport} onClick={doExcel}><FileSpreadsheet size={15} /> اکسل</button>
-                  <button className="button button-outline" disabled={!canExport} onClick={doWord}><FileText size={15} /> ورد</button>
-                </div>
-                {!canExport && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '.5rem' }}>برای خروجی، نام فروشنده و خریدار و حداقل یک ردیف با شرح و مقدار را کامل کنید.</small>}
-                {!partyValid(seller) && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '.3rem' }}>پیشنهاد: نام فروشنده را کامل کنید تا روی فاکتور درج شود.</small>}
               </div>
+            )}
+
+            {/* مرحله ۳: ردیف‌ها + جمع‌بندی + خروجی */}
+            {step === 2 && (
+              <div className="wizard-step" style={{ marginTop: '1rem' }}>
+                <div className="contact-card calc-card" style={{ overflowX: 'auto' }}>
+                  <h3 style={{ marginTop: 0 }}>کالاها و خدمات</h3>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+                    <thead>
+                      <tr style={{ textAlign: 'right', fontSize: '.8rem', color: 'var(--muted)' }}>
+                        <th style={{ padding: '.4rem' }}>شرح <span className="req-star">*</span></th>
+                        <th style={{ padding: '.4rem', width: 110 }}>واحد</th>
+                        <th style={{ padding: '.4rem', width: 80 }}>مقدار <span className="req-star">*</span></th>
+                        <th style={{ padding: '.4rem', width: 130 }}>مبلغ واحد (ریال)</th>
+                        <th style={{ padding: '.4rem', width: 120 }}>تخفیف (ریال)</th>
+                        <th style={{ padding: '.4rem', width: 44 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.key}>
+                          <td style={{ padding: '.25rem' }}><input value={r.title} onChange={(e) => setRow(r.key, { title: e.target.value })} placeholder="مثلاً: طراحی سایت" /></td>
+                          <td style={{ padding: '.25rem' }}>
+                            <select value={r.unit} onChange={(e) => setRow(r.key, { unit: e.target.value })}>
+                              {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: '.25rem' }}><FaNumInput decimal value={r.qty} onChange={(n) => setRow(r.key, { qty: n })} /></td>
+                          <td style={{ padding: '.25rem' }}><FaNumInput value={r.price} onChange={(n) => setRow(r.key, { price: n })} placeholder="۰" /></td>
+                          <td style={{ padding: '.25rem' }}><FaNumInput value={r.discount} onChange={(n) => setRow(r.key, { discount: n })} placeholder="۰" /></td>
+                          <td style={{ padding: '.25rem' }}>
+                            <button type="button" className="button button-outline" style={{ padding: '.4rem .55rem' }} title="حذف ردیف"
+                              onClick={() => setRows((rs) => (rs.length > 1 ? rs.filter((x) => x.key !== r.key) : [newRow()]))}>
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button className="button button-outline" style={{ marginTop: '.7rem' }} onClick={() => setRows((rs) => [...rs, newRow()])}><Plus size={15} /> افزودن ردیف</button>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
+                  <div className="contact-card calc-card" style={{ flex: 1, minWidth: 260 }}>
+                    <h3 style={{ marginTop: 0 }}>توضیحات فاکتور</h3>
+                    <textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثلاً: شرایط پرداخت، شماره پیگیری واریز…" />
+                  </div>
+                  <div className="contact-card calc-card" style={{ flex: 1, minWidth: 260 }}>
+                    <h3 style={{ marginTop: 0 }}>جمع‌بندی</h3>
+                    <div style={{ display: 'grid', gap: '.45rem', fontSize: '.92rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>جمع کل</span><span className="num">{formatMoney(totals.subtotal)} ریال</span></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>تخفیف</span><span className="num">− {formatMoney(totals.discountTotal)} ریال</span></div>
+                      {vatOn && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>مالیات ارزش افزوده ({toFaDigits(String(vatRate))}٪)</span><span className="num">{formatMoney(totals.vat)} ریال</span></div>}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', paddingTop: '.5rem', fontWeight: 800 }}>
+                        <span>قابل پرداخت</span><span className="num">{formatMoney(totals.total)} ریال</span>
+                      </div>
+                      <small style={{ color: 'var(--muted)' }}>به حروف: {numberToWords(totals.total)} ریال</small>
+                    </div>
+                    <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                      <button className="button" disabled={!canExport} onClick={doPrint} title="چاپ یا ذخیره PDF"><Printer size={15} /> چاپ / PDF</button>
+                      <button className="button button-outline" disabled={!canExport} onClick={doExcel}><FileSpreadsheet size={15} /> اکسل</button>
+                      <button className="button button-outline" disabled={!canExport} onClick={doWord}><FileText size={15} /> ورد</button>
+                    </div>
+                    {!canExport && <small style={{ color: 'var(--muted)', display: 'block', marginTop: '.5rem' }}>برای خروجی، نام فروشنده و خریدار و حداقل یک ردیف با شرح و مقدار را کامل کنید.</small>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ناوبری ویزارد */}
+            <div className="wizard-nav" style={{ marginTop: '1.4rem' }}>
+              {step > 0 && (
+                <button className="button button-outline" onClick={() => setStep((s) => s - 1)}>
+                  <ArrowRight size={16} /> مرحله قبل
+                </button>
+              )}
+              {step < 2 && (
+                <button className="button" onClick={() => setStep((s) => s + 1)}>
+                  مرحله بعد <ArrowLeft size={16} />
+                </button>
+              )}
             </div>
 
             <div className="contact-card" style={{ marginTop: '1rem', fontSize: '.85rem' }}>

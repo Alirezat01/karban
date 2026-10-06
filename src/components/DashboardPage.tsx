@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ArrowLeft, Bell, Calculator, Crown, FileText, Headphones, LayoutDashboard, LifeBuoy,
-  Lock, MessageSquare, Paperclip, Plus, Send, Sparkles, Trash2, User,
+  Lock, MessageSquare, Paperclip, Plus, Archive, Send, Sparkles, Trash2, User,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
@@ -64,6 +64,7 @@ export default function DashboardPage() {
           <button className={tab === 'consults' ? 'active' : ''} onClick={() => setTab('consults')}><MessageSquare size={16} /> مشاوره‌های من</button>
           <button className={tab === 'tickets' ? 'active' : ''} onClick={() => setTab('tickets')}><LifeBuoy size={16} /> پشتیبانی و تیکت</button>
           <button className={tab === 'notifs' ? 'active' : ''} onClick={() => setTab('notifs')}><Bell size={16} /> اعلان‌ها</button>
+          <a className="dash-tab-link" href="/گاوصندوق"><Archive size={16} /> گاوصندوق اسناد</a>
         </nav>
 
         <div className="dash-content">

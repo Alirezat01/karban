@@ -1,15 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, FileText, Printer, Save, Wand2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Copy, FileText, Link2, MessageSquare, Printer, Save, Share2, Wand2 } from 'lucide-react';
 import { CONTRACT_TYPES, INDUSTRIES, legalNotes } from '@/data/config';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { notifyAdmin } from '@/lib/notify';
 import FaNumberInput from '@/components/FaNumberInput';
+import StepIndicator from '@/components/StepIndicator';
+import ClauseComments from '@/components/ClauseComments';
 
 const laborTypes = ['کار', 'کارآموزی'];
+const STEPS = ['نوع و صنف', 'طرفین', 'مدت و مبلغ', 'پیش‌نمایش'];
 
 export default function ContractBuilderPage() {
   const { userId } = useAuth();
+  const [step, setStep] = useState(0);
   const [type, setType] = useState<string>('کار');
   const [industry, setIndustry] = useState<string>('برنامه‌نویسان');
   const [partyA, setPartyA] = useState('');
@@ -17,10 +21,12 @@ export default function ContractBuilderPage() {
   const [duration, setDuration] = useState('');
   const [amount, setAmount] = useState('');
   const [extra, setExtra] = useState('');
-  const [built, setBuilt] = useState(false);
   const [copied, setCopied] = useState(false);
   const [rootId, setRootId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [savedContractId, setSavedContractId] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [showComments, setShowComments] = useState(false);
 
   const isLabor = laborTypes.includes(type);
 
@@ -38,7 +44,7 @@ export default function ContractBuilderPage() {
         if (c.amount) setAmount(c.amount);
         if (c.extra) setExtra(c.extra);
         if (c.__root) setRootId(c.__root);
-        setBuilt(true);
+        setStep(3); /* مستقیم بریم پیش‌نمایش */
         localStorage.removeItem('karban-builder-restore');
       }
     } catch { /* noop */ }
@@ -85,7 +91,7 @@ export default function ContractBuilderPage() {
         .order('version', { ascending: false })
         .limit(1);
       const version = ((prev?.[0]?.version as number) || 0) + 1;
-      const { error } = await supabase.from('saved_contracts').insert({
+      const { data, error } = await supabase.from('saved_contracts').insert({
         user_id: userId,
         root_id: root,
         title: `قرارداد ${type} — ${industry}`,
@@ -93,10 +99,11 @@ export default function ContractBuilderPage() {
         industry,
         version,
         content: { type, industry, partyA, partyB, duration, amount, extra, __root: root },
-      });
+      }).select('id').single();
       setSaveState(error ? 'error' : 'saved');
       if (!error) {
         setRootId(root);
+        if (data?.id) setSavedContractId(data.id);
         void notifyAdmin(`📄 قرارداد جدید در سازنده: قرارداد ${type} — ${industry} (نسخه ${version})`);
       }
       setTimeout(() => setSaveState('idle'), 2500);
@@ -105,6 +112,18 @@ export default function ContractBuilderPage() {
     }
   };
 
+  /* اعتبارسنجی ساده هر مرحله — برای فعال‌شدن دکمه «بعدی» */
+  const stepValid = (i: number) => {
+    if (i === 0) return !!type && !!industry;
+    if (i === 1) return partyA.trim().length >= 2 || partyB.trim().length >= 2;
+    if (i === 2) return true; /* مدت و مبلغ اختیاری */
+    return true;
+  };
+
+  const canNext = stepValid(step);
+  const next = () => setStep((s) => Math.min(3, s + 1));
+  const prev = () => setStep((s) => Math.max(0, s - 1));
+
   return (
     <section className="inner-page">
       <div className="container narrow-content">
@@ -112,60 +131,131 @@ export default function ContractBuilderPage() {
         <h1>ساخت قرارداد هوشمند</h1>
         <p className="lead">نوع قرارداد و صنف را انتخاب کن، اطلاعات کلیدی را بنویس؛ متن اولیه با مبنای قانونی (قانون کار یا ماده ۱۰ قانون مدنی) همین‌جا ساخته می‌شود.</p>
 
-        <div className="contact-card calc-card">
-          <label>نوع قرارداد
-            <select value={type} onChange={(e) => setType(e.target.value)}>
-              {CONTRACT_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label>صنف / حوزه کاری
-            <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-              {INDUSTRIES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label>نام طرف اول (کارفرما / سفارش‌دهنده)
-            <input value={partyA} onChange={(e) => setPartyA(e.target.value)} placeholder="مثلاً: شرکت …" />
-          </label>
-          <label>نام طرف دوم (کارگر / پیمانکار / مشاور)
-            <input value={partyB} onChange={(e) => setPartyB(e.target.value)} placeholder="مثلاً: آقای/خانم …" />
-          </label>
-          <label>مدت (اختیاری)
-            <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="مثلاً: ۱۲ ماه" />
-          </label>
-          <label>مبلغ کل (ریال — اختیاری)
-            <FaNumberInput value={Number(String(amount).replace(/\D/g, '')) || 0} onChange={(n) => setAmount(n ? String(n) : '')} />
-          </label>
-          <label>توضیح اضافه (اختیاری)
-            <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={2} placeholder="هر شرط خاصی داری بنویس…" />
-          </label>
-          <button className="button" onClick={() => { setBuilt(true); }}>
-            <Wand2 size={16} /> ساخت متن قرارداد
-          </button>
-        </div>
+        <StepIndicator steps={STEPS} current={step} onStepClick={(i) => i < step && setStep(i)} />
 
-        {built && (
-          <div className="legal-box contract-draft">
-            <h2><FileText size={18} /> پیش‌نویس قرارداد {type} — {industry}</h2>
-            <pre className="contract-pre">{text}</pre>
-            <div className="health-cta">
-              <button className="button" onClick={copy}>{copied ? '✓ کپی شد' : 'کپی متن'} <Copy size={15} /></button>
-              <button className="button button-outline" onClick={() => window.print()}><Printer size={15} /> چاپ / PDF</button>
-              {userId ? (
-                <button className="button button-outline" onClick={save}>
-                  <Save size={15} />
-                  {saveState === 'saving' ? 'در حال ذخیره…' : saveState === 'saved' ? '✓ ذخیره شد (نسخه جدید)' : saveState === 'error' ? 'ذخیره نشد — دوباره' : rootId ? 'ذخیره نسخه جدید' : 'ذخیره در حساب من'}
-                </button>
-              ) : (
-                <a className="button button-outline" href="/ورود"><Save size={15} /> برای ذخیره، وارد شو</a>
+        <div className="contact-card calc-card">
+          {/* مرحله ۱: نوع و صنف */}
+          {step === 0 && (
+            <div className="wizard-step">
+              <label>نوع قرارداد
+                <select value={type} onChange={(e) => setType(e.target.value)}>
+                  {CONTRACT_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+              <label>صنف / حوزه کاری
+                <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
+                  {INDUSTRIES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </label>
+              <p className="muted-note">نوع قرارداد، مبنای قانونی متن را تعیین می‌کند: قراردادهای «کار» و «کارآموزی» تابع قانون کار هستند و بقیه بر اساس ماده ۱۰ قانون مدنی تنظیم می‌شوند.</p>
+            </div>
+          )}
+
+          {/* مرحله ۲: طرفین */}
+          {step === 1 && (
+            <div className="wizard-step">
+              <label>نام طرف اول (کارفرما / سفارش‌دهنده) <span className="req-star" title="الزامی">*</span>
+                <input value={partyA} onChange={(e) => setPartyA(e.target.value)} placeholder="مثلاً: شرکت …" />
+              </label>
+              <label>نام طرف دوم (کارگر / پیمانکار / مشاور) <span className="req-star" title="الزامی">*</span>
+                <input value={partyB} onChange={(e) => setPartyB(e.target.value)} placeholder="مثلاً: آقای/خانم …" />
+              </label>
+              <label>توضیح اضافه (اختیاری)
+                <textarea value={extra} onChange={(e) => setExtra(e.target.value)} rows={3} placeholder="هر شرط خاصی داری بنویس… مثلاً: محل انجام کار، ساعات حضور، تحویل خروجی‌ها…" />
+              </label>
+            </div>
+          )}
+
+          {/* مرحله ۳: مدت و مبلغ */}
+          {step === 2 && (
+            <div className="wizard-step">
+              <label>مدت (اختیاری)
+                <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="مثلاً: ۱۲ ماه" />
+              </label>
+              <label>مبلغ کل (ریال — اختیاری)
+                <FaNumberInput value={Number(String(amount).replace(/\D/g, '')) || 0} onChange={(n) => setAmount(n ? String(n) : '')} />
+              </label>
+              <p className="muted-note">اگر مدت یا مبلغ را خالی بگذاری، در متن قرارداد به‌صورت «توافقی طرفین» درج می‌شود که بعداً می‌توانید دستی پر کنید.</p>
+            </div>
+          )}
+
+          {/* مرحله ۴: پیش‌نمایش */}
+          {step === 3 && (
+            <div className="wizard-step">
+              <div className="legal-box contract-draft">
+                <h2><FileText size={18} /> پیش‌نویس قرارداد {type} — {industry}</h2>
+                <pre className="contract-pre">{text}</pre>
+                <div className="health-cta">
+                  <button className="button" onClick={copy}>{copied ? '✓ کپی شد' : 'کپی متن'} <Copy size={15} /></button>
+                  <button className="button button-outline" onClick={() => window.print()}><Printer size={15} /> چاپ / PDF</button>
+                  {userId ? (
+                    <button className="button button-outline" onClick={save}>
+                      <Save size={15} />
+                      {saveState === 'saving' ? 'در حال ذخیره…' : saveState === 'saved' ? '✓ ذخیره شد (نسخه جدید)' : saveState === 'error' ? 'ذخیره نشد — دوباره' : rootId ? 'ذخیره نسخه جدید' : 'ذخیره در حساب من'}
+                    </button>
+                  ) : (
+                    <a className="button button-outline" href="/ورود"><Save size={15} /> برای ذخیره، وارد شو</a>
+                  )}
+                </div>
+                {savedContractId && userId && (
+                  <div className="health-cta" style={{ marginTop: '.5rem', borderTop: '1px dashed var(--line)', paddingTop: '.6rem' }}>
+                    <button className="button button-outline" onClick={async () => {
+                      const { data } = await supabase
+                        .from('contract_signatures')
+                        .insert({ contract_id: savedContractId, owner_id: userId })
+                        .select('share_token')
+                        .single();
+                      if (data?.share_token) {
+                        const link = `${window.location.origin}/امضای-قرارداد/${data.share_token}`;
+                        setShareLink(link);
+                        await navigator.clipboard.writeText(link);
+                        void notifyAdmin(`✍️ درخواست امضای قرارداد: ${type} — ${industry}`);
+                      }
+                    }}>
+                      <Share2 size={15} /> ساخت لینک امضا
+                    </button>
+                    <button className="button button-outline" onClick={() => setShowComments((v) => !v)}>
+                      <MessageSquare size={15} /> یادداشت‌های بندها
+                    </button>
+                    {shareLink && (
+                      <input value={shareLink} readOnly style={{ flex: '1 1 100%', fontFamily: 'monospace', fontSize: '.78rem', background: 'var(--surface2)', border: '1px solid var(--line)', borderRadius: 8, padding: '.4rem .6rem' }} dir="ltr" />
+                    )}
+                  </div>
+                )}
+                <p className="muted-note">این متن، پیش‌نویس استاندارد است؛ برای نسخه نهایی و اختصاصی، از صفحه خدمات «تنظیم قرارداد اختصاصی» سفارش بدهید.</p>
+              </div>
+              {showComments && savedContractId && (
+                <ClauseComments
+                  contractId={savedContractId}
+                  clauses={['ماده ۱ — طرفین قرارداد', 'ماده ۲ — موضوع قرارداد', 'ماده ۳ — مدت قرارداد', 'ماده ۴ — مبلغ و نحوه پرداخت', 'ماده ۵ — تعهدات طرف اول', 'ماده ۶ — تعهدات طرف دوم', 'ماده ۷ — مبنای قانونی', 'ماده ۸ — حل اختلاف', 'ماده ۹ — محرمانگی و فورس ماژور', 'ماده ۱۰ — نسخ و لازم‌الاجرا بودن']}
+                  onClose={() => setShowComments(false)}
+                />
               )}
             </div>
-            <p className="muted-note">این متن، پیش‌نویس استاندارد است؛ برای نسخه نهایی و اختصاصی، از صفحه خدمات «تنظیم قرارداد اختصاصی» سفارش بدهید.</p>
+          )}
+
+          {/* ناوبری ویزارد */}
+          <div className="wizard-nav">
+            {step > 0 && (
+              <button className="button button-outline" onClick={prev}>
+                <ArrowRight size={16} /> مرحله قبل
+              </button>
+            )}
+            {step < 3 ? (
+              <button className="button" onClick={next} disabled={!canNext}>
+                مرحله بعد <ArrowLeft size={16} />
+              </button>
+            ) : (
+              <button className="button button-outline" onClick={() => setStep(0)}>
+                <Wand2 size={15} /> ویرایش مجدد
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="legal-box">
           <h2>مبنای قانونی</h2>

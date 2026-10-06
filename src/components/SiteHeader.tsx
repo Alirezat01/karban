@@ -2,11 +2,12 @@
    نسخه ۳: بازطراحی کامل منوی بالای سایت */
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Calculator, ChevronDown, FileSignature, FileText, LayoutDashboard, ListChecks, LogIn, LogOut, Menu, Receipt, Scale, Sparkles, UserRound, Wrench, X, Zap } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, ChevronDown, FileSignature, FileText, LayoutDashboard, ListChecks, LogIn, LogOut, Menu, Moon, Receipt, Scale, Sparkles, Sun, UserRound, Wrench, X, Zap } from 'lucide-react';
 import { useAuth, signOutUser } from '@/lib/auth';
+import { useTheme } from '@/lib/theme';
 import NotificationBell from '@/components/NotificationBell';
 
-type NavItem = { label: string; href: string; icon?: typeof BookOpen; desc?: string };
+type NavItem = { label: string; href: string; icon?: typeof BookOpen; desc?: string; badge?: string };
 type NavGroup = { label: string; href?: string; badge?: string; items?: NavItem[] };
 
 /* ساختار منو: لینک‌های پرتکرار مستقیم، بقیه در دو dropdown مرتبط */
@@ -19,6 +20,8 @@ const MENU: NavGroup[] = [
       { label: 'فاکتورساز آنلاین', href: '/فاکتورساز', icon: Receipt, desc: 'فاکتور سریع با محاسبه خودکار مالیات' },
       { label: 'ماشین‌حساب‌های هوشمند', href: '/ابزارهای-هوش-مصنوعی', icon: Calculator, desc: 'حقوق، بیمه، مالیات، سنوات و…' },
       { label: 'سازنده قرارداد', href: '/قراردادها', icon: FileSignature, desc: '۹۴ نمونه قرارداد آماده ویرایشی' },
+      { label: 'تحلیل هوشمند قرارداد', href: '/تحلیل-قرارداد', icon: Sparkles, desc: 'آپلود قرارداد، تحلیل ریسک با AI', },
+      { label: 'دستیار حقوقی AI', href: '/دستیار-حقوقی', icon: Scale, desc: 'پرسش حقوقی با پاسخ مستند به قانون', badge: 'جدید' },
     ],
   },
   {
@@ -42,6 +45,7 @@ export default function SiteHeader({ path }: { path?: string }) {
   const userWrapRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const { loading, userId, email, displayName } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   /* مسیر فعلی برای خط طلایی زیر آیتم فعال منو */
   const current = path || (typeof window !== 'undefined' ? window.location.pathname : '');
 
@@ -186,7 +190,7 @@ export default function SiteHeader({ path }: { path?: string }) {
                     <a key={item.href} href={item.href} role="menuitem" className={`nav-dropdown-item${isActive(item.href) ? ' is-active' : ''}`}>
                       {item.icon && <item.icon size={17} aria-hidden="true" />}
                       <span>
-                        <b>{item.label}</b>
+                        <b>{item.label}{item.badge && <span className="nav-badge" style={{ marginInlineStart: '.4rem' }}>{item.badge}</span>}</b>
                         {item.desc && <small>{item.desc}</small>}
                       </span>
                       <ArrowLeft size={13} className="nav-dropdown-arrow" aria-hidden="true" />
@@ -197,6 +201,9 @@ export default function SiteHeader({ path }: { path?: string }) {
             </div>
           ))}
           {authArea}
+          <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === 'dark' ? 'روشن کردن صفحه' : 'تاریک کردن صفحه'} title={theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}>
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           {/* دکمه CTA درخشان — قلب بازاریابی هدر */}
           <a className={`header-cta${userId ? ' is-member' : ''}`} href={userId ? '/حسابداری/پنل' : '/حسابداری'}>
             <Zap size={15} aria-hidden="true" />

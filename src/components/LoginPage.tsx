@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LogOut, Phone, ShieldCheck, Timer } from 'lucide-react';
 import { useAuth, signInWithGoogle, signOutUser, sanitizeNext } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 import { isIranianMobile } from '@/lib/validation';
 import { normalizeMobile } from '@/lib/normalize';
 
@@ -12,13 +13,17 @@ function nextFromQuery(): string | null {
   }
 }
 
+type Tab = 'google' | 'mobile';
+type MobileStep = 'phone' | 'code';
+type MobileStatus = 'idle' | 'sending' | 'sent' | 'verifying' | 'verified' | 'error';
+
 export default function LoginPage() {
   const { loading, userId, email, profile, displayName, saveProfile } = useAuth();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [tab, setTab] = useState<Tab>('google');
   const next = nextFromQuery();
 
-  /* اگر با next آمده (مثلاً از پنل حسابداری) و لاگین است → مستقیم ببر به مقصد */
   useEffect(() => {
     if (!loading && userId && next) window.location.replace(next);
   }, [loading, userId, next]);
@@ -32,7 +37,6 @@ export default function LoginPage() {
   const [touched, setTouched] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  /* پری‌فیل یک‌باره وقتی پروفایل از دیتابیس رسید (بدون خراب‌کردن تایپ کاربر) */
   useEffect(() => {
     if (profile && !touched) {
       setForm({
@@ -78,27 +82,177 @@ export default function LoginPage() {
     }
   };
 
+  /* ─── OTP موبایل ─── */
+  const [mobileInput, setMobileInput] = useState('');
+  const [codeInput, setCodeInput] = useState('');
+  const [mobileStatus, setMobileStatus] = useState<MobileStatus>('idle');
+  const [mobileErr, setMobileErr] = useState('');
+  const [mobileStep, setMobileStep] = useState<MobileStep>('phone');
+  const [resendIn, setResendIn] = useState(0);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
+
+  const sendOtp = async () => {
+    const m = normalizeMobile(mobileInput);
+    if (!isIranianMobile(m)) {
+      setMobileErr('شماره موبایل را با ۰۹ و ۱۱ رقم وارد کنید.');
+      return;
+    }
+    setMobileErr('');
+    setMobileStatus('sending');
+    try {
+      const res = await fetch('/api/otp?action=send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: m }),
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        setMobileErr(j.error || 'ارسال کد ناموفق بود');
+        setMobileStatus('error');
+        return;
+      }
+      setMobileStatus('sent');
+      setMobileStep('code');
+      setResendIn(60);
+    } catch {
+      setMobileErr('خطای شبکه؛ دوباره تلاش کنید');
+      setMobileStatus('error');
+    }
+  };
+
+  const verifyOtp = async () => {
+    const m = normalizeMobile(mobileInput);
+    setMobileErr('');
+    setMobileStatus('verifying');
+    try {
+      const res = await fetch('/api/otp?action=verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: m, code: codeInput.replace(/\D/g, '') }),
+      });
+      const j = await res.json();
+      if (!j.ok) {
+        setMobileErr(j.error || 'کد اشتباه است');
+        setMobileStatus('error');
+        return;
+      }
+      if (j.access_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token: j.access_token,
+          refresh_token: j.refresh_token,
+        });
+        if (!error) {
+          setMobileStatus('verified');
+          window.location.replace(next || '/داشبورد');
+          return;
+        }
+      }
+      setMobileErr('نشست ساخته نشد؛ دوباره تلاش کنید');
+      setMobileStatus('error');
+    } catch {
+      setMobileErr('خطای شبکه؛ دوباره تلاش کنید');
+      setMobileStatus('error');
+    }
+  };
+
   return (
     <section className="inner-page">
       <div className="container narrow-content">
         <span className="eyebrow"><ShieldCheck size={14} /> حساب کاربری کاربان</span>
         <h1>ورود به کاربان</h1>
         <p className="lead">
-          با حساب گوگل وارد شو تا قراردادهای ساخته‌شده، درخواست‌ها و مشاوره‌هایت همیشه در داشبوردت بماند.
+          با حساب گوگل یا شماره موبایل وارد شو تا قراردادهای ساخته‌شده، درخواست‌ها و مشاوره‌هایت همیشه در داشبوردت بماند.
         </p>
 
         {loading ? (
           <div className="contact-card calc-card auth-card"><p>در حال بررسی نشست…</p></div>
         ) : !userId ? (
-          <div className="contact-card calc-card auth-card">
-            <button className="button google-btn" onClick={google} disabled={busy}>
-              <GoogleIcon /> {busy ? 'در حال انتقال به گوگل…' : 'ورود با گوگل'}
-            </button>
-            {err && <small className="admin-error">{err}</small>}
-            <p className="muted-note">
-              ورود با گوگل سریع و امن است؛ هیچ رمزی نزد کاربان ذخیره نمی‌شود و مدیریت احراز هویت با گوگل است.
-            </p>
-          </div>
+          <>
+            {/* تب‌ها */}
+            <div className="auth-tabs" role="tablist">
+              <button role="tab" aria-selected={tab === 'google'} className={tab === 'google' ? 'is-active' : ''} onClick={() => setTab('google')}>
+                ورود با گوگل
+              </button>
+              <button role="tab" aria-selected={tab === 'mobile'} className={tab === 'mobile' ? 'is-active' : ''} onClick={() => setTab('mobile')}>
+                <Phone size={14} /> ورود با موبایل
+              </button>
+            </div>
+
+            {tab === 'google' ? (
+              <div className="contact-card calc-card auth-card">
+                <button className="button google-btn" onClick={google} disabled={busy}>
+                  <GoogleIcon /> {busy ? 'در حال انتقال به گوگل…' : 'ورود با گوگل'}
+                </button>
+                {err && <small className="admin-error">{err}</small>}
+                <p className="muted-note">
+                  ورود با گوگل سریع و امن است؛ هیچ رمزی نزد کاربان ذخیره نمی‌شود و مدیریت احراز هویت با گوگل است.
+                </p>
+              </div>
+            ) : (
+              <div className="contact-card calc-card auth-card">
+                {mobileStep === 'phone' && (
+                  <>
+                    <label>شماره موبایل <span className="req-star" title="الزامی">*</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        value={mobileInput}
+                        onChange={(e) => setMobileInput(e.target.value)}
+                        placeholder="۰۹۱۲۳۴۵۶۷۸۹"
+                        dir="ltr"
+                        style={{ textAlign: 'left' }}
+                      />
+                    </label>
+                    <button className="button" onClick={sendOtp} disabled={mobileStatus === 'sending'}>
+                      {mobileStatus === 'sending' ? 'در حال ارسال…' : 'ارسال کد یک‌بارمصرف'} <ArrowLeft size={15} />
+                    </button>
+                  </>
+                )}
+                {mobileStep === 'code' && (
+                  <>
+                    <div className="otp-phone-display">
+                      <small>کد برای شماره</small>
+                      <strong dir="ltr">{mobileInput}</strong>
+                      <button className="text-link" onClick={() => { setMobileStep('phone'); setMobileStatus('idle'); setMobileErr(''); }}>
+                        تغییر شماره
+                      </button>
+                    </div>
+                    <label>کد ۶ رقمی <span className="req-star" title="الزامی">*</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        value={codeInput}
+                        onChange={(e) => setCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="۱۲۳۴۵۶"
+                        dir="ltr"
+                        maxLength={6}
+                        style={{ textAlign: 'center', letterSpacing: '.4em', fontSize: '1.3rem', fontVariantNumeric: 'tabular-nums' }}
+                      />
+                    </label>
+                    <button className="button" onClick={verifyOtp} disabled={mobileStatus === 'verifying' || codeInput.length !== 6}>
+                      {mobileStatus === 'verifying' ? 'در حال تأیید…' : 'تأیید و ورود'} <ArrowLeft size={15} />
+                    </button>
+                    <div className="otp-footer">
+                      {resendIn > 0 ? (
+                        <small className="muted-note"><Timer size={12} /> ارسال مجدد تا {resendIn.toLocaleString('fa-IR')} ثانیه</small>
+                      ) : (
+                        <button className="text-link" onClick={sendOtp}>ارسال مجدد کد</button>
+                      )}
+                    </div>
+                  </>
+                )}
+                {mobileErr && <small className="admin-error">{mobileErr}</small>}
+                <p className="muted-note">
+                  کد ۵ دقیقه اعتبار دارد. شماره موبایل شما نزد کاربان محفوظ است و فقط برای ورود استفاده می‌شود.
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <div className="contact-card calc-card auth-card">
