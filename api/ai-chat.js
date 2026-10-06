@@ -2,6 +2,7 @@
    کاربان — دستیار حقوقی چت‌بات (Phase 3.2)
    از API عمومی Z.ai (open.bigmodel.cn) استفاده می‌کند.
    متغیر لازم: ZAI_API_KEY
+   مدل‌ها به ترتیب امتحان می‌شوند.
    ═════════════════════════════════════════════════════════════════════ */
 
 const LAWS = {
@@ -64,7 +65,7 @@ function buildPrompt(question, citations, history) {
 }
 
 const ZAI_BASE = 'https://open.bigmodel.cn/api/paas/v4';
-const ZAI_MODEL = 'glm-4-flash';
+const ZAI_MODELS = ['glm-4-flash', 'glm-4-flashx', 'glm-4-air', 'glm-4-airx', 'glm-4', 'glm-3-turbo'];
 
 async function callZai(prompt) {
   const apiKey = process.env.ZAI_API_KEY;
@@ -77,23 +78,43 @@ async function callZai(prompt) {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
   };
-  const body = JSON.stringify({
-    model: ZAI_MODEL,
+  const baseBody = {
     messages: [
       { role: 'system', content: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' },
       { role: 'user', content: prompt },
     ],
     temperature: 0.5,
     max_tokens: 800,
-  });
+  };
 
-  const res = await fetch(url, { method: 'POST', headers, body });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Z.ai API ${res.status}: ${t.slice(0, 300)}`);
+  /* مدل‌ها رو به‌ترتیب امتحان می‌کنیم */
+  let lastError = '';
+  for (const model of ZAI_MODELS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...baseBody, model }),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const content = j.choices?.[0]?.message?.content || '';
+        if (content) return content;
+      } else {
+        const t = await res.text().catch(() => '');
+        lastError = `${model}: ${res.status} ${t.slice(0, 100)}`;
+        if (res.status === 401) {
+          throw new Error(`Z.ai API 401: کلید API نامعتبر است`);
+        }
+        continue;
+      }
+    } catch (e) {
+      if (e.message.includes('401')) throw e;
+      lastError = `${model}: ${e.message.slice(0, 100)}`;
+      continue;
+    }
   }
-  const j = await res.json();
-  return j.choices?.[0]?.message?.content || '';
+  throw new Error(`هیچ مدلی کار نکرد. آخرین خطا: ${lastError}`);
 }
 
 export default async function handler(req, res) {
