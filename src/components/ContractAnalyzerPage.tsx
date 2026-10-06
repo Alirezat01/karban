@@ -4,7 +4,7 @@
    → display clause-by-clause risk with color highlighting.
    ──────────────────────────────────────────────────────────── */
 import { useEffect, useState } from 'react';
-import { AlertTriangle, FileSearch, Loader2, ShieldAlert, ShieldCheck, UploadCloud } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Crown, FileSearch, Loader2, Scale, ShieldAlert, ShieldCheck, Sparkles, UploadCloud, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import KarbanLoader from '@/components/KarbanLoader';
@@ -22,6 +22,13 @@ type Analysis = {
   summary: string;
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   clauses: Clause[];
+};
+
+type Usage = {
+  used: number;
+  limit: number;
+  remaining: number;
+  plan: string;
 };
 
 const RISK_LABEL: Record<string, string> = {
@@ -65,6 +72,8 @@ export default function ContractAnalyzerPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Analysis | null>(null);
   const [err, setErr] = useState('');
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [needLogin, setNeedLogin] = useState(false);
 
   useEffect(() => {
     /* اگر متن از روی متن قراردادِ موجود آمده باشد */
@@ -94,30 +103,58 @@ export default function ContractAnalyzerPage() {
       setErr('متن قرارداد کافی نیست (حداقل ۵۰ کاراکتر)');
       return;
     }
+    if (!userId) {
+      setNeedLogin(true);
+      return;
+    }
     setBusy(true);
     setErr('');
     setResult(null);
     try {
+      /* گرفتن توکن از ساپابیس */
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) {
+        setNeedLogin(true);
+        return;
+      }
+
       const res = await fetch('/api/ai-analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({ text, title }),
       });
       const j = await res.json();
-      if (!j.ok) { setErr(j.error || 'تحلیل ناموفق بود'); return; }
-      setResult({ summary: j.summary, risk_level: j.risk_level, clauses: j.clauses });
-      /* ذخیره تحلیل برای کاربر واردشده */
-      if (userId) {
-        await supabase.from('ai_analyses').insert({
-          user_id: userId,
-          contract_text: text.slice(0, 30000),
-          contract_title: title || null,
-          summary: j.summary,
-          risk_level: j.risk_level,
-          clauses: j.clauses,
-          model: j.model,
-        });
+
+      if (res.status === 401 && j.needLogin) {
+        setNeedLogin(true);
+        return;
       }
+      if (res.status === 429 && j.limitReached) {
+        setUsage({ used: j.used, limit: j.limit, remaining: 0, plan: j.plan });
+        setErr(j.error);
+        return;
+      }
+      if (!j.ok) {
+        setErr(j.error || 'تحلیل ناموفق بود');
+        return;
+      }
+      setResult({ summary: j.summary, risk_level: j.risk_level, clauses: j.clauses });
+      if (j.usage) setUsage(j.usage);
+
+      /* ذخیره تحلیل در دیتابیس */
+      await supabase.from('ai_analyses').insert({
+        user_id: userId,
+        contract_text: text.slice(0, 30000),
+        contract_title: title || null,
+        summary: j.summary,
+        risk_level: j.risk_level,
+        clauses: j.clauses,
+        model: j.model,
+      });
     } catch (e) {
       setErr('خطای شبکه: ' + (e as Error).message);
     } finally {
@@ -127,13 +164,53 @@ export default function ContractAnalyzerPage() {
 
   if (authLoading) return <KarbanLoader label="در حال بررسی نشست…" />;
 
+  if (!userId || needLogin) {
+    return (
+      <section className="inner-page">
+        <div className="container narrow-content">
+          <div className="ai-login-gate">
+            <div className="gemini-orb-large" />
+            <span className="eyebrow"><Sparkles size={14} /> ابزار هوش مصنوعی · تحلیل قرارداد</span>
+            <h1>تحلیل هوشمند قرارداد با AI</h1>
+            <p className="lead">
+              قراردادت را آپلود کن یا متنش را پیست کن. هوش مصنوعی کاربان بندها را یکی‌یکی بررسی می‌کند، ریسک‌ها را علامت‌گذاری می‌کند و پیشنهاد بهبود می‌دهد — همه با استناد به قانون کار و قانون مدنی ایران.
+            </p>
+            <div className="ai-login-features">
+              <div className="ai-login-feature"><ShieldAlert size={20} /> شناسایی بندهای پرخطر</div>
+              <div className="ai-login-feature"><ShieldCheck size={20} /> پیشنهاد بهبود هر بند</div>
+              <div className="ai-login-feature"><Crown size={20} /> ۳ تحلیل رایگان در روز</div>
+            </div>
+            <a className="button ai-cta-button" href={`/ورود?next=${encodeURIComponent('/تحلیل-قرارداد')}`}>
+              ورود برای تحلیل قرارداد
+              <FileSearch size={15} />
+            </a>
+            <p className="muted-note">کاربران رایگان: ۳ تحلیل در روز · کاربران پلن پیشرفته: ۱۰ تحلیل</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="inner-page">
       <div className="container narrow-content">
-        <span className="eyebrow"><FileSearch size={14} /> ابزار هوش مصنوعی · تحلیل قرارداد</span>
-        <h1>تحلیل هوشمند قرارداد با AI</h1>
+        <div className="ai-chat-header" style={{ marginBottom: '1rem' }}>
+          <div className="ai-chat-orb-wrap"><div className="gemini-orb-chat" /></div>
+          <div className="ai-chat-header-text">
+            <span className="eyebrow"><Sparkles size={14} /> ابزار هوش مصنوعی · تحلیل قرارداد</span>
+            <h1>تحلیل هوشمند قرارداد با AI</h1>
+            {usage && (
+              <div className="ai-usage-badge">
+                <Zap size={13} />
+                {usage.limit === -1
+                  ? `نامحدود (پلن بنیان‌گذار)`
+                  : `${usage.remaining.toLocaleString('fa-IR')} تحلیل باقی‌مانده از ${usage.limit.toLocaleString('fa-IR')}`}
+              </div>
+            )}
+          </div>
+        </div>
         <p className="lead">
-          قراردادت را آپلود کن یا متنش را پیست کن. هوش مصنوعی کاربان بندها را یکی‌یکی بررسی می‌کند، ریسک‌ها را علامت‌گذاری می‌کند و پیشنهاد بهبود می‌دهد — همه با استناد به قانون کار و قانون مدنی ایران.
+          قراردادت را آپلود کن یا متنش را پیست کن. هوش مصنوعی کاربان بندها را یکی‌یکی بررسی می‌کند، ریسک‌ها را علامت‌گذاری می‌کند و پیشنهاد بهبود می‌دهد.
         </p>
 
         <div className="contact-card calc-card">
