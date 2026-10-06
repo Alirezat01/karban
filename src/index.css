@@ -78,6 +78,8 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 .nav-link-btn.is-open .nav-caret { transform: rotate(180deg); opacity: 1; }
 .nav-badge { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #0b0e14; font-size: .58rem; font-weight: 800; padding: .1rem .4rem; border-radius: 999px; letter-spacing: .02em; box-shadow: 0 2px 8px rgba(216,165,63,.4); }
 .nav-dropdown { position: absolute; top: calc(100% + 10px); right: 0; min-width: 285px; background: rgba(13,17,28,.98); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); border: 1px solid rgba(216,165,63,.28); border-radius: 16px; padding: .55rem; box-shadow: 0 24px 60px -18px rgba(0,0,0,.85), 0 0 0 1px rgba(216,165,63,.08); animation: navDrop .22s cubic-bezier(.2,.9,.3,1.2); z-index: 60; }
+/* پل نامرئی برای پر کردن ۱۰px گپ بین دکمه و dropdown — جلوی بسته‌شدن ناگهانی هنگام حرکت موس را می‌گیرد */
+.nav-dropdown::after { content: ''; position: absolute; top: -10px; right: 0; left: 0; height: 10px; }
 @keyframes navDrop { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .nav-dropdown::before { content: ''; position: absolute; top: -5px; right: 34px; width: 9px; height: 9px; background: rgba(13,17,28,.98); border-top: 1px solid rgba(216,165,63,.28); border-right: 1px solid rgba(216,165,63,.28); transform: rotate(45deg); }
 .nav-dropdown-item { display: flex; align-items: center; gap: .7rem; padding: .6rem .7rem; border-radius: 11px; text-decoration: none; color: rgba(255,255,255,.82); transition: background .18s ease, color .18s ease; }
@@ -894,6 +896,10 @@ input[type="checkbox"] { width: 18px; height: 18px; min-width: 18px; accent-colo
 /* ════════════════════════════════════════════════════════════════
    LIGHT THEME — Phase 1.6
    Activated via `data-theme="light"` on <html>
+   Override strategy: since many existing rules use rgba(255,255,255,*)
+   for text on dark backgrounds, we override the most common ones here
+   rather than rewriting all components. Add to this list as new
+   low-contrast cases are found.
    ════════════════════════════════════════════════════════════════ */
 html[data-theme="light"] {
   --bg: #f7f5ef;
@@ -907,17 +913,154 @@ html[data-theme="light"] {
   --muted: #6b5f4a;
   --red: #a02020;
 }
+/* بدنه و پایه‌ها */
 html[data-theme="light"] body { background: var(--bg); color: var(--text); }
+html[data-theme="light"] p { color: var(--muted); }
+html[data-theme="light"] h1, html[data-theme="light"] h2, html[data-theme="light"] h3, html[data-theme="light"] h4 { color: var(--text); }
+
+/* هدر */
 html[data-theme="light"] .site-header { background: rgba(255,255,255,.92); border-bottom-color: rgba(176,125,31,.25); }
 html[data-theme="light"] .site-header.is-scrolled { background: rgba(255,255,255,.85); box-shadow: 0 10px 30px -20px rgba(0,0,0,.15); }
 html[data-theme="light"] .brand img { filter: brightness(0) invert(0.35) sepia(0.7) saturate(2) hue-rotate(-12deg) drop-shadow(0 2px 6px rgba(176,125,31,.25)); }
-html[data-theme="light"] .nav-dropdown { background: rgba(255,255,255,.98); }
-html[data-theme="light"] .nav-dropdown::before { background: rgba(255,255,255,.98); }
+/* لینک‌های منوی دسکتاپ — متن‌های نیمه‌سفید روی پس‌زمینه سفید ناخوانا می‌شدند */
+html[data-theme="light"] .desktop-nav a,
+html[data-theme="light"] .desktop-nav .nav-link { color: #4a4032; }
+html[data-theme="light"] .desktop-nav a:hover,
+html[data-theme="light"] .nav-link:hover { color: var(--gold2); background: rgba(176,125,31,.08); }
+html[data-theme="light"] .desktop-nav a.is-active,
+html[data-theme="light"] .nav-link.is-active { color: var(--gold2); }
+html[data-theme="light"] .nav-caret { opacity: .6; }
+/* دکمه ورود در هدر */
+html[data-theme="light"] .header-auth,
+html[data-theme="light"] .login-link { color: #4a4032; background: rgba(176,125,31,.08); border: 1px solid rgba(176,125,31,.2); }
+html[data-theme="light"] .header-auth:hover { color: var(--gold2); background: rgba(176,125,31,.14); }
+/* چیپ کاربر در هدر */
+html[data-theme="light"] .header-user { background: var(--surface2); border: 1px solid var(--line); color: var(--text); }
+html[data-theme="light"] .header-user-name { color: var(--text); }
+html[data-theme="light"] .header-user-caret { color: var(--muted); }
+html[data-theme="light"] .header-user-menu { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 20px 50px -20px rgba(0,0,0,.2); }
+html[data-theme="light"] .header-user-menu-head small { color: var(--muted); }
+html[data-theme="light"] .header-user-menu a { color: var(--text); }
+html[data-theme="light"] .header-user-menu a:hover { background: var(--surface2); }
+/* CTA شیشه‌ای هدر روی پس‌زمینه روشن — متن تیره‌تر */
+html[data-theme="light"] .header-cta { background: linear-gradient(135deg, #e8c56a, #b07d1f 55%, #8a5e10); color: #2a2418; box-shadow: 0 4px 18px -4px rgba(176,125,31,.45), inset 0 1px 0 rgba(255,255,255,.5); }
+html[data-theme="light"] .header-cta.is-member { background: linear-gradient(135deg, #3a2e1e, #1f1810); color: #e8c56a; }
+
+/* dropdown منو */
+html[data-theme="light"] .nav-dropdown { background: rgba(255,255,255,.98); border: 1px solid rgba(176,125,31,.25); box-shadow: 0 24px 60px -18px rgba(0,0,0,.15); }
+html[data-theme="light"] .nav-dropdown::before { background: rgba(255,255,255,.98); border-top-color: rgba(176,125,31,.25); border-right-color: rgba(176,125,31,.25); }
+html[data-theme="light"] .nav-dropdown-item { color: #4a4032; }
 html[data-theme="light"] .nav-dropdown-item b { color: #2a2418; }
-html[data-theme="light"] .mobile-nav { background: rgba(255,255,255,.98); }
-html[data-theme="light"] .t-card { background: var(--surface); }
-html[data-theme="light"] .fab-popover { background: var(--surface); }
-html[data-theme="light"] .contact-card, html[data-theme="light"] .calc-card { background: var(--surface); }
+html[data-theme="light"] .nav-dropdown-item small { color: var(--muted); }
+html[data-theme="light"] .nav-dropdown-item:hover { background: rgba(176,125,31,.08); }
+html[data-theme="light"] .nav-dropdown-item:hover b { color: var(--gold2); }
+html[data-theme="light"] .nav-dropdown-item svg:first-child { color: var(--gold); }
+
+/* منوی موبایل */
+html[data-theme="light"] .mobile-nav { background: rgba(255,255,255,.98); border-bottom-color: rgba(176,125,31,.2); }
+html[data-theme="light"] .mobile-nav a { color: #4a4032; }
+html[data-theme="light"] .mobile-nav a:hover { color: var(--gold2); background: rgba(176,125,31,.08); }
+html[data-theme="light"] .mobile-nav-user { color: var(--text); }
+html[data-theme="light"] .mobile-nav-logout { color: var(--red); }
+
+/* breadcrumb */
+html[data-theme="light"] .breadcrumb a { color: var(--gold2); }
+html[data-theme="light"] .breadcrumb span { color: var(--muted); }
+
+/* eyebrow */
+html[data-theme="light"] .eyebrow { background: rgba(176,125,31,.1); border-color: rgba(176,125,31,.3); color: var(--gold2); }
+
+/* دکمه‌های شیشه‌ای */
+html[data-theme="light"] .button { background: linear-gradient(135deg, rgba(232,197,106,.4), rgba(176,125,31,.25)); border-color: rgba(176,125,31,.45); color: var(--gold2); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 10px 30px -14px rgba(176,125,31,.35); }
+html[data-theme="light"] .button:hover { background: linear-gradient(135deg, rgba(232,197,106,.55), rgba(176,125,31,.35)); color: #5a3e0a; }
+html[data-theme="light"] .button-outline,
+html[data-theme="light"] .button-outline-light { background: rgba(255,255,255,.7); border: 1px solid rgba(74,64,50,.25); color: var(--text); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-theme="light"] .button-outline:hover { background: rgba(176,125,31,.08); border-color: rgba(176,125,31,.4); color: var(--gold2); }
+html[data-theme="light"] .button-green { background: linear-gradient(135deg, #c9a227, #8a5e10); color: #fff; }
+
+/* کارت‌ها */
+html[data-theme="light"] .contact-card,
+html[data-theme="light"] .calc-card { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 6px 24px -14px rgba(0,0,0,.1); }
+html[data-theme="light"] .contact-card h2,
+html[data-theme="light"] .calc-card h2,
+html[data-theme="light"] .contact-card h3,
+html[data-theme="light"] .calc-card h3 { color: var(--text); }
+html[data-theme="light"] .legal-box { background: var(--surface); border-color: var(--line); }
+html[data-theme="light"] .legal-box h2 { color: var(--text); }
+html[data-theme="light"] .legal-box ul li { color: var(--muted); }
+
+/* متن‌های کم‌رنگ */
+html[data-theme="light"] .muted-note,
+html[data-theme="light"] .lead { color: var(--muted); }
+html[data-theme="light"] .text-link,
+html[data-theme="light"] .text-link-light { color: var(--gold2); }
+
+/* فیلدهای ورودی */
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea { background: var(--surface2); border: 1px solid var(--line); color: var(--text); }
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder { color: #9a8d75; }
+html[data-theme="light"] input:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(176,125,31,.15); }
+
+/* hero */
+html[data-theme="light"] .hero-lux { background: linear-gradient(135deg, #f7f5ef, #ebe3d0); }
+html[data-theme="light"] .hero-copy h1 { color: var(--text); }
+html[data-theme="light"] .hero-lead { color: var(--muted); }
+html[data-theme="light"] .hero-eyebrow { background: rgba(176,125,31,.15); border-color: rgba(176,125,31,.4); color: var(--gold2); }
+html[data-theme="light"] .role-card { background: rgba(255,255,255,.85); border: 1px solid var(--line); color: var(--text); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-theme="light"] .role-card h3 { color: var(--text); }
+html[data-theme="light"] .role-card p { color: var(--muted); }
+html[data-theme="light"] .role-card span { color: var(--gold2); }
+
+/* section strip / services / tools */
+html[data-theme="light"] .section-card,
+html[data-theme="light"] .seven-card,
+html[data-theme="light"] .tool-lux-card { background: var(--surface); border: 1px solid var(--line); }
+html[data-theme="light"] .section-card h2,
+html[data-theme="light"] .seven-card h3,
+html[data-theme="light"] .tool-lux-card h3 { color: var(--text); }
+html[data-theme="light"] .section-card p,
+html[data-theme="light"] .seven-card p,
+html[data-theme="light"] .tool-lux-card p { color: var(--muted); }
+html[data-theme="light"] .section-card span,
+html[data-theme="light"] .tool-lux-card span { color: var(--gold2); }
+html[data-theme="light"] .lux-heading h2 { color: var(--text); }
+html[data-theme="light"] .lux-heading .line { background: linear-gradient(90deg, transparent, var(--gold)); }
+
+/* آمار زنده */
+html[data-theme="light"] .live-stats-section { background: linear-gradient(180deg, transparent, rgba(176,125,31,.06), transparent); border-block-color: rgba(176,125,31,.18); }
+html[data-theme="light"] .stat-num { color: var(--gold2); }
+html[data-theme="light"] .stat-suffix { color: var(--gold); }
+html[data-theme="light"] .stat-label { color: var(--muted); }
+
+/* testimonials */
+html[data-theme="light"] .testimonials-section { background: transparent; }
+html[data-theme="light"] .t-card { background: var(--surface); border-color: var(--line); }
+html[data-theme="light"] .t-content { color: var(--text); }
+html[data-theme="light"] .t-author strong { color: var(--text); }
+html[data-theme="light"] .t-author small { color: var(--muted); }
+
+/* FAB */
+html[data-theme="light"] .fab-popover { background: var(--surface); border-color: rgba(176,125,31,.4); box-shadow: 0 20px 50px -20px rgba(0,0,0,.2); }
+html[data-theme="light"] .fab-popover p { color: var(--muted); }
+
+/* فوتر */
+html[data-theme="light"] .site-footer { background: #2a2418; color: #d8cdb5; }
+html[data-theme="light"] .site-footer h3,
+html[data-theme="light"] .site-footer h2 { color: #e8c56a; }
+html[data-theme="light"] .site-footer a { color: #d8cdb5; }
+html[data-theme="light"] .site-footer a:hover { color: #e8c56a; }
+html[data-theme="light"] .site-footer p,
+html[data-theme="light"] .site-footer small { color: #a89878; }
+html[data-theme="light"] .site-footer input { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); color: #fff; }
+
+/* page-fade */
+html[data-theme="light"] .page-fade { color: var(--text); }
+
+/* استثناها: متن‌های سفیدِ عمدی روی پس‌زمینه تیره‌ی محلی (مثل header-cta و دکمه‌های روی عکس) تأثیر نمی‌گیرند */
 
 /* ─── Step indicator (wizard progress) ─── */
 .step-indicator { list-style: none; display: flex; align-items: flex-start; gap: 0; padding: 0; margin: 0 0 1.5rem; counter-reset: step; }

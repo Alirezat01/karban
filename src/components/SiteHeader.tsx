@@ -162,6 +162,7 @@ export default function SiteHeader({ path }: { path?: string }) {
               key={group.label}
               className="nav-item-wrap"
               onMouseEnter={() => setOpenGroup(group.items ? group.label : null)}
+              onMouseLeave={() => setOpenGroup((cur) => (cur === group.label ? null : cur))}
             >
               {group.href ? (
                 <a
@@ -185,7 +186,7 @@ export default function SiteHeader({ path }: { path?: string }) {
                 </button>
               )}
               {group.items && openGroup === group.label && (
-                <div className="nav-dropdown" role="menu">
+                <div className="nav-dropdown" role="menu" onMouseEnter={() => setOpenGroup(group.label)}>
                   {group.items.map((item) => (
                     <a key={item.href} href={item.href} role="menuitem" className={`nav-dropdown-item${isActive(item.href) ? ' is-active' : ''}`}>
                       {item.icon && <item.icon size={17} aria-hidden="true" />}

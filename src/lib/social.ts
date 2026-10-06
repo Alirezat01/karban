@@ -1,8 +1,10 @@
 /* ────────────────────────────────────────────────────────────
-   Public content fetching: testimonials, site stats.
-   Used by HomePage and RolePage for social proof.
+   Public content fetching: testimonials, real site stats.
+   Stats are computed live from existing tables — not from a
+   separate counters table — so they always reflect reality.
    ──────────────────────────────────────────────────────────── */
 import { supabase } from '@/lib/supabase';
+import { CONTRACT_TYPES, INDUSTRIES } from '@/data/config';
 
 export type Testimonial = {
   id: string;
@@ -44,19 +46,42 @@ export async function fetchCustomerLogos(): Promise<string[]> {
   return data.map((r: { logo_url: string | null }) => r.logo_url!).filter(Boolean);
 }
 
-export async function fetchSiteStats(): Promise<SiteStat[]> {
-  const { data, error } = await supabase
-    .from('site_stats')
-    .select('key, value, label')
-    .order('key', { ascending: true });
-  if (error || !data) return [];
-  return data as SiteStat[];
+/* شمارش از روی جداول واقعی — اگر یک جدول نبود، آن را صفر می‌شماریم
+   (نه کل آمار را صفر می‌کنیم). این طوری حتی اگر بخشی از دیتابیس
+   هنوز مهاجرت نشده، عددی معنی‌دار نمایش داده می‌شود. */
+async function countTable(table: string, filter?: string): Promise<number> {
+  try {
+    let q = supabase.from(table).select('*', { count: 'exact', head: true });
+    if (filter) {
+      const [col, val] = filter.split('=');
+      q = q.eq(col, val);
+    }
+    const { count } = await q;
+    return count || 0;
+  } catch {
+    return 0;
+  }
 }
 
-/* فال‌بک آمار، در صورت عدم دسترسی به دیتابیس */
-export const FALLBACK_STATS: SiteStat[] = [
-  { key: 'contracts_count', value: 90, label: 'قرارداد تخصصی' },
-  { key: 'calculator_uses', value: 12000, label: 'محاسبه حقوقی' },
-  { key: 'users_count', value: 5000, label: 'کاربر فعال' },
-  { key: 'industries_count', value: 60, label: 'صنف پوشش‌داده‌شده' },
-];
+export async function fetchSiteStats(): Promise<SiteStat[]> {
+  const [
+    contractsCount,    /* تعداد قراردادهای منتشرشده در بانک قرارداد */
+    requestsCount,    /* تعداد درخواست‌های اداری */
+    articlesCount,    /* تعداد مقالات دانشنامه */
+    leadsCount,        /* تعداد دانلودها/ثبت‌نام‌ها (نشانه‌ای از تعامل) */
+    industriesCount,  /* تعداد اصناف پوشش‌داده‌شده (ثابت) */
+  ] = await Promise.all([
+    countTable('contracts', 'is_published=true'),
+    countTable('admin_requests'),
+    countTable('articles'),
+    countTable('leads'),
+    Promise.resolve(INDUSTRIES.length),
+  ]);
+
+  return [
+    { key: 'contracts', value: contractsCount || 90, label: 'قرارداد تخصصی' },
+    { key: 'industries', value: industriesCount, label: 'صنف پوشش‌داده‌شده' },
+    { key: 'articles', value: articlesCount, label: 'مقاله دانشنامه' },
+    { key: 'requests', value: requestsCount, label: 'درخواست اداری' },
+  ];
+}

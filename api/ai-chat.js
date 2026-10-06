@@ -39,9 +39,6 @@ function searchLaws(question) {
   const q = question.toLowerCase();
   const hits = [];
   for (const [lawName, articles] of Object.entries(LAWS)) {
-    if (q.includes('کار') && lawName === 'قانون کار') continue;
-    if (q.includes('بیمه') && lawName === 'تأمین اجتماعی') continue;
-    if (q.includes('مالیات') && lawName === 'مالیات') continue;
     for (const a of articles) {
       const text = (lawName + ' ' + a.article + ' ' + a.text).toLowerCase();
       let score = 0;
@@ -74,25 +71,24 @@ ${historyStr ? 'گفت‌وگوی قبلی:\n' + historyStr : ''}
 هرگز توصیه حقوقی قطعی نده — هم بنویس «برای پرونده خاص به مشاور مراجعه کنید».`;
 }
 
+let _zai = null;
+async function getZai() {
+  if (_zai) return _zai;
+  const ZAI = (await import('z-ai-web-dev-sdk')).default;
+  _zai = await ZAI.create();
+  return _zai;
+}
+
 async function callZai(prompt) {
-  const apiKey = process.env.ZAI_API_KEY;
-  if (!apiKey) throw new Error('ZAI_API_KEY not set');
-  const res = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'glm-4-flash',
-      messages: [
-        { role: 'system', content: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.5,
-      max_tokens: 800,
-    }),
+  const zai = await getZai();
+  const completion = await zai.chat.completions.create({
+    messages: [
+      { role: 'assistant', content: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' },
+      { role: 'user', content: prompt },
+    ],
+    thinking: { type: 'disabled' },
   });
-  if (!res.ok) throw new Error(`Z.ai ${res.status}`);
-  const j = await res.json();
-  return j.choices?.[0]?.message?.content || '';
+  return completion.choices?.[0]?.message?.content || '';
 }
 
 export default async function handler(req, res) {
@@ -111,7 +107,7 @@ export default async function handler(req, res) {
     return res.json({ ok: true, answer, citations });
   } catch (e) {
     console.error('ai-chat failed', e.message);
-    return res.status(502).json({ ok: false, error: 'پاسخ‌گویی ناموفق بود؛ دوباره تلاش کنید' });
+    return res.status(502).json({ ok: false, error: 'پاسخ‌گویی ناموفق بود؛ دوباره تلاش کنید', detail: e.message });
   }
 }
 

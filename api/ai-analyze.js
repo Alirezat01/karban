@@ -5,8 +5,7 @@
      body: { text: string, title?: string }
      → { ok, summary, risk_level, clauses: [{index, title, text, risk, reason, suggestion}] }
 
-   از Z.ai GLM (همان z-ai-web-dev-sdk) استفاده می‌کند — رایگان و در دسترس.
-   برای production روی Vercel، ZAI_API_KEY را در env ست کنید.
+   از Z.ai GLM SDK استفاده می‌کند — رایگان، بدون نیاز به API key.
    ═════════════════════════════════════════════════════════════════════ */
 
 const MAX_CHARS = 30000;
@@ -44,34 +43,6 @@ ${text.slice(0, MAX_CHARS)}
 - فقط JSON برگردان، هیچ متن دیگری قبل یا بعد نگذار.`;
 }
 
-async function callZai(prompt) {
-  const apiKey = process.env.ZAI_API_KEY;
-  if (!apiKey) throw new Error('ZAI_API_KEY not set');
-
-  const res = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'glm-4-flash',
-      messages: [
-        { role: 'system', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 4000,
-    }),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => '');
-    throw new Error(`Z.ai ${res.status}: ${t.slice(0, 200)}`);
-  }
-  const j = await res.json();
-  return j.choices?.[0]?.message?.content || '';
-}
-
 function extractJson(text) {
   /* پیدا کردن JSON در پاسخ LLM (گاهی با ```json ... ``` می‌آید) */
   const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -84,6 +55,26 @@ function extractJson(text) {
   } catch {
     return null;
   }
+}
+
+let _zai = null;
+async function getZai() {
+  if (_zai) return _zai;
+  const ZAI = (await import('z-ai-web-dev-sdk')).default;
+  _zai = await ZAI.create();
+  return _zai;
+}
+
+async function callZai(prompt) {
+  const zai = await getZai();
+  const completion = await zai.chat.completions.create({
+    messages: [
+      { role: 'assistant', content: 'تو یک وکیل حقوقی ایرانی هستی. فقط JSON معتبر برگردان.' },
+      { role: 'user', content: prompt },
+    ],
+    thinking: { type: 'disabled' },
+  });
+  return completion.choices?.[0]?.message?.content || '';
 }
 
 export default async function handler(req, res) {
@@ -100,18 +91,18 @@ export default async function handler(req, res) {
     const raw = await callZai(prompt);
     const parsed = extractJson(raw);
     if (!parsed) {
-      return res.status(502).json({ ok: false, error: 'پاسخ هوش مصنوعی قابل parse نبود؛ دوباره تلاش کنید' });
+      return res.status(502).json({ ok: false, error: 'پاسخ هوش مصنوعی قابل parse نبود؛ دوباره تلاش کنید', raw: raw.slice(0, 300) });
     }
     return res.json({
       ok: true,
       summary: parsed.summary || '',
       risk_level: parsed.risk_level || 'medium',
       clauses: Array.isArray(parsed.clauses) ? parsed.clauses : [],
-      model: 'glm-4-flash',
+      model: 'glm-zai',
     });
   } catch (e) {
     console.error('ai-analyze failed', e.message);
-    return res.status(502).json({ ok: false, error: 'تحلیل ناموفق بود؛ دوباره تلاش کنید' });
+    return res.status(502).json({ ok: false, error: 'تحلیل ناموفق بود؛ دوباره تلاش کنید', detail: e.message });
   }
 }
 
