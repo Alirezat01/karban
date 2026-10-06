@@ -1,21 +1,13 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — دستیار حقوقی چت‌بات (Phase 3.2)
-   ─────────────────────────────────────────────────────────────────
-   POST /api/ai-chat
-     body: { question: string, history?: [{role, content}] }
-     → { ok, answer, citations: [{law_id, article, text}] }
-
-   استراتژی RAG سبک:
-   1. کلیدواژه‌های سوال را استخراج می‌کنیم
-   2. در laws.json محلی جست‌وجو می‌کنیم (بدون embedding — ساده و سریع)
-   3. ۳ ماده قانونی مرتبط + سوال را به LLM می‌دهیم
-   4. LLM پاسخ می‌دهد با استناد به مواد
+   از API عمومی Z.ai (open.bigmodel.cn) استفاده می‌کند.
+   متغیر لازم: ZAI_API_KEY
    ═════════════════════════════════════════════════════════════════════ */
 
 const LAWS = {
   'قانون کار': [
-    { article: 'ماده ۷', text: 'قرارداد کار ممکن است برای کار غیرمحدود یا محدود (برای کار معین یا مدت معین) منعقد شود.' },
-    { article: 'ماده ۱۰', text: 'قرارداد کار باید کتبی منعقد شود. عدم رعایت شکل مکتوب قرارداد کارفرما را از پذیرش ادعا معاف نمی‌کند.' },
+    { article: 'ماده ۷', text: 'قرارداد کار ممکن است برای کار غیرمحدود یا محدود منعقد شود.' },
+    { article: 'ماده ۱۰', text: 'قرارداد کار باید کتبی منعقد شود.' },
     { article: 'ماده ۲۴', text: 'قرارداد کار ممکن است با رضایت طرفین فسخ شود.' },
     { article: 'ماده ۲۷', text: 'کارفرما حق ندارد بدون اسباب موجه قرارداد را فسخ کند.' },
     { article: 'ماده ۳۴', text: 'مزد کارگر باید قبل از عمل تعیین شود.' },
@@ -24,14 +16,14 @@ const LAWS = {
     { article: 'ماده ۵۹', text: 'سنوات خدمت به ازای هر سال معادل یک ماه آخرین حقوق است.' },
   ],
   'تأمین اجتماعی': [
-    { article: 'ماده ۳', text: 'بیمه تأمین اجتماعی شامل بیمه‌های بازنشستگی، ازکارافتادگی، بیمه‌های درمان و خانواده است.' },
-    { article: 'ماده ۳۸', text: 'حق بیمه سهم کارگر ۷٪ و سهم کارفرما ۲۳٪ مزد یا حقوق است.' },
-    { article: 'ماده ۷۷', text: 'بازنشستگی پس از ۳۰ سال سابقه پرداخت حق بیمه برای مردان و ۲۰ سال برای زنان ممکن است.' },
+    { article: 'ماده ۳', text: 'بیمه تأمین اجتماعی شامل بازنشستگی، ازکارافتادگی و درمان است.' },
+    { article: 'ماده ۳۸', text: 'حق بیمه سهم کارگر ۷٪ و سهم کارفرما ۲۳٪ مزد است.' },
+    { article: 'ماده ۷۷', text: 'بازنشستگی پس از ۳۰ سال سابقه برای مردان ممکن است.' },
   ],
   'مالیات': [
-    { article: 'ماده ۱۳۱', text: 'مالیات مشاغل پلکانی ۱۵ تا ۳۵ درصد است پس از کسر معافیت سالانه.' },
-    { article: 'ماده ۸۴', text: 'مالیات بر ارزش افزوده ۱۰ درصد است (قانون مالیات‌های مستقیم).' },
-    { article: 'ماده ۱۶۹', text: 'صاحبان مشاغل موظف به ارائه معاملات فصلی خود هستند.' },
+    { article: 'ماده ۱۳۱', text: 'مالیات مشاغل پلکانی ۱۵ تا ۳۵ درصد است.' },
+    { article: 'ماده ۸۴', text: 'مالیات بر ارزش افزوده ۱۰ درصد است.' },
+    { article: 'ماده ۱۶۹', text: 'صاحبان مشاغل موظف به ارائه معاملات فصلی هستند.' },
   ],
 };
 
@@ -60,46 +52,48 @@ function buildPrompt(question, citations, history) {
   const historyStr = (history || []).slice(-4).map((m) => `${m.role === 'user' ? 'کاربر' : 'دستیار'}: ${m.content}`).join('\n');
   return `تو دستیار حقوقی کاربان هستی. به سؤال کاربر پاسخ بده و به مواد قانونی استناد کن.
 
-${ctx}
+ ${ctx}
 
-${historyStr ? 'گفت‌وگوی قبلی:\n' + historyStr : ''}
+ ${historyStr ? 'گفت‌وگوی قبلی:\n' + historyStr : ''}
 
 سؤال کاربر: ${question}
 
-پاسخ را به فارسی، روشن و کاربردی بده. اگر به ماده قانونی استناد می‌کنی، نام آن را ذکر کن (مثلاً: «ماده ۷ قانون کار»).
+پاسخ را به فارسی، روشن و کاربردی بده. اگر به ماده قانونی استناد می‌کنی، نام آن را ذکر کن.
 اگر سؤال خارج از حوزه حقوق، کار و مالیات است، مودبانه بگو که فقط در این حوزه‌ها پاسخ می‌دهی.
 هرگز توصیه حقوقی قطعی نده — هم بنویس «برای پرونده خاص به مشاور مراجعه کنید».`;
 }
 
-let _zai = null;
-async function getZai() {
-  if (_zai) return _zai;
-  const ZAI = (await import('z-ai-web-dev-sdk')).default;
-
-  /* راه ۱: کانفیگ از env vars (پایدار روی Vercel) */
-  const token = process.env.ZAI_TOKEN;
-  const userId = process.env.ZAI_USER_ID;
-  const chatId = process.env.ZAI_CHAT_ID;
-  if (token && userId && chatId) {
-    _zai = new ZAI({ baseUrl: 'https://internal-api.z.ai/v1', apiKey: 'Z.ai', token, userId, chatId });
-    return _zai;
-  }
-
-  /* راه ۲: SDK پیش‌فرض (نیاز به .z-ai-config دارد) */
-  _zai = await ZAI.create();
-  return _zai;
-}
+const ZAI_BASE = 'https://open.bigmodel.cn/api/paas/v4';
+const ZAI_MODEL = 'glm-4-flash';
 
 async function callZai(prompt) {
-  const zai = await getZai();
-  const completion = await zai.chat.completions.create({
+  const apiKey = process.env.ZAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('ZAI_API_KEY env var not set');
+  }
+
+  const url = `${ZAI_BASE}/chat/completions`;
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+  };
+  const body = JSON.stringify({
+    model: ZAI_MODEL,
     messages: [
-      { role: 'assistant', content: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' },
+      { role: 'system', content: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' },
       { role: 'user', content: prompt },
     ],
-    thinking: { type: 'disabled' },
+    temperature: 0.5,
+    max_tokens: 800,
   });
-  return completion.choices?.[0]?.message?.content || '';
+
+  const res = await fetch(url, { method: 'POST', headers, body });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`Z.ai API ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  return j.choices?.[0]?.message?.content || '';
 }
 
 export default async function handler(req, res) {
