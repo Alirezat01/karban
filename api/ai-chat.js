@@ -1,8 +1,7 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — دستیار حقوقی چت‌بات (Phase 3.2)
-   از API عمومی Z.ai (open.bigmodel.cn) استفاده می‌کند.
-   متغیر لازم: ZAI_API_KEY
-   مدل‌ها به ترتیب امتحان می‌شوند.
+   از Google Gemini API رایگان استفاده می‌کند.
+   متغیر لازم: GEMINI_API_KEY
    ═════════════════════════════════════════════════════════════════════ */
 
 const LAWS = {
@@ -64,57 +63,45 @@ function buildPrompt(question, citations, history) {
 هرگز توصیه حقوقی قطعی نده — هم بنویس «برای پرونده خاص به مشاور مراجعه کنید».`;
 }
 
-const ZAI_BASE = 'https://open.bigmodel.cn/api/paas/v4';
-const ZAI_MODELS = ['glm-4-flash', 'glm-4-flashx', 'glm-4-air', 'glm-4-airx', 'glm-4', 'glm-3-turbo'];
+const GEMINI_MODEL = 'gemini-1.5-flash';
+const GEMINI_BASE = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-async function callZai(prompt) {
-  const apiKey = process.env.ZAI_API_KEY;
+async function callGemini(prompt) {
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('ZAI_API_KEY env var not set');
+    throw new Error('GEMINI_API_KEY env var not set');
   }
 
-  const url = `${ZAI_BASE}/chat/completions`;
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
-  };
-  const baseBody = {
-    messages: [
-      { role: 'system', content: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' },
-      { role: 'user', content: prompt },
-    ],
-    temperature: 0.5,
-    max_tokens: 800,
-  };
+  const url = `${GEMINI_BASE}?key=${apiKey}`;
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }], role: 'user' }],
+    generationConfig: {
+      temperature: 0.5,
+      maxOutputTokens: 800,
+    },
+    systemInstruction: {
+      parts: [{ text: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' }],
+    },
+  });
 
-  /* مدل‌ها رو به‌ترتیب امتحان می‌کنیم */
-  let lastError = '';
-  for (const model of ZAI_MODELS) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ ...baseBody, model }),
-      });
-      if (res.ok) {
-        const j = await res.json();
-        const content = j.choices?.[0]?.message?.content || '';
-        if (content) return content;
-      } else {
-        const t = await res.text().catch(() => '');
-        lastError = `${model}: ${res.status} ${t.slice(0, 100)}`;
-        if (res.status === 401) {
-          throw new Error(`Z.ai API 401: کلید API نامعتبر است`);
-        }
-        continue;
-      }
-    } catch (e) {
-      if (e.message.includes('401')) throw e;
-      lastError = `${model}: ${e.message.slice(0, 100)}`;
-      continue;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`Gemini API ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const j = await res.json();
+  const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!content) {
+    if (j.promptFeedback?.blockReason) {
+      throw new Error(`محتوای مسدودشده توسط Gemini: ${j.promptFeedback.blockReason}`);
     }
+    throw new Error('پاسخ خالی از Gemini');
   }
-  throw new Error(`هیچ مدلی کار نکرد. آخرین خطا: ${lastError}`);
+  return content;
 }
 
 export default async function handler(req, res) {
@@ -129,7 +116,7 @@ export default async function handler(req, res) {
   try {
     const citations = searchLaws(question);
     const prompt = buildPrompt(question, citations, history);
-    const answer = await callZai(prompt);
+    const answer = await callGemini(prompt);
     return res.json({ ok: true, answer, citations });
   } catch (e) {
     console.error('ai-chat failed', e.message);
