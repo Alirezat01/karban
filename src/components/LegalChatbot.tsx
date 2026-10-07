@@ -66,11 +66,19 @@ export default function LegalChatbot() {
       return;
     }
 
-    /* گرفتن توکن از ساپابیس */
+    /* گرفتن توکن از ساپابیس — اگه منقضی شده، تلاش به‌روزرسانی */
     const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
+    let accessToken = sessionData.session?.access_token;
+
+    /* اگه نشست نیست یا منقضی شده، تلاش refresh */
     if (!accessToken) {
-      setErr('نشست شما منقضی شده است. دوباره وارد شوید');
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      accessToken = refreshData.session?.access_token;
+    }
+
+    if (!accessToken) {
+      setErr('نشست شما منقضی شده است. در حال انتقال به صفحه ورود…');
+      setTimeout(() => { window.location.href = '/ورود?next=/دستیار-حقوقی'; }, 1500);
       return;
     }
 
