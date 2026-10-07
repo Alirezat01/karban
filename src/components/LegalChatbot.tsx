@@ -94,6 +94,22 @@ export default function LegalChatbot() {
         },
         body: JSON.stringify({ question: q, history }),
       });
+
+      /* بررسی اینکه آیا پاسخ JSON هست یا نه — جلوی خطای Unexpected token را می‌گیرد */
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text().catch(() => '');
+        console.error('Non-JSON response:', res.status, text.slice(0, 200));
+        if (res.status === 502 || res.status === 500) {
+          setErr('سرور هوش مصنوعی موقتاً در دسترس نیست. چند ثانیه بعد دوباره تلاش کنید.');
+        } else if (res.status === 429) {
+          setErr('درخواست‌های زیاد. یک دقیقه صبر کنید و دوباره تلاش کنید.');
+        } else {
+          setErr(`خطای سرور (${res.status}). دوباره تلاش کنید.`);
+        }
+        return;
+      }
+
       const j = await res.json();
 
       if (res.status === 401 && j.needLogin) {
