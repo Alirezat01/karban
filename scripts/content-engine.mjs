@@ -34,7 +34,7 @@ const tg = (text) =>
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 /* هر ارائه‌دهنده چند مدل پشتیبان دارد؛ اگر یکی ۴۰۴ بدهد مدل بعدی امتحان می‌شود */
 const providers = [
-  { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', models: [process.env.GEMINI_MODEL || 'gemini-3.6-flash'], key: GEMINI_KEY },
+ { name: 'gemini', base: 'https://generativelanguage.googleapis.com/v1beta/openai', models: [process.env.GEMINI_MODEL || 'gemini-3.8-flash'], key: GEMINI_KEY },
   { name: 'groq', base: 'https://api.groq.com/openai/v1', models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.6-27b'], key: process.env.GROQ_API_KEY },
   { name: 'openrouter', base: 'https://openrouter.ai/api/v1', models: ['z-ai/glm-5.2:free', 'minimax/minimax-m3:free', 'nvidia/nemotron-3-super-120b-a12b:free', 'google/gemma-4-31b-it:free'], key: process.env.OPENROUTER_API_KEY },
 ].filter((p) => p.key);
