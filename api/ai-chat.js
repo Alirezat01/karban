@@ -1,94 +1,10 @@
 /* ═════════════════════════════════════════════════════════════════════
-   کاربان — دستیار حقوقی چت‌بات (Phase 3.2)
-   ─────────────────────────────────────────────────────────────────
-   از Google Gemini API رایگان استفاده می‌کند.
-   متغیر لازم: GEMINI_API_KEY
-
-   محدودیت:
-   - نیاز به لاگین
-   - کاربر رایگان: ۵ سوال در روز
-   - کاربر پولی (پرو): ۲۰ سوال در روز
-   - بنیان‌گذار: نامحدود
+   کاربان — دستیار حقوقی چت‌بات (نسخه بهینه‌شده برای Vercel Hobby)
    ═════════════════════════════════════════════════════════════════════ */
 
-const GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite', 'gemini-1.5-flash-002'];
-
-/* Supabase config — هاردکد شده (همان مقادیر src/lib/supabase.ts) */
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
-
-const SUPA_SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-async function getAuthUser(authHeader) {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-  try {
-    const res = await fetch(`${SUPA_URL}/auth/v1/user`, {
-      headers: { apikey: SUPA_ANON, Authorization: authHeader },
-    });
-    if (!res.ok) return null;
-    const j = await res.json();
-    return j.id ? { id: j.id, email: j.email } : null;
-  } catch (e) {
-    console.error('getAuthUser error:', e.message);
-    return null;
-  }
-}
-
-async function getUserPlan(userId) {
-  try {
-    if (SUPA_SERVICE) {
-      const res = await fetch(`${SUPA_URL}/rest/v1/acc_access?user_id=eq.${userId}&status=eq.active&select=plan,expires_at`, {
-        headers: { apikey: SUPA_SERVICE, Authorization: `Bearer ${SUPA_SERVICE}` },
-      });
-      const data = await res.json();
-      if (!data || data.length === 0) return 'free';
-      if (data.some((r) => r.plan === 'founder')) return 'founder';
-      const active = data.find((r) => {
-        if (!['monthly', 'yearly', 'founder'].includes(r.plan)) return false;
-        if (!r.expires_at) return true;
-        return new Date(r.expires_at).getTime() > Date.now();
-      });
-      return active ? (active.plan === 'founder' ? 'founder' : 'pro') : 'free';
-    }
-    return 'free';
-  } catch {
-    return 'free';
-  }
-}
-
-function getPlanLimit(plan) {
-  switch (plan) {
-    case 'founder': return -1;
-    case 'pro': return 20;
-    default: return 5;
-  }
-}
-
-async function checkAndIncrement(userId, authHeader, type) {
-  const today = new Date().toISOString().slice(0, 10);
-  const field = type === 'chat' ? 'chat_count' : 'analyze_count';
-
-  const selRes = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${userId}&day=eq.${today}&select=id,${field}`, {
-    headers: { apikey: SUPA_ANON, Authorization: authHeader },
-  });
-  const existing = await selRes.json();
-  const currentCount = existing[0]?.[field] || 0;
-
-  if (existing[0]?.id) {
-    await fetch(`${SUPA_URL}/rest/v1/ai_usage?id=eq.${existing[0].id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', apikey: SUPA_ANON, Authorization: authHeader, Prefer: 'return=minimal' },
-      body: JSON.stringify({ [field]: currentCount + 1 }),
-    });
-  } else {
-    await fetch(`${SUPA_URL}/rest/v1/ai_usage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: SUPA_ANON, Authorization: authHeader, Prefer: 'return=minimal' },
-      body: JSON.stringify({ user_id: userId, day: today, chat_count: type === 'chat' ? 1 : 0, analyze_count: type === 'analyze' ? 1 : 0 }),
-    });
-  }
-  return currentCount;
-}
 
 const LAWS = {
   'قانون کار': [
@@ -131,102 +47,144 @@ function searchLaws(question) {
   return hits.sort((a, b) => b.score - a.score).slice(0, 4);
 }
 
-function buildPrompt(question, citations, history) {
-  const ctx = citations.length
-    ? 'مواد قانونی مرتبط:\n' + citations.map((c) => `- ${c.law_id} ${c.article}: ${c.text}`).join('\n')
-    : '';
-  const historyStr = (history || []).slice(-4).map((m) => `${m.role === 'user' ? 'کاربر' : 'دستیار'}: ${m.content}`).join('\n');
-  return `تو دستیار حقوقی کاربان هستی. به سؤال کاربر پاسخ بده و به مواد قانونی استناد کن.
-
- ${ctx}
-
- ${historyStr ? 'گفت‌وگوی قبلی:\n' + historyStr : ''}
-
-سؤال کاربر: ${question}
-
-پاسخ را به فارسی، روشن و کاربردی بده. اگر به ماده قانونی استناد می‌کنی، نام آن را ذکر کن.
-اگر سؤال خارج از حوزه حقوق، کار و مالیات است، مودبانه بگو که فقط در این حوزه‌ها پاسخ می‌دهی.
-هرگز توصیه حقوقی قطعی نده — هم بنویس «برای پرونده خاص به مشاور مراجعه کنید».`;
-}
-
 async function callGemini(prompt) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }], role: 'user' }],
-    generationConfig: { temperature: 0.5, maxOutputTokens: 800 },
-    systemInstruction: { parts: [{ text: 'تو دستیار حقوقی کاربان هستی. پاسخ‌های کوتاه و کاربردی به فارسی بده.' }] },
+    generationConfig: { temperature: 0.5, maxOutputTokens: 500 },
+    systemInstruction: { parts: [{ text: 'تو دستیار حقوقی کاربان هستی. پاسخ کوتاه و کاربردی به فارسی بده.' }] },
   });
 
-  let lastError = '';
-  for (const model of GEMINI_MODELS) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    try {
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
-      if (res.ok) {
-        const j = await res.json();
-        const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (content) return content;
-        lastError = `${model}: empty`;
-      } else {
-        const t = await res.text().catch(() => '');
-        if (res.status === 404 || res.status === 400 || res.status === 403) {
-          lastError = `${model}: ${res.status}`;
-          continue;
-        }
-        throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+
+  if (!res.ok) {
+    if (res.status === 404) {
+      const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+      const fallbackRes = await fetch(fallbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+      if (fallbackRes.ok) {
+        const j = await fallbackRes.json();
+        return j.candidates?.[0]?.content?.parts?.[0]?.text || '';
       }
-    } catch (e) {
-      lastError = `${model}: ${e.message.slice(0, 80)}`;
-      continue;
+      const t = await fallbackRes.text().catch(() => '');
+      throw new Error(`Gemini fallback ${fallbackRes.status}: ${t.slice(0, 200)}`);
     }
+    const t = await res.text().catch(() => '');
+    throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
   }
-  throw new Error(`هیچ مدلی کار نکرد: ${lastError}`);
+
+  const j = await res.json();
+  const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!content) {
+    if (j.promptFeedback?.blockReason) {
+      throw new Error(`محتوای مسدودشده: ${j.promptFeedback.blockReason}`);
+    }
+    throw new Error('پاسخ خالی از Gemini');
+  }
+  return content;
 }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
 
-  /* ─── احراز هویت ─── */
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ ok: false, error: 'برای استفاده از دستیار حقوقی، باید وارد حساب کاربری شوید', needLogin: true });
-  const user = await getAuthUser(authHeader);
-  if (!user) return res.status(401).json({ ok: false, error: 'نشست شما منقضی شده است. دوباره وارد شوید', needLogin: true });
+  if (!authHeader) {
+    return res.status(401).json({ ok: false, error: 'برای استفاده از دستیار حقوقی، باید وارد حساب کاربری شوید', needLogin: true });
+  }
 
-  /* ─── بررسی محدودیت ─── */
-  const plan = await getUserPlan(user.id);
-  const limit = getPlanLimit(plan);
+  let user = null;
+  let used = 0;
+  const FREE_LIMIT = 5;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const selRes = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${user.id}&day=eq.${today}&select=chat_count`, {
-    headers: { apikey: SUPA_ANON, Authorization: authHeader },
-  });
-  const usage = await selRes.json();
-  const used = usage[0]?.chat_count || 0;
+  try {
+    const userRes = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      headers: { apikey: SUPA_ANON, Authorization: authHeader },
+    });
+    if (userRes.ok) {
+      const userData = await userRes.json();
+      if (userData.id) {
+        user = { id: userData.id, email: userData.email };
+        const today = new Date().toISOString().slice(0, 10);
+        const usageResponse = await fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${user.id}&day=eq.${today}&select=chat_count`, {
+          headers: { apikey: SUPA_ANON, Authorization: authHeader },
+        });
+        if (usageResponse.ok) {
+          const usageData = await usageResponse.json();
+          used = usageData[0]?.chat_count || 0;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('auth error:', e.message);
+  }
 
-  if (limit !== -1 && used >= limit) {
-    const planLabel = plan === 'founder' ? 'بنیان‌گذار' : plan === 'pro' ? 'پیشرفته' : 'رایگان';
+  if (!user) {
+    return res.status(401).json({ ok: false, error: 'نشست شما منقضی شده است. دوباره وارد شوید', needLogin: true });
+  }
+
+  if (used >= FREE_LIMIT) {
     return res.status(429).json({
       ok: false,
-      error: `سقف روزانه سؤال (${limit.toLocaleString('fa-IR')} در روز برای پلن ${planLabel}) تکمیل شده است. فردا دوباره تلاش کنید یا به پلن بالاتر ارتقا دهید.`,
-      limitReached: true, used, limit, plan,
+      error: `سقف روزانه سؤال (${FREE_LIMIT.toLocaleString('fa-IR')} در روز) تکمیل شده است. فردا دوباره تلاش کنید یا به پلن پیشرفته ارتقا دهید.`,
+      limitReached: true, used, limit: FREE_LIMIT, plan: 'free',
     });
   }
 
-  const { question, history } = req.body || {};
+  const { question } = req.body || {};
   if (!question || typeof question !== 'string' || question.trim().length < 3) {
     return res.status(400).json({ ok: false, error: 'سؤال بسیار کوتاه است' });
   }
 
   try {
     const citations = searchLaws(question);
-    const prompt = buildPrompt(question, citations, history);
+    const ctx = citations.length
+      ? 'مواد قانونی مرتبط:\n' + citations.map((c) => `- ${c.law_id} ${c.article}: ${c.text}`).join('\n')
+      : '';
+    const prompt = `تو دستیار حقوقی کاربان هستی. به سؤال کاربر پاسخ بده و به مواد قانونی استناد کن.
+
+ ${ctx}
+
+سؤال کاربر: ${question}
+
+پاسخ را به فارسی، روشن و کاربردی بده. اگر به ماده قانونی استناد می‌کنی، نام آن را ذکر کن.
+اگر سؤال خارج از حوزه حقوق، کار و مالیات است، مودبانه بگو که فقط در این حوزه‌ها پاسخ می‌دهی.
+هرگز توصیه حقوقی قطعی نده — هم بنویس «برای پرونده خاص به مشاور مراجعه کنید».`;
+
     const answer = await callGemini(prompt);
-    await checkAndIncrement(user.id, authHeader, 'chat');
+
+    const today = new Date().toISOString().slice(0, 10);
+    fetch(`${SUPA_URL}/rest/v1/ai_usage?user_id=eq.${user.id}&day=eq.${today}&select=id,chat_count`, {
+      headers: { apikey: SUPA_ANON, Authorization: authHeader },
+    }).then(async (selRes) => {
+      const existing = await selRes.json();
+      if (existing[0]?.id) {
+        await fetch(`${SUPA_URL}/rest/v1/ai_usage?id=eq.${existing[0].id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_ANON, Authorization: authHeader, Prefer: 'return=minimal' },
+          body: JSON.stringify({ chat_count: (existing[0].chat_count || 0) + 1 }),
+        });
+      } else {
+        await fetch(`${SUPA_URL}/rest/v1/ai_usage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: SUPA_ANON, Authorization: authHeader, Prefer: 'return=minimal' },
+          body: JSON.stringify({ user_id: user.id, day: today, chat_count: 1, analyze_count: 0 }),
+        });
+      }
+    }).catch(() => {});
+
     return res.json({
       ok: true, answer, citations,
-      usage: { used: used + 1, limit, remaining: limit === -1 ? -1 : Math.max(0, limit - used - 1), plan },
+      usage: { used: used + 1, limit: FREE_LIMIT, remaining: Math.max(0, FREE_LIMIT - used - 1), plan: 'free' },
     });
   } catch (e) {
     console.error('ai-chat failed', e.message);
@@ -234,4 +192,4 @@ export default async function handler(req, res) {
   }
 }
 
-export const config = { maxDuration: 30 };
+export const config = { maxDuration: 10 };
