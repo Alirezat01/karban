@@ -4,6 +4,7 @@
    دو مسیر:
    • POST /api/otp?action=send     → { mobile }        → ارسال کد ۶ رقمی
    • POST /api/otp?action=verify   → { mobile, code }  → تأیید و نشست ساپابیس
+   • GET  /api/otp?debug=1         → تست اتصال و خطای دقیق sms.ir
 
    sms.ir Verify API:
      URL: https://api.sms.ir/v1/send/verify
@@ -18,22 +19,10 @@
          "parameters": [{ "name": "Code", "value": "123456" }]
        }
 
-   دو نوع API Key:
-     1. کلید اصلی (production)  → نیاز به قالب تأییدشده در پنل دارد
-     2. کلید Sandbox           → با قالب پیش‌فرض templateId=123456 کار می‌کند
-                                 متن قالب: «کد تایید شما: #CODE#»
-                                 برای تست بدون نیاز به تأیید قالب
-
    متغیرهای ورسل:
      SMSIR_API_KEY        — کلید API (production یا sandbox)
      SMSIR_OTP_TEMPLATE_ID — شناسه قالب (در sandbox = 123456)
      SMSIR_OTP_PARAM_NAME  — نام پارامتر قالب (پیش‌فرض: Code)
-
-   سخت‌سازی امنیتی:
-   • Rate limit per-IP: ۵ درخواست ارسال در ۱۰ دقیقه
-   • Rate limit per-mobile: ۳ کد در ساعت
-   • کد ۶ رقمی، TTL ۵ دقیقه، حداکثر ۵ تلاش تأیید
-   • کد هش SHA-256 در دیتابیس ذخیره می‌شود (نه خام)
    ═════════════════════════════════════════════════════════════════════ */
 
 import crypto from 'node:crypto';
@@ -61,13 +50,12 @@ function isIranianMobile(m) {
 }
 
 function genCode() {
-  /* کد ۶ رقمی؛ رقم اول ۰ نیست تا کاربر متوجه نشود که شماره با ۰ شروع شده */
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 async function sendSmsIr(mobile, code) {
   const apiKey = process.env.SMSIR_API_KEY;
-  const templateId = process.env.SMSIR_OTP_TEMPLATE_ID || '123456'; /* پیش‌فرض sandbox */
+  const templateId = process.env.SMSIR_OTP_TEMPLATE_ID || '123456';
   const paramName = process.env.SMSIR_OTP_PARAM_NAME || 'Code';
 
   if (!apiKey) {
@@ -76,16 +64,11 @@ async function sendSmsIr(mobile, code) {
     throw err;
   }
 
-  /* sms.ir REST API — POST https://api.sms.ir/v1/send/verify
-     توجه: در نمونه کد رسمی، کلید پارامتر 'name' (حرف کوچک) استفاده شده،
-     ولی در جدول مستندات 'Name' نوشته شده. برای حداکثر سازگاری، هر دو را
-     می‌فرستیم تا sms.ir یکی را قبول کند. */
   const body = JSON.stringify({
     mobile,
     templateId: Number(templateId),
     parameters: [
       { name: paramName, value: code },
-      { Name: paramName, value: code },
     ],
   });
 
@@ -104,36 +87,37 @@ async function sendSmsIr(mobile, code) {
     let detail = text;
     try {
       const j = JSON.parse(text);
-      detail = j.message || j.Message || text;
+      detail = j.message || j.Message || JSON.stringify(j);
     } catch { /* متن خام */ }
-    const err = new Error(`sms.ir ${res.status}: ${String(detail).slice(0, 200)}`);
+    const err = new Error(`sms.ir ${res.status}: ${String(detail).slice(0, 300)}`);
     err.code = 'SMS_FAILED';
     err.status = res.status;
+    err.detail = detail;
     throw err;
   }
 
-  /* پاسخ موفق — status و data را برمی‌گردانیم */
   const json = await res.json().catch(() => ({}));
   if (json && json.status !== undefined && json.status !== 1 && json.status !== 200) {
     const err = new Error(`sms.ir status ${json.status}: ${json.message || ''}`);
     err.code = 'SMS_LOGICAL_ERROR';
+    err.detail = JSON.stringify(json);
     throw err;
   }
   return json;
 }
 
-/* ───────────ـ Supabase helpers (با service_role) ───────────ـ */
-const SUPA_URL = process.env.SUPABASE_URL;
-const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
+const SUPA_SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 async function supaInsert(table, row) {
-  if (!SUPA_URL || !SUPA_KEY) throw new Error('SUPABASE env missing');
+  const key = SUPA_SERVICE || SUPA_KEY;
   const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      apikey: SUPA_KEY,
-      Authorization: `Bearer ${SUPA_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       Prefer: 'return=minimal',
     },
     body: JSON.stringify(row),
@@ -146,11 +130,12 @@ async function supaInsert(table, row) {
 }
 
 async function supaSelect(table, filter, order) {
+  const key = SUPA_SERVICE || SUPA_KEY;
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(filter)) qs.set(k, String(v));
   if (order) qs.set('order', order);
   const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, {
-    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
   if (!res.ok) return [];
   const j = await res.json();
@@ -158,14 +143,15 @@ async function supaSelect(table, filter, order) {
 }
 
 async function supaUpdate(table, filter, patch) {
+  const key = SUPA_SERVICE || SUPA_KEY;
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(filter)) qs.set(k, String(v));
   await fetch(`${SUPA_URL}/rest/v1/${table}?${qs}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      apikey: SUPA_KEY,
-      Authorization: `Bearer ${SUPA_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       Prefer: 'return=minimal',
     },
     body: JSON.stringify(patch),
@@ -177,6 +163,68 @@ function hashCode(code) {
 }
 
 export default async function handler(req, res) {
+  /* مسیر دیباگ: GET /api/otp?debug=1 */
+  if (req.method === 'GET' && req.query.debug === '1') {
+    const apiKey = process.env.SMSIR_API_KEY;
+    const templateId = process.env.SMSIR_OTP_TEMPLATE_ID;
+    const paramName = process.env.SMSIR_OTP_PARAM_NAME;
+
+    if (!apiKey) {
+      return res.json({
+        ok: false,
+        error: 'SMSIR_API_KEY در Vercel ست نشده',
+        env: { SMSIR_API_KEY: 'NOT SET', SMSIR_OTP_TEMPLATE_ID: templateId || 'NOT SET', SMSIR_OTP_PARAM_NAME: paramName || 'NOT SET (default: Code)' },
+      });
+    }
+
+    const testMobile = '09120000000';
+    const testCode = '123456';
+    const body = JSON.stringify({
+      mobile: testMobile,
+      templateId: Number(templateId) || 123456,
+      parameters: [{ name: paramName || 'Code', value: testCode }],
+    });
+
+    try {
+      const smsRes = await fetch('https://api.sms.ir/v1/send/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/plain',
+          'x-api-key': apiKey,
+        },
+        body,
+      });
+      const smsText = await smsRes.text().catch(() => '');
+      let smsJson = null;
+      try { smsJson = JSON.parse(smsText); } catch {}
+
+      return res.json({
+        ok: true,
+        config: {
+          SMSIR_API_KEY: apiKey.slice(0, 10) + '...',
+          SMSIR_OTP_TEMPLATE_ID: templateId,
+          SMSIR_OTP_PARAM_NAME: paramName || 'Code (default)',
+          test_mobile: testMobile,
+        },
+        sms_response: {
+          status: smsRes.status,
+          statusText: smsRes.statusText,
+          ok: smsRes.ok,
+          body: smsText.slice(0, 500),
+          parsed: smsJson,
+        },
+        diagnosis: smsRes.ok ? 'اتصال موفق — sms.ir جواب داد' : 'اتصال برقرار ولی sms.ir خطا داد',
+      });
+    } catch (e) {
+      return res.json({
+        ok: false,
+        error: 'خطای شبکه به sms.ir: ' + e.message,
+        cause: e.cause?.message || 'no cause',
+      });
+    }
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
@@ -198,7 +246,6 @@ export default async function handler(req, res) {
     }
 
     if (!process.env.SMSIR_API_KEY) {
-      console.error('SMSIR_API_KEY متغیر محیطی ست نشده است');
       return res.status(503).json({ ok: false, error: 'سرویس پیامک پیکربندی نشده است (SMSIR_API_KEY)' });
     }
 
@@ -207,8 +254,6 @@ export default async function handler(req, res) {
     const expiresAt = new Date(Date.now() + TTL_MIN * 60 * 1000).toISOString();
 
     try {
-      /* اول کد را در دیتابیس ذخیره می‌کنیم تا حتی اگر پیامک ناموفق بود،
-         برای دیباگ بتوانیم وضعیت را ببینیم */
       await supaInsert('otp_codes', {
         mobile,
         code,
@@ -220,14 +265,18 @@ export default async function handler(req, res) {
       await sendSmsIr(mobile, code);
       return res.json({ ok: true, message: 'کد ارسال شد', ttl_min: TTL_MIN });
     } catch (e) {
-      console.error('otp send failed:', e.message);
+      console.error('otp send failed:', e.message, e.detail || '', e.status || '');
+      const detail = e.detail || e.message;
       if (e.code === 'SMS_FAILED' && e.status === 401) {
-        return res.status(502).json({ ok: false, error: 'کلید API نامعتبر است — با پشتیبانی sms.ir تماس بگیرید' });
+        return res.status(502).json({ ok: false, error: 'کلید API sms.ir نامعتبر است', detail, status: e.status });
+      }
+      if (e.code === 'SMS_FAILED' && e.status === 400) {
+        return res.status(502).json({ ok: false, error: 'درخواست نامعتبر به sms.ir', detail, status: e.status });
       }
       if (e.code === 'SMS_LOGICAL_ERROR') {
-        return res.status(502).json({ ok: false, error: 'قالب پیامک نامعتبر است — شناسه قالب را در پنل sms.ir چک کنید' });
+        return res.status(502).json({ ok: false, error: 'قالب پیامک نامعتبر است — شناسه قالب را در پنل sms.ir چک کنید', detail });
       }
-      return res.status(502).json({ ok: false, error: 'ارسال پیامک ناموفق بود؛ دوباره تلاش کنید' });
+      return res.status(502).json({ ok: false, error: 'ارسال پیامک ناموفق بود', detail, fullError: e.message });
     }
   }
 
@@ -263,18 +312,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: `کد اشتباه است — ${remaining.toLocaleString('fa-IR')} تلاش باقی است` });
       }
 
-      /* کد درست → علامت‌گذاری */
       await supaUpdate('otp_codes', { id: `eq.${latest.id}` }, { verified: true });
 
-      /* پیدا کردن کاربر با این شماره */
       const profiles = await supaSelect('profiles', { phone: `eq.${mobile}`, select: 'id' });
       let userId = profiles[0]?.id;
 
-      /* اگر کاربر وجود نداشت، یک کاربر جدید با موبایل می‌سازیم */
       if (!userId) {
         const adminRes = await fetch(`${SUPA_URL}/auth/v1/admin/users`, {
           method: 'POST',
-          headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+          headers: { apikey: SUPA_SERVICE || SUPA_KEY, Authorization: `Bearer ${SUPA_SERVICE || SUPA_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: mobile, phone_confirm: true, user_metadata: { full_name: `کاربر ${mobile.slice(-4)}` } }),
         });
         const adminJ = await adminRes.json();
@@ -284,10 +330,9 @@ export default async function handler(req, res) {
         }
       }
 
-      /* ساخت نشست با Magic Link (نیازی به رمز نیست) */
       const mlRes = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
-        headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+        headers: { apikey: SUPA_SERVICE || SUPA_KEY, Authorization: `Bearer ${SUPA_SERVICE || SUPA_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: mobile, password: `otp-${mobile}-${process.env.SMSIR_API_KEY?.slice(0, 8) || 'karban'}` }),
       });
       const mlJ = await mlRes.json();
@@ -301,7 +346,7 @@ export default async function handler(req, res) {
       });
     } catch (e) {
       console.error('otp verify failed', e.message);
-      return res.status(500).json({ ok: false, error: 'تأیید کد ناموفق بود' });
+      return res.status(500).json({ ok: false, error: 'تأیید کد ناموفق بود', detail: e.message });
     }
   }
 
