@@ -5,8 +5,7 @@
 
 const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
-const GEMINI_MODEL = 'gemini-2.0-flash';
-const GEMINI_FALLBACK = 'gemini-flash-latest';
+const GEMINI_MODEL = 'gemini-3.8-flash';
 const FREE_LIMIT = 3;
 const MAX_CHARS = 20000;
 
@@ -30,20 +29,21 @@ async function callGemini(prompt) {
   });
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 7000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    let url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-    let res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
-
-    if (res.status === 404) {
-      url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_FALLBACK}:generateContent?key=${apiKey}`;
-      res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
-    }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: controller.signal });
 
     if (!res.ok) {
       const t = await res.text().catch(() => '');
-      throw new Error(`Gemini ${res.status}: ${t.slice(0, 200)}`);
+      let errMsg = 'خطای نامشخص Gemini';
+      if (res.status === 401 || res.status === 403) errMsg = 'کلید API نامعتبر یا دسترسی ندارید';
+      else if (res.status === 429) errMsg = 'محدودیت درخواست — کمی بعد تلاش کنید';
+      else if (res.status === 400) errMsg = 'درخواست نامعتبر به Gemini';
+      else if (res.status === 404) errMsg = `مدل ${GEMINI_MODEL} یافت نشد`;
+      else errMsg = `خطای Gemini (${res.status})`;
+      throw new Error(errMsg);
     }
 
     const j = await res.json();
@@ -134,4 +134,4 @@ JSON:
   }
 }
 
-export const config = { maxDuration: 10 };
+export const config = { maxDuration: 20 };
