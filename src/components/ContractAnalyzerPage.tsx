@@ -111,11 +111,19 @@ export default function ContractAnalyzerPage() {
     setErr('');
     setResult(null);
     try {
-      /* گرفتن توکن از ساپابیس */
+      /* گرفتن توکن از ساپابیس — اگه منقضی شده، تلاش به‌روزرسانی */
       const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
+      let accessToken = sessionData.session?.access_token;
+
+      /* اگه نشست نیست یا منقضی شده، تلاش refresh */
       if (!accessToken) {
-        setNeedLogin(true);
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        accessToken = refreshData.session?.access_token;
+      }
+
+      if (!accessToken) {
+        setErr('نشست شما منقضی شده است. در حال انتقال به صفحه ورود…');
+        setTimeout(() => { window.location.href = '/ورود?next=' + encodeURIComponent('/تحلیل-قرارداد'); }, 1500);
         return;
       }
 
@@ -130,7 +138,8 @@ export default function ContractAnalyzerPage() {
       const j = await res.json();
 
       if (res.status === 401 && j.needLogin) {
-        setNeedLogin(true);
+        setErr(j.error);
+        setTimeout(() => { window.location.href = '/ورود?next=' + encodeURIComponent('/تحلیل-قرارداد'); }, 1500);
         return;
       }
       if (res.status === 429 && j.limitReached) {
