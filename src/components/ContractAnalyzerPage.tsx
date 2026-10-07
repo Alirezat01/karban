@@ -173,7 +173,7 @@ export default function ContractAnalyzerPage() {
       /* ذخیره تحلیل در دیتابیس */
       await supabase.from('ai_analyses').insert({
         user_id: userId,
-        contract_text: text.slice(0, 30000),
+        contract_text: text.slice(0, 20000),
         contract_title: title || null,
         summary: j.summary,
         risk_level: j.risk_level,
