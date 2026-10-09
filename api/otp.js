@@ -7,6 +7,7 @@
         violate a CHECK constraint if the schema differs).
    FIX: OTP verified=true only after session succeeds.
    FIX: supaUpdate checks non-2xx.
+   FIX: Token grant uses EMAIL not phone — phone provider may not be enabled.
    ═════════════════════════════════════════════════════════════════════ */
 
 import crypto from 'node:crypto';
@@ -108,7 +109,7 @@ async function findAuthUserByPhone(authPhone) {
     if (users.length === 0) return null;
     const found = users.find((u) => u.phone === authPhone);
     if (found) return found;
-    if (users.length < perPage) return null; /* last page */
+    if (users.length < perPage) return null;
     page++;
   }
 }
@@ -121,17 +122,15 @@ function verifyPhoneMatch(authUser, authPhone) {
 
 /* ═══ Profile creation (no explicit role — let DB DEFAULT handle it) ═══ */
 async function ensureProfile(userId, localMobile) {
-  /* Check if profile already exists */
   let existing;
   try {
     existing = await supaSelect('profiles', { id: `eq.${userId}`, select: 'id' });
   } catch (e) {
     console.error('ensureProfile: select failed:', e.message);
-    return; /* non-fatal — login can proceed without profile for OTP */
+    return;
   }
-  if (existing.length > 0) return; /* already exists */
+  if (existing.length > 0) return;
 
-  /* Insert with only required fields — role uses DB DEFAULT */
   try {
     await supaInsert('profiles', {
       id: userId,
@@ -140,7 +139,6 @@ async function ensureProfile(userId, localMobile) {
     });
   } catch (e) {
     console.error('ensureProfile: insert failed:', e.message);
-    /* non-fatal — user can still log in, profile may be auto-created by trigger */
   }
 }
 
@@ -185,8 +183,8 @@ async function sendSmsIr(mobile, code) {
    1. Find Auth user by E.164 phone (paginated, reliable)
    2. If not found, try create. If phone_exists, re-lookup.
    3. Verify phone identity matches before setting password.
-   4. Set password via Admin API.
-   5. Token grant with anon key + E.164 phone.
+   4. Set password + email via Admin API.
+   5. Token grant with anon key + EMAIL (not phone).
    6. Require both access_token and refresh_token.
    ════════════════════════════════════════════════════════════════ */
 async function createSession(localMobile) {
@@ -202,11 +200,9 @@ async function createSession(localMobile) {
     return null;
   }
 
-  /* Step 1: Find existing Auth user by E.164 phone */
   let authUser = await findAuthUserByPhone(authPhone);
   let userId = authUser?.id || null;
 
-  /* Step 2: If not found, try to create. Handle phone_exists. */
   if (!userId) {
     const createRes = await fetch(`${SUPA_URL}/auth/v1/admin/users`, {
       method: 'POST',
@@ -223,7 +219,6 @@ async function createSession(localMobile) {
     if (createRes.ok) {
       userId = createJ.id;
     } else if (createRes.status === 422 && createJ.error_code === 'phone_exists') {
-      /* Phone already registered — re-lookup reliably */
       console.log('createSession: phone_exists, re-looking up user by E.164');
       authUser = await findAuthUserByPhone(authPhone);
       if (authUser) {
@@ -243,8 +238,6 @@ async function createSession(localMobile) {
     return null;
   }
 
-  /* Step 3: Verify phone identity matches */
-  /* For existing users, re-fetch to confirm phone matches */
   if (!authUser) {
     authUser = await findAuthUserByPhone(authPhone);
   }
@@ -253,32 +246,34 @@ async function createSession(localMobile) {
     return null;
   }
 
-  /* Step 4: Set/update password via Admin API */
+  /* Step 4: Set password + email via Admin API */
+  const otpEmail = `${localMobile}@karbanapp.ir`;
+
   const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
     method: 'PUT',
     headers: adminHeaders(),
     body: JSON.stringify({
       password: password,
       phone_confirm: true,
+      email: otpEmail,
+      email_confirm: true,
     }),
   });
   if (!updateRes.ok) {
     const errBody = await updateRes.text().catch(() => '');
-    console.error('createSession: admin update (password) failed:', updateRes.status, errBody.slice(0, 500));
+    console.error('createSession: admin update (password+email) failed:', updateRes.status, errBody.slice(0, 500));
     return null;
   }
 
-  /* Step 5: Token grant with anon key + E.164 phone */
+  /* Step 5: Token grant with anon key + EMAIL */
   const tokenRes = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: anonHeaders(),
-    body: JSON.stringify({ phone: authPhone, password: password }),
+    body: JSON.stringify({ email: otpEmail, password: password }),
   });
   const tokenJ = await tokenRes.json().catch(() => ({}));
 
-  /* Step 6: Require both tokens */
   if (tokenRes.ok && tokenJ.access_token && tokenJ.refresh_token) {
-    /* Ensure profile exists (non-fatal if it fails) */
     await ensureProfile(userId, localMobile);
     return {
       access_token: tokenJ.access_token,
@@ -316,9 +311,6 @@ async function createSession(localMobile) {
   return null;
 }
 
-/* ════════════════════════════════════════════════════════════════
-   Handler
-   ════════════════════════════════════════════════════════════════ */
 export default async function handler(req, res) {
   if (req.method === 'GET' && req.query.debug === '1') {
     return res.json({
@@ -336,7 +328,6 @@ export default async function handler(req, res) {
   const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').toString().split(',')[0].trim();
   const action = req.query.action;
 
-  /* ─── SEND ─── */
   if (action === 'send') {
     const { mobile } = req.body || {};
     if (!isIranianMobile(mobile)) return res.status(400).json({ ok: false, error: 'شماره موبایل نامعتبر است' });
@@ -370,13 +361,11 @@ export default async function handler(req, res) {
     }
   }
 
-  /* ─── VERIFY ─── */
   if (action === 'verify') {
     const { mobile, code } = req.body || {};
     if (!isIranianMobile(mobile) || !/^\d{6}$/.test(code)) return res.status(400).json({ ok: false, error: 'شماره یا کد نامعتبر است' });
 
     try {
-      /* Query OTP — supaSelect throws on failure, so we won't get [] from a DB error */
       const rows = await supaSelect('otp_codes', {
         mobile: `eq.${mobile}`,
         purpose: `eq.login`,
@@ -395,11 +384,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: `کد اشتباه است — ${(MAX_ATTEMPTS - latest.attempts - 1).toLocaleString('fa-IR')} تلاش باقی است` });
       }
 
-      /* Code correct — do NOT mark verified yet, try session first */
       const session = await createSession(mobile);
 
       if (session?.access_token && session?.refresh_token) {
-        /* Session created → NOW mark verified */
         await supaUpdate('otp_codes', { id: `eq.${latest.id}` }, { verified: true });
         return res.json({
           ok: true,
@@ -410,7 +397,6 @@ export default async function handler(req, res) {
         });
       }
 
-      /* Session creation failed — OTP stays unverified, user can retry */
       return res.json({
         ok: false,
         error: 'کد تأیید شد اما نشست ساخته نشد. لطفاً دوباره تلاش کنید یا با گوگل وارد شوید.',
