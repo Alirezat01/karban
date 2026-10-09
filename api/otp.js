@@ -1,8 +1,10 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — OTP ورود با موبایل
-   Diagnostic v2 — unified `OTP` log tag for single-query traceability,
-   per-step timing, and a final OTP_VERIFY_DONE summary at every return.
-   No architecture changes, no email mutation, no Google→OTP conversion.
+   Diagnostic v3 — fixes the email_exists bug:
+   - Lookup now tries EMAIL first (most reliable — we control OTP email),
+     then E.164 phone, then local phone format.
+   - STEP 3 handles BOTH `phone_exists` AND `email_exists` (re-lookup by email).
+   - All previous OTP-tagged diagnostics preserved.
 
    LOG SEARCH HINT (Vercel):
    - Search `OTP`           → all log lines from this function
@@ -10,6 +12,7 @@
    - Search `OTP_VERIFY_DONE` → final result + duration for every verify call
    - Search `OTP_CREATE_SESSION_DONE` → final result of createSession
    - Search `STEP N`        → per-step traces (N = 1..5)
+   - Search `findAuthUserByEmail` → email-lookup traces
    ═════════════════════════════════════════════════════════════════════ */
 
 import crypto from 'node:crypto';
@@ -47,20 +50,13 @@ function toE164(localMobile) {
   return null;
 }
 
-/* ─── Logging helpers ───
-   Every line is prefixed with [OTP <rid>] so a single Vercel log search
-   for `OTP` returns the full request trace. */
+/* ─── Logging helpers ─── */
 function logTag(rid) { return `[OTP ${rid}]`; }
 function logInfo(rid, msg) { console.log(`${logTag(rid)} ${msg}`); }
 function logErr(rid, msg) { console.error(`${logTag(rid)} ${msg}`); }
 
-/* Mask: only show last 4 digits */
 function maskPhone(m) { return '****' + m.slice(-4); }
-
-/* Generate a short request ID for log correlation */
 function reqId() { return crypto.randomBytes(4).toString('hex'); }
-
-/* Elapsed-since helper for timing logs */
 function ms(t0) { return `${Date.now() - t0}ms`; }
 
 async function supaInsert(table, row, rid) {
@@ -139,6 +135,44 @@ async function findAuthUserByPhone(authPhone, rid) {
   }
 }
 
+/* ─── findAuthUserByEmail — lookup by exact email match.
+   Used as a SECOND lookup if phone lookup fails, since we control the
+   OTP email format (`<localmobile>@karbanapp.ir`) and email is unique
+   in Supabase Auth. Catches the case where the user has an OTP email
+   but their phone field is null or in a different format. */
+async function findAuthUserByEmail(email, rid) {
+  const t0 = Date.now();
+  let page = 1;
+  const perPage = 1000;
+  while (true) {
+    const res = await fetch(
+      `${SUPA_URL}/auth/v1/admin/users?page=${page}&per_page=${perPage}`,
+      { headers: adminHeaders() }
+    );
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      logErr(rid, `findAuthUserByEmail: admin_list_failed page=${page} status=${res.status} body=${body.slice(0, 200)}`);
+      return { user: null, error: 'admin_list_failed', status: res.status };
+    }
+    const data = await res.json();
+    const users = data.users || data || [];
+    if (users.length === 0) {
+      logInfo(rid, `findAuthUserByEmail: not_found scanned_pages=${page - 1} elapsed=${ms(t0)}`);
+      return { user: null, error: null, status: 0 };
+    }
+    const found = users.find((u) => u.email === email);
+    if (found) {
+      logInfo(rid, `findAuthUserByEmail: FOUND id=${found.id} email=${found.email} has_phone=${!!found.phone} phone=${found.phone || 'null'} email_confirmed=${found.email_confirmed_at ? 'yes' : 'no'} providers=${JSON.stringify(found.app_metadata?.providers || [])} elapsed=${ms(t0)}`);
+      return { user: found, error: null, status: 0 };
+    }
+    if (users.length < perPage) {
+      logInfo(rid, `findAuthUserByEmail: not_found scanned_pages=${page} elapsed=${ms(t0)}`);
+      return { user: null, error: null, status: 0 };
+    }
+    page++;
+  }
+}
+
 function verifyPhoneMatch(authUser, authPhone) {
   if (!authUser || !authUser.phone) return false;
   return authUser.phone === authPhone;
@@ -206,7 +240,7 @@ async function createSession(localMobile, rid) {
   const authPhone = toE164(localMobile);
   const otpEmail = `${localMobile}@karbanapp.ir`;
 
-  logInfo(rid, `OTP_CREATE_SESSION: START phone=${maskPhone(localMobile)} authPhone=${maskPhone(authPhone || '')}`);
+  logInfo(rid, `OTP_CREATE_SESSION: START phone=${maskPhone(localMobile)} authPhone=${maskPhone(authPhone || '')} otpEmail=${otpEmail}`);
 
   if (!authPhone) {
     logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=invalid_e164 elapsed=${ms(t0)}`);
@@ -222,8 +256,24 @@ async function createSession(localMobile, rid) {
   let failureReason = null;
 
   /* ─── STEP 1: Find existing Auth user ─── */
-  logInfo(rid, 'STEP 1: findAuthUserByPhone start');
-  const lookup = await findAuthUserByPhone(authPhone, rid);
+  /* Strategy: try by EMAIL first (most reliable — we control the OTP email format),
+     then by E.164 phone (fallback for phone_confirm users),
+     then by local phone (fallback for legacy users). */
+  logInfo(rid, `STEP 1: findAuthUserByEmail start email=${otpEmail}`);
+  const lookupByEmail = await findAuthUserByEmail(otpEmail, rid);
+
+  let lookup = lookupByEmail;
+
+  if (!lookup.user && !lookup.error) {
+    logInfo(rid, `STEP 1: email_lookup_failed_now_trying_phone_e164 phone=${authPhone}`);
+    lookup = await findAuthUserByPhone(authPhone, rid);
+  }
+
+  if (!lookup.user && !lookup.error) {
+    logInfo(rid, `STEP 1: e164_lookup_failed_now_trying_local_phone phone=${localMobile}`);
+    /* Try local format (e.g., 09xxxxxxxxx) as last resort */
+    lookup = await findAuthUserByPhone(localMobile, rid);
+  }
 
   if (lookup.error) {
     failureReason = `step1_lookup_${lookup.error}_${lookup.status}`;
@@ -233,18 +283,15 @@ async function createSession(localMobile, rid) {
   }
 
   if (lookup.user) {
-    if (!verifyPhoneMatch(lookup.user, authPhone)) {
-      failureReason = 'step1_phone_mismatch';
-      logErr(rid, `STEP 1 FAILED: phone_mismatch elapsed=${ms(t0)}`);
-      logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
-      return null;
-    }
+    /* Found a user (by email OR by phone in any format).
+       Use their stored email as grantEmail (preserve existing email). */
     userId = lookup.user.id;
 
     if (lookup.user.email) {
-      /* STEP 2a: Set password only — DO NOT touch email */
       grantEmail = lookup.user.email;
-      logInfo(rid, `STEP 2a: existing_user id=${userId} has_email=true preserving_email grant_email=${grantEmail}`);
+      logInfo(rid, `STEP 1: user_found id=${userId} via_email_or_phone grant_email=${grantEmail} stored_phone=${lookup.user.phone || 'null'}`);
+      /* STEP 2a: Set password only — DO NOT touch email */
+      logInfo(rid, `STEP 2a: set_password_only preserving_email`);
       const updT0 = Date.now();
       const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
         method: 'PUT', headers: adminHeaders(),
@@ -259,9 +306,10 @@ async function createSession(localMobile, rid) {
       }
       logInfo(rid, `STEP 2a: password_set OK elapsed=${ms(updT0)}`);
     } else {
-      /* STEP 2b: Set password + email (no existing email) */
+      /* User found but has no email — set password + otpEmail */
       grantEmail = otpEmail;
-      logInfo(rid, `STEP 2b: existing_user id=${userId} has_email=false setting_otp_email`);
+      logInfo(rid, `STEP 1: user_found id=${userId} has_email=false setting_otp_email`);
+      logInfo(rid, `STEP 2b: set_password_and_email`);
       const updT0 = Date.now();
       const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
         method: 'PUT', headers: adminHeaders(),
@@ -301,51 +349,54 @@ async function createSession(localMobile, rid) {
     if (createRes.ok) {
       userId = createJ.id;
       logInfo(rid, `STEP 3: new_user_created id=${userId} elapsed=${ms(crtT0)}`);
-    } else if (createRes.status === 422 && createJ.error_code === 'phone_exists') {
-      logInfo(rid, `STEP 3: phone_exists re-lookup elapsed=${ms(crtT0)}`);
-      const reLookup = await findAuthUserByPhone(authPhone, rid);
+    } else if (createRes.status === 422 && (createJ.error_code === 'phone_exists' || createJ.error_code === 'email_exists')) {
+      /* Both `phone_exists` and `email_exists` mean "user already exists".
+         Re-lookup by EMAIL (most reliable — we always control the OTP email format). */
+      logInfo(rid, `STEP 3: ${createJ.error_code} re-lookup_by_email elapsed=${ms(crtT0)}`);
+      const reLookup = await findAuthUserByEmail(otpEmail, rid);
       if (reLookup.error) {
         failureReason = `step3_relookup_${reLookup.error}_${reLookup.status}`;
         logErr(rid, `STEP 3 FAILED: re-lookup error=${reLookup.error} status=${reLookup.status} elapsed=${ms(t0)}`);
         logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
         return null;
       }
-      if (reLookup.user && verifyPhoneMatch(reLookup.user, authPhone)) {
+      if (reLookup.user) {
         userId = reLookup.user.id;
         if (reLookup.user.email) {
           grantEmail = reLookup.user.email;
-          logInfo(rid, `STEP 3: found_after_phone_exists id=${userId} preserving_email`);
+          logInfo(rid, `STEP 3: found_after_${createJ.error_code} id=${userId} preserving_email grant_email=${grantEmail} stored_phone=${reLookup.user.phone || 'null'}`);
           const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
             method: 'PUT', headers: adminHeaders(),
             body: JSON.stringify({ password: password }),
           });
           if (!upd.ok) {
             const b = await upd.text().catch(() => '');
-            failureReason = `step3_password_after_phone_exists_${upd.status}`;
-            logErr(rid, `STEP 3 FAILED: password after phone_exists status=${upd.status} body=${b.slice(0, 300)} elapsed=${ms(t0)}`);
+            failureReason = `step3_password_after_${createJ.error_code}_${upd.status}`;
+            logErr(rid, `STEP 3 FAILED: password after ${createJ.error_code} status=${upd.status} body=${b.slice(0, 300)} elapsed=${ms(t0)}`);
             logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
             return null;
           }
-          logInfo(rid, 'STEP 3: password_set OK after phone_exists');
+          logInfo(rid, `STEP 3: password_set OK after ${createJ.error_code}`);
         } else {
+          /* Should not happen — email_exists means email is set, but just in case */
           grantEmail = otpEmail;
-          logInfo(rid, `STEP 3: found_after_phone_exists id=${userId} setting_otp_email`);
+          logInfo(rid, `STEP 3: found_after_${createJ.error_code} id=${userId} has_email=false setting_otp_email`);
           const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
             method: 'PUT', headers: adminHeaders(),
             body: JSON.stringify({ password: password, email: grantEmail, email_confirm: true }),
           });
           if (!upd.ok) {
             const b = await upd.text().catch(() => '');
-            failureReason = `step3_password_email_after_phone_exists_${upd.status}`;
-            logErr(rid, `STEP 3 FAILED: password+email after phone_exists status=${upd.status} body=${b.slice(0, 300)} elapsed=${ms(t0)}`);
+            failureReason = `step3_password_email_after_${createJ.error_code}_${upd.status}`;
+            logErr(rid, `STEP 3 FAILED: password+email after ${createJ.error_code} status=${upd.status} body=${b.slice(0, 300)} elapsed=${ms(t0)}`);
             logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
             return null;
           }
-          logInfo(rid, 'STEP 3: password+email_set OK after phone_exists');
+          logInfo(rid, `STEP 3: password+email_set OK after ${createJ.error_code}`);
         }
       } else {
-        failureReason = 'step3_phone_exists_but_not_found_or_mismatch';
-        logErr(rid, `STEP 3 FAILED: phone_exists_but_not_found_or_mismatch elapsed=${ms(t0)}`);
+        failureReason = `step3_${createJ.error_code}_but_not_found_by_email`;
+        logErr(rid, `STEP 3 FAILED: ${createJ.error_code} but re-lookup by email did not find user elapsed=${ms(t0)}`);
         logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
         return null;
       }
