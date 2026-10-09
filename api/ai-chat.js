@@ -1,12 +1,12 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — دستیار حقوقی چت‌بات
-   مدل: gemini-3.8-flash
-   FIX: bounded timeout, timing logs, distinct error types.
+   FIX v2: مدل gemini-3.8-flash وجود ندارد → gemini-2.0-flash پایدار.
    ═════════════════════════════════════════════════════════════════════ */
 
 const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
-const GEMINI_MODEL = 'gemini-3.8-flash';
+/* استفاده از مدل پایدار gemini-2.0-flash (مدل gemini-3.8-flash وجود ندارد) */
+const GEMINI_MODEL = 'gemini-2.0-flash';
 const FREE_LIMIT = 5;
 const MAX_DURATION = 20;
 const RESPONSE_BUFFER_MS = 3000;
@@ -65,7 +65,7 @@ async function callGemini(prompt, requestStartMs) {
   const elapsed = Date.now() - requestStartMs;
   const remainingBudgetMs = (MAX_DURATION * 1000) - elapsed - RESPONSE_BUFFER_MS;
   const geminiTimeoutMs = Math.max(5000, Math.min(remainingBudgetMs, 15000));
-  console.log('gemini: timeout_ms=' + geminiTimeoutMs + ' elapsed=' + elapsed + 'ms');
+  console.log('gemini: model=' + GEMINI_MODEL + ' timeout_ms=' + geminiTimeoutMs + ' elapsed=' + elapsed + 'ms');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
   const controller = new AbortController();
@@ -87,6 +87,7 @@ async function callGemini(prompt, requestStartMs) {
       else if (res.status === 429) errMsg = 'محدودیت درخواست — کمی بعد تلاش کنید';
       else if (res.status === 400) errMsg = 'درخواست نامعتبر به Gemini';
       else if (res.status === 404) errMsg = `مدل ${GEMINI_MODEL} یافت نشد`;
+      else if (res.status === 503) errMsg = 'سرویس Gemini موقتاً در دسترس نیست. دوباره تلاش کنید.';
       else errMsg = `خطای Gemini (${res.status})`;
       const err = new Error(errMsg); err.errorType = 'provider'; throw err;
     }
