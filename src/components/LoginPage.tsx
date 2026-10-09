@@ -129,40 +129,67 @@ export default function LoginPage() {
     const m = normalizeMobile(mobileInput);
     setMobileErr('');
     setMobileStatus('verifying');
+    /* BROWSER_LOG_TAG: every console line uses the prefix `OTP-BROWSER` so the
+       user can grep the browser console with one search. */
+    const logB = (msg: string) => console.log(`[OTP-BROWSER] ${msg}`);
+    const errB = (msg: string) => console.error(`[OTP-BROWSER] ${msg}`);
+    const t0 = Date.now();
+    const elapsed = () => `${Date.now() - t0}ms`;
     try {
+      logB(`VERIFY START phone=****${m.slice(-4)}`);
       const res = await fetch('/api/otp?action=verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile: m, code: codeInput.replace(/\D/g, '') }),
       });
+      logB(`VERIFY HTTP response status=${res.status} elapsed=${elapsed()}`);
       const j = await res.json();
+      logB(`VERIFY server body ok=${j.ok} has_access_token=${!!j.access_token} has_refresh_token=${!!j.refresh_token} code_verified=${!!j.code_verified} user_id=${j.user_id || 'null'} error=${j.error || 'none'} elapsed=${elapsed()}`);
+
       if (!j.ok) {
+        errB(`VERIFY REJECT reason=server_not_ok error=${j.error || 'unknown'} elapsed=${elapsed()}`);
         setMobileErr(j.error || 'کد اشتباه است');
         setMobileStatus('error');
         return;
       }
-           if (j.access_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token: j.access_token,
-          refresh_token: j.refresh_token,
-        });
-        if (!error) {
-          const { data: checkSession } = await supabase.auth.getSession();
-          if (checkSession.session?.access_token) {
-            setMobileStatus('verified');
-            window.location.replace(next || '/داشبورد');
-            return;
-          }
-          console.error('OTP setSession: succeeded but getSession returned no session');
-        } else {
-          console.error('OTP setSession error:', error.message);
-        }
+      if (!j.access_token || !j.refresh_token) {
+        errB(`VERIFY REJECT reason=missing_token_in_response elapsed=${elapsed()}`);
+        setMobileErr('پاسخ سرور ناقص است (توکن یافت نشد)');
+        setMobileStatus('error');
+        return;
       }
-      const serverError = j.error || (j.detail ? `${j.error} (${j.detail})` : 'خطای ناشناخته');
-      console.error('OTP verify: server response:', JSON.stringify({ ok: j.ok, error: j.error, code_verified: j.code_verified, has_token: !!j.access_token }));
-      setMobileErr(serverError);
+      logB(`VERIFY setSession: calling supabase.auth.setSession elapsed=${elapsed()}`);
+      const { error: setSessionError, data: setSessionData } = await supabase.auth.setSession({
+        access_token: j.access_token,
+        refresh_token: j.refresh_token,
+      });
+      if (setSessionError) {
+        errB(`VERIFY setSession FAILED name=${setSessionError.name} message=${setSessionError.message} status=${setSessionError.status} elapsed=${elapsed()}`);
+        setMobileErr('نشست در مرورگر ساخته نشد: ' + setSessionError.message);
+        setMobileStatus('error');
+        return;
+      }
+      logB(`VERIFY setSession OK session_present=${!!setSessionData.session} user_present=${!!setSessionData.user} elapsed=${elapsed()}`);
+
+      logB(`VERIFY getSession: calling supabase.auth.getSession elapsed=${elapsed()}`);
+      const { data: checkSession, error: getSessionError } = await supabase.auth.getSession();
+      if (getSessionError) {
+        errB(`VERIFY getSession FAILED message=${getSessionError.message} elapsed=${elapsed()}`);
+        setMobileErr('دریافت نشست از مرورگر ناموفق بود: ' + getSessionError.message);
+        setMobileStatus('error');
+        return;
+      }
+      if (checkSession.session?.access_token) {
+        logB(`VERIFY DONE result=success access_token_len=${checkSession.session.access_token.length} elapsed=${elapsed()}`);
+        setMobileStatus('verified');
+        window.location.replace(next || '/داشبورد');
+        return;
+      }
+      errB(`VERIFY DONE result=fail reason=getSession_no_token session_present=${!!checkSession.session} elapsed=${elapsed()}`);
+      setMobileErr('کد تأیید شد اما نشست در مرورگر ذخیره نشد. لطفاً دوباره تلاش کنید.');
       setMobileStatus('error');
-    } catch {
+    } catch (e: any) {
+      errB(`VERIFY DONE result=exception name=${e?.name} message=${e?.message} elapsed=${elapsed()}`);
       setMobileErr('خطای شبکه؛ دوباره تلاش کنید');
       setMobileStatus('error');
     }
