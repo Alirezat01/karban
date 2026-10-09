@@ -1,13 +1,10 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — OTP ورود با موبایل
-   FIX: E.164 for Auth, local for SMS/DB.
-   FIX: supaSelect throws on failure (never treats query failure as empty).
-   FIX: phone_exists recovery — re-lookup Auth user by E.164, no duplicate.
-   FIX: profile role uses DEFAULT from schema (no explicit 'user' that may
-        violate a CHECK constraint if the schema differs).
-   FIX: OTP verified=true only after session succeeds.
-   FIX: supaUpdate checks non-2xx.
-   FIX: Token grant uses EMAIL not phone — phone provider may not be enabled.
+   FIX: Don't overwrite existing email on Google OAuth users.
+   FIX: Use existing email for password grant when available.
+   FIX: Only set OTP email for users who don't have one.
+   FIX: Separate new-user path from existing-user path.
+   FIX: Better diagnostic logging at every step.
    ═════════════════════════════════════════════════════════════════════ */
 
 import crypto from 'node:crypto';
@@ -36,7 +33,6 @@ const anonHeaders = () => ({
   Authorization: `Bearer ${SUPA_ANON}`,
 });
 
-/* ═══ E.164 Conversion ═══ */
 function toE164(localMobile) {
   if (!localMobile || typeof localMobile !== 'string') return null;
   const cleaned = localMobile.replace(/[\s\-()]/g, '');
@@ -45,8 +41,6 @@ function toE164(localMobile) {
   if (/^989[0-9]{9}$/.test(cleaned)) return '+' + cleaned;
   return null;
 }
-
-/* ═══ DB Helpers — all throw on failure, never silently return [] ═══ */
 
 async function supaInsert(table, row) {
   const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
@@ -91,7 +85,7 @@ async function supaUpdate(table, filter, patch) {
   }
 }
 
-/* ═══ Auth user lookup with pagination ═══ */
+/* Returns { user, error, status } — distinguishes API failure from not-found */
 async function findAuthUserByPhone(authPhone) {
   let page = 1;
   const perPage = 1000;
@@ -101,26 +95,25 @@ async function findAuthUserByPhone(authPhone) {
       { headers: adminHeaders() }
     );
     if (!res.ok) {
-      console.error('findAuthUserByPhone: admin list failed:', res.status);
-      return null;
+      const body = await res.text().catch(() => '');
+      console.error('findAuthUserByPhone: admin list page=' + page + ' status=' + res.status + ' body=' + body.slice(0, 200));
+      return { user: null, error: 'admin_list_failed', status: res.status };
     }
     const data = await res.json();
     const users = data.users || data || [];
-    if (users.length === 0) return null;
+    if (users.length === 0) return { user: null, error: null, status: 0 };
     const found = users.find((u) => u.phone === authPhone);
-    if (found) return found;
-    if (users.length < perPage) return null;
+    if (found) return { user: found, error: null, status: 0 };
+    if (users.length < perPage) return { user: null, error: null, status: 0 };
     page++;
   }
 }
 
-/* ═══ Phone identity verification ═══ */
 function verifyPhoneMatch(authUser, authPhone) {
   if (!authUser || !authUser.phone) return false;
   return authUser.phone === authPhone;
 }
 
-/* ═══ Profile creation (no explicit role — let DB DEFAULT handle it) ═══ */
 async function ensureProfile(userId, localMobile) {
   let existing;
   try {
@@ -130,7 +123,6 @@ async function ensureProfile(userId, localMobile) {
     return;
   }
   if (existing.length > 0) return;
-
   try {
     await supaInsert('profiles', {
       id: userId,
@@ -142,7 +134,6 @@ async function ensureProfile(userId, localMobile) {
   }
 }
 
-/* ═══ Misc helpers ═══ */
 function isIranianMobile(m) { return /^09[0-9]{9}$/.test(m); }
 function genCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
 function hashCode(code) { return crypto.createHash('sha256').update(code).digest('hex'); }
@@ -179,31 +170,77 @@ async function sendSmsIr(mobile, code) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   createSession — production-hardened
-   1. Find Auth user by E.164 phone (paginated, reliable)
-   2. If not found, try create. If phone_exists, re-lookup.
-   3. Verify phone identity matches before setting password.
-   4. Set password + email via Admin API.
-   5. Token grant with anon key + EMAIL (not phone).
-   6. Require both access_token and refresh_token.
+   createSession
    ════════════════════════════════════════════════════════════════ */
 async function createSession(localMobile) {
   const password = getPhonePassword(localMobile);
   const authPhone = toE164(localMobile);
+  const otpEmail = `${localMobile}@karbanapp.ir`;
 
-  if (!authPhone) {
-    console.error('createSession: invalid mobile for E.164:', localMobile);
+  if (!authPhone) { console.error('createSession: invalid E.164'); return null; }
+  if (!SUPA_SERVICE) { console.error('createSession: service key not set'); return null; }
+
+  let userId = null;
+  let grantEmail = null;
+
+  /* ─── PATH 1: Find existing Auth user ─── */
+  const lookup = await findAuthUserByPhone(authPhone);
+
+  if (lookup.error) {
+    console.error('createSession: lookup failed:', lookup.error, 'status:', lookup.status);
     return null;
   }
-  if (!SUPA_SERVICE) {
-    console.error('createSession: SUPABASE_SERVICE_ROLE_KEY not set');
-    return null;
+
+  if (lookup.user) {
+    if (!verifyPhoneMatch(lookup.user, authPhone)) {
+      console.error('createSession: phone mismatch');
+      return null;
+    }
+    userId = lookup.user.id;
+
+    /* CRITICAL: Use the user's EXISTING email if they have one.
+       Do NOT overwrite a Google OAuth user's email. */
+    if (lookup.user.email) {
+      grantEmail = lookup.user.email;
+      console.log('createSession: existing user id=' + userId + ' using existing email');
+
+      /* Only set password — DO NOT touch email */
+      const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: adminHeaders(),
+        body: JSON.stringify({ password: password }),
+      });
+      if (!updateRes.ok) {
+        const errBody = await updateRes.text().catch(() => '');
+        console.error('createSession: password set failed: status=' + updateRes.status + ' body=' + errBody.slice(0, 300));
+        return null;
+      }
+    } else {
+      /* User has no email — set one */
+      grantEmail = otpEmail;
+      console.log('createSession: existing user id=' + userId + ' setting new email');
+
+      const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: adminHeaders(),
+        body: JSON.stringify({
+          password: password,
+          email: grantEmail,
+          email_confirm: true,
+        }),
+      });
+      if (!updateRes.ok) {
+        const errBody = await updateRes.text().catch(() => '');
+        console.error('createSession: password+email set failed: status=' + updateRes.status + ' body=' + errBody.slice(0, 300));
+        return null;
+      }
+    }
   }
 
-  let authUser = await findAuthUserByPhone(authPhone);
-  let userId = authUser?.id || null;
-
+  /* ─── PATH 2: Create new user ─── */
   if (!userId) {
+    grantEmail = otpEmail;
+
     const createRes = await fetch(`${SUPA_URL}/auth/v1/admin/users`, {
       method: 'POST',
       headers: adminHeaders(),
@@ -211,6 +248,8 @@ async function createSession(localMobile) {
         phone: authPhone,
         phone_confirm: true,
         password: password,
+        email: grantEmail,
+        email_confirm: true,
         user_metadata: { full_name: `کاربر ${localMobile.slice(-4)}` },
       }),
     });
@@ -218,71 +257,73 @@ async function createSession(localMobile) {
 
     if (createRes.ok) {
       userId = createJ.id;
+      console.log('createSession: new user created id=' + userId);
     } else if (createRes.status === 422 && createJ.error_code === 'phone_exists') {
-      console.log('createSession: phone_exists, re-looking up user by E.164');
-      authUser = await findAuthUserByPhone(authPhone);
-      if (authUser) {
-        userId = authUser.id;
+      console.log('createSession: phone_exists, re-looking up');
+      const reLookup = await findAuthUserByPhone(authPhone);
+      if (reLookup.error) {
+        console.error('createSession: re-lookup failed:', reLookup.error, reLookup.status);
+        return null;
+      }
+      if (reLookup.user && verifyPhoneMatch(reLookup.user, authPhone)) {
+        userId = reLookup.user.id;
+
+        /* Use existing email or set new one */
+        if (reLookup.user.email) {
+          grantEmail = reLookup.user.email;
+          console.log('createSession: using existing email after phone_exists');
+
+          const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT', headers: adminHeaders(),
+            body: JSON.stringify({ password: password }),
+          });
+          if (!upd.ok) {
+            const b = await upd.text().catch(() => '');
+            console.error('createSession: password set after phone_exists failed: status=' + upd.status + ' body=' + b.slice(0, 300));
+            return null;
+          }
+        } else {
+          grantEmail = otpEmail;
+          const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT', headers: adminHeaders(),
+            body: JSON.stringify({ password: password, email: grantEmail, email_confirm: true }),
+          });
+          if (!upd.ok) {
+            const b = await upd.text().catch(() => '');
+            console.error('createSession: password+email after phone_exists failed: status=' + upd.status + ' body=' + b.slice(0, 300));
+            return null;
+          }
+        }
       } else {
-        console.error('createSession: phone_exists but user not found after re-lookup');
+        console.error('createSession: phone_exists but user not found or mismatch');
         return null;
       }
     } else {
-      console.error('createSession: admin create failed:', createRes.status, JSON.stringify(createJ).slice(0, 500));
+      console.error('createSession: create failed: status=' + createRes.status + ' code=' + (createJ.error_code || 'none') + ' msg=' + (createJ.msg || createJ.message || '').slice(0, 300));
       return null;
     }
   }
 
-  if (!userId) {
-    console.error('createSession: no userId after find/create');
+  if (!userId || !grantEmail) {
+    console.error('createSession: missing userId or grantEmail');
     return null;
   }
 
-  if (!authUser) {
-    authUser = await findAuthUserByPhone(authPhone);
-  }
-  if (!authUser || !verifyPhoneMatch(authUser, authPhone)) {
-    console.error('createSession: phone identity mismatch — refusing to set password');
-    return null;
-  }
-
-  /* Step 4: Set password + email via Admin API */
-  const otpEmail = `${localMobile}@karbanapp.ir`;
-
-  const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
-    method: 'PUT',
-    headers: adminHeaders(),
-    body: JSON.stringify({
-      password: password,
-      phone_confirm: true,
-      email: otpEmail,
-      email_confirm: true,
-    }),
-  });
-  if (!updateRes.ok) {
-    const errBody = await updateRes.text().catch(() => '');
-    console.error('createSession: admin update (password+email) failed:', updateRes.status, errBody.slice(0, 500));
-    return null;
-  }
-
-  /* Step 5: Token grant with anon key + EMAIL */
+  /* ─── Token grant with anon key + email ─── */
   const tokenRes = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: anonHeaders(),
-    body: JSON.stringify({ email: otpEmail, password: password }),
+    body: JSON.stringify({ email: grantEmail, password: password }),
   });
   const tokenJ = await tokenRes.json().catch(() => ({}));
 
   if (tokenRes.ok && tokenJ.access_token && tokenJ.refresh_token) {
+    console.log('createSession: SUCCESS token grant for user ' + userId);
     await ensureProfile(userId, localMobile);
-    return {
-      access_token: tokenJ.access_token,
-      refresh_token: tokenJ.refresh_token,
-      user_id: userId,
-    };
+    return { access_token: tokenJ.access_token, refresh_token: tokenJ.refresh_token, user_id: userId };
   }
 
-  console.error('createSession: token grant failed:', tokenRes.status, JSON.stringify(tokenJ).slice(0, 500));
+  console.error('createSession: token grant FAILED: status=' + tokenRes.status + ' error_code=' + (tokenJ.error_code || 'none') + ' msg=' + (tokenJ.msg || tokenJ.message || '').slice(0, 300));
 
   /* Fallback: magic link */
   const linkRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}/generate_link`, {
@@ -297,17 +338,14 @@ async function createSession(localMobile) {
     if (location) {
       const m = location.match(/#access_token=([^&]+)&.*refresh_token=([^&]+)/);
       if (m) {
+        console.log('createSession: magic link SUCCESS for user ' + userId);
         await ensureProfile(userId, localMobile);
-        return {
-          access_token: decodeURIComponent(m[1]),
-          refresh_token: decodeURIComponent(m[2]),
-          user_id: userId,
-        };
+        return { access_token: decodeURIComponent(m[1]), refresh_token: decodeURIComponent(m[2]), user_id: userId };
       }
     }
   }
 
-  console.error('createSession: all methods failed for', localMobile);
+  console.error('createSession: ALL methods failed for user ' + userId);
   return null;
 }
 
