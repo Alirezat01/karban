@@ -141,25 +141,26 @@ export default function LoginPage() {
         setMobileStatus('error');
         return;
       }
-      if (j.access_token) {
+           if (j.access_token) {
         const { error } = await supabase.auth.setSession({
           access_token: j.access_token,
           refresh_token: j.refresh_token,
         });
         if (!error) {
-          /* بررسی اینکه session واقعاً ساخته شد */
           const { data: checkSession } = await supabase.auth.getSession();
           if (checkSession.session?.access_token) {
             setMobileStatus('verified');
             window.location.replace(next || '/داشبورد');
             return;
           }
-          console.error('OTP: setSession succeeded but getSession returned no session');
+          console.error('OTP setSession: succeeded but getSession returned no session');
         } else {
-          console.error('OTP: setSession error:', error.message);
+          console.error('OTP setSession error:', error.message);
         }
       }
-      setMobileErr('نشست ساخته نشد؛ دوباره تلاش کنید یا با گوگل وارد شوید');
+      const serverError = j.error || (j.detail ? `${j.error} (${j.detail})` : 'خطای ناشناخته');
+      console.error('OTP verify: server response:', JSON.stringify({ ok: j.ok, error: j.error, code_verified: j.code_verified, has_token: !!j.access_token }));
+      setMobileErr(serverError);
       setMobileStatus('error');
     } catch {
       setMobileErr('خطای شبکه؛ دوباره تلاش کنید');
