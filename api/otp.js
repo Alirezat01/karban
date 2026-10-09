@@ -1,7 +1,15 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — OTP ورود با موبایل
-   Diagnostic version — logs every step with request ID.
-   No new architecture, no new fallback.
+   Diagnostic v2 — unified `OTP` log tag for single-query traceability,
+   per-step timing, and a final OTP_VERIFY_DONE summary at every return.
+   No architecture changes, no email mutation, no Google→OTP conversion.
+
+   LOG SEARCH HINT (Vercel):
+   - Search `OTP`           → all log lines from this function
+   - Search `OTP_VERIFY`    → outer verify-flow logs only
+   - Search `OTP_VERIFY_DONE` → final result + duration for every verify call
+   - Search `OTP_CREATE_SESSION_DONE` → final result of createSession
+   - Search `STEP N`        → per-step traces (N = 1..5)
    ═════════════════════════════════════════════════════════════════════ */
 
 import crypto from 'node:crypto';
@@ -39,8 +47,21 @@ function toE164(localMobile) {
   return null;
 }
 
+/* ─── Logging helpers ───
+   Every line is prefixed with [OTP <rid>] so a single Vercel log search
+   for `OTP` returns the full request trace. */
+function logTag(rid) { return `[OTP ${rid}]`; }
+function logInfo(rid, msg) { console.log(`${logTag(rid)} ${msg}`); }
+function logErr(rid, msg) { console.error(`${logTag(rid)} ${msg}`); }
+
+/* Mask: only show last 4 digits */
 function maskPhone(m) { return '****' + m.slice(-4); }
+
+/* Generate a short request ID for log correlation */
 function reqId() { return crypto.randomBytes(4).toString('hex'); }
+
+/* Elapsed-since helper for timing logs */
+function ms(t0) { return `${Date.now() - t0}ms`; }
 
 async function supaInsert(table, row, rid) {
   const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
@@ -50,7 +71,7 @@ async function supaInsert(table, row, rid) {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    console.error(`[${rid}] supaInsert failed: table=${table} status=${res.status} body=${body.slice(0, 200)}`);
+    logErr(rid, `supaInsert failed: table=${table} status=${res.status} body=${body.slice(0, 200)}`);
     throw new Error(`DB insert failed: ${res.status}`);
   }
 }
@@ -64,7 +85,7 @@ async function supaSelect(table, filter, order, rid) {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    console.error(`[${rid}] supaSelect failed: table=${table} status=${res.status} body=${body.slice(0, 200)}`);
+    logErr(rid, `supaSelect failed: table=${table} status=${res.status} body=${body.slice(0, 200)}`);
     throw new Error(`DB select failed: ${res.status}`);
   }
   return (await res.json()) || [];
@@ -80,12 +101,13 @@ async function supaUpdate(table, filter, patch, rid) {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    console.error(`[${rid}] supaUpdate failed: table=${table} status=${res.status} body=${body.slice(0, 200)}`);
+    logErr(rid, `supaUpdate failed: table=${table} status=${res.status} body=${body.slice(0, 200)}`);
     throw new Error(`DB update failed: ${res.status}`);
   }
 }
 
 async function findAuthUserByPhone(authPhone, rid) {
+  const t0 = Date.now();
   let page = 1;
   const perPage = 1000;
   while (true) {
@@ -95,22 +117,22 @@ async function findAuthUserByPhone(authPhone, rid) {
     );
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.error(`[${rid}] findAuthUserByPhone: admin list page=${page} status=${res.status} body=${body.slice(0, 200)}`);
+      logErr(rid, `STEP 1 findAuthUserByPhone: admin_list_failed page=${page} status=${res.status} body=${body.slice(0, 200)}`);
       return { user: null, error: 'admin_list_failed', status: res.status };
     }
     const data = await res.json();
     const users = data.users || data || [];
     if (users.length === 0) {
-      console.log(`[${rid}] findAuthUserByPhone: not found (scanned ${page - 1} page(s))`);
+      logInfo(rid, `STEP 1 findAuthUserByPhone: not_found scanned_pages=${page - 1} elapsed=${ms(t0)}`);
       return { user: null, error: null, status: 0 };
     }
     const found = users.find((u) => u.phone === authPhone);
     if (found) {
-      console.log(`[${rid}] findAuthUserByPhone: FOUND user id=${found.id} has_email=${!!found.email} has_phone=${!!found.phone} email_confirmed=${found.email_confirmed_at ? 'yes' : 'no'} phone_confirmed=${found.phone_confirmed_at ? 'yes' : 'no'} app_metadata_providers=${JSON.stringify(found.app_metadata?.providers || [])}`);
+      logInfo(rid, `STEP 1 findAuthUserByPhone: FOUND id=${found.id} has_email=${!!found.email} has_phone=${!!found.phone} email_confirmed=${found.email_confirmed_at ? 'yes' : 'no'} phone_confirmed=${found.phone_confirmed_at ? 'yes' : 'no'} providers=${JSON.stringify(found.app_metadata?.providers || [])} elapsed=${ms(t0)}`);
       return { user: found, error: null, status: 0 };
     }
     if (users.length < perPage) {
-      console.log(`[${rid}] findAuthUserByPhone: not found (scanned ${page} page(s))`);
+      logInfo(rid, `STEP 1 findAuthUserByPhone: not_found scanned_pages=${page} elapsed=${ms(t0)}`);
       return { user: null, error: null, status: 0 };
     }
     page++;
@@ -127,14 +149,15 @@ async function ensureProfile(userId, localMobile, rid) {
   try {
     existing = await supaSelect('profiles', { id: `eq.${userId}`, select: 'id' }, null, rid);
   } catch (e) {
-    console.error(`[${rid}] ensureProfile: select failed: ${e.message}`);
+    logErr(rid, `ensureProfile: select failed: ${e.message}`);
     return;
   }
-  if (existing.length > 0) return;
+  if (existing.length > 0) { logInfo(rid, `ensureProfile: exists user=${userId}`); return; }
   try {
     await supaInsert('profiles', { id: userId, phone: localMobile, full_name: `کاربر ${localMobile.slice(-4)}` }, rid);
+    logInfo(rid, `ensureProfile: created user=${userId}`);
   } catch (e) {
-    console.error(`[${rid}] ensureProfile: insert failed: ${e.message}`);
+    logErr(rid, `ensureProfile: insert failed: ${e.message}`);
   }
 }
 
@@ -173,120 +196,177 @@ async function sendSmsIr(mobile, code, rid) {
   return json;
 }
 
+/* ════════════════════════════════════════════════════════════════
+   createSession — same architecture, unified OTP-tagged diagnostics.
+   Every step logs elapsed ms; every exit point logs a final summary.
+   ════════════════════════════════════════════════════════════════ */
 async function createSession(localMobile, rid) {
+  const t0 = Date.now();
   const password = getPhonePassword(localMobile);
   const authPhone = toE164(localMobile);
   const otpEmail = `${localMobile}@karbanapp.ir`;
 
-  console.log(`[${rid}] createSession: start phone=${maskPhone(localMobile)} authPhone=${maskPhone(authPhone || '')}`);
+  logInfo(rid, `OTP_CREATE_SESSION: START phone=${maskPhone(localMobile)} authPhone=${maskPhone(authPhone || '')}`);
 
-  if (!authPhone) { console.error(`[${rid}] createSession: invalid E.164`); return null; }
-  if (!SUPA_SERVICE) { console.error(`[${rid}] createSession: service key not set`); return null; }
+  if (!authPhone) {
+    logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=invalid_e164 elapsed=${ms(t0)}`);
+    return null;
+  }
+  if (!SUPA_SERVICE) {
+    logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=service_key_not_set elapsed=${ms(t0)}`);
+    return null;
+  }
 
   let userId = null;
   let grantEmail = null;
+  let failureReason = null;
 
-  /* STEP 1: Find existing Auth user */
-  console.log(`[${rid}] STEP 1: findAuthUserByPhone`);
+  /* ─── STEP 1: Find existing Auth user ─── */
+  logInfo(rid, 'STEP 1: findAuthUserByPhone start');
   const lookup = await findAuthUserByPhone(authPhone, rid);
 
   if (lookup.error) {
-    console.error(`[${rid}] STEP 1 FAILED: lookup error=${lookup.error} status=${lookup.status}`);
+    failureReason = `step1_lookup_${lookup.error}_${lookup.status}`;
+    logErr(rid, `STEP 1 FAILED: error=${lookup.error} status=${lookup.status} elapsed=${ms(t0)}`);
+    logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
     return null;
   }
 
   if (lookup.user) {
     if (!verifyPhoneMatch(lookup.user, authPhone)) {
-      console.error(`[${rid}] STEP 1 FAILED: phone mismatch`);
+      failureReason = 'step1_phone_mismatch';
+      logErr(rid, `STEP 1 FAILED: phone_mismatch elapsed=${ms(t0)}`);
+      logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
       return null;
     }
     userId = lookup.user.id;
 
     if (lookup.user.email) {
+      /* STEP 2a: Set password only — DO NOT touch email */
       grantEmail = lookup.user.email;
-      console.log(`[${rid}] STEP 1: existing user id=${userId} has_email=true using_existing_email`);
-      console.log(`[${rid}] STEP 2a: set password (password-only, no email change)`);
+      logInfo(rid, `STEP 2a: existing_user id=${userId} has_email=true preserving_email grant_email=${grantEmail}`);
+      const updT0 = Date.now();
       const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
         method: 'PUT', headers: adminHeaders(),
         body: JSON.stringify({ password: password }),
       });
       if (!updateRes.ok) {
         const errBody = await updateRes.text().catch(() => '');
-        console.error(`[${rid}] STEP 2a FAILED: status=${updateRes.status} body=${errBody.slice(0, 300)}`);
+        failureReason = `step2a_password_set_${updateRes.status}`;
+        logErr(rid, `STEP 2a FAILED: status=${updateRes.status} body=${errBody.slice(0, 300)} elapsed=${ms(updT0)}`);
+        logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
         return null;
       }
-      console.log(`[${rid}] STEP 2a: password set OK`);
+      logInfo(rid, `STEP 2a: password_set OK elapsed=${ms(updT0)}`);
     } else {
+      /* STEP 2b: Set password + email (no existing email) */
       grantEmail = otpEmail;
-      console.log(`[${rid}] STEP 1: existing user id=${userId} has_email=false setting_otp_email`);
-      console.log(`[${rid}] STEP 2b: set password + email`);
+      logInfo(rid, `STEP 2b: existing_user id=${userId} has_email=false setting_otp_email`);
+      const updT0 = Date.now();
       const updateRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
         method: 'PUT', headers: adminHeaders(),
         body: JSON.stringify({ password: password, email: grantEmail, email_confirm: true }),
       });
       if (!updateRes.ok) {
         const errBody = await updateRes.text().catch(() => '');
-        console.error(`[${rid}] STEP 2b FAILED: status=${updateRes.status} body=${errBody.slice(0, 300)}`);
+        failureReason = `step2b_password_email_set_${updateRes.status}`;
+        logErr(rid, `STEP 2b FAILED: status=${updateRes.status} body=${errBody.slice(0, 300)} elapsed=${ms(updT0)}`);
+        logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
         return null;
       }
-      console.log(`[${rid}] STEP 2b: password+email set OK`);
+      logInfo(rid, `STEP 2b: password+email_set OK elapsed=${ms(updT0)}`);
     }
   } else {
-    console.log(`[${rid}] STEP 1: user not found, proceeding to create`);
+    logInfo(rid, 'STEP 1: user_not_found proceeding_to_create');
   }
 
-  /* STEP 3: Create new user if not found */
+  /* ─── STEP 3: Create new user if not found ─── */
   if (!userId) {
     grantEmail = otpEmail;
-    console.log(`[${rid}] STEP 3: create new user with phone+email+password`);
+    logInfo(rid, 'STEP 3: create_new_user start');
+    const crtT0 = Date.now();
     const createRes = await fetch(`${SUPA_URL}/auth/v1/admin/users`, {
       method: 'POST', headers: adminHeaders(),
-      body: JSON.stringify({ phone: authPhone, phone_confirm: true, password: password, email: grantEmail, email_confirm: true, user_metadata: { full_name: `کاربر ${localMobile.slice(-4)}` } }),
+      body: JSON.stringify({
+        phone: authPhone,
+        phone_confirm: true,
+        password: password,
+        email: grantEmail,
+        email_confirm: true,
+        user_metadata: { full_name: `کاربر ${localMobile.slice(-4)}` },
+      }),
     });
     const createJ = await createRes.json().catch(() => ({}));
 
     if (createRes.ok) {
       userId = createJ.id;
-      console.log(`[${rid}] STEP 3: new user created id=${userId}`);
+      logInfo(rid, `STEP 3: new_user_created id=${userId} elapsed=${ms(crtT0)}`);
     } else if (createRes.status === 422 && createJ.error_code === 'phone_exists') {
-      console.log(`[${rid}] STEP 3: phone_exists, re-lookup`);
+      logInfo(rid, `STEP 3: phone_exists re-lookup elapsed=${ms(crtT0)}`);
       const reLookup = await findAuthUserByPhone(authPhone, rid);
       if (reLookup.error) {
-        console.error(`[${rid}] STEP 3 FAILED: re-lookup error=${reLookup.error} status=${reLookup.status}`);
+        failureReason = `step3_relookup_${reLookup.error}_${reLookup.status}`;
+        logErr(rid, `STEP 3 FAILED: re-lookup error=${reLookup.error} status=${reLookup.status} elapsed=${ms(t0)}`);
+        logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
         return null;
       }
       if (reLookup.user && verifyPhoneMatch(reLookup.user, authPhone)) {
         userId = reLookup.user.id;
         if (reLookup.user.email) {
           grantEmail = reLookup.user.email;
-          console.log(`[${rid}] STEP 3: found after phone_exists id=${userId} using_existing_email`);
-          const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ password: password }) });
-          if (!upd.ok) { const b = await upd.text().catch(() => ''); console.error(`[${rid}] STEP 3 FAILED: password set after phone_exists status=${upd.status} body=${b.slice(0, 300)}`); return null; }
-          console.log(`[${rid}] STEP 3: password set OK after phone_exists`);
+          logInfo(rid, `STEP 3: found_after_phone_exists id=${userId} preserving_email`);
+          const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT', headers: adminHeaders(),
+            body: JSON.stringify({ password: password }),
+          });
+          if (!upd.ok) {
+            const b = await upd.text().catch(() => '');
+            failureReason = `step3_password_after_phone_exists_${upd.status}`;
+            logErr(rid, `STEP 3 FAILED: password after phone_exists status=${upd.status} body=${b.slice(0, 300)} elapsed=${ms(t0)}`);
+            logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
+            return null;
+          }
+          logInfo(rid, 'STEP 3: password_set OK after phone_exists');
         } else {
           grantEmail = otpEmail;
-          console.log(`[${rid}] STEP 3: found after phone_exists id=${userId} setting_otp_email`);
-          const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { method: 'PUT', headers: adminHeaders(), body: JSON.stringify({ password: password, email: grantEmail, email_confirm: true }) });
-          if (!upd.ok) { const b = await upd.text().catch(() => ''); console.error(`[${rid}] STEP 3 FAILED: password+email after phone_exists status=${upd.status} body=${b.slice(0, 300)}`); return null; }
-          console.log(`[${rid}] STEP 3: password+email set OK after phone_exists`);
+          logInfo(rid, `STEP 3: found_after_phone_exists id=${userId} setting_otp_email`);
+          const upd = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, {
+            method: 'PUT', headers: adminHeaders(),
+            body: JSON.stringify({ password: password, email: grantEmail, email_confirm: true }),
+          });
+          if (!upd.ok) {
+            const b = await upd.text().catch(() => '');
+            failureReason = `step3_password_email_after_phone_exists_${upd.status}`;
+            logErr(rid, `STEP 3 FAILED: password+email after phone_exists status=${upd.status} body=${b.slice(0, 300)} elapsed=${ms(t0)}`);
+            logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
+            return null;
+          }
+          logInfo(rid, 'STEP 3: password+email_set OK after phone_exists');
         }
       } else {
-        console.error(`[${rid}] STEP 3 FAILED: phone_exists but user not found or mismatch`);
+        failureReason = 'step3_phone_exists_but_not_found_or_mismatch';
+        logErr(rid, `STEP 3 FAILED: phone_exists_but_not_found_or_mismatch elapsed=${ms(t0)}`);
+        logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
         return null;
       }
     } else {
-      console.error(`[${rid}] STEP 3 FAILED: create status=${createRes.status} error_code=${createJ.error_code || 'none'} msg=${(createJ.msg || createJ.message || '').slice(0, 300)}`);
+      failureReason = `step3_create_${createRes.status}_${createJ.error_code || 'none'}`;
+      logErr(rid, `STEP 3 FAILED: create status=${createRes.status} error_code=${createJ.error_code || 'none'} msg=${(createJ.msg || createJ.message || '').slice(0, 300)} elapsed=${ms(t0)}`);
+      logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
       return null;
     }
   }
 
   if (!userId || !grantEmail) {
-    console.error(`[${rid}] createSession: missing userId or grantEmail after all steps`);
+    failureReason = 'missing_userid_or_grantemail';
+    logErr(rid, `createSession: missing userId or grantEmail after all steps elapsed=${ms(t0)}`);
+    logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} elapsed=${ms(t0)}`);
     return null;
   }
 
-  /* STEP 4: Token grant */
-  console.log(`[${rid}] STEP 4: token grant with email grant_type=password`);
+  /* ─── STEP 4: Token grant ─── */
+  logInfo(rid, `STEP 4: token_grant start grant_email=${grantEmail} user_id=${userId}`);
+  const tokT0 = Date.now();
   const tokenRes = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST', headers: anonHeaders(),
     body: JSON.stringify({ email: grantEmail, password: password }),
@@ -294,49 +374,65 @@ async function createSession(localMobile, rid) {
   const tokenJ = await tokenRes.json().catch(() => ({}));
 
   if (tokenRes.ok && tokenJ.access_token && tokenJ.refresh_token) {
-    console.log(`[${rid}] STEP 4: SUCCESS token grant for user ${userId}`);
+    logInfo(rid, `STEP 4: SUCCESS token_grant user=${userId} elapsed=${ms(tokT0)} access_token_len=${tokenJ.access_token?.length || 0}`);
     await ensureProfile(userId, localMobile, rid);
+    logInfo(rid, `OTP_CREATE_SESSION_DONE result=success method=password_grant user=${userId} elapsed=${ms(t0)}`);
     return { access_token: tokenJ.access_token, refresh_token: tokenJ.refresh_token, user_id: userId };
   }
 
-  console.error(`[${rid}] STEP 4 FAILED: token grant status=${tokenRes.status} error_code=${tokenJ.error_code || 'none'} msg=${(tokenJ.msg || tokenJ.message || '').slice(0, 300)}`);
+  failureReason = `step4_token_${tokenRes.status}_${tokenJ.error_code || 'none'}`;
+  logErr(rid, `STEP 4 FAILED: token_grant status=${tokenRes.status} error_code=${tokenJ.error_code || 'none'} msg=${(tokenJ.msg || tokenJ.message || '').slice(0, 300)} elapsed=${ms(tokT0)}`);
 
-  /* STEP 5: Fallback magic link */
-  console.log(`[${rid}] STEP 5: magic link fallback`);
+  /* ─── STEP 5: Fallback magic link ─── */
+  logInfo(rid, 'STEP 5: magic_link_fallback start');
+  const linkT0 = Date.now();
   const linkRes = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}/generate_link`, {
     method: 'POST', headers: adminHeaders(),
     body: JSON.stringify({ type: 'magiclink' }),
   });
   const linkJ = await linkRes.json().catch(() => ({}));
   if (!linkRes.ok) {
-    console.error(`[${rid}] STEP 5 FAILED: generate_link status=${linkRes.status} error_code=${linkJ.error_code || 'none'} msg=${(linkJ.msg || linkJ.message || '').slice(0, 300)}`);
-    console.error(`[${rid}] ALL STEPS FAILED for user ${userId}`);
+    failureReason = `step5_generate_link_${linkRes.status}_${linkJ.error_code || 'none'}`;
+    logErr(rid, `STEP 5 FAILED: generate_link status=${linkRes.status} error_code=${linkJ.error_code || 'none'} msg=${(linkJ.msg || linkJ.message || '').slice(0, 300)} elapsed=${ms(linkT0)}`);
+    logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} user=${userId} elapsed=${ms(t0)}`);
     return null;
   }
   if (linkJ.properties?.action_link) {
-    console.log(`[${rid}] STEP 5: following magic link redirect`);
+    logInfo(rid, `STEP 5: following magic link redirect elapsed=${ms(linkT0)}`);
     const exRes = await fetch(linkJ.properties.action_link, { method: 'GET', redirect: 'manual' });
     const location = exRes.headers.get('location');
+    logInfo(rid, `STEP 5: redirect status=${exRes.status} has_location=${!!location} elapsed=${ms(linkT0)}`);
     if (location) {
       const m = location.match(/#access_token=([^&]+)&.*refresh_token=([^&]+)/);
       if (m) {
-        console.log(`[${rid}] STEP 5: SUCCESS magic link for user ${userId}`);
+        logInfo(rid, `STEP 5: SUCCESS magic_link user=${userId} elapsed=${ms(linkT0)}`);
         await ensureProfile(userId, localMobile, rid);
+        logInfo(rid, `OTP_CREATE_SESSION_DONE result=success method=magic_link user=${userId} elapsed=${ms(t0)}`);
         return { access_token: decodeURIComponent(m[1]), refresh_token: decodeURIComponent(m[2]), user_id: userId };
       }
+      logErr(rid, `STEP 5 FAILED: location did not contain access_token+refresh_token location=${location.slice(0, 200)}`);
+    } else {
+      logErr(rid, 'STEP 5 FAILED: no location header');
     }
-    console.error(`[${rid}] STEP 5 FAILED: magic link redirect did not contain tokens`);
   } else {
-    console.error(`[${rid}] STEP 5 FAILED: no action_link in response`);
+    logErr(rid, 'STEP 5 FAILED: no action_link in response');
   }
 
-  console.error(`[${rid}] ALL STEPS FAILED for user ${userId}`);
+  failureReason = failureReason || 'step5_unknown_failure';
+  logErr(rid, `OTP_CREATE_SESSION_DONE result=null reason=${failureReason} user=${userId} elapsed=${ms(t0)}`);
   return null;
 }
 
 export default async function handler(req, res) {
   if (req.method === 'GET' && req.query.debug === '1') {
-    return res.json({ ok: true, config: { SMSIR_API_KEY: process.env.SMSIR_API_KEY ? 'set' : 'NOT SET', SMSIR_OTP_TEMPLATE_ID: process.env.SMSIR_OTP_TEMPLATE_ID, SUPABASE_SERVICE_ROLE_KEY: SUPA_SERVICE ? 'set' : 'NOT SET' } });
+    return res.json({
+      ok: true,
+      config: {
+        SMSIR_API_KEY: process.env.SMSIR_API_KEY ? 'set' : 'NOT SET',
+        SMSIR_OTP_TEMPLATE_ID: process.env.SMSIR_OTP_TEMPLATE_ID,
+        SUPABASE_SERVICE_ROLE_KEY: SUPA_SERVICE ? 'set' : 'NOT SET',
+      },
+    });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
@@ -348,53 +444,96 @@ export default async function handler(req, res) {
   if (action === 'send') {
     const { mobile } = req.body || {};
     if (!isIranianMobile(mobile)) return res.status(400).json({ ok: false, error: 'شماره موبایل نامعتبر است' });
-    const ipHits = (globalThis._ipHits || new Map()); const mobileHits = (globalThis._mobileHits || new Map());
-    globalThis._ipHits = ipHits; globalThis._mobileHits = mobileHits;
+
+    const ipHits = (globalThis._ipHits || new Map());
+    const mobileHits = (globalThis._mobileHits || new Map());
+    globalThis._ipHits = ipHits;
+    globalThis._mobileHits = mobileHits;
+
     const now = Date.now();
     const ipArr = (ipHits.get(ip) || []).filter((t) => now - t < IP_WINDOW_MS);
     if (ipArr.length >= IP_MAX) return res.status(429).json({ ok: false, error: 'تعداد درخواست زیاد؛ ۱۰ دقیقه بعد تلاش کنید' });
     ipArr.push(now); ipHits.set(ip, ipArr);
+
     const mobArr = (mobileHits.get(mobile) || []).filter((t) => now - t < MOBILE_WINDOW_MS);
     if (mobArr.length >= MOBILE_MAX) return res.status(429).json({ ok: false, error: 'برای این شماره در این ساعت کافی کد ارسال شده' });
     mobArr.push(now); mobileHits.set(mobile, mobArr);
+
     if (!process.env.SMSIR_API_KEY) return res.status(503).json({ ok: false, error: 'سرویس پیامک پیکربندی نشده (SMSIR_API_KEY)' });
-    const code = genCode(); const expiresAt = new Date(Date.now() + TTL_MIN * 60 * 1000).toISOString();
+
+    const code = genCode();
+    const expiresAt = new Date(Date.now() + TTL_MIN * 60 * 1000).toISOString();
+
     try {
       await supaInsert('otp_codes', { mobile, code, code_hash: hashCode(code), purpose: 'login', expires_at: expiresAt }, rid);
       await sendSmsIr(mobile, code, rid);
+      logInfo(rid, `OTP_SEND: success phone=${maskPhone(mobile)}`);
       return res.json({ ok: true, message: 'کد ارسال شد', ttl_min: TTL_MIN });
     } catch (e) {
-      console.error(`[${rid}] otp send failed: ${e.message}`);
+      logErr(rid, `OTP_SEND: failed phone=${maskPhone(mobile)} err=${e.message}`);
       return res.status(502).json({ ok: false, error: 'ارسال پیامک ناموفق بود', detail: e.detail || e.message });
     }
   }
 
   if (action === 'verify') {
     const { mobile, code } = req.body || {};
-    if (!isIranianMobile(mobile) || !/^\d{6}$/.test(code)) return res.status(400).json({ ok: false, error: 'شماره یا کد نامعتبر است' });
-    console.log(`[${rid}] VERIFY: start phone=${maskPhone(mobile)}`);
+    if (!isIranianMobile(mobile) || !/^\d{6}$/.test(code)) {
+      logInfo(rid, `OTP_VERIFY_DONE result=reject reason=invalid_input phone=${maskPhone(mobile || '')} code_len=${(code || '').length}`);
+      return res.status(400).json({ ok: false, error: 'شماره یا کد نامعتبر است' });
+    }
+
+    const t0 = Date.now();
+    logInfo(rid, `OTP_VERIFY: START phone=${maskPhone(mobile)}`);
+
     try {
-      const rows = await supaSelect('otp_codes', { mobile: `eq.${mobile}`, purpose: `eq.login`, verified: `eq.false`, order: 'created_at.desc' }, null, rid);
+      const rows = await supaSelect('otp_codes', {
+        mobile: `eq.${mobile}`,
+        purpose: `eq.login`,
+        verified: `eq.false`,
+        order: 'created_at.desc',
+      }, null, rid);
+
       const now = Date.now();
       const latest = rows.find((r) => new Date(r.expires_at).getTime() > now);
-      if (!latest) { console.log(`[${rid}] VERIFY: no valid OTP`); return res.status(400).json({ ok: false, error: 'کد معتبر نیست یا منقضی شده؛ کد جدید بگیرید' }); }
-      if (latest.attempts >= MAX_ATTEMPTS) { console.log(`[${rid}] VERIFY: max attempts`); return res.status(400).json({ ok: false, error: 'تعداد تلاش بیش از حد؛ کد جدید بگیرید' }); }
+
+      if (!latest) {
+        logInfo(rid, `OTP_VERIFY_DONE result=reject reason=no_valid_otp rows=${rows.length} elapsed=${ms(t0)}`);
+        return res.status(400).json({ ok: false, error: 'کد معتبر نیست یا منقضی شده؛ کد جدید بگیرید' });
+      }
+      if (latest.attempts >= MAX_ATTEMPTS) {
+        logInfo(rid, `OTP_VERIFY_DONE result=reject reason=max_attempts attempts=${latest.attempts} elapsed=${ms(t0)}`);
+        return res.status(400).json({ ok: false, error: 'تعداد تلاش بیش از حد؛ کد جدید بگیرید' });
+      }
+
       if (latest.code_hash !== hashCode(code)) {
         await supaUpdate('otp_codes', { id: `eq.${latest.id}` }, { attempts: latest.attempts + 1 }, rid);
-        console.log(`[${rid}] VERIFY: wrong code`);
+        logInfo(rid, `OTP_VERIFY_DONE result=reject reason=wrong_code remaining=${MAX_ATTEMPTS - latest.attempts - 1} elapsed=${ms(t0)}`);
         return res.status(400).json({ ok: false, error: `کد اشتباه است — ${(MAX_ATTEMPTS - latest.attempts - 1).toLocaleString('fa-IR')} تلاش باقی است` });
       }
-      console.log(`[${rid}] VERIFY: code correct, calling createSession`);
+
+      logInfo(rid, `OTP_VERIFY: code_correct calling_createSession elapsed_so_far=${ms(t0)}`);
       const session = await createSession(mobile, rid);
+
       if (session?.access_token && session?.refresh_token) {
         await supaUpdate('otp_codes', { id: `eq.${latest.id}` }, { verified: true }, rid);
-        console.log(`[${rid}] VERIFY: SUCCESS`);
-        return res.json({ ok: true, user_id: session.user_id, access_token: session.access_token, refresh_token: session.refresh_token, message: 'ورود موفق بود' });
+        logInfo(rid, `OTP_VERIFY_DONE result=success user_id=${session.user_id} has_access_token=true has_refresh_token=true access_token_len=${session.access_token?.length || 0} elapsed=${ms(t0)}`);
+        return res.json({
+          ok: true,
+          user_id: session.user_id,
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          message: 'ورود موفق بود',
+        });
       }
-      console.error(`[${rid}] VERIFY: createSession returned null`);
-      return res.json({ ok: false, error: 'کد تأیید شد اما نشست ساخته نشد. لطفاً دوباره تلاش کنید یا با گوگل وارد شوید.', code_verified: true });
+
+      logErr(rid, `OTP_VERIFY_DONE result=partial code_verified=true session_null=true elapsed=${ms(t0)}`);
+      return res.json({
+        ok: false,
+        error: 'کد تأیید شد اما نشست ساخته نشد. لطفاً دوباره تلاش کنید یا با گوگل وارد شوید.',
+        code_verified: true,
+      });
     } catch (e) {
-      console.error(`[${rid}] VERIFY: exception: ${e.message}`);
+      logErr(rid, `OTP_VERIFY_DONE result=exception name=${e.name} msg=${e.message} elapsed=${ms(t0)}`);
       return res.status(500).json({ ok: false, error: 'تأیید کد ناموفق بود', detail: e.message });
     }
   }
