@@ -1,12 +1,22 @@
 /* ═════════════════════════════════════════════════════════════════════
    کاربان — دستیار حقوقی چت‌بات
-   FIX v2: مدل gemini-3.8-flash وجود ندارد → gemini-2.0-flash پایدار.
+   FIX v3 — بر اساس مستندات رسمی ai.google.dev/gemini-api/docs/models:
+   - مدل‌های فعال در اکتبر ۲۰۲۶:
+     • gemini-3.8-flash        (Stable - جدیدترین و هوشمندترین)
+     • gemini-3.5-flash-lite   (Stable - سریع و ارزان)
+     • gemini-3.6-flash        (Stable)
+   - gemini-2.0-flash: SHUT DOWN (خاموش شده)
+   - gemini-2.5-flash: فقط برای کاربران قدیمی (limited access)
+
+   استراتژی:先用 gemini-3.8-flash؛ اگر 503/404 شد، fallback به gemini-3.5-flash-lite.
    ═════════════════════════════════════════════════════════════════════ */
 
 const SUPA_URL = 'https://rocjeanizzhfvhnuhnms.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvY2plYW5penpoZnZobnVobm1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDQwMDcsImV4cCI6MjEwMjAyMDAwN30.Br3brGTpjWnI7ilghPka_DyYUQU7e9eYIPv88Ehqy6g';
-/* استفاده از مدل پایدار gemini-2.0-flash (مدل gemini-3.8-flash وجود ندارد) */
-const GEMINI_MODEL = 'gemini-2.0-flash';
+/* مدل اصلی: gemini-3.8-flash (جدیدترین Stable طبق مستندات رسمی اکتبر ۲۰۲۶) */
+const GEMINI_PRIMARY = 'gemini-3.8-flash';
+/* مدل fallback: gemini-3.5-flash-lite (Stable، سریع، ارزان) */
+const GEMINI_FALLBACK = 'gemini-3.5-flash-lite';
 const FREE_LIMIT = 5;
 const MAX_DURATION = 20;
 const RESPONSE_BUFFER_MS = 3000;
@@ -52,7 +62,8 @@ function searchLaws(question) {
   return hits.sort((a, b) => b.score - a.score).slice(0, 4);
 }
 
-async function callGemini(prompt, requestStartMs) {
+/* تابع تماس با Gemini — یک مدل خاص را امتحان می‌کند */
+async function tryGeminiModel(modelName, prompt, requestStartMs) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
@@ -65,9 +76,9 @@ async function callGemini(prompt, requestStartMs) {
   const elapsed = Date.now() - requestStartMs;
   const remainingBudgetMs = (MAX_DURATION * 1000) - elapsed - RESPONSE_BUFFER_MS;
   const geminiTimeoutMs = Math.max(5000, Math.min(remainingBudgetMs, 15000));
-  console.log('gemini: model=' + GEMINI_MODEL + ' timeout_ms=' + geminiTimeoutMs + ' elapsed=' + elapsed + 'ms');
+  console.log('gemini[' + modelName + ']: timeout_ms=' + geminiTimeoutMs + ' elapsed=' + elapsed + 'ms');
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), geminiTimeoutMs);
 
@@ -81,25 +92,28 @@ async function callGemini(prompt, requestStartMs) {
 
     if (!res.ok) {
       const rawBody = await res.text().catch(() => '');
-      console.error('gemini: provider error status=' + res.status + ' ms=' + geminiMs + ' body=' + rawBody.slice(0, 300));
+      console.error('gemini[' + modelName + ']: provider error status=' + res.status + ' ms=' + geminiMs + ' body=' + rawBody.slice(0, 300));
       let errMsg;
       if (res.status === 401 || res.status === 403) errMsg = 'کلید API نامعتبر یا دسترسی ندارید';
       else if (res.status === 429) errMsg = 'محدودیت درخواست — کمی بعد تلاش کنید';
       else if (res.status === 400) errMsg = 'درخواست نامعتبر به Gemini';
-      else if (res.status === 404) errMsg = `مدل ${GEMINI_MODEL} یافت نشد`;
-      else if (res.status === 503) errMsg = 'سرویس Gemini موقتاً در دسترس نیست. دوباره تلاش کنید.';
+      else if (res.status === 404) errMsg = `مدل ${modelName} یافت نشد`;
+      else if (res.status === 503) errMsg = 'سرویس Gemini موقتاً در دسترس نیست';
       else errMsg = `خطای Gemini (${res.status})`;
-      const err = new Error(errMsg); err.errorType = 'provider'; throw err;
+      const err = new Error(errMsg);
+      err.errorType = 'provider';
+      err.status = res.status;
+      throw err;
     }
 
     const j = await res.json();
     const content = j.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!content) {
-      console.error('gemini: empty response ms=' + geminiMs, JSON.stringify(j).slice(0, 300));
+      console.error('gemini[' + modelName + ']: empty response ms=' + geminiMs, JSON.stringify(j).slice(0, 300));
       if (j.promptFeedback?.blockReason) { const err = new Error(`مسدودشده: ${j.promptFeedback.blockReason}`); err.errorType = 'blocked'; throw err; }
       const err = new Error('پاسخ خالی از Gemini'); err.errorType = 'empty'; throw err;
     }
-    console.log('gemini: success ms=' + geminiMs);
+    console.log('gemini[' + modelName + ']: success ms=' + geminiMs);
     return content;
   } catch (e) {
     if (e.name === 'AbortError') { const err = new Error('پاسخ‌گویی طول کشید. دوباره تلاش کنید.'); err.errorType = 'timeout'; throw err; }
@@ -107,6 +121,21 @@ async function callGemini(prompt, requestStartMs) {
     if (!e.errorType) e.errorType = 'unknown';
     throw e;
   } finally { clearTimeout(timeoutId); }
+}
+
+/* تابع اصلی: ابتدا مدل اصلی، در صورت خطای 503/404 fallback را امتحان می‌کند */
+async function callGemini(prompt, requestStartMs) {
+  try {
+    return await tryGeminiModel(GEMINI_PRIMARY, prompt, requestStartMs);
+  } catch (e) {
+    /* اگر خطای 503 (service unavailable) یا 404 (model not found) بود، fallback بزن */
+    if (e.status === 503 || e.status === 404) {
+      console.log('gemini: primary ' + GEMINI_PRIMARY + ' failed with ' + e.status + ', trying fallback ' + GEMINI_FALLBACK);
+      return await tryGeminiModel(GEMINI_FALLBACK, prompt, requestStartMs);
+    }
+    /* برای سایر خطاها (timeout, 401, 429, network) fallback نزن — همان خطا را برگردان */
+    throw e;
+  }
 }
 
 function incrementUsage(userId, authHeader) {
@@ -169,7 +198,7 @@ export default async function handler(req, res) {
     console.log('ai-chat: total_ms=' + (Date.now() - requestStartMs));
     return res.json({ ok: true, answer, citations, usage: { used: used + 1, limit: FREE_LIMIT, remaining: Math.max(0, FREE_LIMIT - used - 1), plan: 'free' } });
   } catch (e) {
-    console.error('ai-chat: failed type=' + (e.errorType || 'unknown') + ' total_ms=' + (Date.now() - requestStartMs) + ' msg=' + e.message);
+    console.error('ai-chat: failed type=' + (e.errorType || 'unknown') + ' status=' + (e.status || 'none') + ' total_ms=' + (Date.now() - requestStartMs) + ' msg=' + e.message);
     if (e.errorType === 'timeout') return res.status(504).json({ ok: false, error: 'پاسخ‌گویی طول کشید. دوباره تلاش کنید.' });
     if (e.errorType === 'network') return res.status(502).json({ ok: false, error: 'خطای شبکه در اتصال به سرویس هوش مصنوعی.' });
     if (e.errorType === 'provider') return res.status(502).json({ ok: false, error: e.message });
