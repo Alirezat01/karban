@@ -2,7 +2,7 @@ name: acc-audit
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * 0' # هفتگی — یکشنبه ۰۳:۰۰ UTC
+    - cron: '0 3 * * 6,3' # هفتگی — شنبه و چهارشنبه ۰۳:۰۰ UTC
   push:
     paths:
       - 'scripts/audit-full.mjs'

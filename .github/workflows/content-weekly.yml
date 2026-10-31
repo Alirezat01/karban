@@ -1,7 +1,7 @@
 name: content-weekly
 on:
   schedule:
-    - cron: '0 6 * * 4'
+    - cron: '0 6 * * 6,3' # هفتگی — شنبه و چهارشنبه ۰۶:۰۰ UTC
   workflow_dispatch: {}
 jobs:
   content:

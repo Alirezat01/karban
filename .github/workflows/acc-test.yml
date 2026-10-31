@@ -6,7 +6,7 @@ name: acc-test
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 4 * * 6' # هفتگی شنبه ۰۴:۰۰ UTC — گزارش دوره‌ای
+    - cron: '0 4 * * 6,3' # هفتگی شنبه و چهارشنبه ۰۴:۰۰ UTC — گزارش دوره‌ای
 permissions:
   contents: write
 
