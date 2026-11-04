@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-10-31T18:20:38.150Z",
-  "duration_ms": 38806,
+  "generated_at": "2026-11-04T10:32:01.985Z",
+  "duration_ms": 39831,
   "summary": {
     "pass": 49,
     "fail": 7
@@ -61,7 +61,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mvwq7ira@gmail.com"
+      "detail": "karban.audit.mw1z8a8j@gmail.com"
     },
     {
       "id": "B2",
@@ -82,21 +82,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=53539b7f-b3c5-4159-bca7-059ec25dadfd"
+      "detail": "biz=dfbf1004-e975-41ac-b529-5fd2b48be572"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"d86e344c-dc5c-4073-b368-c416072256cc\",\"business_id\":\"53539b7f-b3c5-4159-bca7-059ec25dadfd\",\"user_id\":\"dfa79540-213d-43ec-bc29-fcdcee3a28d1\",\"email\":\"karban.audit.mvwq7ira@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"479f760f-56af-496b-ab87-a809371a6eaf\",\"business_id\":\"dfbf1004-e975-41ac-b529-5fd2b48be572\",\"user_id\":\"3ff38822-ae1c-4a7e-bb5b-b047a99cc302\",\"email\":\"karban.audit.mw1z8a8j@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=b5c800fa-1df3-4528-82a7-de06607b7977"
+      "detail": "id=79a5e0a7-0b11-4e44-b5ad-335f12f3ccdf"
     },
     {
       "id": "B7",
@@ -117,14 +117,14 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=c8ea04b3-d646-40ae-a8dc-e5c1476e05f5"
+      "detail": "id=00a51439-9a8b-420c-beb5-761e0227f0ab"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=62313d3f-3c51-4705-a78e-bd07c78dae6f"
+      "detail": "id=2a835feb-4cdc-4839-823d-a4d6661e2176"
     },
     {
       "id": "B11",
@@ -145,7 +145,7 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=b0107739-efff-4e81-952e-4dea91e43e42 total=2,310,000,000"
+      "detail": "id=be62f15b-aedb-4a9e-930c-a06705bdc34a total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -229,7 +229,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=012af2bb-28d3-4e32-980f-8dd211c85769"
+      "detail": "id=ab8745ae-3d11-44ea-b649-6b6795ce1a61"
     },
     {
       "id": "B26",
@@ -271,7 +271,7 @@
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=ed46f26e-2199-4f59-956e-b1123cedf62d"
+      "detail": "id=e26eb136-d321-4683-9010-b4e3cf389fdb"
     },
     {
       "id": "B31b",
@@ -455,8 +455,8 @@
     }
   ],
   "business_stats": {
-    "count": 41,
-    "orphan_license": 32,
+    "count": 46,
+    "orphan_license": 37,
     "trial_quota_full": 1
   },
   "cleanup": {
@@ -465,6 +465,6 @@
     "fail": 4
   },
   "test_context": {
-    "email": "karban.audit.mvwq7ira@gmail.com"
+    "email": "karban.audit.mw1z8a8j@gmail.com"
   }
 }
