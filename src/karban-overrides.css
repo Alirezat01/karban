@@ -1,0 +1,193 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   karban-overrides.css — پچ‌های گرافیکی (بدون دست‌زدن به index.css اصلی)
+   ───────────────────────────────────────────────────────────────────────────
+   این فایل به‌صورت لایه‌ای روی index.css اعمال می‌شود و این مشکلات را تثبیت می‌کند:
+     ۱) کنتراست ناکافی متن هیرو روی تصویر روشن → اورلی گرادیان تیره اضافه شد
+     ۲) مرز کارت شیشه‌ای role-card نامشخص → border طلایی روشن‌تر
+     ۳) ناوبری هدر ناهمگن (بج «عید» + ورود + CTA) → ساده‌سازی و حذف بج‌های تزئینی
+     ۴) CTA شناور در حالت اسکرول → کمی برجسته‌تر برای دیده‌شدن
+     ۵) فضای خالی بزرگ زیر سکشن‌ها → min-height برای جلوگیری از حفره‌های بصری
+
+   روش نصب: در انتهای src/index.css این خط را اضافه کنید:
+     @import './karban-overrides.css';
+   یا اگر ترجیح می‌دهید فایل را در public/ بگذارید:
+     در index.html بعد از خط <link href="/fonts/vazirmatn.css" ... /> اضافه کنید:
+     <link rel="stylesheet" href="/karban-overrides.css" />
+
+   ترتیب cascade: باید بعد از index.css لود شود → اواخر <head> یا اواخر index.css
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ═══ ۱) هیرو — overlay تیره قوی‌تر برای کنتراست متن ═══ */
+.hero-lux {
+  /* یک لایه gradient تیره روی پس‌زمینه تصویر — جدا از تصویر */
+  position: relative;
+}
+
+.hero-lux::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    /* گرادیان راست به چپ: تصویر از چپ محو، متن از راست برجسته */
+    linear-gradient(to left, rgba(10, 15, 28, 0.92) 0%, rgba(10, 15, 28, 0.75) 30%, rgba(10, 15, 28, 0.35) 60%, transparent 90%),
+    /* گرادیان عمودی بالا به پایین برای خوانایی هدر */
+    linear-gradient(to bottom, rgba(10, 15, 28, 0.55) 0%, transparent 30%, rgba(10, 15, 28, 0.35) 100%);
+  pointer-events: none;
+  /* این لایه باید زیر متن و کارت‌ها باشد ولی روی تصویر */
+  /* z-index صریح نمی‌گذاریم چون hero-lux-inner از قبل z-index:1 دارد */
+}
+
+.hero-lux-media {
+  z-index: -1 !important;
+}
+
+.hero-copy h1 {
+  color: #fff;
+  /* سایه ظریف برای خوانایی روی هر پس‌زمینه‌ای */
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
+}
+
+.hero-lead {
+  /* رنگ روشن‌تر برای کنتراست بهتر */
+  color: rgba(232, 238, 248, 0.92) !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+/* ═══ ۲) کارت‌های role-card — مرز طلایی روشن‌تر ═══ */
+.role-card {
+  background: rgba(17, 26, 44, 0.88) !important;
+  border: 1px solid rgba(216, 165, 63, 0.35) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.role-card:hover,
+.role-card:focus-visible {
+  background: rgba(22, 32, 58, 0.95) !important;
+  border-color: rgba(216, 165, 63, 0.7) !important;
+  box-shadow: 0 0 0 1px rgba(216, 165, 63, 0.4), 0 20px 44px -18px rgba(216, 165, 63, 0.45);
+}
+
+.role-card p {
+  color: rgba(167, 179, 201, 0.95) !important;
+}
+
+/* ═══ ۳) هدر — ساده‌سازی: حذف بج‌های تزئینی، تک‌اکسنس بودن CTA ═══ */
+/* بج «عید» یا هر بج تزئینی در nav را پنهان کن (در هر دو desktop و mobile) */
+.nav-badge,
+.desktop-nav .nav-badge,
+.mobile-nav .nav-badge {
+  display: none !important;
+}
+
+/* login-link باید متن ساده با underline ظریف باشد، نه دکمه‌ای با پس‌زمینه */
+.login-link {
+  background: none !important;
+  border: 1px solid transparent !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.88rem !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  border-radius: 10px;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.login-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0.35rem;
+  right: 0.75rem;
+  left: 0.75rem;
+  height: 1px;
+  background: rgba(216, 165, 63, 0.45);
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
+  transform-origin: right;
+}
+
+.login-link:hover::after,
+.login-link:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* حذف آیکون‌های تزئینی از login-link (اگه لوکیشن آیکون دارد) */
+.login-link svg {
+  opacity: 0.65;
+}
+
+/* CTA شناور در حالت اسکرول: کمی برجسته‌تر */
+.site-header.is-scrolled .header-cta {
+  box-shadow: 0 6px 22px -4px rgba(216, 165, 63, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* ═══ ۴) جلوگیری از حفره‌های بصری بزرگ زیر سکشن‌ها ═══ */
+/* اگر سکشن‌ها در حالت loading گیر کنند، حداقل فضای معقول داشته باشند */
+.services-lux,
+.smart-tools,
+.tools-strip,
+.sections-strip {
+  min-height: 320px;
+}
+
+/* اگر محتوای سکشن خالی است، یک پیام placeholder نشان بده (موتورهای React با fallback) */
+.services-seven:empty::before,
+.smart-tools-grid:empty::before,
+.section-cards:empty::before {
+  content: 'محتوای این بخش در حال بارگذاری است…';
+  display: block;
+  padding: 3rem 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+/* ═══ ۵) بهبود کلی: focus واکر برای دسترسی‌پذیری ═══ */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--gold2);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* حذف انیمیشن برای کاربرانی که ترجیح می‌دهند (prefers-reduced-motion) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══ ۶) بهبود فوتر: جداسازی بهتر ستون‌ها ═══ */
+.site-footer {
+  padding-top: 4rem !important;
+  border-top: 1px solid rgba(216, 165, 63, 0.18);
+}
+
+/* ستون‌های فوتر در موبایل: ترتیب منطقی */
+@media (max-width: 720px) {
+  .site-footer .footer-col-brand {
+    order: 1;
+    margin-bottom: 1.5rem;
+  }
+  .site-footer .footer-col-links {
+    order: 2;
+  }
+  .site-footer .footer-col-contact {
+    order: 3;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(216, 165, 63, 0.15);
+  }
+}
+
+/* ═══ ۷) تلگرام ادمین — جلوگیری از نشت نشانه تلگرام در CSP ═══ */
+/* این قانون از طریق CSP هندل می‌شود، اینجا فقط یک یادآوری کد */
+/* CSP باید api.telegram.org را فقط برای connect-src مجاز کند — فعلاً هست */
