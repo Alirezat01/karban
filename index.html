@@ -8,30 +8,9 @@
     <meta name="googlebot" content="index,follow" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
 
-    <!-- ═════════════════════════════════════════════════════════════════════════
-         Google Search Console Verification
-         ───────────────────────────────────────────────────────────────────────
-
-
-         روش نصب:
-         ۱) وارد Google Search Console شوید → Settings → Ownership verification
-         ۲) متد "HTML tag" را انتخاب کنید
-         ۳) کدی که به شما می‌دهد به این شکل است:
-          
-         ۴) آن خط را در همین‌جا (جایگزین کامنت زیر) قرار دهید
-         ۵) commit → push → Vercel deploy → در سرچ کنسول Verify بزنید
-
-         متد جایگزین (پایدارتر): فایل google-XXXXXXXX.html در public/ بسازید با
-         محتوای google-site-verification: google-site-verification: google=XXXX
-         و در سرچ کنسول متد "HTML file" را انتخاب کنید.
-         این روش از ریبیلد هم دوام می‌آورد چون public/ به‌صورت استاتیک سرو می‌شود.
-
-         متد پیشنهادی من (بهترین): از Domain property (نه URL prefix) استفاده کنید.
-         در Search Console → Add property → Domain → karbanapp.ir را وارد کنید →
-         رکورد TXT را در DNS دامنه ثبت کنید (در پنل نیک یا هاست) → Verify.
-         این روش هر دو www و غیر www و همه زیردامنه‌ها را هم پوشش می‌دهد.
-         ═════════════════════════════════════════════════════════════════════════ -->
+    <!-- Google Search Console verification -->
     <meta name="google-site-verification" content="DsHGqTzIx6g75T2hAHNZOHIjsSy7CUVwdAJAaCjSRWA" />
+
     <title>کاربان | بانک قرارداد تخصصی و ماشین‌حساب حقوق ۱۴۰۵</title>
     <meta name="description" content="بیش از ۹۰ قرارداد تخصصی کارفرمایی و فریلنسر، ۱۲ ماشین‌حساب دقیق حقوق، سنوات و مالیات ۱۴۰۵، و دانشنامه حقوق کار با استناد قانون کار و قانون مدنی." />
     <meta name="keywords" content="قرارداد کاری, حقوق کارگر, سنوات خدمت, ماشین حساب حقوق, قانون کار, فاکتور فروش, حسابداری آنلاین, مالیات حقوق, بازنشستگی, فریلنسر, کارفرما, کارمند, کاربان" />
@@ -63,9 +42,7 @@
     <meta name="twitter:image" content="https://karbanapp.ir/images/og-cover.jpg" />
 
     <!-- فاوآیکون SVG اختصاصی کاربان (نماد ترازوی عدالت — مینیمال) -->
-    <!-- نسخه favicon ساده برای سایزهای کوچک -->
     <link rel="icon" type="image/svg+xml" href="/karban-favicon.svg" sizes="any" />
-    <!-- نسخه کامل برای سایزهای بزرگ‌تر (مانند og:image، PWA) -->
     <link rel="apple-touch-icon" href="/karban-icon.svg" />
     <link rel="mask-icon" href="/karban-favicon.svg" color="#D8A53F" />
     <link rel="manifest" href="/manifest.json" />
@@ -79,6 +56,9 @@
     <link rel="preload" as="style" href="/fonts/vazirmatn.css" />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/Vazirmatn-Regular.woff2" crossorigin />
     <link href="/fonts/vazirmatn.css" rel="stylesheet" type="text/css" />
+
+    <!-- پچ‌های گرافیکی karban (overlay هیرو، حذف بج تزئینی، کنتراست متن) -->
+    <link rel="stylesheet" href="/karban-overrides.css" />
 
     <script type="application/ld+json">
     {
