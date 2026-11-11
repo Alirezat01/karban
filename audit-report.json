@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-07T09:40:23.198Z",
-  "duration_ms": 42415,
+  "generated_at": "2026-11-11T10:23:59.074Z",
+  "duration_ms": 26578,
   "summary": {
-    "pass": 49,
-    "fail": 7
+    "pass": 14,
+    "fail": 29
   },
   "schema_tables": [
     "acc_invoices",
@@ -44,6 +44,7 @@
     "acc_trial_requests",
     "acc_accounts",
     "acc_access",
+    "acc_orphan_businesses",
     "acc_employees",
     "acc_partners"
   ],
@@ -61,7 +62,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mw67pcv0@gmail.com"
+      "detail": "karban.audit.mwbz16g0@gmail.com"
     },
     {
       "id": "B2",
@@ -80,100 +81,86 @@
     {
       "id": "B4",
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "biz=407dea3e-b397-4c13-a322-50241285a23d"
+      "detail": "{\"code\":\"42804\",\"details\":null,\"hint\":\"You will need to rewrite or cast the expression.\",\"message\":\"column \\\"value\\\" is of type jsonb but expression is of type text\"}"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "{\"id\":\"1e5060aa-19af-4bed-a85f-dbc86a0fb5c9\",\"business_id\":\"407dea3e-b397-4c13-a322-50241285a23d\",\"user_id\":\"03b88c90-3672-44f1-959c-3a7e3e225d83\",\"email\":\"karban.audit.mw67pcv0@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "\"\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=1aedd67d-c14a-4f3f-8d8e-b8a62e705070"
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"پارامترهای شمارندهٔ کد ناقص است\"}"
     },
     {
       "id": "B7",
       "title": "ثبت طرف‌حساب حقیقی با shenase_melli",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "201 "
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"پارامترهای شمارندهٔ کد ناقص است\"}"
     },
     {
       "id": "B8",
       "title": "ستون‌های نسخه۲ طرف‌حساب (استان/شهرستان/فکس/شماره ثبت)",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
+      "ok": false,
+      "severity": "high",
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"پارامترهای شمارندهٔ کد ناقص است\"} — مایگریشن 20260917 اجرا نشده؟"
     },
     {
       "id": "B9",
       "title": "ثبت کالا با ردیابی موجودی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=6e50f041-9111-4ab7-9f87-39bcdaaff056"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_items\\\"\"}"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=e53ea978-4a90-4437-a8d6-b37e156cd2e3"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_items\\\"\"}"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
       "ok": false,
       "severity": "",
-      "detail": "404 {\"code\":\"42883\",\"details\":null,\"hint\":\"No function matches the given name and argument types. You might need to add explicit type casts.\",\"message\":\"function public.acc_mirror_journal(uuid, date, unkn"
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"کسب‌وکار نامعتبر است\"}"
     },
     {
       "id": "B12",
       "title": "ثبت صندوق نقدی",
       "ok": false,
       "severity": "",
-      "detail": "404 {\"code\":\"42883\",\"details\":null,\"hint\":\"No function matches the given name and argument types. You might need to add explicit type casts.\",\"message\":\"function public.acc_mirror_journal(uuid, date, unkn"
+      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"کسب‌وکار نامعتبر است\"}"
     },
     {
       "id": "B13",
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=1317e217-5d0e-4215-8125-b7f11f109de2 total=2,310,000,000"
-    },
-    {
-      "id": "B14",
-      "title": "ثبت ردیف‌های فاکتور",
-      "ok": true,
-      "severity": "",
-      "detail": "۲ ردیف"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_invoices\\\"\"}"
     },
     {
       "id": "B15",
       "title": "صدور نهایی فاکتور (status=issued)",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
+      "ok": false,
+      "severity": "critical",
+      "detail": "400 {\"code\":\"22P02\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type uuid: \\\"null\\\"\"}"
     },
     {
       "id": "B16",
       "title": "سند حسابداری خودکار هنگام صدور",
-      "ok": true,
+      "ok": false,
       "severity": "high",
-      "detail": "1 سند"
-    },
-    {
-      "id": "B17",
-      "title": "به‌روزرسانی موجودی کالا پس از فروش (۵→۳)",
-      "ok": true,
-      "severity": "",
-      "detail": "stock=3 (بود 5)"
+      "detail": "هیچ سندی پس از صدور ثبت نشد — دفتر کل بدون اسناد خودکار می‌ماند (صدور فاکتور ثبت دوبل ندارد)"
     },
     {
       "id": "B18",
@@ -185,135 +172,107 @@
     {
       "id": "B19",
       "title": "پیش‌فاکتور (استعلام قیمت)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_invoices\\\"\"}"
     },
     {
       "id": "B20",
       "title": "فاکتور خرید",
-      "ok": true,
-      "severity": "",
-      "detail": "id=null"
-    },
-    {
-      "id": "B21",
-      "title": "ثبت دریافت وجه مرتبط با فاکتور",
       "ok": false,
       "severity": "",
-      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"حساب بانک/صندوق دریافت مشخص نشده است\"}"
-    },
-    {
-      "id": "B22",
-      "title": "به‌روزرسانی وضعیت تسویه (paid_total/status=paid)",
-      "ok": true,
-      "severity": "",
-      "detail": "{\"status\":\"paid\",\"paid_total\":2310000000}"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_invoices\\\"\"}"
     },
     {
       "id": "B23",
       "title": "ثبت هزینه (با وضعیت مالیاتی)",
       "ok": false,
       "severity": "",
-      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"هزینهٔ پرداخت‌شدهٔ شرکت بدون حساب بانک/صندوق مجاز نیست — حساب پرداخت‌کننده را انتخاب کنید یا پرداخت‌کنندهٔ شخصی/پرداخت‌نشده را مشخص کنید\"}"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_expenses\\\"\"}"
     },
     {
       "id": "B24",
       "title": "ثبت چک دریافتی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_checks\\\"\"}"
     },
     {
       "id": "B25",
       "title": "ثبت کارمند",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=420af91f-0402-47f3-b21b-51a595153bf4"
-    },
-    {
-      "id": "B26",
-      "title": "ثبت فیش حقوقی (حقوق و دستمزد + بیمه)",
-      "ok": true,
-      "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_employees\\\"\"}"
     },
     {
       "id": "B27",
       "title": "ثبت دارایی ثابت",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_assets\\\"\"}"
     },
     {
       "id": "B28",
       "title": "هزینه تکرارشونده",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_recurring\\\"\"}"
     },
     {
       "id": "B29",
       "title": "قرارداد خدماتی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_contracts\\\"\"}"
     },
     {
       "id": "B30",
       "title": "پروژه / مرکز هزینه",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=null"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_projects\\\"\"}"
     },
     {
       "id": "B31a",
       "title": "ثبت سربرگ سند دستی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "id=d8ba674f-5cd9-4fe7-8383-4f9065607765"
-    },
-    {
-      "id": "B31b",
-      "title": "ثبت سطرهای بدهکار/بستانکار سند دوبل",
-      "ok": true,
-      "severity": "",
-      "detail": "۲ سطر"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_journal\\\"\"}"
     },
     {
       "id": "B32",
       "title": "دسته‌بندی هزینه سفارشی (title/code/position)",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
+      "ok": false,
+      "severity": "high",
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_expense_categories\\\"\"}"
     },
     {
       "id": "B33",
       "title": "قفل دوره مالی (جلوگیری از تغییر اسناد قطعی)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "ok"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_periods\\\"\"}"
     },
     {
       "id": "B34",
       "title": "لاگ فعالیت کاربران",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "ok"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_activity\\\"\"}"
     },
     {
       "id": "B35",
       "title": "کوئری تراز آزمایشی (join داخلی)",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "rows=8"
+      "detail": "400 {\"code\":\"22P02\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type uuid: \\\"null\\\"\"}"
     },
     {
       "id": "B36",
       "title": "داده‌های گزارش فروش/درآمد",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "rows=1"
+      "detail": "400 {\"code\":\"22P02\",\"details\":null,\"hint\":null,\"message\":\"invalid input syntax for type uuid: \\\"null\\\"\"}"
     },
     {
       "id": "B37",
@@ -332,16 +291,16 @@
     {
       "id": "B39",
       "title": "سقف ۲۰ فاکتور آزمایشی",
-      "ok": true,
+      "ok": false,
       "severity": "",
-      "detail": "درخواست شماره 21 رد شد: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy \\\"acc invoice trial quo"
+      "detail": "درخواست شماره 1 رد شد: {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_invoice"
     },
     {
       "id": "B40",
       "title": "مغایرت‌گیری بانکی",
       "ok": false,
       "severity": "high",
-      "detail": "400 {\"code\":\"23502\",\"details\":null,\"hint\":null,\"message\":\"null value in column \\\"account_id\\\" of relation \\\"acc_reconciliations\\\" violates not-null constraint\"} ← جدول acc_reconciliations در دیتابیس نیست — sql-4 را اجرا کن"
+      "detail": "403 {\"code\":\"42501\",\"details\":null,\"hint\":null,\"message\":\"new row violates row-level security policy for table \\\"acc_reconciliations\\\"\"}"
     },
     {
       "id": "C1",
@@ -367,8 +326,8 @@
     {
       "id": "C4",
       "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
-      "ok": false,
-      "severity": "critical",
+      "ok": true,
+      "severity": "",
       "detail": ""
     },
     {
@@ -391,80 +350,46 @@
       "ok": true,
       "severity": "info",
       "detail": ""
-    },
-    {
-      "id": "B41",
-      "title": "تنخواه‌گردان — ایجاد و شارژ",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
-    },
-    {
-      "id": "B41b",
-      "title": "ثبت عمل شارژ تنخواه",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
-    },
-    {
-      "id": "B42",
-      "title": "پیش‌دریافت/پیش‌پرداخت",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
-    },
-    {
-      "id": "B43",
-      "title": "تفصیلی شناور",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
-    },
-    {
-      "id": "B44",
-      "title": "خطوط صورت‌حساب بانک (مغایرت واقعی)",
-      "ok": false,
-      "severity": "",
-      "detail": "400 {\"code\":\"23502\",\"details\":null,\"hint\":null,\"message\":\"null value in column \\\"account_id\\\" of relation \\\"acc_bank_lines\\\" violates not-null constraint\"}"
-    },
-    {
-      "id": "B45",
-      "title": "دوره مالی سالانه",
-      "ok": true,
-      "severity": "",
-      "detail": "ok"
-    },
-    {
-      "id": "B47",
-      "title": "پیش‌فاکتور صادره قابل ویرایش می‌ماند",
-      "ok": true,
-      "severity": "",
-      "detail": "ok — قفل B18 فقط اسناد رسمی را می‌بندد"
     }
   ],
   "findings": [
     {
-      "id": "B40",
-      "title": "مغایرت‌گیری بانکی",
+      "id": "B8",
+      "title": "ستون‌های نسخه۲ طرف‌حساب (استان/شهرستان/فکس/شماره ثبت)",
       "severity": "high"
     },
     {
-      "id": "C4",
-      "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
+      "id": "B15",
+      "title": "صدور نهایی فاکتور (status=issued)",
       "severity": "critical"
+    },
+    {
+      "id": "B16",
+      "title": "سند حسابداری خودکار هنگام صدور",
+      "severity": "high"
+    },
+    {
+      "id": "B32",
+      "title": "دسته‌بندی هزینه سفارشی (title/code/position)",
+      "severity": "high"
+    },
+    {
+      "id": "B40",
+      "title": "مغایرت‌گیری بانکی",
+      "severity": "high"
     }
   ],
   "business_stats": {
     "count": 50,
-    "orphan_license": 41,
-    "trial_quota_full": 1
+    "orphan_license": 0,
+    "trial_quota_full": 0
   },
   "cleanup": {
-    "attempted": true,
-    "ok": 28,
-    "fail": 4
+    "attempted": false,
+    "ok": 0,
+    "fail": 0
   },
   "test_context": {
-    "email": "karban.audit.mw67pcv0@gmail.com"
+    "email": "karban.audit.mwbz16g0@gmail.com"
   }
 }
