@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-12T09:05:38.189Z",
-  "duration_ms": 30088,
+  "generated_at": "2026-11-12T09:43:55.331Z",
+  "duration_ms": 38979,
   "summary": {
-    "pass": 51,
-    "fail": 5
+    "pass": 56,
+    "fail": 1
   },
   "schema_tables": [
     "acc_invoices",
@@ -62,7 +62,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mwdbo6ve@gmail.com"
+      "detail": "karban.audit.mwdd18q4@gmail.com"
     },
     {
       "id": "B2",
@@ -83,21 +83,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=1dbd5ba6-97e2-48c8-9b3a-1d5d2769cf2a"
+      "detail": "biz=c89ac9d4-30a4-461e-ae4d-94c5de1b4f64"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"68c199d3-56fa-478b-b642-f9a08b79e42a\",\"business_id\":\"1dbd5ba6-97e2-48c8-9b3a-1d5d2769cf2a\",\"user_id\":\"d2640e11-3965-40b1-95c6-085748336472\",\"email\":\"karban.audit.mwdbo6ve@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"bc5eefc7-920a-4692-ad1a-43ef4b3da318\",\"business_id\":\"c89ac9d4-30a4-461e-ae4d-94c5de1b4f64\",\"user_id\":\"df1ad6c3-5791-46f0-96e0-ca4a4263355a\",\"email\":\"karban.audit.mwdd18q4@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=6edd1d37-6dbb-4ac0-b462-cb97347c035c"
+      "detail": "id=50247beb-8211-4777-a885-51788028488e"
     },
     {
       "id": "B7",
@@ -118,35 +118,35 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=95cfec39-bf2a-4c0a-b0a0-5f3f687859af"
+      "detail": "id=eed4b09a-593e-4333-90dd-5fcc8bbb6a8a"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=138018df-cdd3-4a8c-a02c-e67b75d4e850"
+      "detail": "id=3a073224-b379-480f-b255-e227556677c8"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "404 {\"code\":\"42883\",\"details\":null,\"hint\":\"No function matches the given name and argument types. You might need to add explicit type casts.\",\"message\":\"function public.acc_mirror_journal(uuid, date, unkn"
+      "detail": "id=14e23fdd-0e7c-4bd0-aa08-d3d72f3b9988 | SELECT کاربر: 1 ردیف"
     },
     {
       "id": "B12",
       "title": "ثبت صندوق نقدی",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "404 {\"code\":\"42883\",\"details\":null,\"hint\":\"No function matches the given name and argument types. You might need to add explicit type casts.\",\"message\":\"function public.acc_mirror_journal(uuid, date, unkn"
+      "detail": "ok"
     },
     {
       "id": "B13",
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=80f0fbfc-278e-4f76-9ad9-17652b192961 total=2,310,000,000"
+      "detail": "id=b2fe18a7-8260-4ac2-b50b-097e46256a94 total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -200,9 +200,9 @@
     {
       "id": "B21",
       "title": "ثبت دریافت وجه مرتبط با فاکتور",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"حساب بانک/صندوق دریافت مشخص نشده است\"}"
+      "detail": "id=null"
     },
     {
       "id": "B22",
@@ -214,9 +214,9 @@
     {
       "id": "B23",
       "title": "ثبت هزینه (با وضعیت مالیاتی)",
-      "ok": false,
+      "ok": true,
       "severity": "",
-      "detail": "400 {\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"هزینهٔ پرداخت‌شدهٔ شرکت بدون حساب بانک/صندوق مجاز نیست — حساب پرداخت‌کننده را انتخاب کنید یا پرداخت‌کنندهٔ شخصی/پرداخت‌نشده را مشخص کنید\"}"
+      "detail": "id=null"
     },
     {
       "id": "B24",
@@ -230,7 +230,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=87f4dea7-ec64-4887-bfa0-7fd0f25e9031"
+      "detail": "id=4228081b-f92f-45b6-972f-2469adc14321"
     },
     {
       "id": "B26",
@@ -272,7 +272,7 @@
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=f503bb65-5e94-474f-8a89-fead7cd5906b"
+      "detail": "id=b0d27862-09da-4a48-83ad-ecdbfe20afc7"
     },
     {
       "id": "B31b",
@@ -307,7 +307,7 @@
       "title": "کوئری تراز آزمایشی (join داخلی)",
       "ok": true,
       "severity": "",
-      "detail": "rows=8"
+      "detail": "rows=13"
     },
     {
       "id": "B36",
@@ -436,6 +436,13 @@
       "detail": "ok"
     },
     {
+      "id": "B46",
+      "title": "ویرایش اطلاعات حساب بانکی ذخیره می‌شود",
+      "ok": true,
+      "severity": "",
+      "detail": "ok — UPDATE پالیسی و ذخیره برقرار"
+    },
+    {
       "id": "B47",
       "title": "پیش‌فاکتور صادره قابل ویرایش می‌ماند",
       "ok": true,
@@ -461,6 +468,6 @@
     "fail": 4
   },
   "test_context": {
-    "email": "karban.audit.mwdbo6ve@gmail.com"
+    "email": "karban.audit.mwdd18q4@gmail.com"
   }
 }
