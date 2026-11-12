@@ -475,3 +475,320 @@
   font-size: .74rem; cursor: pointer; font-variant-numeric: tabular-nums;
 }
 .acc-cal-today:hover { background: rgba(216,165,63,.16); }
+/* ════════════════════════════════════════════════════════════════════════════
+   acc-light.css — حالت روشن (روز) برای پنل حسابداری کاربان
+   ───────────────────────────────────────────────────────────────────────────
+   ریشهٔ باگ (تشخیص با اندازه‌گیری روی سایت زندهٔ karbanapp.ir):
+
+   سایت یک تم روشن کامل دارد: ۸۷ قانون با پیشوند `html[data-theme="light"]`
+   که `--bg/--surface/--text/--muted` را به پالت کرم/سفید عوض می‌کند.
+   اما از این ۸۷ قانون، **صفر مورد** به کلاس‌های `.acc-*` (پنل حسابداری)
+   اشاره می‌کند. یعنی پنل هیچ استایل حالت روزی ندارد.
+
+   چون `acc.css` رنگ‌هایش را در ۱۵+ جا دستی hardcode کرده است (نه با متغیر)،
+   در حالت روز این‌ها عوض نمی‌شوند و کنتراست می‌شکند:
+
+     •  متن منوی سایدبار = rgba(255,255,255,.72) روی سایدبار سفید
+        → کنتراست ۱.۰۰:۱  (کاملاً نادیده — منو «خالی» دیده می‌شود)
+     •  عنوان روی تاپ‌بار = --text تیره روی rgba(10,15,28,.94) تیره
+        → کنتراست ~۱.۰۶:۱ (نادیده)
+     •  بج «فعال» #6fdca0 روی سفید → ۱.۶۹:۱
+     •  بج «خطا» #ef9a94 روی سفید → ۲.۱۶:۱
+     •  placeholder rgba(167,179,201,.5) روی سفید → ۱.۴۲:۱
+     •  border دکمهٔ outline = rgba(255,255,255,.18) روی سفید → نامرئی
+
+   حد استاندارد WCAG AA برای متن معمولی ۴.۵:۱ است.
+
+   نصب (روش پیشنهادی — بدون @import):
+     ۱) فایل src/components/acc/acc.css را باز کنید
+     ۲) به انتهای فایل بروید و کل محتوای این فایل را آنجا بچسبانید
+     ۳) ذخیره و دیپلوی
+
+   ⚠️ این فایل را با @import در انتهای acc.css لود نکنید — در CSS هر
+      @import باید قبل از همهٔ قوانین باشد، وگرنه مرورگر نادیده‌اش می‌گیرد.
+      اگر فایل جدا می‌خواهید، در همان فایلی که acc.css را import می‌کند
+      یک خط اضافه کنید:  import './acc-light.css';
+
+   نکته: روشن/تیره با `data-theme` روی <html> تعویض می‌شود؛ مقادیر تیره
+   قبلی دست‌نخورده می‌مانند، پس حالت شب بدون تغییر کار می‌کند.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── ۰) پالت کمکی — همان مقادیر زندهٔ تم روشن ───────────────────────────────
+   --bg #f7f5ef | --bg2 #ffffff | --surface #ffffff | --surface2 #f3eee2
+   --line #e6dcc4 | --gold #b07d1f | --gold2 #8a5e10
+   --text #2a2418 | --muted #6b5f4a                                             */
+
+/* ── ۱) پوسته و سایدبار ──────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-shell,
+html[data-theme="light"] .acc-gate { background: var(--bg); }
+
+html[data-theme="light"] .acc-sidebar {
+  background: #ffffff;
+  border-left: 1px solid #e6dcc4;
+}
+html[data-theme="light"] .acc-sidebar-brand strong { color: #2a2418; }
+html[data-theme="light"] .acc-sidebar-brand span   { color: #7a6d57; }
+html[data-theme="light"] .acc-sidebar-foot         { color: #7a6d57; }
+
+/* متن منو — این خط باگ اصلی «فونت‌ها معلوم نیست» را رفع می‌کند */
+html[data-theme="light"] .acc-nav a { color: #3a3327; }
+html[data-theme="light"] .acc-nav a svg { color: #7a6d57; }
+
+html[data-theme="light"] .acc-nav a:hover {
+  color: #6b4708;
+  background: rgba(176, 125, 31, .10);
+}
+html[data-theme="light"] .acc-nav a:hover svg { color: #8a5e10; }
+
+html[data-theme="light"] .acc-nav a.is-active {
+  color: #5c3d06;
+  background: rgba(176, 125, 31, .15);
+  box-shadow: inset 0 0 0 1px rgba(176, 125, 31, .45);
+}
+html[data-theme="light"] .acc-nav a.is-active svg { color: #8a5e10; }
+html[data-theme="light"] .acc-nav-label { color: #8a7c63; }
+
+/* ── ۲) تاپ‌بار ──────────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-topbar {
+  background: rgba(255, 255, 255, .95);
+  border-bottom: 1px solid #e6dcc4;
+}
+html[data-theme="light"] .acc-topbar h1 { color: #2a2418; }
+
+/* ── ۳) کارت‌ها و KPI ────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-card,
+html[data-theme="light"] .acc-kpi,
+html[data-theme="light"] .acc-table-wrap,
+html[data-theme="light"] .acc-summary-card { background: #ffffff; border-color: #e6dcc4; }
+
+html[data-theme="light"] .acc-kpi .k-label,
+html[data-theme="light"] .acc-kpi .k-sub { color: #5c5140; }
+html[data-theme="light"] .acc-kpi .k-value { color: #2a2418; }
+html[data-theme="light"] .acc-card h3 { color: #2a2418; }
+
+/* ── ۴) جدول ─────────────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-table thead th {
+  background: rgba(176, 125, 31, .10);
+  color: #5c3d06;
+  border-bottom: 1px solid #e6dcc4;
+}
+html[data-theme="light"] .acc-table tbody td {
+  color: #2a2418;
+  border-bottom: 1px solid rgba(42, 36, 24, .10);
+}
+html[data-theme="light"] .acc-table tbody tr:hover td { background: rgba(176, 125, 31, .06); }
+html[data-theme="light"] .acc-table tfoot td {
+  background: rgba(176, 125, 31, .12);
+  color: #5c3d06;
+}
+
+/* ── ۵) فرم‌ها ───────────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-input,
+html[data-theme="light"] .acc-select,
+html[data-theme="light"] .acc-textarea {
+  background: #ffffff;
+  color: #2a2418;
+  border-color: #d9cfb8;
+}
+html[data-theme="light"] .acc-input::placeholder,
+html[data-theme="light"] .acc-textarea::placeholder { color: #7a6d57; }
+html[data-theme="light"] .acc-select option { background: #ffffff; color: #2a2418; }
+html[data-theme="light"] .acc-field > label { color: #5c5140; }
+html[data-theme="light"] .acc-hint { color: #7a6d57; }
+
+/* ── ۶) دکمه‌ها ──────────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-btn-outline {
+  border-color: rgba(42, 36, 24, .22);
+  background: rgba(42, 36, 24, .04);
+  color: #2a2418;
+}
+html[data-theme="light"] .acc-btn-outline:hover { border-color: #b07d1f; color: #5c3d06; }
+
+html[data-theme="light"] .acc-btn-ghost { color: #5c5140; }
+html[data-theme="light"] .acc-btn-ghost:hover { color: #5c3d06; background: rgba(176, 125, 31, .10); }
+
+html[data-theme="light"] .acc-btn-danger {
+  border-color: rgba(161, 27, 22, .45);
+  color: #a11b16;
+  background: rgba(161, 27, 22, .06);
+}
+html[data-theme="light"] .acc-btn-danger:hover { background: rgba(161, 27, 22, .12); }
+
+html[data-theme="light"] .acc-icon-btn { border-color: #d9cfb8; color: #5c5140; }
+html[data-theme="light"] .acc-icon-btn:hover { color: #5c3d06; border-color: #b07d1f; }
+html[data-theme="light"] .acc-icon-btn.danger:hover { color: #a11b16; border-color: rgba(161, 27, 22, .5); }
+
+/* دکمهٔ اصلی طلایی است — متن تیرهٔ #14100a روی آن کنتراست کافی دارد */
+html[data-theme="light"] .acc-btn-primary { color: #14100a; }
+
+/* ── ۷) بج‌های وضعیت ─────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-badge.ok {
+  background: rgba(23, 102, 63, .12);
+  color: #17663f;
+  border-color: rgba(23, 102, 63, .35);
+}
+html[data-theme="light"] .acc-badge.warn {
+  background: rgba(176, 125, 31, .14);
+  color: #5c3d06;
+  border-color: rgba(176, 125, 31, .40);
+}
+html[data-theme="light"] .acc-badge.bad {
+  background: rgba(161, 27, 22, .10);
+  color: #a11b16;
+  border-color: rgba(161, 27, 22, .35);
+}
+html[data-theme="light"] .acc-badge.draft {
+  background: rgba(42, 36, 24, .07);
+  color: #5c5140;
+  border-color: rgba(42, 36, 24, .20);
+}
+
+/* ── ۸) مودال و توست ─────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-modal-overlay { background: rgba(42, 36, 24, .45); }
+html[data-theme="light"] .acc-modal {
+  background: #ffffff;
+  border-color: rgba(176, 125, 31, .30);
+  box-shadow: 0 30px 80px -20px rgba(42, 36, 24, .30);
+}
+html[data-theme="light"] .acc-modal-head h3 { color: #2a2418; }
+
+html[data-theme="light"] .acc-toast {
+  background: #ffffff;
+  border-color: rgba(176, 125, 31, .45);
+  color: #5c3d06;
+  box-shadow: 0 14px 40px -12px rgba(42, 36, 24, .25);
+}
+html[data-theme="light"] .acc-toast.error { border-color: rgba(161, 27, 22, .5); color: #a11b16; }
+html[data-theme="light"] .acc-toast-reason { color: #2a2418; opacity: 1; }
+html[data-theme="light"] .acc-toast-stateMsg { color: #7a6d57; }
+html[data-theme="light"] .acc-toast-report button {
+  border-color: rgba(161, 27, 22, .45);
+  color: #a11b16;
+}
+html[data-theme="light"] .acc-toast-report button:hover:not(:disabled) { background: rgba(161, 27, 22, .08); }
+
+/* ── ۹) حالت خالی و گیت دسترسی ───────────────────────────────────────────── */
+html[data-theme="light"] .acc-empty { color: #5c5140; }
+html[data-theme="light"] .acc-empty svg { color: rgba(176, 125, 31, .55); }
+
+html[data-theme="light"] .acc-gate-card { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .acc-gate-card p { color: #5c5140; }
+html[data-theme="light"] .gate-perks span { color: #2a2418; }
+html[data-theme="light"] .acc-btn-plain { color: #5c5140; }
+html[data-theme="light"] .acc-btn-plain:hover { color: #5c3d06; }
+
+/* ── ۱۰) چیپ پلن و کسب‌وکار ──────────────────────────────────────────────── */
+html[data-theme="light"] .acc-biz-chip {
+  background: rgba(176, 125, 31, .12);
+  border-color: rgba(176, 125, 31, .35);
+  color: #5c3d06;
+}
+html[data-theme="light"] .acc-plan-chip {
+  background: linear-gradient(135deg, rgba(176, 125, 31, .18), rgba(176, 125, 31, .08));
+  border-color: rgba(176, 125, 31, .45);
+  color: #5c3d06;
+}
+html[data-theme="light"] .acc-plan-chip.is-trial {
+  background: rgba(42, 36, 24, .06);
+  border-color: rgba(42, 36, 24, .22);
+  color: #5c5140;
+}
+html[data-theme="light"] .acc-upsell {
+  border-color: rgba(176, 125, 31, .40);
+  background: rgba(176, 125, 31, .08);
+}
+html[data-theme="light"] .acc-upsell b { color: #5c3d06; }
+html[data-theme="light"] .acc-upsell p { color: #5c5140; }
+
+/* ── ۱۱) چیپ‌ها و انتخاب‌گر قالب فاکتور ──────────────────────────────────── */
+html[data-theme="light"] .acc-chip { border-color: #d9cfb8; color: #5c5140; }
+html[data-theme="light"] .acc-chip:hover { border-color: #b07d1f; color: #2a2418; }
+html[data-theme="light"] .acc-chip.active { background: #b07d1f; border-color: #b07d1f; color: #ffffff; }
+
+html[data-theme="light"] .tpl-picker { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .tpl-picker-label { color: #5c5140; }
+html[data-theme="light"] .tpl-chip { border-color: #d9cfb8; color: #2a2418; }
+html[data-theme="light"] .tpl-chip em { color: #7a6d57; border-color: #d9cfb8; }
+html[data-theme="light"] .tpl-chip.active { background: #b07d1f; border-color: #b07d1f; color: #ffffff; font-weight: 700; }
+html[data-theme="light"] .tpl-chip.active em { color: #ffffff; border-color: rgba(255, 255, 255, .5); }
+
+/* ── ۱۲) پنل مالیاتی و کارت‌های خلاصه ────────────────────────────────────── */
+html[data-theme="light"] .acc-tax-hint {
+  background: rgba(176, 125, 31, .10);
+  border-color: rgba(176, 125, 31, .45);
+  color: #2a2418;
+}
+html[data-theme="light"] .acc-tax-panel.is-valid {
+  background: rgba(23, 102, 63, .08);
+  border-color: rgba(23, 102, 63, .35);
+  color: #17663f;
+}
+html[data-theme="light"] .acc-tax-panel.is-incomplete {
+  background: rgba(176, 125, 31, .10);
+  border-color: rgba(176, 125, 31, .45);
+  color: #5c3d06;
+}
+html[data-theme="light"] .acc-tax-panel.is-invalid {
+  background: rgba(161, 27, 22, .07);
+  border-color: rgba(161, 27, 22, .35);
+  color: #a11b16;
+}
+html[data-theme="light"] .acc-tax-panel ul { color: #5c5140; }
+
+html[data-theme="light"] .acc-summary-card span { color: #5c5140; }
+html[data-theme="light"] .acc-summary-card strong { color: #2a2418; }
+html[data-theme="light"] .acc-summary-card strong small { color: #7a6d57; }
+html[data-theme="light"] .acc-summary-card.good strong { color: #17663f; }
+
+/* ── ۱۳) ProGate و فهرست امکانات ─────────────────────────────────────────── */
+html[data-theme="light"] .pro-feature-row { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .pro-feature-row b { color: #2a2418; }
+html[data-theme="light"] .pro-feature-row span { color: #5c5140; }
+
+/* ── ۱۴) اسکرول‌بار ──────────────────────────────────────────────────────── */
+html[data-theme="light"] .acc-nav::-webkit-scrollbar-thumb,
+html[data-theme="light"] .acc-table-wrap::-webkit-scrollbar-thumb { background: rgba(176, 125, 31, .35); }
+
+/* ── ۱۵) موبایل: سایهٔ سایدبار ───────────────────────────────────────────── */
+@media (max-width: 960px) {
+  html[data-theme="light"] .acc-sidebar { box-shadow: -20px 0 60px -20px rgba(42, 36, 24, .28); }
+}
+
+/* ── ۱۶) صفحهٔ فرود حسابداری (بازار عمومی) ──────────────────────────────── */
+html[data-theme="light"] .acc-landing-mock {
+  background: #ffffff;
+  border-color: rgba(176, 125, 31, .35);
+  box-shadow: 0 24px 60px -30px rgba(42, 36, 24, .25), 0 0 0 1px rgba(176, 125, 31, .10);
+}
+html[data-theme="light"] .acc-landing-mock .mock-row { color: #5c5140; }
+html[data-theme="light"] .acc-landing-mock .mock-row b { color: #2a2418; }
+html[data-theme="light"] .acc-landing-mock .mock-row:nth-child(odd) { background: rgba(176, 125, 31, .07); }
+html[data-theme="light"] .acc-feature { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .acc-feature:hover { border-color: rgba(176, 125, 31, .50); box-shadow: 0 16px 34px -16px rgba(42, 36, 24, .18); }
+html[data-theme="light"] .acc-feature p { color: #5c5140; }
+html[data-theme="light"] .acc-plan { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .acc-plan .price { color: #5c3d06; }
+html[data-theme="light"] .acc-plan .price-note { color: #7a6d57; }
+html[data-theme="light"] .acc-plan ul li { color: #5c5140; }
+html[data-theme="light"] .acc-compare table { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .acc-compare td { color: #2a2418; }
+html[data-theme="light"] .acc-compare th { background: rgba(176, 125, 31, .12); color: #5c3d06; }
+html[data-theme="light"] .acc-compare th:first-child,
+html[data-theme="light"] .acc-compare td:first-child { color: #5c5140; }
+html[data-theme="light"] .acc-compare .cmp-on { color: #5c3d06; }
+html[data-theme="light"] .acc-compare .cmp-off { color: #8a7c63; opacity: 1; }
+html[data-theme="light"] .acc-compare col.cmp-hot { background: rgba(176, 125, 31, .05); }
+html[data-theme="light"] .acc-faq-item { background: #ffffff; border-color: #e6dcc4; }
+html[data-theme="light"] .acc-faq-item h3 { color: #5c3d06; }
+html[data-theme="light"] .acc-faq-item p { color: #5c5140; }
+
+/* ── ۱۷) جدول‌های چاپ/فاکتور در حالت روز بدون تغییر می‌مانند ──────────────
+   .inv-sheet / .fr-sheet / .tpl-sheet از قبل پس‌زمینهٔ سفید و متن تیرهٔ
+   مستقل دارند و در هر دو تم درست نمایش داده می‌شوند. دست نمی‌زنیم.         */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   اگر بعد از این فایل هنوز جایی متن کم‌رنگ دیدید، شناسهٔ کلاس آن را بردارید
+   و همین الگو را تکرار کنید:
+       html[data-theme="light"] .کلاس { color: #2a2418; }
+   قاعدهٔ کلی: در حالت روز متن اصلی #2a2418، متن کم‌رنگ #5c5140 یا #7a6d57.
+   ══════════════════════════════════════════════════════════════════════════ */
