@@ -1,11 +1,37 @@
 name: content-weekly
+# ════════════════════════════════════════════════════════════════════════════
+# موتور تولید محتوای هوشمند کاربان — مقاله و قرارداد
+# ════════════════════════════════════════════════════════════════════════════
+# زمان‌بندی جدید (نسخه ۲): ۳ بار در هفته — شنبه، دوشنبه، جمعه
+#   شنبه   = 6 (Saturday)
+#   دوشنبه = 1 (Monday)
+#   جمعه   = 5 (Friday)
+#
+# قبلاً: شنبه و چهارشنبه (۲ بار در هفته) — `0 6 * * 6,3`
+# الان: شنبه، دوشنبه، جمعه (۳ بار در هفته) — `0 6 * * 6,1,5`
+#
+# ساعت: ۰۶:۰۰ UTC = ۰۹:۳۰ تهران
+# این زمان به‌طور عمدی بعد از acc-audit (۰۳:۰۰ UTC) انتخاب شده تا:
+#   - حسابرسی اول صبح انجام بشه
+#   - محتوا بعد از ظهر تولید بشه
+#   - اگر حسابرسی باگی پیدا کنه، تیم فرصت داره قبل از تولید محتوای جدید اصلاح کنه
+#
+# هر اجرا:
+#   ۱) یک مقاله جدید (در صورت رعایت سقف ۱ مقاله در ۶ روز)
+#   ۲) تکمیل قراردادهای ناقص (همیشه آزاد)
+#   ۳) حداکثر ۲ قرارداد جدید در ۷ روز
+#
+# نکته: اگر کلیدهای هوش مصنوعی پر بشن، به‌صورت خودکار به ارائه‌دهنده بعدی
+# سوئیچ می‌کنه (Gemini → Groq → OpenRouter)
+# ════════════════════════════════════════════════════════════════════════════
 on:
   schedule:
-    - cron: '0 6 * * 6,3' # هفتگی — شنبه و چهارشنبه ۰۶:۰۰ UTC
+    - cron: '0 6 * * 6,1,5'  # شنبه، دوشنبه، جمعه — ۰۶:۰۰ UTC (۰۹:۳۰ تهران)
   workflow_dispatch: {}
 jobs:
   content:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -44,7 +70,7 @@ jobs:
 
       - run: npm install --omit=dev --no-audit --no-fund
 
-      - name: article
+      - name: تولید مقاله
         run: node scripts/content-engine.mjs article
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -57,7 +83,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
-      - name: contracts
+      - name: تکمیل قراردادهای ناقص + قرارداد جدید
         run: node scripts/content-engine.mjs contracts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -69,3 +95,21 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: خلاصه در GitHub Summary
+        if: always()
+        run: |
+          {
+            echo "## 📝 موتور محتوای کاربان"
+            echo ""
+            echo "**زمان‌بندی:** شنبه، دوشنبه، جمعه — ۰۹:۳۰ تهران"
+            echo ""
+            echo "### خروجی اجرا:"
+            echo '```'
+            echo "اجرای کامل در لاگ step‌های بالا موجود است"
+            echo '```'
+            echo ""
+            echo "- مقاله: حداکثر ۱ مقاله در ۶ روز (سقف هفتگی)"
+            echo "- قرارداد: تکمیل ناقص‌ها همیشه آزاد؛ قرارداد جدید حداکثر ۲ در ۷ روز"
+            echo "- ارائه‌دهنده‌ها به ترتیب: Gemini → Groq → OpenRouter"
+          } >> "$GITHUB_STEP_SUMMARY"
