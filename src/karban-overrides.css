@@ -1,159 +1,179 @@
 /* ════════════════════════════════════════════════════════════════════════════
-   karban-overrides.css — پچ‌های گرافیکی (بدون دست‌زدن به index.css اصلی)
+   karban-overrides.css — نسخه ۳ (اصلاح شده)
    ───────────────────────────────────────────────────────────────────────────
-   این فایل به‌صورت لایه‌ای روی index.css اعمال می‌شود و این مشکلات را تثبیت می‌کند:
-     ۱) کنتراست ناکافی متن هیرو روی تصویر روشن → اورلی گرادیان تیره اضافه شد
-     ۲) مرز کارت شیشه‌ای role-card نامشخص → border طلایی روشن‌تر
-     ۳) ناوبری هدر ناهمگن (بج «عید» + ورود + CTA) → ساده‌سازی و حذف بج‌های تزئینی
-     ۴) CTA شناور در حالت اسکرول → کمی برجسته‌تر برای دیده‌شدن
-     ۵) فضای خالی بزرگ زیر سکشن‌ها → min-height برای جلوگیری از حفره‌های بصری
+   مشکل نسخه ۱ و ۲: با z-index: -1 روی hero-lux-media، تصویر پشت پس‌زمینه
+   می‌رفت و دیده نمی‌شد. این نسخه تصویر را حفظ می‌کند و فقط overlay تیره برای
+   کنتراست متن اضافه می‌کند.
 
-   روش نصب: در انتهای src/index.css این خط را اضافه کنید:
-     @import './karban-overrides.css';
-   یا اگر ترجیح می‌دهید فایل را در public/ بگذارید:
-     در index.html بعد از خط <link href="/fonts/vazirmatn.css" ... /> اضافه کنید:
-     <link rel="stylesheet" href="/karban-overrides.css" />
+   ساختار z-index درست:
+     - hero-lux (relative)
+       - hero-lux-media (z-index: 0) — تصویر اصلی، دیده می‌شود
+       - hero-lux::after (z-index: 1) — overlay تیره روی تصویر
+       - hero-lux-inner (z-index: 2) — متن و کارت‌ها (روی همه)
 
-   ترتیب cascade: باید بعد از index.css لود شود → اواخر <head> یا اواخر index.css
+   نصب: این فایل در public/ و در index.html با <link rel="stylesheet" href="/karban-overrides.css" />
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ═══ ۱) هیرو — overlay تیره قوی‌تر برای کنتراست متن ═══ */
+/* ═══ ۱) هیرو — حفظ تصویر + overlay تیره برای کنتراست ═══ */
+
+/* کانتینر: relative برای z-index stacking */
 .hero-lux {
-  /* یک لایه gradient تیره روی پس‌زمینه تصویر — جدا از تصویر */
-  position: relative;
+  position: relative !important;
 }
 
-.hero-lux::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    /* گرادیان راست به چپ: تصویر از چپ محو، متن از راست برجسته */
-    linear-gradient(to left, rgba(10, 15, 28, 0.92) 0%, rgba(10, 15, 28, 0.75) 30%, rgba(10, 15, 28, 0.35) 60%, transparent 90%),
-    /* گرادیان عمودی بالا به پایین برای خوانایی هدر */
-    linear-gradient(to bottom, rgba(10, 15, 28, 0.55) 0%, transparent 30%, rgba(10, 15, 28, 0.35) 100%);
-  pointer-events: none;
-  /* این لایه باید زیر متن و کارت‌ها باشد ولی روی تصویر */
-  /* z-index صریح نمی‌گذاریم چون hero-lux-inner از قبل z-index:1 دارد */
-}
-
+/* تصویر: در سطح ۰ — دیده می‌شود، mask ملایم */
 .hero-lux-media {
-  z-index: -1 !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 0 !important;
+  /* محو شدگی ملایم از چپ (نه محو کامل) */
 }
 
+.hero-lux-media img {
+  -webkit-mask-image: linear-gradient(to left, transparent 0%, rgba(0, 0, 0, 0.6) 25%, #000 55%) !important;
+  mask-image: linear-gradient(to left, transparent 0%, rgba(0, 0, 0, 0.6) 25%, #000 55%) !important;
+}
+
+/* overlay تیره روی تصویر — با opacity قابل کنترل */
+.hero-lux::after {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 1 !important;
+  pointer-events: none !important;
+  /* گرادیان تیره از راست به چپ: متن سمت راست، تصویر از چپ */
+  background-image: linear-gradient(to left, rgba(10, 15, 28, 0.75) 0%, rgba(10, 15, 28, 0.45) 35%, rgba(10, 15, 28, 0.15) 70%, transparent 95%) !important;
+}
+
+/* متن و کارت‌ها روی overlay */
+.hero-lux-inner {
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+/* خوانایی متن هیرو */
 .hero-copy h1 {
-  color: #fff;
-  /* سایه ظریف برای خوانایی روی هر پس‌زمینه‌ای */
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.45);
+  color: #ffffff !important;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7) !important;
 }
 
 .hero-lead {
-  /* رنگ روشن‌تر برای کنتراست بهتر */
-  color: rgba(232, 238, 248, 0.92) !important;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+  color: rgba(232, 238, 248, 0.95) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.7) !important;
+  font-weight: 500 !important;
+}
+
+.hero-eyebrow {
+  background: rgba(216, 165, 63, 0.18) !important;
+  border-color: rgba(216, 165, 63, 0.55) !important;
+  color: #f7e8a4 !important;
 }
 
 /* ═══ ۲) کارت‌های role-card — مرز طلایی روشن‌تر ═══ */
 .role-card {
   background: rgba(17, 26, 44, 0.88) !important;
-  border: 1px solid rgba(216, 165, 63, 0.35) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  backdrop-filter: blur(14px) saturate(1.4);
-  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(216, 165, 63, 0.4) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.4) !important;
+  backdrop-filter: blur(14px) saturate(1.4) !important;
+  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 .role-card:hover,
 .role-card:focus-visible {
   background: rgba(22, 32, 58, 0.95) !important;
   border-color: rgba(216, 165, 63, 0.7) !important;
-  box-shadow: 0 0 0 1px rgba(216, 165, 63, 0.4), 0 20px 44px -18px rgba(216, 165, 63, 0.45);
+  box-shadow: 0 0 0 1px rgba(216, 165, 63, 0.4), 0 20px 44px -18px rgba(216, 165, 63, 0.45) !important;
 }
 
 .role-card p {
   color: rgba(167, 179, 201, 0.95) !important;
 }
 
-/* ═══ ۳) هدر — ساده‌سازی: حذف بج‌های تزئینی، تک‌اکسنس بودن CTA ═══ */
-/* بج «عید» یا هر بج تزئینی در nav را پنهان کن (در هر دو desktop و mobile) */
+/* ═══ ۳) هدر — حذف بج‌های تزئینی ═══ */
 .nav-badge,
 .desktop-nav .nav-badge,
 .mobile-nav .nav-badge {
   display: none !important;
 }
 
-/* login-link باید متن ساده با underline ظریف باشد، نه دکمه‌ای با پس‌زمینه */
+/* login-link: متن ساده با underline ظریف */
 .login-link {
   background: none !important;
   border: 1px solid transparent !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.88rem !important;
-  color: rgba(255, 255, 255, 0.82) !important;
-  border-radius: 10px;
-  position: relative;
-  transition: color 0.2s ease;
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 10px !important;
+  position: relative !important;
+  transition: color 0.2s ease !important;
 }
 
 .login-link::after {
-  content: '';
-  position: absolute;
-  bottom: 0.35rem;
-  right: 0.75rem;
-  left: 0.75rem;
-  height: 1px;
-  background: rgba(216, 165, 63, 0.45);
-  transform: scaleX(0);
-  transition: transform 0.25s ease;
-  transform-origin: right;
+  content: '' !important;
+  position: absolute !important;
+  bottom: 0.35rem !important;
+  right: 0.75rem !important;
+  left: 0.75rem !important;
+  height: 1px !important;
+  background: rgba(216, 165, 63, 0.5) !important;
+  transform: scaleX(0) !important;
+  transition: transform 0.25s ease !important;
+  transform-origin: right !important;
 }
 
 .login-link:hover::after,
 .login-link:focus-visible::after {
-  transform: scaleX(1);
+  transform: scaleX(1) !important;
 }
 
-/* حذف آیکون‌های تزئینی از login-link (اگه لوکیشن آیکون دارد) */
-.login-link svg {
-  opacity: 0.65;
+.login-link:hover,
+.login-link:focus-visible {
+  color: #f7e8a4 !important;
 }
 
-/* CTA شناور در حالت اسکرول: کمی برجسته‌تر */
+/* CTA شناور در حالت اسکرول */
 .site-header.is-scrolled .header-cta {
-  box-shadow: 0 6px 22px -4px rgba(216, 165, 63, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 22px -4px rgba(216, 165, 63, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
 /* ═══ ۴) جلوگیری از حفره‌های بصری بزرگ زیر سکشن‌ها ═══ */
-/* اگر سکشن‌ها در حالت loading گیر کنند، حداقل فضای معقول داشته باشند */
 .services-lux,
 .smart-tools,
 .tools-strip,
-.sections-strip {
-  min-height: 320px;
+.sections-strip,
+.services-section,
+.tools-section {
+  min-height: 320px !important;
+  display: block !important;
 }
 
-/* اگر محتوای سکشن خالی است، یک پیام placeholder نشان بده (موتورهای React با fallback) */
+/* اگر محتوای سکشن خالی است، placeholder نشان بده */
 .services-seven:empty::before,
 .smart-tools-grid:empty::before,
-.section-cards:empty::before {
-  content: 'محتوای این بخش در حال بارگذاری است…';
-  display: block;
-  padding: 3rem 1rem;
-  color: var(--muted);
-  font-size: 0.95rem;
-  text-align: center;
-  grid-column: 1 / -1;
+.section-cards:empty::before,
+.seven-grid:empty::before {
+  content: 'محتوای این بخش در حال بارگذاری است…' !important;
+  display: block !important;
+  padding: 3rem 1rem !important;
+  color: #a7b3c9 !important;
+  font-size: 0.95rem !important;
+  text-align: center !important;
+  grid-column: 1 / -1 !important;
 }
 
-/* ═══ ۵) بهبود کلی: focus واکر برای دسترسی‌پذیری ═══ */
+/* ═══ ۵) بهبود کلی: focus واکر ═══ */
 a:focus-visible,
 button:focus-visible,
-[role="button"]:focus-visible {
-  outline: 2px solid var(--gold2);
-  outline-offset: 2px;
-  border-radius: 6px;
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #e8c476 !important;
+  outline-offset: 2px !important;
+  border-radius: 6px !important;
 }
 
-/* حذف انیمیشن برای کاربرانی که ترجیح می‌دهند (prefers-reduced-motion) */
+/* prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -165,29 +185,24 @@ button:focus-visible,
   }
 }
 
-/* ═══ ۶) بهبود فوتر: جداسازی بهتر ستون‌ها ═══ */
+/* ═══ ۶) فوتر ═══ */
 .site-footer {
   padding-top: 4rem !important;
-  border-top: 1px solid rgba(216, 165, 63, 0.18);
+  border-top: 1px solid rgba(216, 165, 63, 0.2) !important;
 }
 
-/* ستون‌های فوتر در موبایل: ترتیب منطقی */
 @media (max-width: 720px) {
   .site-footer .footer-col-brand {
-    order: 1;
-    margin-bottom: 1.5rem;
+    order: 1 !important;
+    margin-bottom: 1.5rem !important;
   }
   .site-footer .footer-col-links {
-    order: 2;
+    order: 2 !important;
   }
   .site-footer .footer-col-contact {
-    order: 3;
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(216, 165, 63, 0.15);
+    order: 3 !important;
+    margin-top: 1.5rem !important;
+    padding-top: 1.5rem !important;
+    border-top: 1px solid rgba(216, 165, 63, 0.15) !important;
   }
 }
-
-/* ═══ ۷) تلگرام ادمین — جلوگیری از نشت نشانه تلگرام در CSP ═══ */
-/* این قانون از طریق CSP هندل می‌شود، اینجا فقط یک یادآوری کد */
-/* CSP باید api.telegram.org را فقط برای connect-src مجاز کند — فعلاً هست */
