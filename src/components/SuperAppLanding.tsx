@@ -8,6 +8,9 @@ import {
 import { useRevealGroup } from '@/lib/reveal';
 import SiteFooter from '@/components/SiteFooter';
 
+// آیکون Calculator در lucide-react وجود ندارد — از Coins استفاده می‌کنیم
+const Calculator = Coins;
+
 /* ════════════════════════════════════════════════════════════════════════════
    کاربان سوپراپ — صفحه معرفی موبایل اپ
    ════════════════════════════════════════════════════════════════════════════ */
