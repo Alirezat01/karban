@@ -1,8 +1,30 @@
 name: acc-audit
+# ════════════════════════════════════════════════════════════════════════════
+# حسابرسی خودکار حسابداری کاربان — گزارش فارسی ساده و خوانا
+# ════════════════════════════════════════════════════════════════════════════
+# این ورک‌فلو:
+#   - شنبه و چهارشنبه ساعت ۰۶:۳۰ تهران اجرا می‌شه
+#   - ۵۶ تست روی سیستم حسابداری اجرا می‌کنه
+#   - گزارش فارسی ساده به تلگرام می‌فرسته
+#   - اگر مشکلی پیدا کنه، با کلمات ساده می‌گه چیه
+#
+# پیام تلگرام نمونه:
+#   🧾 حسابرسی کاربان — شنبه ۱۴۰۳/۰۸/۲۲
+#   ✅ ۵۶ تست موفق | ❌ ۰ تست ناموفق
+#   📊 کسب‌وکارها: ۵۰ (همه لایسنس دارن)
+#
+#   یا اگه مشکل باشه:
+#   🧾 حسابرسی کاربان — شنبه ۱۴۰۳/۰۸/۲۲
+#   ✅ ۵۴ تست موفق | ❌ ۲ تست ناموفق
+#   ⚠️ مشکلات پیدا شده:
+#     - ثبت حساب بانکی کار نمی‌کنه
+#     - مغایرت‌گیری بانکی خطا می‌ده
+#   لطفاً بررسی کنید.
+# ════════════════════════════════════════════════════════════════════════════
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * 6,3' # هفتگی — شنبه و چهارشنبه ۰۳:۰۰ UTC
+    - cron: '0 3 * * 6,3' # شنبه و چهارشنبه ۰۳:۰۰ UTC = ۰۶:۳۰ تهران
   push:
     paths:
       - 'scripts/audit-full.mjs'
@@ -10,10 +32,10 @@ on:
       - 'lib-audit/audit-core.js'
       - 'api/acc-audit.js'
       - '.github/workflows/acc-audit.yml'
+
 permissions:
   contents: write
 
-# دو اجرای همزمان = کشمکش کامیت/پوش. فقط یکی در هر لحظه
 concurrency:
   group: acc-audit
   cancel-in-progress: true
@@ -21,43 +43,258 @@ concurrency:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Run audit (Vercel endpoint → fallback اجرای مستقیم)
+      - name: اجرای حسابرسی و ساخت گزارش فارسی
         env:
           AUDIT_TOKEN: ${{ secrets.AUDIT_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           set -e
+          echo "🔍 شروع حسابرسی حسابداری کاربان..."
+          echo "زمان: $(TZ='Asia/Tehran' date '+%Y/%m/%d - %H:%M')"
+          echo ""
+
           BASE="https://karbanapp.ir/api/acc-audit"
           if [ -n "$AUDIT_TOKEN" ]; then EP="$BASE?key=$AUDIT_TOKEN"; else EP="$BASE"; fi
-          echo "→ تلاش از طریق endpoint ورسل (توکن‌ها همان‌جاست)…"
+          echo "→ تلاش از طریق endpoint ورسل..."
+
           OK=""
           for i in 1 2 3 4; do
             if curl -sf --max-time 150 -X POST "$EP" -o audit-response.json; then
               if node scripts/save-report.mjs audit-response.json audit-report.json; then
-                echo "✅ حسابرسی از طریق ورسل انجام شد (بدون نیاز به هیچ secret در گیت‌هاب)"
+                echo "✅ حسابرسی از طریق ورسل انجام شد"
                 OK=1
                 break
               fi
             else
-              echo "… تلاش $i ناموفق (احتمالاً deploy ورسل هنوز کامل نشده) — ۳۰ ثانیه صبر"
+              echo "… تلاش $i ناموفق — ۳۰ ثانیه صبر"
               sleep 30
             fi
           done
-          if [ -n "$OK" ]; then exit 0; fi
-          echo "⚠️ endpoint ورسل پاسخ نداد → fallback به اجرای مستقیم"
-          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "❌ اجرای مستقیم ممکن نیست: SUPABASE_SERVICE_ROLE_KEY در GitHub Secrets تنظیم نشده."
-            echo "   راهنما: یا متغیر AUDIT_TOKEN را در Vercel و همین Secret در گیت‌هاب ست کن،"
-            echo "   یا SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY را در GitHub Secrets اضافه کن."
+
+          if [ -z "$OK" ]; then
+            echo "⚠️ endpoint ورسل پاسخ نداد → fallback به اجرای مستقیم"
+            if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+              echo "❌ اجرای مستقیم ممکن نیست: SUPABASE_SERVICE_ROLE_KEY تنظیم نشده"
+              exit 1
+            fi
+            node scripts/audit-full.mjs
           fi
-          node scripts/audit-full.mjs
+
+          echo ""
+          echo "═══ ساخت گزارش فارسی برای تلگرام ═══"
+
+          # ساخت گزارش فارسی ساده از audit-report.json
+          python3 << 'PYEOF'
+          import json
+          import os
+          from datetime import datetime, timezone, timedelta
+
+          # بارگذاری گزارش
+          with open('audit-report.json', 'r', encoding='utf-8') as f:
+              report = json.load(f)
+
+          # زمان تهران
+          tehran_tz = timezone(timedelta(hours=3, minutes=30))
+          now_tehran = datetime.now(tehran_tz)
+          date_str = now_tehran.strftime('%Y/%m/%d')
+          day_name = ['دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه', 'یکشنبه'][now_tehran.weekday()]
+
+          summary = report.get('summary', {})
+          pass_count = summary.get('pass', 0)
+          fail_count = summary.get('fail', 0)
+          business_stats = report.get('business_stats', {})
+
+          # ساخت پیام تلگرام
+          lines = []
+          lines.append(f'🧾 حسابرسی کاربان — {day_name} {date_str}')
+          lines.append(f'✅ {pass_count} تست موفق | ❌ {fail_count} تست ناموفق')
+
+          # آمار کسب‌وکارها
+          if business_stats:
+              total_biz = business_stats.get('count', 0)
+              orphan = business_stats.get('orphan_license', 0)
+              quota_full = business_stats.get('trial_quota_full', 0)
+              lines.append(f'📊 کسب‌وکارها: {total_biz}')
+              if orphan > 0:
+                  lines.append(f'   ⚠️ {orphan} کسب‌وکار بدون لایسنس')
+              if quota_full > 0:
+                  lines.append(f'   ⚠️ {quota_full} کسب‌وکار سقف آزمایشی پر شده')
+
+          # اگر مشکل هست، لیست کن
+          if fail_count > 0:
+              lines.append('')
+              lines.append('⚠️ مشکلات پیدا شده:')
+
+              # بررسی نتایج تست‌ها
+              results = report.get('results', [])
+              fail_details = []
+
+              # نگاشت تست‌های FAIL به توضیح فارسی ساده
+              test_descriptions = {
+                  'A1': 'تطبیق اسکیمای دیتابیس با کد',
+                  'B1': 'ساخت کاربر تستی',
+                  'B2': 'ورود کاربر',
+                  'B3': 'خواندن پروفایل',
+                  'B4': 'ساخت کسب‌وکار آزمایشی',
+                  'B5': 'ساخت لایسنس آزمایشی',
+                  'B6': 'ثبت طرف‌حساب حقوقی',
+                  'B7': 'ثبت طرف‌حساب حقیقی',
+                  'B8': 'فیلدهای نسخه ۲ طرف‌حساب',
+                  'B9': 'ثبت کالا',
+                  'B10': 'ثبت خدمت',
+                  'B11': 'ثبت حساب بانکی',
+                  'B12': 'ثبت صندوق نقدی',
+                  'B13': 'ثبت فاکتور فروش',
+                  'B14': 'ثبت ردیف‌های فاکتور',
+                  'B15': 'صدور نهایی فاکتور',
+                  'B16': 'سند حسابداری خودکار',
+                  'B17': 'به‌روزرسانی موجودی کالا',
+                  'B18': 'قفل ویرایش سند صادره',
+                  'B19': 'پیش‌فاکتور',
+                  'B20': 'فاکتور خرید',
+                  'B21': 'ثبت دریافت وجه',
+                  'B22': 'به‌روزرسانی وضعیت تسویه',
+                  'B23': 'ثبت هزینه',
+                  'B24': 'ثبت چک دریافتی',
+                  'B25': 'ثبت کارمند',
+                  'B26': 'ثبت فیش حقوقی',
+                  'B27': 'ثبت دارایی ثابت',
+                  'B28': 'هزینه تکرارشونده',
+                  'B29': 'قرارداد خدماتی',
+                  'B30': 'پروژه/مرکز هزینه',
+                  'B31a': 'ثبت سند دستی',
+                  'B31b': 'ثبت سطرهای سند دوبل',
+                  'B32': 'دسته‌بندی هزینه سفارشی',
+                  'B33': 'قفل دوره مالی',
+                  'B34': 'لاگ فعالیت کاربران',
+                  'B35': 'تراز آزمایشی',
+                  'B36': 'گزارش فروش/درآمد',
+                  'B37': 'صف تلگرام',
+                  'B38': 'تنظیمات تلگرام ادمین',
+                  'B39': 'سقف ۲۰ فاکتور آزمایشی',
+                  'B40': 'مغایرت‌گیری بانکی',
+                  'B41': 'تنخواه‌گردان',
+                  'B41b': 'شارژ تنخواه',
+                  'B42': 'پیش‌دریافت/پیش‌پرداخت',
+                  'B43': 'تفصیلی شناور',
+                  'B44': 'خطوط صورت‌حساب بانک',
+                  'B45': 'دوره مالی سالانه',
+                  'B47': 'پیش‌فاکتور صادره قابل ویرایش',
+                  'C1': 'خواندن لایسنس‌ها',
+                  'C2': 'خواندن کسب‌وکارها',
+                  'C3': 'گزارش وضعیت کسب‌وکارها',
+                  'C4': 'کسب‌وکار بدون لایسنس',
+                  'C5': 'لایسنس‌های منقضی',
+                  'C6': 'بررسی ثبت دوبل فاکتورها',
+                  'C7': 'صف تلگرام',
+              }
+
+              for result in results:
+                  if not result.get('ok'):
+                      test_id = result.get('id', '')
+                      title = result.get('title', '')
+                      severity = result.get('severity', '')
+                      detail = result.get('detail', '')
+
+                      # توضیح فارسی ساده
+                      desc = test_descriptions.get(test_id, title)
+
+                      # آیکون بر اساس شدت
+                      if severity == 'critical':
+                          icon = '🔴'
+                      elif severity == 'high':
+                          icon = '🟠'
+                      elif severity == 'medium':
+                          icon = '🟡'
+                      else:
+                          icon = '⚠️'
+
+                      # ترجمه خطاهای رایج به فارسی ساده
+                      simple_detail = ''
+                      if '42883' in detail or 'function' in detail.lower():
+                          simple_detail = ' (تابع دیتابیس پیدا نشد)'
+                      elif '42501' in detail or 'row-level security' in detail.lower():
+                          simple_detail = ' (مشکل دسترسی — کاربر لایسنس ندارد)'
+                      elif '23505' in detail or 'duplicate key' in detail.lower():
+                          simple_detail = ' (رکورد تکراری)'
+                      elif '22P02' in detail or 'invalid input syntax' in detail.lower():
+                          simple_detail = ' (فرمت داده اشتباه)'
+                      elif 'P0001' in detail:
+                          if 'نامعتبر' in detail:
+                              simple_detail = ' (کسب‌وکار نامعتبر)'
+                          elif 'شمارنده' in detail:
+                              simple_detail = ' (شمارنده کد ناقص)'
+                          elif 'بانک' in detail:
+                              simple_detail = ' (حساب بانکی مشخص نشده)'
+
+                      fail_details.append(f'  {icon} [{test_id}] {desc}{simple_detail}')
+
+              # فقط ۸ مورد اول را نشان بده
+              for detail_line in fail_details[:8]:
+                  lines.append(detail_line)
+
+              if len(fail_details) > 8:
+                  lines.append(f'  … و {len(fail_details) - 8} مشکل دیگر')
+
+              lines.append('')
+              lines.append('👨‍💻 لطفاً این مشکلات را بررسی کنید.')
+          else:
+              lines.append('')
+              lines.append('🎉 همه چیز سالم است! هیچ مشکلی پیدا نشد.')
+
+          # اضافه کردن لینک به گزارش کامل
+          repo = os.environ.get('GITHUB_REPOSITORY', 'Alirezat01/karban')
+          run_id = os.environ.get('GITHUB_RUN_ID', '')
+          if run_id:
+              lines.append('')
+              lines.append(f'📋 گزارش کامل: https://github.com/{repo}/actions/runs/{run_id}')
+
+          # چاپ پیام
+          message = '\n'.join(lines)
+          print(message)
+
+          # ذخیره برای استفاده در step بعدی
+          with open('telegram-message.txt', 'w', encoding='utf-8') as f:
+              f.write(message)
+
+          # ارسال به تلگرام
+          bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+          chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
+
+          if bot_token and chat_id:
+              print('\n📤 ارسال به تلگرام...')
+              import urllib.request
+              import urllib.parse
+
+              url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+              data = urllib.parse.urlencode({
+                  'chat_id': chat_id,
+                  'text': message,
+              }).encode()
+
+              try:
+                  req = urllib.request.Request(url, data=data, method='POST')
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      result = json.loads(resp.read().decode())
+                      if result.get('ok'):
+                          print('✅ پیام تلگرام ارسال شد')
+                      else:
+                          print(f'❌ خطا در ارسال تلگرام: {result}')
+              except Exception as e:
+                  print(f'❌ خطا در ارسال تلگرام: {e}')
+          else:
+              print('\n⚠️ TELEGRAM_BOT_TOKEN یا TELEGRAM_CHAT_ID تنظیم نیست — پیام تلگرام ارسال نشد')
+          PYEOF
 
       - name: Commit report back
         run: |
@@ -74,13 +311,41 @@ jobs:
             if git push; then PUSHED=1; break; fi
             echo "… push رد شد (تلاش $i) — همگام‌سازی با origin"
             git pull --rebase --autostash origin main || {
-              echo "⚠️ rebase ممکن نشد — گزارش احتمالاً توسط اجرای موازی همین کامیت شده؛ بی‌خیال"
+              echo "⚠️ rebase ممکن نشد"
               git rebase --abort 2>/dev/null || true
               break
             }
             sleep 5
           done
           if [ -z "$PUSHED" ]; then
-            echo "⚠️ push انجام نشد اما حسابرسی خود کار کرده و گزارش در site_secrets + تلگرام هست؛ اجرای بعدی دوباره کامیت می‌کند"
+            echo "⚠️ push انجام نشد اما حسابرسی کار کرده و گزارش در site_secrets + تلگرام هست"
           fi
           exit 0
+
+      - name: خلاصه در GitHub Summary
+        if: always()
+        run: |
+          {
+            echo "## 🧾 حسابرسی حسابداری کاربان"
+            echo ""
+            echo "زمان اجرا: $(TZ='Asia/Tehran' date '+%Y/%m/%d - %H:%M')"
+            echo ""
+            echo "### نتیجه:"
+            if [ -f audit-report.json ]; then
+              PASS=$(python3 -c "import json; print(json.load(open('audit-report.json')).get('summary',{}).get('pass',0))" 2>/dev/null || echo "?")
+              FAIL=$(python3 -c "import json; print(json.load(open('audit-report.json')).get('summary',{}).get('fail',0))" 2>/dev/null || echo "?")
+              echo "- تست‌های موفق: $PASS"
+              echo "- تست‌های ناموفق: $FAIL"
+            else
+              echo "گزارش تولید نشد"
+            fi
+            echo ""
+            echo "### پیام تلگرام:"
+            if [ -f telegram-message.txt ]; then
+              echo '```'
+              cat telegram-message.txt
+              echo '```'
+            else
+              echo "پیام تولید نشد"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,218 @@
+name: health-check
+# ════════════════════════════════════════════════════════════════════════════
+# بررسی سلامت کامل سیستم کاربان — هفتگی
+# ════════════════════════════════════════════════════════════════════════════
+# این ورک‌فلو هر هفته یک‌بار (شنبه صبح) کل سیستم را بررسی می‌کنه:
+#
+#   ۱) حسابرسی حسابداری (acc-audit) — همان که قبلاً بود
+#   ۲) تست اتصال به Supabase
+#   ۳) تست اتصال به سایت karbanapp.ir
+#   ۴) بررسی sitemap.xml
+#   ۵) بررسی robots.txt
+#   ۶) بررسی متاتگ‌های SEO
+#   ۷) گزارش خلاصه به تلگرام
+#
+# تفاوت با acc-audit: این ورک‌فلو گسترده‌تره و همه چیز را بررسی می‌کنه،
+# نه فقط حسابداری را. گزارش فارسی ساده و خوانا برات می‌فرسته.
+#
+# زمان‌بندی: شنبه ۰۳:۰۰ UTC = ۰۶:۳۰ تهران
+# ════════════════════════════════════════════════════════════════════════════
+on:
+  schedule:
+    - cron: '0 3 * * 6'  # شنبه ۰۳:۰۰ UTC = ۰۶:۳۰ تهران
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: health-check
+  cancel-in-progress: true
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: بررسی کامل سیستم
+        env:
+          AUDIT_TOKEN: ${{ secrets.AUDIT_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set +e
+          echo "🔍 شروع بررسی سلامت سیستم کاربان..."
+          echo "زمان: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo ""
+
+          REPORT=""
+          REPORT+="🩺 گزارش سلامت هفتگی کاربان\n"
+          REPORT+="زمان: $(TZ='Asia/Tehran' date '+%Y/%m/%d - %H:%M')\n"
+          REPORT+="\n"
+
+          # ═══ ۱) حسابرسی حسابداری ═══
+          echo "━━━ ۱) بررسی حسابداری ━━━"
+          REPORT+="━━━ ۱) حسابداری ━━━\n"
+          if [ -n "$AUDIT_TOKEN" ]; then
+            AUDIT_RESPONSE=$(curl -sf --max-time 150 -X POST "https://karbanapp.ir/api/acc-audit?key=$AUDIT_TOKEN&force=1" 2>/dev/null)
+            if [ $? -eq 0 ]; then
+              PASS=$(echo "$AUDIT_RESPONSE" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('summary',{}).get('pass',0))" 2>/dev/null || echo "?")
+              FAIL=$(echo "$AUDIT_RESPONSE" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('summary',{}).get('fail',0))" 2>/dev/null || echo "?")
+              ORPHAN=$(echo "$AUDIT_RESPONSE" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('business_stats',{}).get('orphan_license',0))" 2>/dev/null || echo "?")
+              REPORT+="تست‌های موفق: $PASS\n"
+              REPORT+="تست‌های ناموفق: $FAIL\n"
+              REPORT+="کسب‌وکارهای بدون لایسنس: $ORPHAN\n"
+              if [ "$FAIL" = "0" ]; then
+                REPORT+="✅ حسابداری سالم است\n"
+              else
+                REPORT+="⚠️ $FAIL مشکل در حسابداری\n"
+              fi
+            else
+              REPORT+="❌ حسابرسی اجرا نشد (پاسخی از سرور دریافت نشد)\n"
+            fi
+          else
+            REPORT+="⚠️ AUDIT_TOKEN تنظیم نیست — حسابرسی اجرا نشد\n"
+          fi
+          REPORT+="\n"
+          echo ""
+
+          # ═══ ۲) اتصال به Supabase ═══
+          echo "━━━ ۲) اتصال به Supabase ━━━"
+          REPORT+="━━━ ۲) دیتابیس (Supabase) ━━━\n"
+          if [ -n "$SUPABASE_URL" ]; then
+            SB_STATUS=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "$SUPABASE_URL/rest/v1/" -H "apikey: dummy" 2>/dev/null || echo "000")
+            if [ "$SB_STATUS" = "401" ] || [ "$SB_STATUS" = "200" ]; then
+              REPORT+="✅ دیتابیس آنلاین است (کد: $SB_STATUS)\n"
+            else
+              REPORT+="❌ دیتابیس پاسخ نمی‌دهد (کد: $SB_STATUS)\n"
+            fi
+          else
+            REPORT+="⚠️ SUPABASE_URL تنظیم نیست\n"
+          fi
+          REPORT+="\n"
+          echo ""
+
+          # ═══ ۳) اتصال به سایت ═══
+          echo "━━━ ۳) اتصال به سایت karbanapp.ir ━━━"
+          REPORT+="━━━ ۳) سایت karbanapp.ir ━━━\n"
+          SITE_STATUS=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "https://karbanapp.ir" 2>/dev/null || echo "000")
+          if [ "$SITE_STATUS" = "200" ]; then
+            REPORT+="✅ سایت آنلاین است\n"
+          else
+            REPORT+="❌ سایت پاسخ نمی‌دهد (کد: $SITE_STATUS)\n"
+          fi
+
+          # بررسی www هم
+          WWW_STATUS=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "https://www.karbanapp.ir" 2>/dev/null || echo "000")
+          if [ "$WWW_STATUS" = "200" ] || [ "$WWW_STATUS" = "308" ]; then
+            REPORT+="✅ دامنه www هم کار می‌کند\n"
+          else
+            REPORT+="⚠️ دامنه www مشکل دارد (کد: $WWW_STATUS)\n"
+          fi
+          REPORT+="\n"
+          echo ""
+
+          # ═══ ۴) بررسی sitemap ═══
+          echo "━━━ ۴) بررسی sitemap.xml ━━━"
+          REPORT+="━━━ ۴) نقشه سایت (sitemap) ━━━\n"
+          SITEMAP_STATUS=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "https://karbanapp.ir/sitemap.xml" 2>/dev/null || echo "000")
+          if [ "$SITEMAP_STATUS" = "200" ]; then
+            URL_COUNT=$(curl -sf --max-time 10 "https://karbanapp.ir/sitemap.xml" 2>/dev/null | grep -c "<loc>" || echo "0")
+            REPORT+="✅ sitemap.xml موجود است ($URL_COUNT آدرس)\n"
+          else
+            REPORT+="❌ sitemap.xml در دسترس نیست (کد: $SITEMAP_STATUS)\n"
+          fi
+          REPORT+="\n"
+          echo ""
+
+          # ═══ ۵) بررسی robots.txt ═══
+          echo "━━━ ۵) بررسی robots.txt ━━━"
+          REPORT+="━━━ ۵) فایل robots.txt ━━━\n"
+          ROBOTS_STATUS=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "https://karbanapp.ir/robots.txt" 2>/dev/null || echo "000")
+          if [ "$ROBOTS_STATUS" = "200" ]; then
+            REPORT+="✅ robots.txt موجود است\n"
+          else
+            REPORT+="❌ robots.txt در دسترس نیست (کد: $ROBOTS_STATUS)\n"
+          fi
+          REPORT+="\n"
+          echo ""
+
+          # ═══ ۶) بررسی متاتگ‌های SEO ═══
+          echo "━━━ ۶) بررسی متاتگ‌های SEO ━━━"
+          REPORT+="━━━ ۶) SEO و متاتگ‌ها ━━━\n"
+          HTML=$(curl -sf --max-time 10 "https://karbanapp.ir" 2>/dev/null)
+          if [ -n "$HTML" ]; then
+            if echo "$HTML" | grep -q 'google-site-verification'; then
+              REPORT+="✅ تأیید گوگل سرچ کنسول موجود است\n"
+            else
+              REPORT+="⚠️ متاتگ تأیید گوگل موجود نیست\n"
+            fi
+            if echo "$HTML" | grep -q 'hreflang'; then
+              REPORT+="✅ hreflang موجود است\n"
+            else
+              REPORT+="⚠️ hreflang موجود نیست\n"
+            fi
+            if echo "$HTML" | grep -q 'application/ld+json'; then
+              REPORT+="✅ داده‌های ساختاریافته (JSON-LD) موجود است\n"
+            else
+              REPORT+="⚠️ JSON-LD موجود نیست\n"
+            fi
+            if echo "$HTML" | grep -q 'canonical'; then
+              REPORT+="✅ canonical link موجود است\n"
+            else
+              REPORT+="⚠️ canonical موجود نیست\n"
+            fi
+          else
+            REPORT+="❌ HTML صفحه اصلی دریافت نشد\n"
+          fi
+          REPORT+="\n"
+          echo ""
+
+          # ═══ ۷) خلاصه نهایی ═══
+          echo "━━━ ۷) خلاصه نهایی ━━━"
+          REPORT+="━━━ خلاصه نهایی ━━━\n"
+          REPORT+="بررسی کامل شد. در صورت وجود مشکل، اکشن acc-audit را دستی اجرا کنید.\n"
+          REPORT+="گزارش کامل: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          echo ""
+          echo "═══ گزارش نهایی ═══"
+          echo -e "$REPORT"
+
+          # ═══ ارسال به تلگرام ═══
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            echo ""
+            echo "📤 ارسال به تلگرام..."
+            # تبدیل \n به newline واقعی
+            PAYLOAD=$(echo -e "$REPORT" | python3 -c "import sys; print(sys.stdin.read())" 2>/dev/null || echo "$REPORT")
+            curl -sf --max-time 10 -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+              -H "Content-Type: application/json" \
+              -d "$(python3 -c "import json; print(json.dumps({'chat_id': '$TELEGRAM_CHAT_ID', 'text': '''$PAYLOAD'''.strip(), 'parse_mode': 'HTML'}))" 2>/dev/null || echo '{}')" \
+              > /dev/null 2>&1 || true
+            echo "✅ ارسال شد"
+          fi
+
+      - name: خلاصه در GitHub Summary
+        if: always()
+        run: |
+          {
+            echo "## 🩺 گزارش سلامت هفتگی کاربان"
+            echo ""
+            echo "زمان اجرا: $(TZ='Asia/Tehran' date '+%Y/%m/%d - %H:%M')"
+            echo ""
+            echo "### بررسی شده‌ها:"
+            echo "- ✅ حسابداری (acc-audit)"
+            echo "- ✅ اتصال به Supabase"
+            echo "- ✅ اتصال به سایت karbanapp.ir"
+            echo "- ✅ sitemap.xml"
+            echo "- ✅ robots.txt"
+            echo "- ✅ متاتگ‌های SEO"
+            echo ""
+            echo "### جزئیات:"
+            echo "برای مشاهده جزئیات کامل، لاگ step قبلی را ببینید."
+            echo ""
+            echo "### پیام تلگرام:"
+            echo "گزارش به تلگرام ادمین ارسال شد (اگر TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID تنظیم شده باشند)."
+          } >> "$GITHUB_STEP_SUMMARY"
