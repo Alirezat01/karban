@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, Bell, Calculator, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
-  Mail, MessagesSquare, Newspaper, Phone, Plus, Save, Send, ShieldCheck, ShoppingCart, SlidersHorizontal,
+  Mail, MessagesSquare, Newspaper, Phone, Plus, Save, Search, Send, ShieldCheck, ShoppingCart, SlidersHorizontal,
   Star, Trash2, Users, Wrench, KeyRound, CreditCard,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -1705,8 +1705,23 @@ function NotifsTab() {
 }
 
 function UsersTab() {
-  const [users, setUsers] = useState<{ id: string; role: string; password_sha256?: string | null }[]>([]);
+  type UserRow = {
+    user_id: string;
+    email: string;
+    phone: string | null;
+    role: string;
+    created_at: string;
+    auth_method: string;
+    business_count: number;
+    has_active_license: boolean;
+    last_seen: string | null;
+  };
+
+  const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
   const [createEmail, setCreateEmail] = useState('');
   const [createPassword, setCreatePassword] = useState('');
   const [changePassword, setChangePassword] = useState('');
@@ -1714,8 +1729,37 @@ function UsersTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('profiles').select('id,role,password_sha256').order('created_at', { ascending: false });
-    setUsers((data || []) as { id: string; role: string; password_sha256?: string | null }[]);
+    setError('');
+    try {
+      // از RPC ادمین استفاده می‌کنیم که شماره موبایل را هم برمی‌گردانه
+      const { data, error: rpcError } = await supabase.rpc('admin_list_users');
+      if (rpcError) throw rpcError;
+      setUsers((data || []) as UserRow[]);
+    } catch (err: any) {
+      setError(err.message || 'خطا در بارگذاری کاربران');
+      // fallback: از profiles استفاده کن
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, role, phone, created_at')
+          .order('created_at', { ascending: false });
+        setUsers(
+          (data || []).map((p: any) => ({
+            user_id: p.id,
+            email: '—',
+            phone: p.phone || null,
+            role: p.role || 'user',
+            created_at: p.created_at,
+            auth_method: 'نامشخص',
+            business_count: 0,
+            has_active_license: false,
+            last_seen: null,
+          })) as UserRow[],
+        );
+      } catch (e) {
+        setError('دسترسی غیرمجاز یا خطای شبکه');
+      }
+    }
     setLoading(false);
   };
 
@@ -1724,17 +1768,53 @@ function UsersTab() {
   }, []);
 
   const promoteToAdmin = async (userId: string) => {
-    await supabase.from('profiles').update({ role: 'admin' }).eq('id', userId);
+    if (!confirm('آیا مطمئن هستید این کاربر را به ادمین ارتقا دهید؟')) return;
+    const { error } = await supabase.from('profiles').update({ role: 'admin' }).eq('id', userId);
+    if (error) {
+      setStatus('خطا: ' + error.message);
+      return;
+    }
+    setStatus('✅ کاربر به ادمین ارتقا یافت.');
     load();
   };
 
+  const demoteToUser = async (userId: string) => {
+    if (!confirm('آیا مطمئن هستید این ادمین را به کاربر عادی تبدیل کنید؟')) return;
+    const { error } = await supabase.from('profiles').update({ role: 'user' }).eq('id', userId);
+    if (error) {
+      setStatus('خطا: ' + error.message);
+      return;
+    }
+    setStatus('✅ ادمین به کاربر عادی تبدیل شد.');
+    load();
+  };
+
+  const deleteUser = async (userId: string) => {
+    if (!confirm('⚠️ آیا مطمئن هستید این کاربر را حذف کنید؟ این عمل قابل بازگشت نیست و تمام داده‌های کاربر (کسب‌وکارها، فاکتورها، طرف‌حساب‌ها و...) حذف می‌شود.')) return;
+    if (!confirm('⚠️ تأیید نهایی: این کاربر برای همیشه حذف شود؟')) return;
+
+    setStatus('در حال حذف کاربر...');
+    try {
+      const { data, error: rpcError } = await supabase.rpc('admin_delete_user', { p_user_id: userId });
+      if (rpcError) throw rpcError;
+      const result = data as any;
+      setStatus(`✅ کاربر با ایمیل ${result?.email || ''} حذف شد (${result?.deleted_businesses || 0} کسب‌وکار پاک شد)`);
+      load();
+    } catch (err: any) {
+      setStatus('❌ خطا در حذف: ' + (err.message || 'نامشخص'));
+    }
+  };
+
   const addAdmin = async () => {
-    if (!createEmail || !createPassword) return;
+    if (!createEmail || !createPassword) {
+      setStatus('ایمیل و رمز را بنویسید.');
+      return;
+    }
     setStatus('در حال ایجاد مدیر جدید...');
     const currentSession = await supabase.auth.getSession();
     const { data, error } = await supabase.auth.signUp({ email: createEmail, password: createPassword });
     if (error) {
-      setStatus(error.message);
+      setStatus('خطا: ' + error.message);
       return;
     }
     const newUserId = data.user?.id;
@@ -1746,15 +1826,18 @@ function UsersTab() {
     }
     setCreateEmail('');
     setCreatePassword('');
-    setStatus('مدیر جدید اضافه شد.');
+    setStatus('✅ مدیر جدید اضافه شد.');
     load();
   };
 
   const changeOwnPassword = async () => {
-    if (!changePassword) return;
+    if (!changePassword) {
+      setStatus('رمز جدید را بنویسید.');
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: changePassword });
     if (error) {
-      setStatus(error.message);
+      setStatus('خطا: ' + error.message);
       return;
     }
     const {
@@ -1764,15 +1847,94 @@ function UsersTab() {
       await supabase.from('profiles').update({ password_sha256: await sha256(changePassword) }).eq('id', user.id);
     }
     setChangePassword('');
-    setStatus('رمز عبور به‌روزرسانی شد.');
-    load();
+    setStatus('✅ رمز عبور به‌روزرسانی شد.');
   };
 
-  if (loading) return <KarbanLoader label="در حال بارگذاری…" />;
+  // فیلتر کاربران بر اساس جستجو و نقش
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch =
+      !search ||
+      u.email?.toLowerCase().includes(search.toLowerCase()) ||
+      u.phone?.includes(search) ||
+      u.user_id.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  // آمار خلاصه
+  const totalUsers = users.length;
+  const adminCount = users.filter((u) => u.role === 'admin').length;
+  const mobileUsers = users.filter((u) => u.auth_method === 'mobile' || u.auth_method === 'موبایل').length;
+  const emailUsers = users.filter((u) => u.auth_method === 'email' || u.auth_method === 'ایمیل').length;
+  const withLicense = users.filter((u) => u.has_active_license).length;
+
+  if (loading) return <KarbanLoader label="در حال بارگذاری کاربران…" />;
+
   return (
     <div className="admin-settings">
       <h2>مدیریت کاربران</h2>
-      <p>برای امنیت، رمزها با SHA-256 ذخیره می‌شوند و ورود ناموفق ۵ باره، ۵ دقیقه قفل ایجاد می‌کند.</p>
+      <p>لیست همه کاربران سیستم — شامل کاربران ثبت‌نام‌شده با موبایل و ایمیل.</p>
+
+      {/* آمار خلاصه */}
+      <div className="admin-stat-grid" style={{ marginBottom: '1.5rem' }}>
+        <div className="admin-stat">
+          <span className="admin-stat-icon"><Users size={20} aria-hidden /></span>
+          <div>
+            <b>{totalUsers.toLocaleString('fa-IR')}</b>
+            <span>کل کاربران</span>
+          </div>
+        </div>
+        <div className="admin-stat">
+          <span className="admin-stat-icon"><ShieldCheck size={20} aria-hidden /></span>
+          <div>
+            <b>{adminCount.toLocaleString('fa-IR')}</b>
+            <span>ادمین‌ها</span>
+          </div>
+        </div>
+        <div className="admin-stat">
+          <span className="admin-stat-icon"><Phone size={20} aria-hidden /></span>
+          <div>
+            <b>{mobileUsers.toLocaleString('fa-IR')}</b>
+            <span>ثبت‌نام با موبایل</span>
+          </div>
+        </div>
+        <div className="admin-stat">
+          <span className="admin-stat-icon"><Mail size={20} aria-hidden /></span>
+          <div>
+            <b>{emailUsers.toLocaleString('fa-IR')}</b>
+            <span>ثبت‌نام با ایمیل</span>
+          </div>
+        </div>
+        <div className="admin-stat">
+          <span className="admin-stat-icon"><ShieldCheck size={20} aria-hidden /></span>
+          <div>
+            <b>{withLicense.toLocaleString('fa-IR')}</b>
+            <span>لایسنس فعال</span>
+          </div>
+        </div>
+      </div>
+
+      {/* جستجو و فیلتر */}
+      <div className="settings-grid" style={{ marginBottom: '1rem' }}>
+        <label className="settings-field">
+          جستجو (ایمیل، موبایل یا آیدی)
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="مثلاً 0912... یا email@example.com"
+          />
+        </label>
+        <label className="settings-field">
+          فیلتر نقش
+          <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value as any)}>
+            <option value="all">همه</option>
+            <option value="admin">فقط ادمین‌ها</option>
+            <option value="user">فقط کاربران عادی</option>
+          </select>
+        </label>
+      </div>
+
+      {/* دکمه‌های مدیریت ادمین */}
       <div className="settings-grid">
         <label className="settings-field">
           ایمیل مدیر جدید
@@ -1795,35 +1957,118 @@ function UsersTab() {
           <Save size={15} /> تغییر رمز
         </button>
       </div>
-      {status && <small className="admin-success">{status}</small>}
+
+      {status && (
+        <small className={status.startsWith('✅') ? 'admin-success' : 'admin-error'} style={{ display: 'block', marginTop: '0.5rem' }}>
+          {status}
+        </small>
+      )}
+      {error && (
+        <small className="admin-error" style={{ display: 'block', marginTop: '0.5rem' }}>
+          {error}
+        </small>
+      )}
+
+      {/* جدول کاربران */}
       <table className="admin-table" style={{ marginTop: '1rem' }}>
         <thead>
           <tr>
             <th>#</th>
-            <th>شناسه</th>
+            <th>ایمیل</th>
+            <th>موبایل</th>
             <th>نقش</th>
-            <th>SHA-256</th>
-            <th></th>
+            <th>روش ثبت‌نام</th>
+            <th>کسب‌وکارها</th>
+            <th>لایسنس</th>
+            <th>تاریخ ثبت‌نام</th>
+            <th>آخرین فعالیت</th>
+            <th>عملیات</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user, index) => (
-            <tr key={user.id}>
-              <td>{(index + 1).toLocaleString('fa-IR')}</td>
-              <td>{user.id}</td>
-              <td>{user.role}</td>
-              <td className="mono">{user.password_sha256 || '—'}</td>
-              <td>
-                {user.role !== 'admin' && (
-                  <button type="button" className="button button-small" onClick={() => promoteToAdmin(user.id)}>
-                    مدیر کن
-                  </button>
-                )}
+          {filteredUsers.length === 0 ? (
+            <tr>
+              <td colSpan={10} style={{ textAlign: 'center', padding: '2rem' }}>
+                {search ? 'کاربری با این مشخصات یافت نشد' : 'هیچ کاربری ثبت‌نام نکرده است'}
               </td>
             </tr>
-          ))}
+          ) : (
+            filteredUsers.map((user, index) => (
+              <tr key={user.user_id}>
+                <td>{(index + 1).toLocaleString('fa-IR')}</td>
+                <td className="mono" style={{ fontSize: '0.85rem' }}>{user.email || '—'}</td>
+                <td className="mono" style={{ fontSize: '0.9rem' }}>
+                  {user.phone ? (
+                    <span style={{ color: 'var(--gold2)' }}>
+                      <Phone size={12} aria-hidden style={{ display: 'inline' }} /> {user.phone}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td>
+                  {user.role === 'admin' ? (
+                    <span style={{ color: 'var(--gold2)', fontWeight: 600 }}>ادمین</span>
+                  ) : (
+                    'کاربر'
+                  )}
+                </td>
+                <td>
+                  <span style={{ fontSize: '0.85rem' }}>
+                    {user.auth_method === 'mobile' || user.auth_method === 'موبایل' ? 'موبایل' : user.auth_method === 'email' || user.auth_method === 'ایمیل' ? 'ایمیل' : user.auth_method}
+                  </span>
+                </td>
+                <td>{user.business_count?.toLocaleString('fa-IR') || '۰'}</td>
+                <td>
+                  {user.has_active_license ? (
+                    <span style={{ color: '#10b981' }}>✓ فعال</span>
+                  ) : (
+                    <span style={{ color: '#6b7280' }}>—</span>
+                  )}
+                </td>
+                <td style={{ fontSize: '0.85rem' }}>{user.created_at ? formatFaDate(user.created_at) : '—'}</td>
+                <td style={{ fontSize: '0.85rem' }}>{user.last_seen ? formatFaDate(user.last_seen) : '—'}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {user.role !== 'admin' ? (
+                      <button
+                        type="button"
+                        className="button button-small"
+                        onClick={() => promoteToAdmin(user.user_id)}
+                        title="ارتقا به ادمین"
+                      >
+                        <ShieldCheck size={13} /> ادمین کن
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="button button-small"
+                        onClick={() => demoteToUser(user.user_id)}
+                        title="تنزل به کاربر"
+                      >
+                        کاربر کن
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="button button-small"
+                      onClick={() => deleteUser(user.user_id)}
+                      style={{ color: 'var(--red)', borderColor: 'var(--red)' }}
+                      title="حذف کاربر"
+                    >
+                      <Trash2 size={13} /> حذف
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
+
+      <small style={{ display: 'block', marginTop: '1rem', color: 'var(--muted)' }}>
+        💡 برای امنیت، رمزها با SHA-256 ذخیره می‌شوند. حذف کاربر قابل بازگشت نیست.
+      </small>
     </div>
   );
 }
