@@ -2,7 +2,7 @@
    نسخه ۳: بازطراحی کامل منوی بالای سایت */
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, BookOpen, Calculator, ChevronDown, FileSignature, FileText, LayoutDashboard, ListChecks, LogIn, LogOut, Menu, Moon, Receipt, Scale, Sparkles, Sun, UserRound, Wrench, X, Zap } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calculator, ChevronDown, FileSignature, FileText, LayoutDashboard, ListChecks, LogIn, LogOut, Menu, Moon, Receipt, Scale, Smartphone, Sparkles, Sun, UserRound, Wrench, X, Zap } from 'lucide-react';
 import { useAuth, signOutUser } from '@/lib/auth';
 import { useTheme } from '@/lib/theme';
 import NotificationBell from '@/components/NotificationBell';
@@ -13,6 +13,7 @@ type NavGroup = { label: string; href?: string; badge?: string; items?: NavItem[
 /* ساختار منو: لینک‌های پرتکرار مستقیم، بقیه در دو dropdown مرتبط */
 const MENU: NavGroup[] = [
   { label: 'حسابداری', href: '/حسابداری', badge: 'جدید' },
+  { label: 'کاربان سوپراپ', href: '/superapp', badge: 'اپ' },
   { label: 'خدمات', href: '/خدمات' },
   {
     label: 'ابزارهای رایگان',
@@ -222,6 +223,9 @@ export default function SiteHeader({ path }: { path?: string }) {
         <nav className="mobile-nav">
           <a className="mobile-cta" href={userId ? '/حسابداری/پنل' : '/حسابداری'} onClick={() => setOpen(false)}>
             <Sparkles size={16} /> {userId ? 'ورود به پنل حسابداری' : 'شروع رایگان حسابداری'}
+          </a>
+          <a className="mobile-cta" href="/superapp" onClick={() => setOpen(false)} style={{ background: 'linear-gradient(135deg, #6D28D9, #5B21B6)', color: '#fff' }}>
+            <Smartphone size={16} /> دریافت اپ موبایل کاربان
           </a>
           {MENU.map((group) =>
             group.href ? (
