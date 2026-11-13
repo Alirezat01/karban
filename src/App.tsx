@@ -29,6 +29,7 @@ const ArticleViewPage = React.lazy(() =>
 );
 
 const HomePage = React.lazy(() => import('@/components/HomePage'));
+const SuperAppLanding = React.lazy(() => import('@/components/SuperAppLanding'));
 const CalculatorPage = React.lazy(() => import('@/components/CalculatorPage'));
 const ArticlePage = React.lazy(() => import('@/components/ArticlePage'));
 const RolePage = React.lazy(() => import('@/components/RolePage'));
@@ -223,6 +224,33 @@ export default function App() {
     return (
       <Page title={META_HOME.title} description={META_HOME.description}>
         <HomePage />
+      </Page>
+    );
+  }
+
+  /* ═══ کاربان سوپراپ — صفحه معرفی موبایل اپ ═══ */
+  if (segments[0] === 'superapp') {
+    return (
+      <Page
+        title="کاربان سوپراپ — نرم‌افزار حسابداری، قراردادساز و دستیار هوش مصنوعی موبایل | کاربان"
+        description="سوپراپ موبایل کاربان: حسابداری ابری مطابق سامانه مودیان، استودیو هوش مصنوعی Gemini، قراردادساز، گاوصندوق اسناد و محاسبه‌گرهای ۱۴۰۵. نصب PWA، خروجی APK/AAB و IPA. تست ۱۰ روزه رایگان."
+        image="/images/og-superapp.png"
+        breadcrumb={[{ name: 'کاربان سوپراپ', href: '/superapp' }]}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: 'کاربان سوپراپ',
+          applicationCategory: 'BusinessApplication',
+          operatingSystem: 'Android, iOS, Web',
+          offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'IRR',
+            description: 'تست ۱۰ روزه رایگان',
+          },
+        }}
+      >
+        <SuperAppLanding />
       </Page>
     );
   }
