@@ -1,0 +1,1375 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   karban SuperApp Landing — CSS اختصاصی
+   ════════════════════════════════════════════════════════════════════════════
+   تم: Day Lilac (روشن) به‌عنوان پیش‌فرض، با پشتیبانی حالت شب
+   پالت:
+     - پس‌زمینه:        #F5F3FF
+     - کارت سفید:       #FFFFFF
+     - کارت بنفش کم:    #EDE9FE
+     - متن اصلی:        #1E1B3A
+     - بنفش نئوبانکی:   #6D28D9
+     - بنفش روشن:       #A78BFA
+     - طلایی تاکیدی:    #F59E0B
+   ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --sa-bg: #F5F3FF;
+  --sa-bg-2: #EDE9FE;
+  --sa-card: #FFFFFF;
+  --sa-card-2: #EDE9FE;
+  --sa-text: #1E1B3A;
+  --sa-muted: #6B6480;
+  --sa-primary: #6D28D9;
+  --sa-primary-light: #A78BFA;
+  --sa-accent: #F59E0B;
+  --sa-border: #E5E1F4;
+  --sa-shadow: 0 12px 40px -16px rgba(109, 40, 217, 0.25);
+  --sa-shadow-hover: 0 20px 50px -16px rgba(109, 40, 217, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sa-bg: #0D0B1C;
+    --sa-bg-2: #17142D;
+    --sa-card: #17142D;
+    --sa-card-2: #1F1B3A;
+    --sa-text: #F4F2FF;
+    --sa-muted: #A78BFA;
+    --sa-primary: #A78BFA;
+    --sa-primary-light: #C4B5FD;
+    --sa-accent: #F59E0B;
+    --sa-border: #2A2645;
+    --sa-shadow: 0 12px 40px -16px rgba(167, 139, 250, 0.3);
+    --sa-shadow-hover: 0 20px 50px -16px rgba(167, 139, 250, 0.5);
+  }
+}
+
+* { box-sizing: border-box; }
+
+.superapp-page {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  background: var(--sa-bg);
+  color: var(--sa-text);
+  overflow-x: hidden;
+  direction: rtl;
+  line-height: 1.7;
+}
+
+.superapp-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.superapp-page h1, .superapp-page h2, .superapp-page h3 {
+  color: var(--sa-text);
+  line-height: 1.3;
+}
+
+.superapp-page .superapp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(109, 40, 217, 0.1);
+  color: var(--sa-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid rgba(109, 40, 217, 0.2);
+}
+
+.superapp-page .superapp-eyebrow-ai {
+  background: rgba(167, 139, 250, 0.15);
+  color: var(--sa-primary-light);
+}
+
+.superapp-page .superapp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-decoration: none;
+  font-family: inherit;
+}
+
+.superapp-page .superapp-btn-primary {
+  background: linear-gradient(135deg, var(--sa-primary), #5B21B6);
+  color: #fff;
+  box-shadow: 0 8px 24px -8px rgba(109, 40, 217, 0.5);
+}
+
+.superapp-page .superapp-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -8px rgba(109, 40, 217, 0.7);
+}
+
+.superapp-page .superapp-btn-secondary {
+  background: var(--sa-card);
+  color: var(--sa-text);
+  border: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-btn-secondary:hover {
+  border-color: var(--sa-primary);
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-btn-outline {
+  background: transparent;
+  color: var(--sa-primary);
+  border: 1.5px solid var(--sa-primary);
+}
+
+.superapp-page .superapp-btn-outline:hover {
+  background: var(--sa-primary);
+  color: #fff;
+}
+
+.superapp-page .superapp-btn-ghost {
+  background: rgba(109, 40, 217, 0.08);
+  color: var(--sa-primary);
+  border: 1px dashed rgba(109, 40, 217, 0.3);
+  cursor: default;
+}
+
+/* ═══ Reveal animation ═══ */
+.superapp-page .superapp-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.superapp-page .superapp-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ═════ ۱. Hero ═════ */
+.superapp-page .superapp-hero {
+  position: relative;
+  padding: 8rem 0 4rem;
+  overflow: hidden;
+  background: var(--sa-bg);
+}
+
+.superapp-page .superapp-hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.superapp-page .superapp-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+}
+
+.superapp-page .superapp-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: var(--sa-primary);
+  top: -150px;
+  right: -100px;
+}
+
+.superapp-page .superapp-blob-2 {
+  width: 400px;
+  height: 400px;
+  background: var(--sa-accent);
+  bottom: -100px;
+  left: -100px;
+  opacity: 0.25;
+}
+
+.superapp-page .superapp-blob-3 {
+  width: 350px;
+  height: 350px;
+  background: var(--sa-primary-light);
+  top: 30%;
+  left: 30%;
+  opacity: 0.2;
+}
+
+.superapp-page .superapp-hero-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.superapp-page .superapp-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(109, 40, 217, 0.1);
+  color: var(--sa-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(109, 40, 217, 0.2);
+}
+
+.superapp-page .superapp-hero h1 {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.3;
+  margin-bottom: 1.5rem;
+}
+
+.superapp-page .superapp-hero-h1-accent {
+  color: var(--sa-primary);
+  background: linear-gradient(135deg, var(--sa-primary), var(--sa-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.superapp-page .superapp-hero-lead {
+  font-size: 1.05rem;
+  color: var(--sa-muted);
+  margin-bottom: 2rem;
+  max-width: 540px;
+}
+
+.superapp-page .superapp-hero-cta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.superapp-page .superapp-platforms {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--sa-muted);
+  flex-wrap: wrap;
+}
+
+.superapp-page .superapp-platforms span {
+  opacity: 0.5;
+}
+
+/* ═══ موکاپ موبایل ═══ */
+.superapp-page .superapp-hero-phone {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.superapp-page .superapp-phone {
+  width: 280px;
+  height: 580px;
+  position: relative;
+}
+
+.superapp-page .superapp-phone-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #1E1B3A;
+  border-radius: 38px;
+  padding: 8px;
+  box-shadow: 0 40px 80px -20px rgba(109, 40, 217, 0.5), 0 0 0 2px #2A2645;
+}
+
+.superapp-page .superapp-phone-notch {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 22px;
+  background: #1E1B3A;
+  border-radius: 0 0 14px 14px;
+  z-index: 3;
+}
+
+.superapp-page .superapp-phone-screen {
+  width: 100%;
+  height: 100%;
+  background: var(--sa-bg);
+  border-radius: 30px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.superapp-page .superapp-phone-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 1rem 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--sa-text);
+  margin-top: 22px;
+}
+
+.superapp-page .superapp-phone-statusbar-right {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.superapp-page .superapp-phone-signal {
+  width: 12px;
+  height: 8px;
+  background: var(--sa-text);
+  border-radius: 1px;
+  -webkit-mask: linear-gradient(to top, transparent 30%, black 30%);
+  mask: linear-gradient(to top, transparent 30%, black 30%);
+}
+
+.superapp-page .superapp-phone-battery {
+  width: 18px;
+  height: 9px;
+  background: var(--sa-text);
+  border-radius: 2px;
+  position: relative;
+}
+
+.superapp-page .superapp-phone-battery::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: -3px;
+  width: 2px;
+  height: 5px;
+  background: var(--sa-text);
+  border-radius: 0 1px 1px 0;
+}
+
+.superapp-page .superapp-phone-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.superapp-page .superapp-phone-tabbar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: var(--sa-card);
+  padding: 0.4rem 0.3rem;
+  border-top: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-phone-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--sa-muted);
+  font-size: 0.55rem;
+}
+
+.superapp-page .superapp-phone-tab.active {
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-phone-tab.active::after {
+  content: '';
+  width: 18px;
+  height: 2px;
+  background: var(--sa-primary);
+  border-radius: 2px;
+  margin-top: 2px;
+}
+
+/* محتوای صفحات موکاپ */
+.superapp-page .superapp-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.superapp-page .superapp-screen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-screen-header small {
+  font-size: 0.65rem;
+  color: var(--sa-muted);
+}
+
+.superapp-page .superapp-screen-header h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.superapp-page .superapp-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sa-primary), var(--sa-accent));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.superapp-page .superapp-card-treasury {
+  background: linear-gradient(135deg, var(--sa-primary), #5B21B6);
+  color: #fff;
+  padding: 0.8rem;
+  border-radius: 14px;
+}
+
+.superapp-page .superapp-card-treasury small {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.superapp-page .superapp-card-treasury h2 {
+  font-size: 1.4rem;
+  color: #fff;
+  margin: 0.2rem 0;
+}
+
+.superapp-page .superapp-trend {
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+}
+
+.superapp-page .superapp-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.superapp-page .superapp-mini-card {
+  background: var(--sa-card);
+  padding: 0.5rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-mini-card small {
+  font-size: 0.6rem;
+  color: var(--sa-muted);
+}
+
+.superapp-page .superapp-mini-card b {
+  font-size: 0.85rem;
+  color: var(--sa-text);
+}
+
+.superapp-page .superapp-mini-card svg {
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-card-ai {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.6rem;
+  border-radius: 10px;
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+}
+
+.superapp-page .superapp-card-ai svg {
+  color: var(--sa-accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.superapp-page .superapp-card-ai p {
+  font-size: 0.65rem;
+  color: var(--sa-text);
+  margin: 0;
+}
+
+.superapp-page .superapp-invoice {
+  background: var(--sa-card);
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--sa-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.superapp-page .superapp-invoice-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+}
+
+.superapp-page .superapp-invoice-row span {
+  color: var(--sa-muted);
+}
+
+.superapp-page .superapp-invoice-row b {
+  color: var(--sa-text);
+}
+
+.superapp-page .superapp-invoice-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--sa-border);
+  font-size: 0.75rem;
+}
+
+.superapp-page .superapp-invoice-total b {
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-action-btn {
+  background: var(--sa-primary);
+  color: #fff;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.superapp-page .superapp-action-btn-secondary {
+  background: var(--sa-card);
+  color: var(--sa-text);
+  border: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-ai-feature {
+  background: var(--sa-card);
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--sa-border);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.superapp-page .superapp-ai-feature svg {
+  color: var(--sa-primary-light);
+}
+
+.superapp-page .superapp-ai-feature b {
+  font-size: 0.75rem;
+  display: block;
+}
+
+.superapp-page .superapp-ai-feature small {
+  font-size: 0.6rem;
+  color: var(--sa-muted);
+}
+
+.superapp-page .superapp-contract-item {
+  background: var(--sa-card);
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--sa-border);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+}
+
+.superapp-page .superapp-contract-item svg {
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-signature-pad {
+  background: var(--sa-card-2);
+  padding: 0.6rem;
+  border-radius: 10px;
+  border: 1px dashed var(--sa-primary);
+  margin-top: auto;
+}
+
+.superapp-page .superapp-signature-pad small {
+  font-size: 0.6rem;
+  color: var(--sa-muted);
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.superapp-page .superapp-signature-line {
+  height: 1px;
+  background: var(--sa-primary);
+  width: 70%;
+  margin: 0 auto;
+}
+
+.superapp-page .superapp-calc-result {
+  background: linear-gradient(135deg, var(--sa-accent), #D97706);
+  color: #fff;
+  padding: 0.8rem;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.superapp-page .superapp-calc-result small {
+  font-size: 0.65rem;
+  opacity: 0.9;
+}
+
+.superapp-page .superapp-calc-result h2 {
+  font-size: 1.4rem;
+  color: #fff;
+  margin: 0.2rem 0;
+}
+
+.superapp-page .superapp-calc-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-calc-row span {
+  color: var(--sa-muted);
+}
+
+.superapp-page .superapp-calc-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.superapp-page .superapp-calc-total b {
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-tab-switcher {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.superapp-page .superapp-tab-switcher button {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sa-border);
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.superapp-page .superapp-tab-switcher button.active {
+  background: var(--sa-primary);
+  width: 24px;
+  border-radius: 4px;
+}
+
+/* ═════ ۲. نوار اعتماد ═════ */
+.superapp-page .superapp-trust {
+  padding: 3rem 0;
+  background: var(--sa-card);
+  border-top: 1px solid var(--sa-border);
+  border-bottom: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-trust-grid {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+}
+
+.superapp-page .superapp-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--sa-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.superapp-page .superapp-trust-item svg {
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.superapp-page .superapp-stat {
+  text-align: center;
+  padding: 1.5rem 0.5rem;
+  background: var(--sa-bg);
+  border-radius: 14px;
+  border: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-stat b {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--sa-primary), var(--sa-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.3rem;
+}
+
+.superapp-page .superapp-stat span {
+  font-size: 0.82rem;
+  color: var(--sa-muted);
+}
+
+/* ═════ ۳. بخش‌های سوپراپ ═════ */
+.superapp-page .superapp-sections {
+  padding: 5rem 0;
+}
+
+.superapp-page .superapp-section-head {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 3rem;
+}
+
+.superapp-page .superapp-section-head h2 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  margin: 1rem 0;
+}
+
+.superapp-page .superapp-section-head p {
+  color: var(--sa-muted);
+  font-size: 1rem;
+}
+
+.superapp-page .superapp-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.superapp-page .superapp-section-card {
+  background: var(--sa-card);
+  padding: 2rem;
+  border-radius: 20px;
+  border: 1px solid var(--sa-border);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.superapp-page .superapp-section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: var(--accent, var(--sa-primary));
+  opacity: 0.05;
+  border-radius: 0 20px 0 100%;
+}
+
+.superapp-page .superapp-section-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sa-shadow-hover);
+  border-color: var(--accent, var(--sa-primary));
+}
+
+.superapp-page .superapp-section-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--accent, var(--sa-primary));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+}
+
+.superapp-page .superapp-section-card h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.superapp-page .superapp-section-card p {
+  color: var(--sa-muted);
+  font-size: 0.88rem;
+  margin-bottom: 1rem;
+}
+
+.superapp-page .superapp-section-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.superapp-page .superapp-section-card li {
+  font-size: 0.82rem;
+  color: var(--sa-text);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.superapp-page .superapp-section-card li svg {
+  color: var(--accent, var(--sa-primary));
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* ═════ ۴. بخش AI ═════ */
+.superapp-page .superapp-ai-section {
+  padding: 5rem 0;
+  background: linear-gradient(180deg, var(--sa-bg), var(--sa-bg-2));
+}
+
+.superapp-page .superapp-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.superapp-page .superapp-ai-card {
+  background: var(--sa-card);
+  padding: 2rem;
+  border-radius: 20px;
+  border: 1px solid var(--sa-border);
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.superapp-page .superapp-ai-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(167, 139, 250, 0.08));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.superapp-page .superapp-ai-card:hover::before {
+  opacity: 1;
+}
+
+.superapp-page .superapp-ai-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sa-shadow-hover);
+}
+
+.superapp-page .superapp-ai-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--sa-primary), var(--sa-primary-light));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.2rem;
+  box-shadow: 0 12px 24px -8px rgba(167, 139, 250, 0.4);
+}
+
+.superapp-page .superapp-ai-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.superapp-page .superapp-ai-card p {
+  color: var(--sa-muted);
+  font-size: 0.85rem;
+}
+
+/* ═════ ۵. امنیت ═════ */
+.superapp-page .superapp-security {
+  padding: 5rem 0;
+}
+
+.superapp-page .superapp-security-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.superapp-page .superapp-security-content h2 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  margin: 1rem 0 2rem;
+}
+
+.superapp-page .superapp-security-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.superapp-page .superapp-security-list li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.superapp-page .superapp-security-list svg {
+  color: var(--sa-primary);
+  background: rgba(109, 40, 217, 0.1);
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.superapp-page .superapp-security-list b {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.superapp-page .superapp-security-list p {
+  color: var(--sa-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.superapp-page .superapp-security-phone {
+  display: flex;
+  justify-content: center;
+}
+
+.superapp-page .superapp-security-phone .superapp-phone {
+  transform: scale(0.85);
+}
+
+/* ═════ ۶. تعرفه‌ها ═════ */
+.superapp-page .superapp-plans {
+  padding: 5rem 0;
+  background: var(--sa-bg-2);
+}
+
+.superapp-page .superapp-billing-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 3rem;
+  background: var(--sa-card);
+  padding: 0.4rem;
+  border-radius: 14px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid var(--sa-border);
+}
+
+.superapp-page .superapp-billing-toggle button {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--sa-muted);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.superapp-page .superapp-billing-toggle button.active {
+  background: var(--sa-primary);
+  color: #fff;
+}
+
+.superapp-page .superapp-billing-badge {
+  background: var(--sa-accent);
+  color: #fff;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+}
+
+.superapp-page .superapp-billing-toggle button:not(.active) .superapp-billing-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--sa-accent);
+}
+
+.superapp-page .superapp-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.superapp-page .superapp-plan {
+  background: var(--sa-card);
+  padding: 2rem 1.5rem;
+  border-radius: 20px;
+  border: 1px solid var(--sa-border);
+  text-align: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.superapp-page .superapp-plan:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sa-shadow);
+}
+
+.superapp-page .superapp-plan-highlight {
+  border: 2px solid var(--sa-primary);
+  background: linear-gradient(180deg, var(--sa-card), rgba(109, 40, 217, 0.04));
+}
+
+.superapp-page .superapp-plan-badge {
+  position: absolute;
+  top: -10px;
+  right: 50%;
+  transform: translateX(50%);
+  background: var(--sa-accent);
+  color: #fff;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.superapp-page .superapp-plan h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.superapp-page .superapp-plan-price {
+  margin-bottom: 1.5rem;
+}
+
+.superapp-page .superapp-plan-price b {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--sa-primary);
+}
+
+.superapp-page .superapp-plan-price span {
+  font-size: 0.8rem;
+  color: var(--sa-muted);
+}
+
+.superapp-page .superapp-plan ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.superapp-page .superapp-plan li {
+  font-size: 0.82rem;
+  color: var(--sa-text);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.superapp-page .superapp-plan li svg {
+  color: var(--sa-primary);
+  flex-shrink: 0;
+}
+
+.superapp-page .superapp-plan .superapp-btn {
+  width: 100%;
+}
+
+.superapp-page .superapp-promo {
+  text-align: center;
+  padding: 1rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px dashed var(--sa-accent);
+  border-radius: 12px;
+  color: var(--sa-text);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.superapp-page .superapp-promo svg {
+  color: var(--sa-accent);
+}
+
+.superapp-page .superapp-promo code {
+  background: var(--sa-card);
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  font-family: 'Vazirmatn', monospace;
+  color: var(--sa-primary);
+  font-weight: 700;
+  border: 1px solid var(--sa-border);
+}
+
+/* ═════ ۷. FAQ ═════ */
+.superapp-page .superapp-faq {
+  padding: 5rem 0;
+}
+
+.superapp-page .superapp-faq-list {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.superapp-page .superapp-faq-item {
+  background: var(--sa-card);
+  border: 1px solid var(--sa-border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.superapp-page .superapp-faq-item.open {
+  border-color: var(--sa-primary);
+}
+
+.superapp-page .superapp-faq-item button {
+  width: 100%;
+  padding: 1.2rem 1.5rem;
+  background: transparent;
+  border: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sa-text);
+  text-align: right;
+}
+
+.superapp-page .superapp-faq-item button svg {
+  color: var(--sa-primary);
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.superapp-page .superapp-faq-item.open button svg {
+  transform: rotate(180deg);
+}
+
+.superapp-page .superapp-faq-item p {
+  padding: 0 1.5rem 1.2rem;
+  color: var(--sa-muted);
+  font-size: 0.88rem;
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* ═════ ۸. CTA نهایی ═════ */
+.superapp-page .superapp-cta-final {
+  padding: 4rem 0 5rem;
+}
+
+.superapp-page .superapp-cta-card {
+  background: linear-gradient(135deg, var(--sa-primary), #5B21B6);
+  border-radius: 24px;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.superapp-page .superapp-cta-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
+  background: var(--sa-accent);
+  opacity: 0.2;
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
+.superapp-page .superapp-cta-card::after {
+  content: '';
+  position: absolute;
+  bottom: -50px;
+  left: -50px;
+  width: 200px;
+  height: 200px;
+  background: var(--sa-primary-light);
+  opacity: 0.3;
+  border-radius: 50%;
+  filter: blur(40px);
+}
+
+.superapp-page .superapp-cta-card h2 {
+  color: #fff;
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  margin-bottom: 0.8rem;
+  position: relative;
+  z-index: 1;
+}
+
+.superapp-page .superapp-cta-card p {
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.superapp-page .superapp-cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.superapp-page .superapp-cta-card .superapp-btn-primary {
+  background: var(--sa-accent);
+  color: #1E1B3A;
+  box-shadow: 0 8px 24px -8px rgba(245, 158, 11, 0.6);
+}
+
+.superapp-page .superapp-cta-card .superapp-btn-primary:hover {
+  background: #FBBF24;
+}
+
+.superapp-page .superapp-cta-card .superapp-btn-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+/* ═════ موبایل ═════ */
+@media (max-width: 900px) {
+  .superapp-page .superapp-hero {
+    padding: 6rem 0 3rem;
+  }
+
+  .superapp-page .superapp-hero-inner {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    text-align: center;
+  }
+
+  .superapp-page .superapp-hero-eyebrow,
+  .superapp-page .superapp-hero-cta {
+    justify-content: center;
+  }
+
+  .superapp-page .superapp-platforms {
+    justify-content: center;
+  }
+
+  .superapp-page .superapp-hero-phone {
+    order: -1;
+  }
+
+  .superapp-page .superapp-phone {
+    transform: scale(0.85);
+  }
+
+  .superapp-page .superapp-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .superapp-page .superapp-trust-grid {
+    gap: 1.2rem;
+  }
+
+  .superapp-page .superapp-security-inner {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .superapp-page .superapp-security-phone {
+    order: -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .superapp-page .superapp-hero h1 {
+    font-size: 1.6rem;
+  }
+
+  .superapp-page .superapp-phone {
+    transform: scale(0.78);
+  }
+
+  .superapp-page .superapp-stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .superapp-page .superapp-plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .superapp-page .superapp-cta-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .superapp-page .superapp-cta-buttons {
+    flex-direction: column;
+  }
+
+  .superapp-page .superapp-cta-buttons .superapp-btn {
+    width: 100%;
+  }
+}
