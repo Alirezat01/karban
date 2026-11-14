@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-11-13T09:30:47.918Z",
-  "duration_ms": 35902,
+  "generated_at": "2026-11-14T09:52:05.081Z",
+  "duration_ms": 32714,
   "summary": {
-    "pass": 57,
-    "fail": 0
+    "pass": 56,
+    "fail": 1
   },
   "schema_tables": [
     "acc_invoices",
@@ -62,7 +62,7 @@
       "title": "ساخت کاربر تاییدشده (admin)",
       "ok": true,
       "severity": "",
-      "detail": "karban.audit.mwes0a21@gmail.com"
+      "detail": "karban.audit.mwg87kri@gmail.com"
     },
     {
       "id": "B2",
@@ -83,21 +83,21 @@
       "title": "acc_start_trial → ساخت کسب‌وکار آزمایشی",
       "ok": true,
       "severity": "",
-      "detail": "biz=d016d9df-a4ac-471e-8b3a-4f1d79cfced6"
+      "detail": "biz=4a5e39ad-5cf7-4168-9527-8d99702d0940"
     },
     {
       "id": "B5",
       "title": "لایسنس آزمایشی ثبت شد (status=trial، ۱۴ روز)",
       "ok": true,
       "severity": "",
-      "detail": "{\"id\":\"2a9f91ea-238a-4125-a60c-3a865b9d3d7f\",\"business_id\":\"d016d9df-a4ac-471e-8b3a-4f1d79cfced6\",\"user_id\":\"129a0165-5e4e-416d-b40f-aa07ac3f1892\",\"email\":\"karban.audit.mwes0a21@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
+      "detail": "{\"id\":\"514d5bb2-eeca-42e2-984d-08c536e2d914\",\"business_id\":\"4a5e39ad-5cf7-4168-9527-8d99702d0940\",\"user_id\":\"e393ecae-9e91-4cad-8ab9-175054593f77\",\"email\":\"karban.audit.mwg87kri@gmail.com\",\"role\":\"owner\",\"status\":\"trial\",\"plan\":\"trial\",\"expires_at\":\""
     },
     {
       "id": "B6",
       "title": "ثبت طرف‌حساب حقوقی (بدون shenase_melli)",
       "ok": true,
       "severity": "",
-      "detail": "id=97bb9f93-8d80-46ff-a4bf-5837513528f9"
+      "detail": "id=a1b69a6f-e919-4fbe-96fc-3fa2ceb99c64"
     },
     {
       "id": "B7",
@@ -118,21 +118,21 @@
       "title": "ثبت کالا با ردیابی موجودی",
       "ok": true,
       "severity": "",
-      "detail": "id=50784508-1822-4373-a80b-63fd46a7b4dc"
+      "detail": "id=756cc757-e6b3-4246-b8ab-1202e68fef21"
     },
     {
       "id": "B10",
       "title": "ثبت خدمت (بدون موجودی)",
       "ok": true,
       "severity": "",
-      "detail": "id=d0fb2c68-83e5-4d93-899b-36cf27ebabf5"
+      "detail": "id=b0c25b37-1e32-48c7-801a-34c6ee4c4179"
     },
     {
       "id": "B11",
       "title": "ثبت حساب بانکی",
       "ok": true,
       "severity": "",
-      "detail": "id=1c1d518d-00b2-42c6-bf32-0768d48fb81f | SELECT کاربر: 1 ردیف"
+      "detail": "id=353a983e-277c-4991-a9c1-7507b5e0cb01 | SELECT کاربر: 1 ردیف"
     },
     {
       "id": "B12",
@@ -146,7 +146,7 @@
       "title": "ثبت فاکتور فروش رسمی (پیش‌نویس)",
       "ok": true,
       "severity": "",
-      "detail": "id=4909adc5-afd7-4b4f-87aa-5e97fa5eb7d2 total=2,310,000,000"
+      "detail": "id=80216b38-6e8d-49d9-8514-078c27de2dd1 total=2,310,000,000"
     },
     {
       "id": "B14",
@@ -230,7 +230,7 @@
       "title": "ثبت کارمند",
       "ok": true,
       "severity": "",
-      "detail": "id=2a78a86b-bef3-40a8-8f6e-87ba6429991d"
+      "detail": "id=c4ea11c5-b664-4ab9-85d3-f3219101c537"
     },
     {
       "id": "B26",
@@ -272,7 +272,7 @@
       "title": "ثبت سربرگ سند دستی",
       "ok": true,
       "severity": "",
-      "detail": "id=4bb25177-b538-4d58-88b4-2ea203846955"
+      "detail": "id=9130c74a-68a7-4cbb-ad29-4b4c85881d7f"
     },
     {
       "id": "B31b",
@@ -368,8 +368,8 @@
     {
       "id": "C4",
       "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
-      "ok": true,
-      "severity": "",
+      "ok": false,
+      "severity": "critical",
       "detail": ""
     },
     {
@@ -450,10 +450,16 @@
       "detail": "ok — قفل B18 فقط اسناد رسمی را می‌بندد"
     }
   ],
-  "findings": [],
+  "findings": [
+    {
+      "id": "C4",
+      "title": "کسب‌وکار بدون لایسنس متصل (عامل ریشه‌ای ذخیره ناموفق)",
+      "severity": "critical"
+    }
+  ],
   "business_stats": {
-    "count": 11,
-    "orphan_license": 0,
+    "count": 13,
+    "orphan_license": 2,
     "trial_quota_full": 1
   },
   "cleanup": {
@@ -462,6 +468,6 @@
     "fail": 4
   },
   "test_context": {
-    "email": "karban.audit.mwes0a21@gmail.com"
+    "email": "karban.audit.mwg87kri@gmail.com"
   }
 }
