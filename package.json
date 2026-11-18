@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build.mjs && node scripts/prerender-meta.mjs",
+    "build": "node scripts/build.mjs && node scripts/prerender-meta.mjs && node scripts/build-mobile.mjs",
+    "build:site": "node scripts/build.mjs && node scripts/prerender-meta.mjs",
+    "build:mobile": "node scripts/build-mobile.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",

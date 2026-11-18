@@ -3,182 +3,152 @@ import {
   ArrowLeft, BadgeCheck, BookOpen, Brain, Camera, Check, ChevronDown, Coins,
   Database, FileSignature, FileText, Fingerprint, LayoutDashboard, Lock,
   Mic, Receipt, ScrollText, Shield, Smartphone, Sparkles, TrendingUp,
-  Wallet,
+  Wallet, X,
 } from 'lucide-react';
 import SiteFooter from '@/components/SiteFooter';
+import { isIranianMobile } from '@/lib/validation';
+import {
+  createAccessRequest, fetchSuperAppConfig,
+  type SuperAppConfig, type SuperAppPlan,
+} from '@/lib/superapp';
 
 /* ════════════════════════════════════════════════════════════════════════════
-   کاربان سوپراپ — صفحه معرفی موبایل اپ (نسخه ۲)
+   کاربان سوپراپ — صفحه معرفی موبایل اپ (نسخه ۳)
    ════════════════════════════════════════════════════════════════════════════
-   تغییرات نسخه ۲:
-     - هماهنگ با رنگ‌های اصلی سایت کاربان (سرمه‌ای-طلایی)
-     - حالت روز و شب کامل
-     - حذف انیمیشن‌های مشکل‌ساز
-     - حذف کلمات انگلیسی
-     - طراحی فشرده‌تر و شیک‌تر
-     - اضافه‌شدن توضیحات کامل زیر هر بخش
+   تغییرات نسخه ۳ (هم‌تراز با فهرست کامل ۲۷ قابلیت):
+     - فهرست امکانات هر ۵ بخش دقیقاً با مشخصات اپ هم‌تراز شد (۲۷ قابلیت)
+     - قیمت‌ها و پلن‌ها از پنل مدیریت (superapp_settings) خوانده می‌شود
+     - دکمه هر پلن «درخواست دسترسی» ثبت می‌کند؛ تایید از پنل ادمین انجام می‌شود
+     - لینک «ورود به نسخه وب‌اپ موبایل» از تنظیمات ادمین (appUrl)
+     - طراحی، رنگ‌ها و کلاس‌های CSS نسخه ۲ بدون تغییر مانده است
    ════════════════════════════════════════════════════════════════════════════ */
 
-/* ═══ داده‌ها ═══ */
+const faNum = (n: number) => n.toLocaleString('fa-IR');
+const fmtToman = (n: number) => (n > 0 ? faNum(n) : '۰');
+
+/* ═══ داده‌های ثابت صفحه (متن امکانات — هم‌تراز با فهرست ۲۷ قابلیت اپ) ═══ */
 
 const stats = [
   { value: '۵', label: 'بخش یکپارچه' },
-  { value: '۲۱', label: 'قابلیت پیشرفته' },
+  { value: '۲۷', label: 'قابلیت پیشرفته' },
+  { value: '۱۳', label: 'ماشین‌حساب ۱۴۰۵' },
   { value: '۱۰۰٪', label: 'کار آفلاین' },
-  { value: '۴۳۰', label: 'پیکسل استاندارد موبایل' },
 ];
 
 const sections = [
   {
     id: 'home',
     icon: LayoutDashboard,
-    title: 'خانه — داشبورد خزانه',
-    desc: 'نمای کلی از نقدینگی، فروش، خرید و چک‌ها در یک نگاه.',
+    title: 'خانه — داشبورد خزانه‌داری',
+    desc: 'رادار مالی موبایل با هشدارهای زنده؛ همه‌چیز در بدو ورود با قفل بیومتریک محفوظ است.',
     features: [
-      'پیش‌بینی نقدینگی ۹۰ روزه با نمودار تعاملی',
-      'توصیه صرفه‌جویی مالیاتی روزانه بر اساس تقویم شمسی',
-      'تقویم تکالیف مالیاتی و بیمه‌ای سال ۱۴۰۵',
-      'دفتر چک صیادی و دفتر روزنامه',
-      'ویجت کارت سه‌بعدی خزانه',
+      'قفل بیومتریک (اثرانگشت و تشخیص چهره) + پین اضطراری در بدو ورود',
+      'کارت‌های هشدار سررسید اظهارنامه ارزش افزوده و لیست بیمه و حقوق',
+      'رادار پیش‌بینی نقدینگی ۳۰ روزه با هشدار کسری چک و مالیات',
+      'موتور توصیه‌های هوشمند صرفه‌جویی مالیاتی روزانه',
+      'دستیار صوتی فارسی برای دستورهای سریع مالی و ناوبری',
+      'تقویم تکالیف مالیاتی و بیمه سال ۱۴۰۵',
+      'ویجت کارت فلزی سه‌بعدی نئوبانک در ۳ فینیش + دانلود تصویر کارت',
     ],
   },
   {
     id: 'accounting',
     icon: Receipt,
-    title: 'حسابداری و سامانه مودیان',
-    desc: 'صدور صورتحساب الکترونیکی مطابق سامانه مودیان.',
+    title: 'حسابداری جامع و سامانه مودیان',
+    desc: 'چرخه کامل مالی از فاکتور مودیان تا تراز آزمایشی — مطابق قانون مالیات‌های مستقیم.',
     features: [
-      'شناسه یکتای ۲۲ رقمی مودیان و ۱۳ رقمی کالا و خدمات',
-      'محاسبه خودکار مالیات بر ارزش افزوده و درج حروف فارسی مبلغ',
-      'مدیریت چک‌های صیادی ۱۶ رقمی با استعلام رنگ',
-      'دفتر روزنامه دوطرفه خودکار و تراز آزمایشی',
-      'گزارش معاملات فصلی ماده ۱۶۹',
-      'خروجی فایل چاپی با مهر کاربان و امضای دیجیتال',
+      'صدور صورتحساب‌های رسمی مودیان (فروش، خرید، پیش‌فاکتور، برگشت از فروش) با شناسه یکتا و کد کالا و ۱۰٪ ارزش افزوده',
+      'فیلتر بازه زمانی شمسی با تقویم هجری شمسی اختصاصی',
+      'مدیریت چک‌های صیادی ۱۶ رقمی با نمایش گرافیکی برگه و استعلام رنگی',
+      'ثبت هزینه با اعتبارسنجی مالیاتی مواد ۱۴۷ و ۱۴۸ ق.م.م',
+      'بانک‌ها، صندوق نقدی، تنخواه + ثبت سریع دریافت و پرداخت با سند دوطرفه',
+      'دفتر روزنامه دوطرفه، دفتر کل و تراز آزمایشی ۴ ستونی + سود و زیان',
+      'گزارش ارزش افزوده ۱۰٪ و صورت معاملات فصلی ماده ۱۶۹',
+      'مدیریت پروژه‌ها و دارایی ثابت با محاسبه استهلاک',
+      'بانک طرف‌حساب‌ها و کاتالوگ کالا/خدمت + پیش‌نمایش چاپ و PDF فاکتور',
     ],
   },
   {
     id: 'ai',
     icon: Brain,
     title: 'استودیو هوش مصنوعی',
-    desc: 'چهار ابرقابلیت اختصاصی با موتور هوش مصنوعی جمینای.',
+    desc: 'دو ابرقابلیت انحصاری موبایل با موتور جمینای + رادار و دستیار صوتی خزانه.',
     features: [
-      'اسکنر هوشمند فاکتور و چک با دوربین موبایل',
-      'اسکنر زنده بارکد چک صیادی',
-      'تولید خودکار لایحه دفاعیه مالیاتی مستند به مواد قانونی',
-      'تحلیل‌گر ریسک قراردادها با امتیاز صفر تا صد',
-      'رادار پیش‌بینی نقدینگی ۳۰ روزه',
-      'دستیار صوتی با سه شخصیت: مدیر مالی، مشاور مالیاتی، وکیل قراردادها',
+      'اسکنر هوشمند فاکتور کاغذی و چک صیادی با دوربین موبایل (AI OCR) و تبدیل خودکار به سند',
+      'تولید لایحه دفاعیه رسمی مالیاتی و اداره کار با پیش‌نمایش چاپ و دانلود PDF',
+      'رادار پیش‌بینی نقدینگی و هشدار کسری چک',
+      'دستیار صوتی فارسی با ناوبری صوتی بین بخش‌ها',
     ],
   },
   {
     id: 'contracts',
     icon: FileSignature,
-    title: 'قراردادها و گاوصندوق اسناد',
-    desc: 'قراردادساز استاندارد + نامه‌نگار اداری + گاوصندوق امن.',
+    title: 'قراردادساز، امضای لمسی و گاوصندوق',
+    desc: 'قرارداد، امضا و بایگانی امن — همه در چند لمس روی صفحه موبایل.',
     features: [
-      'قرارداد کار، پیمانکاری ماده ۳۸، فریلنسری و محرمانگی',
-      'نامه‌نگار اداری و منابع انسانی',
-      'امضای دیجیتال لمسی روی صفحه موبایل',
-      'گاوصندوق اسناد برای بایگانی قراردادها و لوایح',
-      'خروجی فایل چاپی رسمی با مهر و امضا',
+      'تنظیم کامل ۲۳ نوع قرارداد رسمی کاربان ویژه ۲۰ صنف مختلف',
+      'بوم امضای دیجیتال لمسی با انگشت و انتخاب رنگ قلم',
+      'نامه‌ها و گواهی‌های اداری استاندارد (گواهی اشتغال، تسویه ماده ۲۴، حکم مرخصی و مأموریت)',
+      'گاوصندوق رمزنگاری‌شده اسناد با دانلود مستقیم PDF',
     ],
   },
   {
     id: 'tools',
     icon: Coins,
-    title: 'محاسبه‌گرها و بانک قوانین',
-    desc: 'ماشین‌حساب جامع حقوق، سنوات، عیدی + بانک مواد قانونی.',
+    title: 'محاسبه‌گرهای ۱۴۰۵ و سلامت کسب‌وکار',
+    desc: '۱۳ ماشین‌حساب تخصصی، اظهارنامه و چک‌لیست‌های اجرایی — بر اساس LEGAL_CONFIG_1405.',
     features: [
-      'محاسبه حقوق، دستمزد و بیمه سال ۱۴۰۵',
-      'محاسبه سنوات، عیدی و بازخرید مرخصی',
-      'سنجش سلامت مالیاتی و بیمه‌ای کسب‌وکار',
-      'بانک مواد قانونی: قانون کار، مودیان، ماده ۳۸، صیادی',
-      'چک‌لیست‌های اجرایی',
+      '۱۳ ماشین‌حساب تخصصی ۱۴۰۵: حقوق، اضافه‌کاری، عیدی، سنوات، مالیات، بیمه و…',
+      'دستیار ۳ مرحله‌ای اظهارنامه مالیاتی (ماده ۱۳۱ و اشخاص حقوقی ۲۵٪)',
+      'تست جامع ۱۲گانه سنجش سلامت کسب‌وکار در ۳ حوزه',
+      '۵ چک‌لیست ۸ مرحله‌ای اجرایی + بانک قوانین کار، مالیات و چک صیادی',
+      'نصب‌شدنی به‌صورت PWA روی گوشی با نمایشگر وضعیت آفلاین',
     ],
   },
 ];
 
 const aiSuper = [
-  { icon: Camera, title: 'اسکنر چک صیادی', desc: 'خواندن مستقیم بارکد روی برگه چک صیادی با دوربین موبایل و پر کردن خودکار فیلدها.' },
-  { icon: ScrollText, title: 'لایحه دفاعیه خودکار', desc: 'نگارش لایحه رسمی مستند به مواد ۹۷، ۱۶۹، ۲۱۶، ۲۳۸، ۲۴۴ و ۲۵۱ مکرر با نمایش درصد شانس موفقیت.' },
-  { icon: Mic, title: 'دستیار صوتی مدیر مالی', desc: 'چت‌بات حقوقی-مالیاتی چندنوبته با سه شخصیت حرفه‌ای و قابلیت هدایت صوتی کاربر.' },
-  { icon: TrendingUp, title: 'رادار نقدینگی', desc: 'تحلیل ریسک کسری نقدینگی ۳۰ روزه، سررسید چک و بدهی مالیاتی.' },
+  { icon: Camera, title: 'اسکنر فاکتور و چک صیادی', desc: 'عکس بگیر؛ موتور AI OCR متن فاکتور و بارکد ۱۶ رقمی چک را می‌خواند و سند حسابداری و رکورد چک را خودکار می‌سازد.' },
+  { icon: ScrollText, title: 'لایحه دفاعیه خودکار', desc: 'لایحه رسمی مالیاتی و اداره کار، مستند به مواد ۱۶۹، ۲۴۴ و ۲۵۱ مکرر ق.م.م و قانون کار — با پیش‌نمایش چاپ A4 و دانلود PDF.' },
+  { icon: Mic, title: 'دستیار صوتی مدیر مالی', desc: 'دستورهای مالی فارسی را می‌فهمد: ثبت هزینه، مرور چک‌ها، پرسش مالیاتی و پرش بین بخش‌های اپ.' },
+  { icon: TrendingUp, title: 'رادار نقدینگی ۳۰ روزه', desc: 'پیش‌بینی جریان نقدی، هشدار کسری چک و تداخل سررسید مالیات — قبل از اینکه بحران شود.' },
 ];
 
-const plans = [
-  {
-    name: 'تست رایگان',
-    price: '۰',
-    period: '۱۰ روز',
-    badge: null,
-    features: ['۲۵ فاکتور', '۱۵ گفت‌وگوی هوش مصنوعی', '۵ تحلیل هوشمند', '۱ کسب‌وکار'],
-    cta: 'شروع رایگان',
-    highlight: false,
-  },
-  {
-    name: 'ماهانه پیشرفته',
-    price: '۴۹۰٬۰۰۰',
-    period: 'ماه',
-    badge: null,
-    features: ['۳ کسب‌وکار', 'فاکتور نامحدود', '۲۰ گفت‌وگو در روز', '۱۰ تحلیل در روز', 'اسکنر هوشمند', 'لایحه مالیاتی'],
-    cta: 'انتخاب پلن',
-    highlight: false,
-  },
-  {
-    name: 'سالانه پیشرفته',
-    price: '۴٬۹۰۰٬۰۰۰',
-    period: 'سال',
-    badge: '۲ ماه هدیه',
-    features: ['۵ کسب‌وکار', 'تمام امکانات ماهانه', 'رادار نقدینگی', 'پشتیبانی اولویت‌دار'],
-    cta: 'بهترین انتخاب',
-    highlight: true,
-  },
-  {
-    name: 'بنیان‌گذار ویژه',
-    price: '۹٬۸۰۰٬۰۰۰',
-    period: 'یک‌باره',
-    badge: 'محدود',
-    features: ['۱۰ شرکت هم‌زمان', 'هوش مصنوعی نامحدود', 'مشاور اختصاصی', 'راه‌اندازی مالیاتی'],
-    cta: 'همکاری ویژه',
-    highlight: false,
-  },
-];
-
-const faqs = [
+const faqsStatic = [
   {
     q: 'آیا کاربان نیاز به نصب دارد؟',
-    a: 'خیر، کاربان یک اپلیکیشن وب پیشرفته است و می‌توانید مستقیماً از مرورگر موبایل استفاده کنید. در اندروید می‌توانید «افزودن به صفحه اصلی» را بزنید و در iOS گزینه «افزودن به صفحه اصلی» را انتخاب کنید. نسخه بومی اندروید و iOS نیز در راه است.',
+    a: 'خیر، نسخه وب‌اپ موبایل مستقیماً از مرورگر اجرا می‌شود؛ در اندروید و iOS هم گزینه «افزودن به صفحه اصلی» را می‌زنید و کاربان مثل یک اپ واقعی تمام‌صفحه باز می‌شود. خروجی بومی اندروید و iOS نیز در راه است.',
   },
   {
     q: 'آیا بدون اینترنت هم کار می‌کند؟',
-    a: 'بله، کاربان آفلاین‌محور است. تمام داده‌ها روی حافظه دستگاه شما ذخیره می‌شوند و وقتی اینترنت وصل شد، با دیتابیس ابری همگام‌سازی می‌شوند. می‌توانید از منوی تنظیمات پشتیبان‌گیری کامل هم بگیرید.',
+    a: 'بله، کاربان آفلاین‌محور است. تمام داده‌ها روی حافظه دستگاه ذخیره می‌شوند و با وصل‌شدن اینترنت، با دیتابیس ابری همگام می‌شود. از تنظیمات هم می‌توانید پشتیبان‌گیری کامل بگیرید.',
   },
   {
     q: 'آیا صورتحساب‌های صادرشده مطابق سامانه مودیان هستند؟',
-    a: 'بله، کاربان صدور صورتحساب الکترونیک فروش، خرید، پیش‌فاکتور و برگشت از فروش را با شناسه یکتای ۲۲ رقمی مودیان و شناسه ۱۳ رقمی کالا و خدمات انجام می‌دهد. مالیات بر ارزش افزوده به‌صورت خودکار محاسبه و در حروف فارسی درج می‌شود.',
+    a: 'بله، صدور صورتحساب الکترونیک فروش، خرید رسمی، پیش‌فاکتور و برگشت از فروش با شناسه یکتای مودیان و کد کالا/خدمت انجام می‌شود؛ مالیات بر ارزش افزوده ۱۰٪ خودکار محاسبه و مبلغ به حروف فارسی درج می‌گردد.',
   },
   {
     q: 'امنیت داده‌های من چگونه تأمین می‌شود؟',
-    a: 'کاربان از قفل بیومتریک موبایل (اثر انگشت یا تشخیص چهره) پشتیبانی می‌کند. تمام داده‌ها با رمزنگاری ابری ذخیره می‌شوند. همچنین پین‌کد پشتیبان با انیمیشن ورود و خروج نرم در دسترس است.',
+    a: 'اپ در بدو ورود با اثرانگشت یا تشخیص چهره قفل می‌شود و پین اضطراری هم دارد. گاوصندوق اسناد رمزنگاری‌شده است و بایگانی قراردادها و لوایح با پیش‌نمایش چاپ و دانلود مستقیم PDF در دسترس است.',
   },
   {
-    q: 'آیا لایحه دفاعیه مالیاتی واقعاً توسط هوش مصنوعی نوشته می‌شود؟',
-    a: 'بله، استودیو هوش مصنوعی کاربان متصل به موتور هوش مصنوعی جمینای است. لایحه‌ها به مواد ۹۷، ۱۶۹، ۲۱۶، ۲۳۸، ۲۴۴ و ۲۵۱ مکرر مستند می‌شوند، درصد شانس موفقیت نمایش داده می‌شود و خروجی در گاوصندوق اسناد ذخیره می‌شود.',
+    q: 'اسکنر فاکتور و چک صیادی دقیقاً چه می‌کند؟',
+    a: 'دوربین موبایل را روی فاکتور کاغذی یا برگه چک صیادی می‌گیرید؛ موتور هوش مصنوعی جمینای متن و بارکد را می‌خواند، مبلغ به رقم و حروف، شناسه ۱۶ رقمی، سررسید و نام بانک را استخراج و به‌صورت خودکار به سند حسابداری و رکورد چک تبدیل می‌کند.',
   },
   {
     q: 'تفاوت پلن سالانه با ماهانه چیست؟',
-    a: 'پلن سالانه ۲ ماه هدیه می‌دهد (معادل ۱۷٪ تخفیف)، به‌علاوه رادار پیش‌بینی نقدینگی ۳۰ روزه و پشتیبانی اولویت‌دار. همچنین سقف کسب‌وکار از ۳ به ۵ می‌رسد.',
+    a: 'پلن سالانه ۲ ماه هدیه می‌دهد (معادل ۱۷٪ تخفیف) و به‌همراه رادار پیش‌بینی نقدینگی ۳۰ روزه، دستیار صوتی و پشتیبانی اولویت‌دار، سقف کسب‌وکار از ۳ به ۵ می‌رسد. برای مؤسسین، پلن بنیان‌گذار با ۱۰ شرکت هم‌زمان و مشاور اختصاصی هم وجود دارد.',
   },
   {
-    q: 'آیا می‌توانم قبل از خرید تست کنم؟',
-    a: 'بله، تست ۱۰ روزه رایگان بدون نیاز به کارت بانکی در دسترس است. تا ۲۵ فاکتور، ۱۵ گفت‌وگوی هوش مصنوعی و ۵ تحلیل هوشمند می‌توانید استفاده کنید. ضمانت بازگشت وجه ۷ روزه هم برای پلن‌های پولی وجود دارد.',
+    q: 'چطور پلن را فعال کنم؟',
+    a: 'روی دکمه پلن موردنظر بزنید و فرم درخواست را پر کنید؛ همکاران کاربان پس از بررسی و هماهنگی، دسترسی شما را فعال و از طریق تماس یا پیامک خبر می‌دهند. تست رایگان ۱۰ روزه بدون نیاز به کارت بانکی است.',
   },
 ];
 
 const trustBadges = [
   { icon: BadgeCheck, label: 'مطابق قوانین ۱۴۰۵' },
   { icon: Receipt, label: 'سامانه مودیان' },
-  { icon: Shield, label: 'صیاد بانک مرکزی' },
+  { icon: Shield, label: 'چک صیادی بانک مرکزی' },
   { icon: Lock, label: 'رمزنگاری ابری' },
 ];
 
@@ -323,7 +293,7 @@ function PhoneAI() {
       </div>
       <div className="superapp-ai-feature">
         <Mic size={20} />
-        <div><b>دستیار صوتی</b><small>سه شخصیت حرفه‌ای</small></div>
+        <div><b>دستیار صوتی</b><small>دستور مالی فارسی</small></div>
       </div>
       <div className="superapp-ai-feature">
         <TrendingUp size={20} />
@@ -339,10 +309,10 @@ function PhoneContracts() {
       <div className="superapp-screen-header">
         <h3>قراردادساز</h3>
       </div>
-      <div className="superapp-contract-item"><FileSignature size={16} /><span>قرارداد کار</span></div>
-      <div className="superapp-contract-item"><FileSignature size={16} /><span>پیمانکاری ماده ۳۸</span></div>
-      <div className="superapp-contract-item"><FileSignature size={16} /><span>فریلنسری</span></div>
-      <div className="superapp-contract-item"><FileSignature size={16} /><span>محرمانگی</span></div>
+      <div className="superapp-contract-item"><FileSignature size={16} /><span>قرارداد کار ماده ۷ و ۱۰</span></div>
+      <div className="superapp-contract-item"><FileSignature size={16} /><span>پیمانکاری</span></div>
+      <div className="superapp-contract-item"><FileSignature size={16} /><span>محرمانگی (NDA)</span></div>
+      <div className="superapp-contract-item"><FileSignature size={16} /><span>مبایعه‌نامه</span></div>
       <div className="superapp-signature-pad">
         <small>امضای دیجیتال لمسی</small>
         <div className="superapp-signature-line" />
@@ -370,11 +340,141 @@ function PhoneTools() {
   );
 }
 
+/* ═══ مودال درخواست دسترسی ═══ */
+
+const fieldStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '.35rem', fontSize: '.88rem', margin: '.7rem 0', fontWeight: 600 };
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '.65rem .8rem', borderRadius: 12, fontSize: '.95rem', fontWeight: 400,
+  background: 'rgba(255,255,255,.05)', border: '1px solid var(--line, rgba(255,255,255,.14))', color: 'inherit', boxSizing: 'border-box',
+};
+
+function RequestModal({ plan, plans, onClose }: { plan: string; plans: SuperAppPlan[]; onClose: () => void }) {
+  const [fullName, setFullName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState(plan);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  const selected = plans.find((p) => p.id === selectedPlan);
+  const mobileOk = isIranianMobile(mobile);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (fullName.trim().length < 3) { setError('نام و نام خانوادگی را کامل وارد کنید.'); return; }
+    if (!mobileOk) { setError('شماره موبایل معتبر نیست؛ نمونه درست: ۰۹۱۲۳۴۵۶۷۸۹'); return; }
+    setSending(true);
+    const res = await createAccessRequest({ fullName, mobile, businessName, plan: selectedPlan });
+    setSending(false);
+    if (!res.ok) { setError('ثبت درخواست انجام نشد؛ دوباره تلاش کنید.'); return; }
+    setDone(true);
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="درخواست دسترسی به کاربان سوپراپ"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center',
+        background: 'rgba(4,8,18,.72)', padding: '1rem', backdropFilter: 'blur(4px)',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{
+        width: 'min(430px, 100%)', maxHeight: '90vh', overflowY: 'auto',
+        background: 'var(--card, #101828)', color: 'var(--text, #eef2f7)',
+        border: '1px solid var(--line, rgba(255,255,255,.12))', borderRadius: 20, padding: '1.4rem',
+        boxShadow: '0 24px 60px rgba(0,0,0,.45)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.4rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>درخواست دسترسی به کاربان سوپراپ</h3>
+          <button
+            type="button" aria-label="بستن" onClick={onClose}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '.3rem', display: 'grid', placeItems: 'center' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <p style={{ margin: '0 0 1rem', fontSize: '.85rem', color: 'var(--muted, #9aa7b8)' }}>
+          فرم را پر کنید؛ همکاران ما پس از بررسی، دسترسی را فعال و از طریق تماس یا پیامک خبر می‌دهند.
+        </p>
+
+        {done ? (
+          <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+            <BadgeCheck size={44} style={{ color: '#4ade80' }} />
+            <h4 style={{ margin: '.8rem 0 .4rem' }}>درخواست شما ثبت شد</h4>
+            <p style={{ fontSize: '.9rem', color: 'var(--muted, #9aa7b8)' }}>
+              پلن «{selected?.name ?? selectedPlan}» ثبت شد؛ پس از تایید مدیر با شما تماس می‌گیریم.
+            </p>
+            <button type="button" className="superapp-btn superapp-btn-primary" onClick={onClose}>
+              بستن
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} noValidate>
+            <label style={fieldStyle}>
+              نام و نام خانوادگی *
+              <input style={inputStyle} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="مثلاً: علی رضایی" />
+            </label>
+            <label style={fieldStyle}>
+              شماره موبایل *
+              <input style={inputStyle} value={mobile} onChange={(e) => setMobile(e.target.value)} placeholder="۰۹۱۲…" inputMode="tel" />
+            </label>
+            {mobile && mobileOk ? <span style={{ fontSize: '.78rem', color: '#4ade80' }}>✓ شماره معتبر است</span> : null}
+            <label style={fieldStyle}>
+              نام کسب‌وکار (اختیاری)
+              <input style={inputStyle} value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="اختیاری" />
+            </label>
+            <label style={fieldStyle}>
+              پلن موردنظر *
+              <select style={inputStyle} value={selectedPlan} onChange={(e) => setSelectedPlan(e.target.value)}>
+                {plans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </label>
+            {selected && (
+              <p style={{ fontSize: '.8rem', color: 'var(--muted, #9aa7b8)', margin: '-.3rem 0 .8rem' }}>
+                {selected.price > 0 ? `${fmtToman(selected.price)} تومان / ${selected.periodLabel}` : 'رایگان'}
+              </p>
+            )}
+            {error ? <div style={{ color: '#f87171', fontSize: '.85rem', margin: '.5rem 0' }}>{error}</div> : null}
+            <button type="submit" className="superapp-btn superapp-btn-primary" disabled={sending} style={{ width: '100%', justifyContent: 'center' }}>
+              {sending ? 'در حال ثبت…' : 'ثبت درخواست دسترسی'} <ArrowLeft size={16} />
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ═══ کامپوننت اصلی ═══ */
 
 export default function SuperAppLanding() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [cfg, setCfg] = useState<SuperAppConfig | null>(null);
+  const [requestPlan, setRequestPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetchSuperAppConfig().then((c) => { if (alive) setCfg(c); });
+    return () => { alive = false; };
+  }, []);
+
+  const plans = cfg?.plans ?? [];
+  const promoActive = !!cfg?.promo.active && !!cfg?.promo.code;
+  const appUrl = cfg?.appUrl || '/app';
+  const trialLabel = `${faNum(cfg?.trialDays ?? 10)} روزه`;
+
+  const openRequest = (planId: string) => {
+    if (cfg && !cfg.requestsOpen) return;
+    setRequestPlan(planId);
+  };
 
   return (
     <div className="superapp-page">
@@ -395,12 +495,12 @@ export default function SuperAppLanding() {
               <span className="superapp-hero-h1-accent"> در جیب شما.</span>
             </h1>
             <p className="superapp-hero-lead">
-              یک سوپراپ موبایل‌محور با ۵ بخش یکپارچه، ۲۱ قابلیت پیشرفته و ۴ ابرقابلیت هوش مصنوعی. کار آفلاین، نصب فوری و خروجی بومی اندروید و iOS.
+              یک سوپراپ موبایل‌محور با ۵ بخش یکپارچه، ۲۷ قابلیت پیشرفته، ۱۳ ماشین‌حساب تخصصی ۱۴۰۵ و ۴ ابرقابلیت هوش مصنوعی. کار آفلاین، قفل بیومتریک و نصب فوری روی گوشی.
             </p>
             <div className="superapp-hero-cta">
-              <a href="#plans" className="superapp-btn superapp-btn-primary">
-                شروع تست ۱۰ روزه رایگان <ArrowLeft size={16} />
-              </a>
+              <button type="button" className="superapp-btn superapp-btn-primary" onClick={() => openRequest('trial')}>
+                شروع تست {trialLabel} رایگان <ArrowLeft size={16} />
+              </button>
               <span className="superapp-btn superapp-btn-ghost">
                 <Smartphone size={16} /> اندروید · iOS · وب
               </span>
@@ -437,11 +537,11 @@ export default function SuperAppLanding() {
         </div>
       </section>
 
-      {/* ═══ ۳. بخش‌های سوپراپ ═══ */}
+      {/* ═══ ۳. بخش‌های سوپراپ (۲۷ قابلیت در ۵ بخش) ═══ */}
       <section className="superapp-sections">
         <div className="container">
           <div className="superapp-section-head">
-            <span className="superapp-eyebrow">۵ بخش یکپارچه</span>
+            <span className="superapp-eyebrow">۵ بخش یکپارچه — ۲۷ قابلیت</span>
             <h2>یک سوپراپ، همه‌چیز در جیب شما</h2>
             <p>هر بخش به‌صورت کشوی پایین صفحه باز می‌شود و تجربه‌ای روان و موبایل‌محور ارائه می‌دهد.</p>
           </div>
@@ -476,7 +576,7 @@ export default function SuperAppLanding() {
           <div className="superapp-section-head">
             <span className="superapp-eyebrow">۴ ابرقابلیت اختصاصی</span>
             <h2>استودیو هوش مصنوعی کاربان</h2>
-            <p>قدرت موتور هوش مصنوعی جمینای در ۴ ابرقابلیت مخصوص کاربران موبایل کاربان.</p>
+            <p>قدرت موتور هوش مصنوعی جمینای در اسکن اسناد، لوایح دفاعیه و مدیریت نقدینگی.</p>
           </div>
           <div className="superapp-ai-grid">
             {aiSuper.map((a, i) => {
@@ -506,7 +606,7 @@ export default function SuperAppLanding() {
                 <Fingerprint size={20} />
                 <div>
                   <b>قفل بیومتریک موبایل</b>
-                  <p>اثر انگشت یا تشخیص چهره بومی موبایل + پین‌کد پشتیبان با انیمیشن نرم.</p>
+                  <p>اثر انگشت یا تشخیص چهره بومی موبایل + پین‌کد اضطراری با انیمیشن نرم.</p>
                 </div>
               </li>
               <li>
@@ -520,14 +620,14 @@ export default function SuperAppLanding() {
                 <FileText size={20} />
                 <div>
                   <b>خروجی چاپ رسمی</b>
-                  <p>چاپ استاندارد با مهر کاربان، امضای دیجیتال لمسی و خروجی فایل.</p>
+                  <p>چاپ استاندارد A4 با مهر کاربان، امضای دیجیتال لمسی و دانلود مستقیم PDF.</p>
                 </div>
               </li>
               <li>
                 <Lock size={20} />
                 <div>
-                  <b>رمزنگاری ابری</b>
-                  <p>تمام داده‌ها با رمزنگاری ابری ذخیره می‌شوند.</p>
+                  <b>گاوصندوق رمزنگاری‌شده</b>
+                  <p>قراردادها، لوایح و نامه‌های اداری با رمزنگاری ابری بایگانی می‌شوند.</p>
                 </div>
               </li>
             </ul>
@@ -538,13 +638,13 @@ export default function SuperAppLanding() {
         </div>
       </section>
 
-      {/* ═══ ۶. تعرفه‌ها ═══ */}
+      {/* ═══ ۶. تعرفه‌ها (از پنل مدیریت) ═══ */}
       <section className="superapp-plans" id="plans">
         <div className="container">
           <div className="superapp-section-head">
             <span className="superapp-eyebrow">تعرفه‌ها</span>
             <h2>پلن متناسب با کسب‌وکار شما</h2>
-            <p>تست رایگان ۱۰ روزه بدون کارت بانکی. ضمانت بازگشت وجه ۷ روزه.</p>
+            <p>تست رایگان {trialLabel} بدون کارت بانکی. با ثبت درخواست، پس از تایید مدیر فعال می‌شود.</p>
           </div>
 
           <div className="superapp-billing-toggle">
@@ -557,13 +657,13 @@ export default function SuperAppLanding() {
           </div>
 
           <div className="superapp-plans-grid">
-            {plans.map((p, i) => (
-              <div key={i} className={`superapp-plan ${p.highlight ? 'superapp-plan-highlight' : ''}`}>
+            {plans.map((p) => (
+              <div key={p.id} className={`superapp-plan ${p.highlight ? 'superapp-plan-highlight' : ''}`}>
                 {p.badge && <span className="superapp-plan-badge">{p.badge}</span>}
                 <h3>{p.name}</h3>
                 <div className="superapp-plan-price">
-                  <b>{p.price}</b>
-                  <span>تومان / {p.period}</span>
+                  <b>{fmtToman(p.price)}</b>
+                  <span>تومان / {p.periodLabel}</span>
                 </div>
                 <ul>
                   {p.features.map((f, j) => (
@@ -572,16 +672,25 @@ export default function SuperAppLanding() {
                     </li>
                   ))}
                 </ul>
-                <button className={`superapp-btn ${p.highlight ? 'superapp-btn-primary' : 'superapp-btn-outline'}`}>
+                <button
+                  type="button"
+                  className={`superapp-btn ${p.highlight ? 'superapp-btn-primary' : 'superapp-btn-outline'}`}
+                  onClick={() => openRequest(p.id)}
+                >
                   {p.cta}
                 </button>
               </div>
             ))}
+            {plans.length === 0 && (
+              <div className="superapp-plan"><h3>در حال بارگذاری تعرفه‌ها…</h3></div>
+            )}
           </div>
 
-          <div className="superapp-promo">
-            <Sparkles size={16} /> کد تخفیف <code>کاربان۱۴۰۵</code> — ۲۵٪ تخفیف روی همه پلن‌ها
-          </div>
+          {promoActive && (
+            <div className="superapp-promo">
+              <Sparkles size={16} /> کد تخفیف <code>{cfg?.promo.code}</code> — {faNum(cfg?.promo.percent ?? 25)}٪ تخفیف روی همه پلن‌ها
+            </div>
+          )}
         </div>
       </section>
 
@@ -594,7 +703,7 @@ export default function SuperAppLanding() {
             <p>مخصوص مدیران، حسابداران و صاحبان مشاغل ایرانی.</p>
           </div>
           <div className="superapp-faq-list">
-            {faqs.map((f, i) => (
+            {faqsStatic.map((f, i) => (
               <div key={i} className={`superapp-faq-item ${openFaq === i ? 'open' : ''}`}>
                 <button onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                   <span>{f.q}</span>
@@ -612,13 +721,13 @@ export default function SuperAppLanding() {
         <div className="container">
           <div className="superapp-cta-card">
             <h2>همین حالا کاربان را در جیب خود داشته باشید</h2>
-            <p>تست ۱۰ روزه رایگان — بدون کارت بانکی. نصب در کمتر از ۳۰ ثانیه.</p>
+            <p>تست رایگان {trialLabel} — بدون کارت بانکی. نصب در کمتر از ۳۰ ثانیه.</p>
             <div className="superapp-cta-buttons">
-              <a href="#plans" className="superapp-btn superapp-btn-primary">
+              <button type="button" className="superapp-btn superapp-btn-primary" onClick={() => openRequest('trial')}>
                 شروع رایگان <ArrowLeft size={16} />
-              </a>
-              <a href="https://github.com/Alirezat01/karban" target="_blank" rel="noopener" className="superapp-btn superapp-btn-secondary">
-                <FileText size={16} /> مشاهده در گیت‌هاب
+              </button>
+              <a href={appUrl} className="superapp-btn superapp-btn-secondary">
+                <Smartphone size={16} /> ورود به نسخه وب‌اپ موبایل
               </a>
             </div>
           </div>
@@ -626,6 +735,10 @@ export default function SuperAppLanding() {
       </section>
 
       <SiteFooter />
+
+      {requestPlan !== null && cfg && (
+        <RequestModal plan={requestPlan} plans={cfg.plans} onClose={() => setRequestPlan(null)} />
+      )}
     </div>
   );
 }

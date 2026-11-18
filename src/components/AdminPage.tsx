@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ArrowLeft, Bell, Calculator, FileSignature, FileText, Layers, LayoutDashboard, LifeBuoy, LogOut,
   Mail, MessagesSquare, Newspaper, Phone, Plus, Save, Search, Send, ShieldCheck, ShoppingCart, SlidersHorizontal,
-  Star, Trash2, Users, Wrench, KeyRound, CreditCard,
+  Star, Trash2, Users, Wrench, KeyRound, CreditCard, Smartphone,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { contractCatalog, CONTRACT_TYPES, INDUSTRIES, legalConfig } from '@/data/config';
@@ -10,11 +10,12 @@ import { formatFaDate, formatRial, formatFaNumber } from '@/lib/format';
 import { DEFAULT_ACC_CONFIG, type AccConfig } from '@/lib/acc/config';
 import { INVOICE_TEMPLATES } from '@/lib/acc/constants';
 import { fetchTelegramConfig, saveTelegramConfig, sendTelegramDirect, drainTelegramQueue, type TelegramConfig, DEFAULT_TELEGRAM_CONFIG } from '@/lib/acc/telegram';
+import { fetchAccessRequests, fetchSuperAppConfig, saveSuperAppConfig, type AccessRequestRow, type SuperAppConfig, type SuperAppPlan } from '@/lib/superapp';
 import { useCountUp } from '@/lib/reveal';
 import KarbanLoader from '@/components/KarbanLoader';
 import FaNumberInput from '@/components/FaNumberInput';
 
-type Tab = 'overview' | 'services' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
+type Tab = 'overview' | 'services' | 'superapp' | 'settings' | 'accounting' | 'licenses' | 'telegram' | 'contracts' | 'articles' | 'requests' | 'leads' | 'orders' | 'consultations' | 'users' | 'newsletter' | 'tickets' | 'feedback' | 'notifs';
 type Service = {
   id: string;
   title: string;
@@ -246,6 +247,9 @@ export default function AdminPage() {
       ['consultations', 'مشاوره‌ها', MessagesSquare],
       ['leads', 'شماره‌های دانلود', Phone],
     ] },
+    { group: 'اپلیکیشن موبایل', items: [
+      ['superapp', 'تنظیمات اپلیکیشن', Smartphone],
+    ] },
     { group: 'محتوا', items: [
       ['contracts', 'قراردادها', FileSignature],
       ['articles', 'مقاله‌ها', Newspaper],
@@ -299,6 +303,7 @@ export default function AdminPage() {
           <div className="admin-content">
             {tab === 'overview' && <OverviewTab go={setTab} />}
             {tab === 'services' && <ServicesTab />}
+            {tab === 'superapp' && <SuperAppTab />}
             {tab === 'settings' && <SettingsTab />}
             {tab === 'accounting' && <AccountingTab />}
             {tab === 'licenses' && <LicensesTab />}
@@ -2384,3 +2389,203 @@ function TelegramTab() {
     </div>
   );
 }
+
+/* ── تنظیمات اپلیکیشن موبایل (سوپراپ): قیمت پلن‌ها، تست رایگان، کد تخفیف،
+   لینک نصب اپ + تایید/رد درخواست‌های دسترسی کاربران.
+   داده‌ها: superapp_settings (key='config') و superapp_access_requests ── */
+function SuperAppTab() {
+  const [cfg, setCfg] = useState<SuperAppConfig | null>(null);
+  const [reqs, setReqs] = useState<AccessRequestRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const [c, r] = await Promise.all([fetchSuperAppConfig(), fetchAccessRequests()]);
+    setCfg(c);
+    setReqs(r);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const updatePlan = (id: string, patch: Partial<SuperAppPlan>) => {
+    setCfg((prev) => (prev ? { ...prev, plans: prev.plans.map((p) => (p.id === id ? { ...p, ...patch } : p)) } : prev));
+  };
+
+  const save = async () => {
+    if (!cfg) return;
+    setSaving(true);
+    const res = await saveSuperAppConfig(cfg);
+    setSaving(false);
+    if (res.ok) {
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 5000);
+    } else {
+      window.alert('ذخیره انجام نشد: ' + (res.error || 'خطای ناشناخته'));
+    }
+  };
+
+  const setReqStatus = async (id: string, status: string) => {
+    await supabase.from('superapp_access_requests').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+    load();
+  };
+
+  const removeReq = async (id: string) => {
+    if (!window.confirm('این درخواست حذف شود؟')) return;
+    await supabase.from('superapp_access_requests').delete().eq('id', id);
+    load();
+  };
+
+  if (loading) return <KarbanLoader label="در حال بارگذاری تنظیمات اپ…" />;
+  if (!cfg) {
+    return (
+      <div className="admin-table-wrap">
+        <h2>تنظیمات اپلیکیشن</h2>
+        <p className="admin-empty">تنظیمات بارگذاری نشد؛ صفحه را دوباره باز کنید. اگر خطا تکرار شد، فایل sql/M270000_superapp_settings.sql را در Supabase اجرا کنید.</p>
+      </div>
+    );
+  }
+
+  const pendingCount = reqs.filter((r) => r.status === 'pending').length;
+  const planName = (id: string) => cfg.plans.find((p) => p.id === id)?.name || id;
+  const reqStatusLabels: Record<string, string> = { pending: 'در انتظار تایید', approved: 'تایید شد', rejected: 'رد شد' };
+
+  return (
+    <>
+      <div className="admin-toolbar"><h2>تنظیمات اپلیکیشن موبایل</h2></div>
+
+      {/* ── اطلاعات کلی ── */}
+      <div className="admin-table-wrap">
+        <h3>اطلاعات کلی</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.8rem' }}>
+          <NumField label="طول دوره تست رایگان (روز)" value={cfg.trialDays} onChange={(n) => setCfg({ ...cfg, trialDays: n })} />
+          <label className="settings-field">
+            آدرس نصب اپ (لینک دکمه «ورود به نسخه وب‌اپ موبایل»)
+            <input value={cfg.appUrl} onChange={(e) => setCfg({ ...cfg, appUrl: e.target.value })} placeholder="/app" dir="ltr" />
+          </label>
+          <label className="settings-field">
+            کد تخفیف
+            <input value={cfg.promo.code} onChange={(e) => setCfg({ ...cfg, promo: { ...cfg.promo, code: e.target.value } })} />
+          </label>
+          <NumField label="درصد تخفیف کد" value={cfg.promo.percent} onChange={(n) => setCfg({ ...cfg, promo: { ...cfg.promo, percent: n } })} decimal />
+          <label className="settings-field" style={{ justifyContent: 'end' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              <input type="checkbox" checked={cfg.promo.active} onChange={(e) => setCfg({ ...cfg, promo: { ...cfg.promo, active: e.target.checked } })} />
+              نمایش بنر کد تخفیف در صفحه سوپراپ
+            </span>
+          </label>
+          <label className="settings-field" style={{ justifyContent: 'end' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              <input type="checkbox" checked={cfg.requestsOpen} onChange={(e) => setCfg({ ...cfg, requestsOpen: e.target.checked })} />
+              دریافت درخواست دسترسی باز باشد
+            </span>
+          </label>
+        </div>
+        <p style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: '.6rem' }}>
+          این تنظیمات بلافاصله در صفحه <b>/superapp</b> سایت اعمال می‌شود: قیمت پلن‌ها، بنر تخفیف، متن دکمه‌ها و لینک نصب اپ.
+        </p>
+      </div>
+
+      {/* ── پلن‌ها و قیمت‌ها ── */}
+      <div className="admin-table-wrap">
+        <h3>پلن‌های اشتراک و قیمت‌ها (تومان)</h3>
+        {cfg.plans.map((p, i) => (
+          <div key={p.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: '1rem', marginBottom: '.9rem', background: 'rgba(255,255,255,.02)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem', marginBottom: '.7rem', flexWrap: 'wrap' }}>
+              <b style={{ fontSize: '.95rem' }}>{faOrdinal(i)} — {p.name}</b>
+              {p.highlight && <span className="admin-badge">پلن ویژه</span>}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '.4rem', fontSize: '.82rem', marginInlineStart: 'auto' }}>
+                <input type="checkbox" checked={p.highlight} onChange={(e) => updatePlan(p.id, { highlight: e.target.checked })} />
+                هایلایت (پیشنهاد ما)
+              </label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '.7rem' }}>
+              <label className="settings-field">
+                نام پلن
+                <input value={p.name} onChange={(e) => updatePlan(p.id, { name: e.target.value })} />
+              </label>
+              <NumField label="قیمت (تومان — صفر = رایگان)" value={p.price} onChange={(n) => updatePlan(p.id, { price: n })} />
+              <label className="settings-field">
+                برچسب دوره (مثل «ماه» یا «۱۰ روز»)
+                <input value={p.periodLabel} onChange={(e) => updatePlan(p.id, { periodLabel: e.target.value })} />
+              </label>
+              <label className="settings-field">
+                بج بالای کارت (خالی = بدون بج)
+                <input value={p.badge || ''} onChange={(e) => updatePlan(p.id, { badge: e.target.value || null })} placeholder="مثل: ۲ ماه هدیه" />
+              </label>
+              <label className="settings-field">
+                متن دکمه پلن
+                <input value={p.cta} onChange={(e) => updatePlan(p.id, { cta: e.target.value })} />
+              </label>
+            </div>
+            <label className="settings-field">
+              امکانات پلن (هر خط یک مورد)
+              <textarea rows={Math.max(3, p.features.length + 1)} value={p.features.join('\n')} onChange={(e) => updatePlan(p.id, { features: e.target.value.split('\n') })} />
+            </label>
+          </div>
+        ))}
+
+        <div className="admin-actions-row">
+          <button type="button" className="button button-green" onClick={save} disabled={saving}>
+            <Save size={15} /> {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}
+          </button>
+        </div>
+        {saved && <small className="admin-success">✓ تنظیمات ذخیره شد و روی صفحه سوپراپ اعمال شد.</small>}
+      </div>
+
+      {/* ── درخواست‌های دسترسی ── */}
+      <div className="admin-table-wrap">
+        <h3>درخواست‌های دسترسی به اپ ({formatFaNumber(pendingCount)} در انتظار تایید)</h3>
+        <p style={{ fontSize: '.82rem', color: 'var(--muted)', marginTop: '.2rem' }}>
+          کاربران از صفحه /superapp فرم پر می‌کنند؛ وضعیت را «تایید شد» بزنید و برای فعال‌سازی و پرداخت با او تماس بگیرید. سیستم پرداخت فعلی دست‌نخورده مانده است.
+        </p>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>نام</th>
+              <th>موبایل</th>
+              <th>کسب‌وکار</th>
+              <th>پلن</th>
+              <th>وضعیت</th>
+              <th>تاریخ</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {reqs.map((r, index) => (
+              <tr key={r.id}>
+                <td>{(index + 1).toLocaleString('fa-IR')}</td>
+                <td>{r.full_name}</td>
+                <td dir="ltr">{r.mobile}</td>
+                <td>{r.business_name || '—'}</td>
+                <td>{planName(r.plan)}</td>
+                <td>
+                  <select value={r.status} onChange={(e) => setReqStatus(r.id, e.target.value)}>
+                    {Object.entries(reqStatusLabels).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </td>
+                <td>{fmtDate(r.created_at)}</td>
+                <td>
+                  <button type="button" className="admin-delete" onClick={() => removeReq(r.id)}>
+                    <Trash2 size={14} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {reqs.length === 0 && (
+              <tr><td colSpan={8}>هنوز درخواستی ثبت نشده است.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/* شماره‌گذاری فارسی پلن‌ها: ۱، ۲، ۳… */
+const faOrdinal = (i: number) => (i + 1).toLocaleString('fa-IR');
