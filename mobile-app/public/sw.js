@@ -1,4 +1,4 @@
-const CACHE_NAME = 'karban-superapp-v4';
+const CACHE_NAME = 'karban-superapp-v5';
 /* مسیرهای نسبی نسبت به محل خود sw.js — در اپ زیر /app/ و در بیلد محلی زیر / کار می‌کند */
 const PRECACHE_ASSETS = [
   'manifest.webmanifest',
@@ -32,12 +32,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
+        if (response && response.status === 200 && response.type === 'basic' && !response.redirected) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() => caches.match(request).then((m) => m || Response.error()))
   );
 });

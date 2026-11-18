@@ -4,7 +4,7 @@
    • runtime stale-while-revalidate: تصاویر و صفحات HTML
    • network-first برای API و Supabase (همیشه تازه)
 */
-const VERSION = 'karban-v1-2026-10-06';
+const VERSION = 'karban-v1-2026-11-18';
 const PRECACHE = `${VERSION}-precache`;
 const RUNTIME = `${VERSION}-runtime`;
 
@@ -56,11 +56,11 @@ self.addEventListener('fetch', (e) => {
       caches.open(RUNTIME).then(async (cache) => {
         const cached = await cache.match(req);
         const fetchPromise = fetch(req).then((res) => {
-          if (res && res.status === 200) cache.put(req, res.clone());
+          if (res && res.status === 200 && !res.redirected) cache.put(req, res.clone());
           return res;
-        }).catch(() => cached);
+        }).catch(() => cached || Response.error());
         return cached || fetchPromise;
-      })
+      }).catch(() => Response.error())
     );
   }
 });

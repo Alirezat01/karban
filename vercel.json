@@ -21,6 +21,16 @@
       ],
       "destination": "https://karbanapp.ir/$1",
       "permanent": true
+    },
+    {
+      "source": "/superapp",
+      "destination": "/app",
+      "permanent": true
+    },
+    {
+      "source": "/superapp/:path*",
+      "destination": "/app/:path*",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -31,10 +41,6 @@
     {
       "source": "/app/:path*",
       "destination": "/app/index.html"
-    },
-    {
-      "source": "/superapp",
-      "destination": "/index.html"
     },
     {
       "source": "/sitemap.xml",
