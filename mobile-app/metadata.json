@@ -1,0 +1,6 @@
+{
+  "name": "Karban SuperApp — کاربان",
+  "description": "سوپراپ هوشمند حسابداری ابری، سامانه مودیان، قراردادساز، محاسبات قانونی ۱۴۰۵ و دستیار هوش مصنوعی مالیاتی و حقوقی ویژه اندروید، iOS و وب",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
