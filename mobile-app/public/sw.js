@@ -1,10 +1,11 @@
-const CACHE_NAME = 'karban-superapp-v3';
+const CACHE_NAME = 'karban-superapp-v4';
+/* مسیرهای نسبی نسبت به محل خود sw.js — در اپ زیر /app/ و در بیلد محلی زیر / کار می‌کند */
 const PRECACHE_ASSETS = [
-  '/manifest.webmanifest',
-  '/icon.svg',
-  '/pwa-192x192.png',
-  '/pwa-512x512.png',
-  '/apple-touch-icon.png',
+  'manifest.webmanifest',
+  'icon.svg',
+  'pwa-192x192.png',
+  'pwa-512x512.png',
+  'apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {

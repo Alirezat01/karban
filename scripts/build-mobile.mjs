@@ -22,7 +22,9 @@ if (!existsSync(resolve(appDir, 'package.json'))) {
 }
 
 console.log('[build-mobile] نصب وابستگی‌های اپ موبایل (package.json مستقل)…');
-execSync('npm install --no-audit --no-fund', { cwd: appDir, stdio: 'inherit' });
+/* --legacy-peer-deps: اپ با Bun ساخته شده و تعارض‌های جزئی peer (مثل esbuild
+   بین vite 8 و tsx) را npm باید نادیده بگیرد — وگرنه ERESOLVE می‌دهد. */
+execSync('npm install --no-audit --no-fund --legacy-peer-deps', { cwd: appDir, stdio: 'inherit' });
 
 console.log('[build-mobile] بیلد Vite اپ با base=/app/ → dist/app …');
 execSync(

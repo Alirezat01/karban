@@ -31,7 +31,8 @@ export function usePWAInstall() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      /* مسیر نسبی: در نسخه وب‌اپ زیر /app/ فقط سرویس‌ورکر خود اپ ثبت می‌شود، نه سرویس‌ورکر سایت اصلی */
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     }
 
     const isStandalone =
