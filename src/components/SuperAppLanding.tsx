@@ -498,12 +498,12 @@ export default function SuperAppLanding() {
               یک سوپراپ موبایل‌محور با ۵ بخش یکپارچه، ۲۷ قابلیت پیشرفته، ۱۳ ماشین‌حساب تخصصی ۱۴۰۵ و ۴ ابرقابلیت هوش مصنوعی. کار آفلاین، قفل بیومتریک و نصب فوری روی گوشی.
             </p>
             <div className="superapp-hero-cta">
-              <button type="button" className="superapp-btn superapp-btn-primary" onClick={() => openRequest('trial')}>
-                شروع تست {trialLabel} رایگان <ArrowLeft size={16} />
+              <a href={appUrl} className="superapp-btn superapp-btn-primary">
+                ورود به اپ کاربان <ArrowLeft size={16} />
+              </a>
+              <button type="button" className="superapp-btn superapp-btn-ghost" onClick={() => openRequest('trial')}>
+                شروع تست {trialLabel} رایگان
               </button>
-              <span className="superapp-btn superapp-btn-ghost">
-                <Smartphone size={16} /> اندروید · iOS · وب
-              </span>
             </div>
             <div className="superapp-hero-trust">
               {trustBadges.map((b, i) => {
@@ -723,12 +723,12 @@ export default function SuperAppLanding() {
             <h2>همین حالا کاربان را در جیب خود داشته باشید</h2>
             <p>تست رایگان {trialLabel} — بدون کارت بانکی. نصب در کمتر از ۳۰ ثانیه.</p>
             <div className="superapp-cta-buttons">
-              <button type="button" className="superapp-btn superapp-btn-primary" onClick={() => openRequest('trial')}>
-                شروع رایگان <ArrowLeft size={16} />
-              </button>
-              <a href={appUrl} className="superapp-btn superapp-btn-secondary">
-                <Smartphone size={16} /> ورود به نسخه وب‌اپ موبایل
+              <a href={appUrl} className="superapp-btn superapp-btn-primary">
+                ورود به اپ کاربان <ArrowLeft size={16} />
               </a>
+              <button type="button" className="superapp-btn superapp-btn-secondary" onClick={() => openRequest('trial')}>
+                <Smartphone size={16} /> شروع رایگان — ثبت درخواست
+              </button>
             </div>
           </div>
         </div>
