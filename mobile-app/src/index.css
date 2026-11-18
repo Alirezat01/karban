@@ -1,0 +1,297 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Vazirmatn FD', 'Vazirmatn', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'Vazirmatn FD', 'Vazirmatn', system-ui, sans-serif;
+
+    /* پالت دقیق الهام‌گرفته از طراحی مرجع: آبی کوبالت شاهانه (#1D4DF5)، یاسی-بنفش مه‌آلود (#EAEBFF) و کارت‌های سفید خالص */
+    --neobank-bg: #f4f5fb;
+    --neobank-backdrop: #e4e7f7;
+    --neobank-surface: #ffffff;
+    --neobank-surface-tint: #eff1fa;
+    --neobank-navy: #0f172a;
+    --neobank-accent: #1d4df5;
+    --neobank-accent-hover: #163ed4;
+    --neobank-gold: #f59e0b;
+    --neobank-gold-bright: #fbbf24;
+    --neobank-mint: #10b981;
+    --neobank-border: rgba(15, 23, 42, 0.06);
+    color-scheme: light;
+  }
+
+  html.dark {
+    /* حالت شب هماهنگ با آبی کوبالت نیمه‌شب */
+    --neobank-bg: #0a0e1b;
+    --neobank-backdrop: #050811;
+    --neobank-surface: #12182b;
+    --neobank-surface-tint: #1a223b;
+    --neobank-navy: #070a14;
+    --neobank-accent: #3b6bff;
+    --neobank-accent-hover: #2956e8;
+    --neobank-gold: #f59e0b;
+    --neobank-gold-bright: #fbbf24;
+    --neobank-mint: #34d399;
+    --neobank-border: rgba(148, 163, 184, 0.14);
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    font-family: var(--font-sans);
+    direction: rtl;
+    background-color: var(--neobank-backdrop);
+    font-feature-settings: "ss01" 1, "tnum" 1, "cv01" 1;
+    font-variant-numeric: tabular-nums;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 300ms cubic-bezier(0.22, 1, 0.36, 1),
+      color 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  header,
+  nav,
+  main,
+  section,
+  article,
+  aside,
+  footer,
+  div,
+  button,
+  input,
+  select,
+  textarea,
+  table,
+  tr,
+  td,
+  th {
+    transition-property: background-color, border-color, color, box-shadow;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  *,
+  *::before,
+  *::after,
+  input,
+  textarea,
+  select,
+  button,
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td,
+  svg,
+  text,
+  .font-mono,
+  .tabular-nums {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01" 1, "tnum" 1;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* هاله ملایم بالایی مشابه اسکرین‌شات مرجع */
+.frost-shell {
+  background: linear-gradient(180deg, #e7e9ff 0%, #f3f5fc 24%, #f4f5fb 100%);
+}
+
+html.dark .frost-shell {
+  background: linear-gradient(180deg, #131c3d 0%, #0d1328 24%, #0a0e1b 100%);
+}
+
+.frost-sheet-bg {
+  background: linear-gradient(180deg, #eaecff 0%, #f7f8fd 26%, #ffffff 100%);
+}
+
+html.dark .frost-sheet-bg {
+  background: linear-gradient(180deg, #162044 0%, #10162b 26%, #0d1222 100%);
+}
+
+/* کارت‌های سفید شفاف با سایه پراکنده بسیار تمیز */
+.paper-card,
+.crisp-card {
+  background-color: var(--neobank-surface);
+  border: 1px solid var(--neobank-border);
+  box-shadow: 0 12px 32px -14px rgba(24, 39, 95, 0.10);
+}
+
+html.dark .paper-card,
+html.dark .crisp-card {
+  box-shadow: 0 16px 38px -16px rgba(0, 0, 0, 0.55);
+}
+
+/* بنر آبی کوبالت اصلی */
+.cobalt-hero-banner {
+  background: linear-gradient(135deg, #2b5bff 0%, #1d4df5 55%, #1640d6 100%);
+  box-shadow: 0 14px 28px -10px rgba(29, 77, 245, 0.45);
+}
+
+/* دکمه اصلی کپسولی آبی کوبالت (Pill CTA) */
+.cobalt-pill-btn {
+  background-color: #1d4df5;
+  color: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 10px 24px -8px rgba(29, 77, 245, 0.48);
+}
+.cobalt-pill-btn:hover {
+  background-color: #163ed4;
+}
+
+html.dark .cobalt-pill-btn {
+  background-color: #3b6bff;
+  color: #ffffff;
+  box-shadow: 0 10px 24px -8px rgba(59, 107, 255, 0.45);
+}
+
+/* دکمه دایره‌ای هدر و ابزارها */
+.circle-icon-btn {
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: 0 6px 16px -8px rgba(24, 39, 95, 0.16);
+}
+
+html.dark .circle-icon-btn {
+  background-color: #1a223b;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.45);
+}
+
+/* چیپ‌های اطلاعاتی خاکستری-یاسی بسیار لطیف داخل کارت‌ها */
+.soft-chip {
+  background-color: var(--neobank-surface-tint);
+  color: #475569;
+  border-radius: 10px;
+}
+
+html.dark .soft-chip {
+  color: #cbd5e1;
+}
+
+/* انیمیشن ملایم و جذاب هشدار سررسیدهای مهم (تغییر رنگ ظریف + لرزش ملایم دوره‌ای) */
+@keyframes karbanUrgentColorPulse {
+  0%, 100% {
+    background-color: #fffbf0;
+    border-color: rgba(245, 158, 11, 0.45);
+    box-shadow: 0 10px 26px -12px rgba(245, 158, 11, 0.28);
+  }
+  50% {
+    background-color: #fff4f6;
+    border-color: rgba(244, 63, 94, 0.55);
+    box-shadow: 0 12px 28px -10px rgba(244, 63, 94, 0.30);
+  }
+}
+
+@keyframes karbanUrgentColorPulseDark {
+  0%, 100% {
+    background-color: rgba(120, 53, 15, 0.25);
+    border-color: rgba(245, 158, 11, 0.42);
+    box-shadow: 0 8px 22px -12px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    background-color: rgba(136, 19, 55, 0.30);
+    border-color: rgba(251, 113, 133, 0.52);
+    box-shadow: 0 10px 26px -10px rgba(244, 63, 94, 0.30);
+  }
+}
+
+@keyframes karbanSubtleNudge {
+  0%, 78%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  82% {
+    transform: translateX(-2px) rotate(-0.35deg);
+  }
+  86% {
+    transform: translateX(2px) rotate(0.35deg);
+  }
+  90% {
+    transform: translateX(-1.5px) rotate(-0.2deg);
+  }
+  94% {
+    transform: translateX(1.5px) rotate(0.2deg);
+  }
+}
+
+.urgent-deadline-card {
+  animation:
+    karbanUrgentColorPulse 2.8s ease-in-out infinite,
+    karbanSubtleNudge 4.4s ease-in-out infinite;
+}
+
+html.dark .urgent-deadline-card {
+  animation:
+    karbanUrgentColorPulseDark 2.8s ease-in-out infinite,
+    karbanSubtleNudge 4.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urgent-deadline-card,
+  html.dark .urgent-deadline-card {
+    animation: none !important;
+  }
+}
+
+/* کلاس کمکی برای نمایش اجباری اعداد با جداکننده سه‌رقمی و تراز ستونی */
+.fa-num-global {
+  font-family: 'Vazirmatn FD', 'Vazirmatn', sans-serif !important;
+  font-feature-settings: "ss01" 1, "tnum" 1 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+/* اسکرول افقی تمیز بدون نوار مزاحم برای نوار دسته‌بندی موبایل */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area padding */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0.75rem);
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body.karban-printing-modal > #root {
+    display: none !important;
+  }
+  .print-modal-portal {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+  .print-modal-container {
+    max-width: none !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+  .print-sheet-only {
+    transform: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+}

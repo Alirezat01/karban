@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="120" fill="#070B14"/>
+  <rect x="24" y="24" width="464" height="464" rx="98" stroke="#D4AF37" stroke-opacity="0.35" stroke-width="6"/>
+  <path d="M152 140H216V242L312 140H388L274 256L396 372H316L216 272V372H152V140Z" fill="url(#karbanGold)"/>
+  <circle cx="364" cy="148" r="24" fill="#10B981"/>
+  <defs>
+    <linearGradient id="karbanGold" x1="152" y1="140" x2="396" y2="372" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="0.5" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#B45309"/>
+    </linearGradient>
+  </defs>
+</svg>
