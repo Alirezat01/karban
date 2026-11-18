@@ -1,0 +1,292 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny all unspecified paths by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Pillar 3: Global Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'gaming.alireza.2024@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'active'
+      );
+    }
+
+    // --- Validation Blueprints (Pillar 2) ---
+    function isValidAdminMember(data, adminId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'status', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == adminId
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.role in ['super_admin', 'admin']
+        && data.status in ['active', 'pending', 'revoked']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminRequest(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'organizationTitle', 'reason', 'status', 'reviewedBy', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'organizationTitle', 'reason', 'status', 'reviewedBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.organizationTitle is string && data.organizationTitle.size() >= 1 && data.organizationTitle.size() <= 160
+        && data.reason is string && data.reason.size() <= 400
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.reviewedBy is string && data.reviewedBy.size() <= 128
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'fullName', 'businessName', 'plan', 'accessStatus', 'hasSampleData', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'fullName', 'businessName', 'taxId', 'phone', 'plan', 'accessStatus', 'hasSampleData', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120
+        && data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 160
+        && (!('taxId' in data) || (data.taxId is string && data.taxId.size() <= 32))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 24))
+        && data.plan in ['free', 'monthly', 'yearly', 'founder']
+        && data.accessStatus in ['trial', 'pending_approval', 'verified', 'suspended']
+        && data.hasSampleData is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBoundedList(val, maxLen) {
+      return val is list && val.size() <= maxLen;
+    }
+
+    function isValidUserWorkspace(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'invoices', 'checks', 'journal', 'partners', 'items',
+          'vaultDocs', 'bankAccounts', 'pettyCash', 'expenses', 'projects',
+          'fixedAssets', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'invoices', 'checks', 'journal', 'partners', 'items',
+          'vaultDocs', 'bankAccounts', 'pettyCash', 'expenses', 'projects',
+          'fixedAssets', 'signatureDataUrl', 'updatedAt'
+        ])
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && isValidBoundedList(data.invoices, 500)
+        && isValidBoundedList(data.checks, 500)
+        && isValidBoundedList(data.journal, 1000)
+        && isValidBoundedList(data.partners, 500)
+        && isValidBoundedList(data.items, 500)
+        && isValidBoundedList(data.vaultDocs, 500)
+        && isValidBoundedList(data.bankAccounts, 100)
+        && isValidBoundedList(data.pettyCash, 100)
+        && isValidBoundedList(data.expenses, 500)
+        && isValidBoundedList(data.projects, 200)
+        && isValidBoundedList(data.fixedAssets, 200)
+        && (!('signatureDataUrl' in data) || data.signatureDataUrl == null || (data.signatureDataUrl is string && data.signatureDataUrl.size() <= 200000))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPaymentRequest(data, requestId) {
+      return data.keys().hasAll([
+          'id', 'userId', 'userEmail', 'userName', 'businessName',
+          'requestedPlan', 'amountRial', 'trackingCode', 'status',
+          'reviewedBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'userId', 'userEmail', 'userName', 'businessName',
+          'requestedPlan', 'amountRial', 'trackingCode', 'bankRef',
+          'note', 'status', 'reviewedBy', 'reviewNote', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == requestId
+        && isValidId(data.userId)
+        && data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 200
+        && data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 120
+        && data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 160
+        && data.requestedPlan in ['monthly', 'yearly', 'founder']
+        && (data.amountRial is int || data.amountRial is float) && data.amountRial >= 0
+        && data.trackingCode is string && data.trackingCode.size() >= 3 && data.trackingCode.size() <= 64
+        && (!('bankRef' in data) || (data.bankRef is string && data.bankRef.size() <= 120))
+        && (!('note' in data) || (data.note is string && data.note.size() <= 300))
+        && data.status in ['pending', 'approved', 'rejected']
+        && data.reviewedBy is string && data.reviewedBy.size() <= 128
+        && (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 300))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection 1: Verified Admins Registry ---
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (isOwner(adminId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isVerifiedUser()
+        && isValidId(adminId)
+        && isValidAdminMember(incoming(), adminId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (isBootstrappedAdmin() && isOwner(adminId) && incoming().role == 'super_admin' && incoming().status == 'active')
+        );
+
+      allow update: if isVerifiedUser()
+        && isValidId(adminId)
+        && isValidAdminMember(incoming(), adminId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'role', 'status', 'updatedAt']);
+
+      allow delete: if isBootstrappedAdmin() && isValidId(adminId) && !isOwner(adminId);
+    }
+
+    // --- Collection 2: Pending Admin Registration Requests ---
+    match /admin_requests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && (existing().uid == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().uid == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidAdminRequest(incoming())
+        && incoming().uid == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().reviewedBy == ''
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidAdminRequest(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewedBy', 'updatedAt']);
+
+      allow delete: if isAdmin() && isValidId(requestId);
+    }
+
+    // --- Collection 3: Customer Profiles & Admin-Controlled Access ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().plan == 'free'
+        && incoming().accessStatus == 'trial'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['plan', 'accessStatus', 'updatedAt']))
+          || (
+            isOwner(userId)
+            && incoming().plan == existing().plan
+            && incoming().accessStatus == existing().accessStatus
+            && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'businessName', 'taxId', 'phone', 'hasSampleData', 'updatedAt'])
+          )
+        );
+
+      allow delete: if false;
+
+      // Subcollection: Private Per-User Accounting Workspace
+      match /workspace/{docId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(docId) && (isOwner(userId) || isAdmin());
+        allow list: if isSignedIn() && isValidId(userId) && (isOwner(userId) || isAdmin());
+
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isOwner(userId)
+          && isValidUserWorkspace(incoming(), userId)
+          && incoming().updatedAt == request.time;
+
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(docId)
+          && isOwner(userId)
+          && isValidUserWorkspace(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().updatedAt == request.time;
+
+        allow delete: if isVerifiedUser() && isValidId(userId) && isValidId(docId) && isOwner(userId);
+      }
+    }
+
+    // --- Collection 4: Subscription Payment Approval Queue ---
+    match /payment_requests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidPaymentRequest(incoming(), requestId)
+        && incoming().userId == request.auth.uid
+        && incoming().status == 'pending'
+        && incoming().reviewedBy == ''
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isVerifiedUser()
+        && isValidId(requestId)
+        && isValidPaymentRequest(incoming(), requestId)
+        && incoming().id == existing().id
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isAdmin()
+        && (existing().status == 'pending' || isAdmin())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'reviewedBy', 'reviewNote', 'updatedAt']);
+
+      allow delete: if false;
+    }
+  }
+}

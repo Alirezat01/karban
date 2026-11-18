@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, Variants } from 'motion/react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   Home,
   Receipt,
@@ -42,6 +44,10 @@ import {
   MoreHorizontal,
   ArrowUpLeft,
   FileSpreadsheet,
+  UserCheck,
+  UserPlus,
+  Building2,
+  Eraser,
 } from 'lucide-react';
 import {
   PlanType,
@@ -51,17 +57,6 @@ import {
   ExpenseRecord,
   ProjectRecord,
   FixedAssetRecord,
-  INITIAL_INVOICES,
-  INITIAL_CHECKS,
-  INITIAL_JOURNAL,
-  INITIAL_PARTNERS,
-  INITIAL_ITEMS,
-  INITIAL_VAULT_DOCS,
-  INITIAL_BANK_ACCOUNTS,
-  INITIAL_PETTY_CASH,
-  INITIAL_EXPENSES,
-  INITIAL_PROJECTS,
-  INITIAL_FIXED_ASSETS,
   MONTHLY_CASHFLOW_CHART,
   OfficialInvoice,
   SayadiCheck,
@@ -69,7 +64,6 @@ import {
   PartnerRecord,
   InventoryItem,
   VaultDocument,
-  formatRial,
   formatToman,
   formatFaNum,
   toFaDigits,
@@ -98,6 +92,19 @@ import { CashflowForecaster } from './components/CashflowForecaster';
 import { SubscriptionGuard } from './components/SubscriptionGuard';
 import { DailyTaxSavingTips } from './components/DailyTaxSavingTips';
 import { MobileBottomSheet } from './components/MobileBottomSheet';
+import { CustomerAuthModal } from './components/CustomerAuthModal';
+import { AdminRegistryView } from './components/AdminRegistryView';
+import {
+  auth,
+  db,
+  handleFirestoreError,
+  OperationType,
+  UserProfile,
+  UserWorkspacePayload,
+  createCleanWorkspace,
+  createDemoWorkspace,
+  sanitizeFirestoreId,
+} from './lib/firebase';
 import treasuryArt from './assets/images/paperpillar_treasury_art_1794563328986.jpg';
 
 type MainTab = 'dashboard' | 'accounting' | 'ai_studio' | 'contracts' | 'tools';
@@ -305,73 +312,312 @@ export default function App() {
     }
   }, [isDark]);
 
-  // Subscription Plan & Daily AI Quotas
-  const [plan, setPlan] = useState<PlanType>(() => {
-    return (localStorage.getItem('karban_plan') as PlanType) || 'yearly';
-  });
-  const [chatUsed, setChatUsed] = useState<number>(() => {
-    return Number(localStorage.getItem('karban_chat_used') || 1);
-  });
-  const [analyzeUsed, setAnalyzeUsed] = useState<number>(() => {
-    return Number(localStorage.getItem('karban_analyze_used') || 1);
+  // Clean Workspace First (v3): Always start every new user with empty personal ledgers unless explicitly toggled demo or registered
+  const STORE_VERSION_KEY = 'karban_store_version_v3';
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    return localStorage.getItem('karban_demo_mode') === '1';
   });
 
-  // Persistent Hybrid Store
-  const [invoices, setInvoices] = useState<OfficialInvoice[]>(() => {
-    const raw = localStorage.getItem('karban_invoices');
-    return raw ? JSON.parse(raw) : INITIAL_INVOICES;
+  function loadStoreSlice<T>(key: string, cleanFallback: T): T {
+    const versionReady = localStorage.getItem(STORE_VERSION_KEY) === '1';
+    const demoMode = localStorage.getItem('karban_demo_mode') === '1';
+    if (!versionReady && !demoMode) {
+      return cleanFallback;
+    }
+    const raw = localStorage.getItem(key);
+    if (!raw) return cleanFallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return cleanFallback;
+    }
+  }
+
+  useEffect(() => {
+    if (localStorage.getItem(STORE_VERSION_KEY) !== '1') {
+      localStorage.setItem(STORE_VERSION_KEY, '1');
+    }
+  }, []);
+
+  // Subscription Plan & Daily AI Quotas
+  const [plan, setPlan] = useState<PlanType>(() => {
+    const versionReady = localStorage.getItem(STORE_VERSION_KEY) === '1';
+    if (!versionReady && localStorage.getItem('karban_demo_mode') !== '1') {
+      return 'free';
+    }
+    return (localStorage.getItem('karban_plan') as PlanType) || 'free';
   });
-  const [checks, setChecks] = useState<SayadiCheck[]>(() => {
-    const raw = localStorage.getItem('karban_checks');
-    return raw ? JSON.parse(raw) : INITIAL_CHECKS;
+  const [chatUsed, setChatUsed] = useState<number>(() => {
+    return Number(localStorage.getItem('karban_chat_used') || 0);
   });
-  const [journal, setJournal] = useState<JournalEntry[]>(() => {
-    const raw = localStorage.getItem('karban_journal');
-    return raw ? JSON.parse(raw) : INITIAL_JOURNAL;
+  const [analyzeUsed, setAnalyzeUsed] = useState<number>(() => {
+    return Number(localStorage.getItem('karban_analyze_used') || 0);
   });
-  const [partners, setPartners] = useState<PartnerRecord[]>(() => {
-    const raw = localStorage.getItem('karban_partners');
-    return raw ? JSON.parse(raw) : INITIAL_PARTNERS;
-  });
-  const [items, setItems] = useState<InventoryItem[]>(() => {
-    const raw = localStorage.getItem('karban_items');
-    return raw ? JSON.parse(raw) : INITIAL_ITEMS;
-  });
-  const [vaultDocs, setVaultDocs] = useState<VaultDocument[]>(() => {
-    const raw = localStorage.getItem('karban_vault');
-    return raw ? JSON.parse(raw) : INITIAL_VAULT_DOCS;
-  });
-  const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>(() => {
-    const raw = localStorage.getItem('karban_bank_accounts');
-    return raw ? JSON.parse(raw) : INITIAL_BANK_ACCOUNTS;
-  });
-  const [pettyCash, setPettyCash] = useState<PettyCashFund[]>(() => {
-    const raw = localStorage.getItem('karban_petty_cash');
-    return raw ? JSON.parse(raw) : INITIAL_PETTY_CASH;
-  });
-  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() => {
-    const raw = localStorage.getItem('karban_expenses');
-    return raw ? JSON.parse(raw) : INITIAL_EXPENSES;
-  });
-  const [projects, setProjects] = useState<ProjectRecord[]>(() => {
-    const raw = localStorage.getItem('karban_projects');
-    return raw ? JSON.parse(raw) : INITIAL_PROJECTS;
-  });
-  const [fixedAssets, setFixedAssets] = useState<FixedAssetRecord[]>(() => {
-    const raw = localStorage.getItem('karban_assets');
-    return raw ? JSON.parse(raw) : INITIAL_FIXED_ASSETS;
-  });
+
+  // Persistent Hybrid Store (Clean empty workspace by default)
+  const [invoices, setInvoices] = useState<OfficialInvoice[]>(() =>
+    loadStoreSlice<OfficialInvoice[]>('karban_invoices', [])
+  );
+  const [checks, setChecks] = useState<SayadiCheck[]>(() =>
+    loadStoreSlice<SayadiCheck[]>('karban_checks', [])
+  );
+  const [journal, setJournal] = useState<JournalEntry[]>(() =>
+    loadStoreSlice<JournalEntry[]>('karban_journal', [])
+  );
+  const [partners, setPartners] = useState<PartnerRecord[]>(() =>
+    loadStoreSlice<PartnerRecord[]>('karban_partners', [])
+  );
+  const [items, setItems] = useState<InventoryItem[]>(() =>
+    loadStoreSlice<InventoryItem[]>('karban_items', [])
+  );
+  const [vaultDocs, setVaultDocs] = useState<VaultDocument[]>(() =>
+    loadStoreSlice<VaultDocument[]>('karban_vault', [])
+  );
+  const [bankAccounts, setBankAccounts] = useState<BankAccountRecord[]>(() =>
+    loadStoreSlice<BankAccountRecord[]>('karban_bank_accounts', [
+      {
+        id: 'acc-cash',
+        name: 'صندوق نقدی مرکزی کسب‌وکار',
+        kind: 'cash',
+        balanceRial: 0,
+      },
+    ])
+  );
+  const [pettyCash, setPettyCash] = useState<PettyCashFund[]>(() =>
+    loadStoreSlice<PettyCashFund[]>('karban_petty_cash', [])
+  );
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>(() =>
+    loadStoreSlice<ExpenseRecord[]>('karban_expenses', [])
+  );
+  const [projects, setProjects] = useState<ProjectRecord[]>(() =>
+    loadStoreSlice<ProjectRecord[]>('karban_projects', [])
+  );
+  const [fixedAssets, setFixedAssets] = useState<FixedAssetRecord[]>(() =>
+    loadStoreSlice<FixedAssetRecord[]>('karban_assets', [])
+  );
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(() => {
+    const versionReady = localStorage.getItem(STORE_VERSION_KEY) === '1';
+    if (!versionReady) return null;
     return localStorage.getItem('karban_signature');
   });
 
-  // Modals
+  // Firebase Auth, User Profile & Cloud Workspace State
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(() => auth.currentUser);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [hasLoadedCloudWorkspace, setHasLoadedCloudWorkspace] = useState(false);
+  const isSyncingFromRemoteRef = useRef(false);
+
+  // Modals & Admin Portal
   const [showSubModal, setShowSubModal] = useState(false);
   const [highlightedFeature, setHighlightedFeature] = useState<string | undefined>(undefined);
   const [showPwaModal, setShowPwaModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAdminRegistry, setShowAdminRegistry] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mode') === 'admin' || params.get('admin') === '1';
+    }
+    return false;
+  });
   const [supabaseStatus, setSupabaseStatus] = useState<'local_only' | 'connected' | 'error'>(() =>
     localStorage.getItem('karban_sb_url') ? 'connected' : 'local_only'
   );
+
+  // Switch local workspace between clean blank ledger and optional demo data
+  const handleLoadCleanLocalWorkspace = () => {
+    const clean = createCleanWorkspace('local');
+    setInvoices(clean.invoices);
+    setChecks(clean.checks);
+    setJournal(clean.journal);
+    setPartners(clean.partners);
+    setItems(clean.items);
+    setVaultDocs(clean.vaultDocs);
+    setBankAccounts(clean.bankAccounts);
+    setPettyCash(clean.pettyCash);
+    setExpenses(clean.expenses);
+    setProjects(clean.projects);
+    setFixedAssets(clean.fixedAssets);
+    setSignatureDataUrl(null);
+    localStorage.removeItem('karban_signature');
+    localStorage.removeItem('karban_demo_mode');
+    localStorage.setItem(STORE_VERSION_KEY, '1');
+    setIsDemoMode(false);
+  };
+
+  const handleLoadDemoLocalWorkspace = () => {
+    const demo = createDemoWorkspace('local');
+    setInvoices(demo.invoices);
+    setChecks(demo.checks);
+    setJournal(demo.journal);
+    setPartners(demo.partners);
+    setItems(demo.items);
+    setVaultDocs(demo.vaultDocs);
+    setBankAccounts(demo.bankAccounts);
+    setPettyCash(demo.pettyCash);
+    setExpenses(demo.expenses);
+    setProjects(demo.projects);
+    setFixedAssets(demo.fixedAssets);
+    localStorage.setItem('karban_demo_mode', '1');
+    localStorage.setItem(STORE_VERSION_KEY, '1');
+    setIsDemoMode(true);
+  };
+
+  // Subscribe to Firebase Auth state
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      if (!user) {
+        setUserProfile(null);
+        setHasLoadedCloudWorkspace(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Subscribe to authenticated user's profile & isolated cloud workspace
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    const userDocPath = `users/${firebaseUser.uid}`;
+    const unsubProfile = onSnapshot(
+      doc(db, 'users', firebaseUser.uid),
+      (snap) => {
+        if (snap.exists()) {
+          const profile = snap.data() as UserProfile;
+          setUserProfile(profile);
+          setPlan(profile.plan);
+        } else {
+          setUserProfile(null);
+          setShowAuthModal(true);
+        }
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.GET, userDocPath);
+      }
+    );
+
+    const wsPath = `users/${firebaseUser.uid}/workspace/main`;
+    const unsubWs = onSnapshot(
+      doc(db, 'users', firebaseUser.uid, 'workspace', 'main'),
+      (snap) => {
+        if (snap.exists()) {
+          const ws = snap.data() as UserWorkspacePayload;
+          isSyncingFromRemoteRef.current = true;
+          setInvoices(Array.isArray(ws.invoices) ? ws.invoices : []);
+          setChecks(Array.isArray(ws.checks) ? ws.checks : []);
+          setJournal(Array.isArray(ws.journal) ? ws.journal : []);
+          setPartners(Array.isArray(ws.partners) ? ws.partners : []);
+          setItems(Array.isArray(ws.items) ? ws.items : []);
+          setVaultDocs(Array.isArray(ws.vaultDocs) ? ws.vaultDocs : []);
+          setBankAccounts(Array.isArray(ws.bankAccounts) ? ws.bankAccounts : []);
+          setPettyCash(Array.isArray(ws.pettyCash) ? ws.pettyCash : []);
+          setExpenses(Array.isArray(ws.expenses) ? ws.expenses : []);
+          setProjects(Array.isArray(ws.projects) ? ws.projects : []);
+          setFixedAssets(Array.isArray(ws.fixedAssets) ? ws.fixedAssets : []);
+          setSignatureDataUrl(ws.signatureDataUrl || null);
+          setIsDemoMode(false);
+          setHasLoadedCloudWorkspace(true);
+          setTimeout(() => {
+            isSyncingFromRemoteRef.current = false;
+          }, 150);
+        } else {
+          setHasLoadedCloudWorkspace(true);
+        }
+      },
+      (err) => {
+        handleFirestoreError(err, OperationType.GET, wsPath);
+      }
+    );
+
+    return () => {
+      unsubProfile();
+      unsubWs();
+    };
+  }, [firebaseUser]);
+
+  // Debounced cloud sync whenever authenticated user edits their own workspace
+  useEffect(() => {
+    if (!firebaseUser || !userProfile || !hasLoadedCloudWorkspace || isSyncingFromRemoteRef.current) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const wsPath = `users/${firebaseUser.uid}/workspace/main`;
+      setDoc(doc(db, 'users', firebaseUser.uid, 'workspace', 'main'), {
+        ownerId: firebaseUser.uid,
+        invoices: invoices.slice(0, 500),
+        checks: checks.slice(0, 500),
+        journal: journal.slice(0, 1000),
+        partners: partners.slice(0, 500),
+        items: items.slice(0, 500),
+        vaultDocs: vaultDocs.slice(0, 500),
+        bankAccounts: bankAccounts.slice(0, 100),
+        pettyCash: pettyCash.slice(0, 100),
+        expenses: expenses.slice(0, 500),
+        projects: projects.slice(0, 200),
+        fixedAssets: fixedAssets.slice(0, 200),
+        signatureDataUrl: signatureDataUrl || null,
+        updatedAt: serverTimestamp(),
+      }).catch((err) => {
+        handleFirestoreError(err, OperationType.WRITE, wsPath);
+      });
+    }, 650);
+
+    return () => clearTimeout(timer);
+  }, [
+    firebaseUser,
+    userProfile,
+    hasLoadedCloudWorkspace,
+    invoices,
+    checks,
+    journal,
+    partners,
+    items,
+    vaultDocs,
+    bankAccounts,
+    pettyCash,
+    expenses,
+    projects,
+    fixedAssets,
+    signatureDataUrl,
+  ]);
+
+  const handleSubmitPaymentRequest = async (payload: {
+    requestedPlan: 'monthly' | 'yearly' | 'founder';
+    amountRial: number;
+    trackingCode: string;
+    bankRef: string;
+    note: string;
+  }) => {
+    if (!firebaseUser || !userProfile) {
+      setShowSubModal(false);
+      setShowAuthModal(true);
+      return;
+    }
+    const reqId = sanitizeFirestoreId(`pay_${firebaseUser.uid.slice(0, 10)}_${Date.now()}`);
+    const reqPath = `payment_requests/${reqId}`;
+    try {
+      await setDoc(doc(db, 'payment_requests', reqId), {
+        id: reqId,
+        userId: firebaseUser.uid,
+        userEmail: firebaseUser.email || userProfile.email,
+        userName: userProfile.fullName,
+        businessName: userProfile.businessName,
+        requestedPlan: payload.requestedPlan,
+        amountRial: payload.amountRial,
+        trackingCode: payload.trackingCode,
+        bankRef: payload.bankRef || '',
+        note: payload.note || '',
+        status: 'pending',
+        reviewedBy: '',
+        reviewNote: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, reqPath);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('karban_plan', plan);
@@ -458,8 +704,9 @@ export default function App() {
       .filter((c) => c.type === 'payable' && c.status === 'in_flow')
       .reduce((acc, c) => acc + c.amountRial, 0);
     const bankCashTotal = bankAccounts.reduce((acc, b) => acc + b.balanceRial, 0);
+    const pettyCashTotal = pettyCash.reduce((acc, p) => acc + p.balanceRial, 0);
     const expensesTotalRial = expenses.reduce((acc, ex) => acc + ex.amountRial, 0);
-    const netLiquidityRial = bankCashTotal + totalSalesRial - totalPurchasesRial - 485_000_000;
+    const netLiquidityRial = bankCashTotal + pettyCashTotal + totalSalesRial - totalPurchasesRial - expensesTotalRial;
     return {
       totalSalesRial,
       totalPurchasesRial,
@@ -468,13 +715,16 @@ export default function App() {
       expensesTotalRial,
       netLiquidityRial,
     };
-  }, [invoices, checks, bankAccounts, expenses]);
+  }, [invoices, checks, bankAccounts, pettyCash, expenses]);
 
   const complianceScore = useMemo(() => {
+    if (invoices.length === 0 && expenses.length === 0 && checks.length === 0) {
+      return 0;
+    }
     const validExpenses = expenses.filter((e) => e.taxStatus === 'valid').length;
-    const base = 76 + Math.min(12, invoices.length * 2) + Math.min(8, validExpenses * 2);
+    const base = 60 + Math.min(20, invoices.length * 4) + Math.min(18, validExpenses * 4);
     return Math.min(98, base);
-  }, [invoices.length, expenses]);
+  }, [invoices.length, expenses, checks.length]);
 
   const handleExportFullBackup = () => {
     const payload = {
@@ -525,8 +775,24 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const activeChartPoint = MONTHLY_CASHFLOW_CHART[selectedChartIdx] || MONTHLY_CASHFLOW_CHART[5];
-  const maxChartValue = Math.max(...MONTHLY_CASHFLOW_CHART.map((m) => m.incomeToman));
+  const hasFinancialActivity = invoices.length > 0 || expenses.length > 0;
+  const chartDataset = useMemo(() => {
+    if (isDemoMode) return MONTHLY_CASHFLOW_CHART;
+    const monthLabels = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور'];
+    if (!hasFinancialActivity) {
+      return monthLabels.map((month) => ({ month, incomeToman: 0, expenseToman: 0 }));
+    }
+    const salesToman = Math.round(metrics.totalSalesRial / 10);
+    const outToman = Math.round((metrics.totalPurchasesRial + metrics.expensesTotalRial) / 10);
+    return monthLabels.map((month, idx) =>
+      idx === 5
+        ? { month, incomeToman: salesToman, expenseToman: outToman }
+        : { month, incomeToman: 0, expenseToman: 0 }
+    );
+  }, [isDemoMode, hasFinancialActivity, metrics.totalSalesRial, metrics.totalPurchasesRial, metrics.expensesTotalRial]);
+
+  const activeChartPoint = chartDataset[selectedChartIdx] || chartDataset[5];
+  const maxChartValue = Math.max(1, ...chartDataset.map((m) => m.incomeToman));
 
   const urgentDeadlines = [
     {
@@ -677,8 +943,8 @@ export default function App() {
       title: 'صرفه‌جویی مالیاتی امروز',
       subtitle: 'تحلیل هوشمند معافیت‌های مالیاتی متناسب با فاکتورها',
       chips: ['کاهش مالیات', 'ماده ۱۳۱', 'هوشمند'],
-      metricText: formatToman(185_000_000),
-      countLabel: '۵ پیشنهاد فعال',
+      metricText: invoices.length > 0 ? formatToman(Math.round(metrics.totalSalesRial * 0.05)) : '۰ تومان',
+      countLabel: invoices.length > 0 ? `${formatFaNum(Math.min(5, invoices.length + 2))} پیشنهاد فعال` : 'بدون فاکتور ثبت‌شده',
       icon: ShieldCheck,
       urgent: true,
     },
@@ -702,7 +968,7 @@ export default function App() {
       subtitle: 'رصد دقیق تداخل سررسید چک‌های دریافتنی و پرداختنی',
       chips: ['نمودار ۹۰ روزه', 'جریان نقد', 'رادار کسری'],
       metricText: formatToman(metrics.netLiquidityRial),
-      countLabel: 'به‌روزرسانی لحظه‌ای',
+      countLabel: hasFinancialActivity ? 'به‌روزرسانی لحظه‌ای' : 'دفتر سفید فعال',
       icon: TrendingUp,
     },
     {
@@ -712,8 +978,10 @@ export default function App() {
       title: 'نمودار سود ماه‌های شمسی',
       subtitle: 'مقایسه ورودی نقد، مخارج جاری و حاشیه سود خالص',
       chips: ['۶ ماه اول', 'تومان/ریال', 'تحلیلی'],
-      metricText: `${formatFaNum(Math.round((activeChartPoint.incomeToman - activeChartPoint.expenseToman) / 1000))} هـ ت`,
-      countLabel: '۶ دوره شمسی',
+      metricText: hasFinancialActivity || isDemoMode
+        ? `${formatFaNum(Math.round((activeChartPoint.incomeToman - activeChartPoint.expenseToman) / 1000))} هـ ت`
+        : '۰ تومان',
+      countLabel: hasFinancialActivity || isDemoMode ? '۶ دوره شمسی' : 'بدون تراکنش ثبت‌شده',
       icon: BarChart3,
     },
     {
@@ -735,7 +1003,7 @@ export default function App() {
       subtitle: 'بررسی ردیف‌های بدهکار و بستانکار و تراز ۴ ستونی',
       chips: ['دوطرفه', 'تراز ۴ ستونی', 'دفاتر'],
       metricText: formatToman(metrics.totalSalesRial),
-      countLabel: 'تراز متوازن',
+      countLabel: journal.length > 0 ? 'تراز متوازن' : 'دفتر خالی',
       icon: BookOpen,
     },
     {
@@ -789,6 +1057,16 @@ export default function App() {
     );
   }, [urgentDeadlines, normalizedQuery]);
 
+  if (showAdminRegistry) {
+    return (
+      <div className="min-h-screen bg-[#E2E5F6] dark:bg-[#050811] flex justify-center">
+        <div className="w-full max-w-[430px] min-h-screen frost-shell text-[#0F172A] dark:text-[#F8FAFC] shadow-2xl border-x border-white/70 dark:border-slate-800/70 relative flex flex-col">
+          <AdminRegistryView onBackToApp={() => setShowAdminRegistry(false)} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#E2E5F6] dark:bg-[#050811] flex justify-center">
       {/* STRICT MOBILE-ONLY APP CANVAS (max-w-[430px] centered smartphone viewport) */}
@@ -811,7 +1089,7 @@ export default function App() {
             />
           </button>
 
-          {/* Center Slot: Workspace Location / Active Plan Subtitle */}
+          {/* Center Slot: Personalized Business Name & Plan */}
           <button
             type="button"
             onClick={() => handleOpenUpgrade()}
@@ -823,50 +1101,111 @@ export default function App() {
             </div>
             <div className="text-[12.5px] font-black text-[#0F172A] dark:text-white flex items-center justify-center gap-1 truncate mt-0.5">
               <Crown className="w-3.5 h-3.5 text-[#1D4DF5] dark:text-[#608BFF] shrink-0" />
-              <span className="truncate">خزانه‌داری و مودیان ۱۴۰۵</span>
+              <span className="truncate">
+                {userProfile ? userProfile.businessName : 'خزانه‌داری و مودیان ۱۴۰۵'}
+              </span>
             </div>
           </button>
 
           {/* Left Slot: Compact Circular Icon Buttons */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowAuthModal(true)}
+              data-testid="header-account-btn"
+              aria-label="حساب کاربری و ثبت‌نام کسب‌وکار"
+              title={userProfile ? userProfile.businessName : 'ثبت‌نام و حساب اختصاصی'}
+              className={`circle-icon-btn w-9 h-9 flex items-center justify-center active:scale-95 transition-transform ${
+                userProfile
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-[#1D4DF5] dark:text-[#608BFF]'
+              }`}
+            >
+              {userProfile ? <UserCheck className="w-[16px] h-[16px]" /> : <UserPlus className="w-[16px] h-[16px]" />}
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveSheet('calendar')}
               aria-label="اعلان‌های سررسید مالیاتی"
-              className="circle-icon-btn relative w-10 h-10 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 transition-transform"
+              className="circle-icon-btn relative w-9 h-9 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 transition-transform"
             >
-              <Bell className="w-[17px] h-[17px]" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#1A223B]" />
+              <Bell className="w-[16px] h-[16px]" />
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#1A223B]" />
             </button>
 
             <button
               type="button"
               onClick={() => setShowVoiceAssistant(true)}
               aria-label="دستیار صوتی هوشمند"
-              className="circle-icon-btn w-10 h-10 flex items-center justify-center text-[#1D4DF5] dark:text-[#608BFF] active:scale-95 transition-transform"
+              className="circle-icon-btn w-9 h-9 flex items-center justify-center text-[#1D4DF5] dark:text-[#608BFF] active:scale-95 transition-transform"
             >
-              <Mic className="w-[17px] h-[17px]" />
+              <Mic className="w-[16px] h-[16px]" />
             </button>
 
             <button
               type="button"
               onClick={() => setIsDark((d) => !d)}
               aria-label="تغییر تم روشن و شب"
-              className="circle-icon-btn w-10 h-10 flex items-center justify-center text-slate-700 dark:text-amber-300 active:scale-95 transition-transform"
+              className="circle-icon-btn w-9 h-9 flex items-center justify-center text-slate-700 dark:text-amber-300 active:scale-95 transition-transform"
             >
-              {isDark ? <Sun className="w-[17px] h-[17px]" /> : <Moon className="w-[17px] h-[17px]" />}
+              {isDark ? <Sun className="w-[16px] h-[16px]" /> : <Moon className="w-[16px] h-[16px]" />}
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSheet('settings')}
               aria-label="تنظیمات، اشتراک و پشتیبان ابری"
-              className="circle-icon-btn w-10 h-10 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 transition-transform"
+              className="circle-icon-btn w-9 h-9 flex items-center justify-center text-slate-700 dark:text-slate-200 active:scale-95 transition-transform"
             >
-              <SlidersHorizontal className="w-[17px] h-[17px]" />
+              <SlidersHorizontal className="w-[16px] h-[16px]" />
             </button>
           </div>
         </header>
+
+        {/* WORKSPACE OWNERSHIP / SUSPENSION / ONBOARDING STRIP */}
+        {userProfile?.accessStatus === 'suspended' ? (
+          <div className="no-print mx-4 mt-1.5 px-3.5 py-2 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11px] font-black text-center">
+            حساب شما موقتاً توسط مدیر سامانه تعلیق شده است — برای بررسی با پشتیبانی تماس بگیرید.
+          </div>
+        ) : !userProfile ? (
+          <div
+            data-testid="guest-preview-banner"
+            className="no-print mx-4 mt-1.5 px-3 py-2 rounded-2xl bg-white/85 dark:bg-[#18213D] border border-blue-200/70 dark:border-blue-800/50 flex items-center justify-between gap-2 text-[10.5px]"
+          >
+            <span className="font-bold text-slate-600 dark:text-slate-300 truncate">
+              {isDemoMode
+                ? 'در حال نمایش داده‌های نمونه — برای پاکسازی «دفتر سفید» بزنید'
+                : 'دفتر سفید شخصی آماده است — برای ذخیره ابری ثبت‌نام کنید'}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              {isDemoMode ? (
+                <button
+                  type="button"
+                  onClick={handleLoadCleanLocalWorkspace}
+                  className="px-2.5 py-1 rounded-full bg-[#EFF1FA] dark:bg-[#232F54] text-[#0F172A] dark:text-white font-extrabold"
+                >
+                  دفتر سفید
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleLoadDemoLocalWorkspace}
+                  className="px-2.5 py-1 rounded-full bg-[#EFF1FA] dark:bg-[#232F54] text-slate-600 dark:text-slate-300 font-extrabold"
+                >
+                  داده نمونه
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(true)}
+                className="px-2.5 py-1 rounded-full bg-[#1D4DF5] text-white font-black"
+              >
+                ثبت‌نام
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* COMPACT 10-DAY TRIAL BANNER (WHEN FREE PLAN) */}
         {plan === 'free' && (
@@ -946,12 +1285,12 @@ export default function App() {
 
                       <div className="mt-1.5 inline-flex items-center gap-1 self-start px-2.5 py-1 rounded-full bg-[#EEF2FF] dark:bg-[#1D2B57] text-[#1D4DF5] dark:text-[#789BFF] text-[10px] font-extrabold">
                         <Crown className="w-3 h-3 shrink-0" />
-                        <span>انضباط مالی برتر</span>
+                        <span>{hasFinancialActivity || isDemoMode ? 'انضباط مالی فعال' : 'آماده ثبت اولین سند'}</span>
                       </div>
 
                       <SegmentedRadialGauge
                         percent={complianceScore}
-                        label="آمادگی مودیان"
+                        label={hasFinancialActivity || isDemoMode ? 'آمادگی مودیان' : 'دفتر خالی شخصی'}
                       />
                     </div>
 
@@ -987,11 +1326,21 @@ export default function App() {
                           <div className="flex items-center gap-1.5">
                             <Star className="w-5 h-5 fill-[#F59E0B] text-[#F59E0B] shrink-0" />
                             <span className="text-[19px] font-black text-[#0F172A] dark:text-white tabular-nums">
-                              {toFaDigits('4.8')}
+                              {checks.length === 0
+                                ? '۰٫۰'
+                                : toFaDigits(
+                                    (
+                                      (checks.filter((c) => c.sayadiColor === 'white').length /
+                                        checks.length) *
+                                      5
+                                    ).toFixed(1)
+                                  )}
                             </span>
                           </div>
                           <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                            سفید
+                            {checks.length === 0
+                              ? 'خالی'
+                              : `${formatFaNum(checks.filter((c) => c.sayadiColor === 'white').length)} سفید`}
                           </span>
                         </div>
                       </button>
@@ -1656,8 +2005,8 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-6 gap-1.5 items-end h-44 pt-4 px-1 border-b border-slate-100 dark:border-slate-800">
-              {MONTHLY_CASHFLOW_CHART.map((item, idx) => {
-                const profitToman = item.incomeToman - item.expenseToman;
+              {chartDataset.map((item, idx) => {
+                const profitToman = Math.max(0, item.incomeToman - item.expenseToman);
                 const inflowH = Math.round((item.incomeToman / maxChartValue) * 100);
                 const profitH = Math.round((profitToman / maxChartValue) * 100);
                 const isSelected = idx === selectedChartIdx;
@@ -1689,6 +2038,11 @@ export default function App() {
                 );
               })}
             </div>
+            {!hasFinancialActivity && !isDemoMode && (
+              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 text-center">
+                هنوز فاکتور یا هزینه‌ای ثبت نکرده‌اید؛ با ثبت اولین سند، نمودار سود ماهانه ترسیم می‌شود.
+              </div>
+            )}
           </div>
         </MobileBottomSheet>
 
@@ -1700,33 +2054,39 @@ export default function App() {
           subtitle="وضعیت رنگ صیاد و تاریخ سررسید شمسی"
         >
           <div className="space-y-3">
-            {checks.map((chk) => (
-              <div
-                key={chk.id}
-                className="crisp-card p-4 rounded-[22px] space-y-2.5"
-              >
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="font-extrabold text-[#1D4DF5] dark:text-[#608BFF]">
-                    {chk.bankName} ({chk.type === 'receivable' ? 'دریافتنی' : 'پرداختنی'})
-                  </span>
-                  <span className="font-mono font-bold text-slate-600 dark:text-slate-300 tabular-nums soft-chip px-2 py-0.5">
-                    {formatSayadiFa(chk.sayadiId)}
-                  </span>
-                </div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate">{chk.partyName}</span>
-                  <strong className="text-sm font-black text-[#0F172A] dark:text-white tabular-nums shrink-0">
-                    {formatToman(chk.amountRial)}
-                  </strong>
-                </div>
-                <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 tabular-nums pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <span>سررسید: {toFaDigits(chk.dueDateJalali)}</span>
-                  <span className={chk.sayadiColor === 'white' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
-                    {chk.sayadiColor === 'white' ? 'وضعیت سفید صیادی' : 'نیاز به بررسی رنگ'}
-                  </span>
-                </div>
+            {checks.length === 0 ? (
+              <div className="crisp-card p-5 rounded-[22px] text-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                هنوز هیچ چک صیادی در حساب شما ثبت نشده است.
               </div>
-            ))}
+            ) : (
+              checks.map((chk) => (
+                <div
+                  key={chk.id}
+                  className="crisp-card p-4 rounded-[22px] space-y-2.5"
+                >
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-extrabold text-[#1D4DF5] dark:text-[#608BFF]">
+                      {chk.bankName} ({chk.type === 'receivable' ? 'دریافتنی' : 'پرداختنی'})
+                    </span>
+                    <span className="font-mono font-bold text-slate-600 dark:text-slate-300 tabular-nums soft-chip px-2 py-0.5">
+                      {formatSayadiFa(chk.sayadiId)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate">{chk.partyName}</span>
+                    <strong className="text-sm font-black text-[#0F172A] dark:text-white tabular-nums shrink-0">
+                      {formatToman(chk.amountRial)}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400 tabular-nums pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span>سررسید: {toFaDigits(chk.dueDateJalali)}</span>
+                    <span className={chk.sayadiColor === 'white' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
+                      {chk.sayadiColor === 'white' ? 'وضعیت سفید صیادی' : 'نیاز به بررسی رنگ'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
             <button
               type="button"
               onClick={() => {
@@ -1749,27 +2109,33 @@ export default function App() {
           subtitle="مشاهده آخرین ردیف‌های بدهکار و بستانکار"
         >
           <div className="space-y-2.5">
-            {journal.map((j) => (
-              <div
-                key={j.id}
-                className="crisp-card p-3.5 rounded-[20px] space-y-1.5 text-xs"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-black text-[#0F172A] dark:text-white truncate">
-                    سند {formatFaNum(j.docNumber)} — {j.description}
-                  </span>
-                  <span className="font-black text-[#1D4DF5] dark:text-[#608BFF] tabular-nums shrink-0">
-                    {formatToman(j.amountRial)}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  بدهکار: {j.debitAccount} · بستانکار: {j.creditAccount}
-                </div>
-                <div className="text-[10px] text-slate-400 tabular-nums">
-                  تاریخ: {toFaDigits(j.dateJalali)}
-                </div>
+            {journal.length === 0 ? (
+              <div className="crisp-card p-5 rounded-[22px] text-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                هنوز هیچ سند حسابداری در دفتر روزنامه شما ثبت نشده است.
               </div>
-            ))}
+            ) : (
+              journal.map((j) => (
+                <div
+                  key={j.id}
+                  className="crisp-card p-3.5 rounded-[20px] space-y-1.5 text-xs"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-[#0F172A] dark:text-white truncate">
+                      سند {formatFaNum(j.docNumber)} — {j.description}
+                    </span>
+                    <span className="font-black text-[#1D4DF5] dark:text-[#608BFF] tabular-nums shrink-0">
+                      {formatToman(j.amountRial)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    بدهکار: {j.debitAccount} · بستانکار: {j.creditAccount}
+                  </div>
+                  <div className="text-[10px] text-slate-400 tabular-nums">
+                    تاریخ: {toFaDigits(j.dateJalali)}
+                  </div>
+                </div>
+              ))
+            )}
             <button
               type="button"
               onClick={() => {
@@ -1922,6 +2288,55 @@ export default function App() {
               </div>
             </div>
 
+            {/* Account, Clean Workspace & Admin Portal Actions */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSheet(null);
+                setShowAuthModal(true);
+              }}
+              className="w-full min-h-[48px] px-4 py-3 rounded-[20px] crisp-card flex items-center justify-between font-extrabold"
+            >
+              <span className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#1D4DF5] dark:text-[#608BFF]" />
+                {userProfile
+                  ? `پرونده ابری: ${userProfile.businessName}`
+                  : 'ثبت‌نام / ورود اختصاصی کسب‌وکار (فضای ابری مجزا)'}
+              </span>
+              <ChevronLeft className="w-4 h-4 text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                handleLoadCleanLocalWorkspace();
+                setActiveSheet(null);
+              }}
+              className="w-full min-h-[48px] px-4 py-3 rounded-[20px] crisp-card flex items-center justify-between font-extrabold"
+            >
+              <span className="flex items-center gap-2">
+                <Eraser className="w-4 h-4 text-amber-500" />
+                پاکسازی مقادیر پیش‌فرض و شروع دفتر سفید خالی
+              </span>
+              <ChevronLeft className="w-4 h-4 text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              data-testid="open-admin-registry-btn"
+              onClick={() => {
+                setActiveSheet(null);
+                setShowAdminRegistry(true);
+              }}
+              className="w-full min-h-[48px] px-4 py-3 rounded-[20px] crisp-card border-[#1D4DF5]/25 flex items-center justify-between font-extrabold"
+            >
+              <span className="flex items-center gap-2 text-[#1D4DF5] dark:text-[#608BFF]">
+                <ShieldCheck className="w-4 h-4" />
+                پنل مجزای ادمین (تأیید کاربران و فیش‌های پرداختی)
+              </span>
+              <ChevronLeft className="w-4 h-4 text-[#1D4DF5]" />
+            </button>
+
             {/* Settings Action Buttons */}
             <button
               type="button"
@@ -1968,12 +2383,25 @@ export default function App() {
         </MobileBottomSheet>
 
         {/* CORE MODALS */}
+        <CustomerAuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          firebaseUser={firebaseUser}
+          userProfile={userProfile}
+          onOpenAdminRegistry={() => setShowAdminRegistry(true)}
+          onLoadCleanLocalWorkspace={handleLoadCleanLocalWorkspace}
+          onLoadDemoLocalWorkspace={handleLoadDemoLocalWorkspace}
+        />
+
         <SubscriptionModal
           isOpen={showSubModal}
           onClose={() => setShowSubModal(false)}
           currentPlan={plan}
           onSelectPlan={(nextPlan) => setPlan(nextPlan)}
           highlightedFeatureTitle={highlightedFeature}
+          isAuthenticated={Boolean(firebaseUser && userProfile)}
+          onOpenAuthModal={() => setShowAuthModal(true)}
+          onSubmitPaymentRequest={handleSubmitPaymentRequest}
         />
 
         <PWAAndNativeModal
