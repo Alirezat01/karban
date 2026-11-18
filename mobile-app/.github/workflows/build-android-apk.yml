@@ -1,0 +1,52 @@
+name: Build Android APK (Karban Mobile)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies & build web bundle
+        run: |
+          npm ci
+          npm run build
+
+      - name: Initialize & sync Capacitor Android project
+        run: |
+          npm install @capacitor/cli @capacitor/android --no-save
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build Debug APK with Gradle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload Karban Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: karban-mobile-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
