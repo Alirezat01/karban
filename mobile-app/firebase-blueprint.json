@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "AdminMember": {
+      "title": "AdminMember",
+      "description": "Verified administrator account granted access to approve user plans and payment requests.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["super_admin", "admin"] },
+        "status": { "type": "string", "enum": ["active", "pending", "revoked"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "status", "createdAt", "updatedAt"]
+    },
+    "AdminRegistrationRequest": {
+      "title": "AdminRegistrationRequest",
+      "description": "Pending request submitted by a signed-in user requesting administrator privileges.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "organizationTitle": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "reason": { "type": "string", "maxLength": 400 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reviewedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "organizationTitle", "reason", "status", "reviewedBy", "createdAt", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered customer account and business profile with admin-controlled subscription access.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "taxId": { "type": "string", "maxLength": 32 },
+        "phone": { "type": "string", "maxLength": 24 },
+        "plan": { "type": "string", "enum": ["free", "monthly", "yearly", "founder"] },
+        "accessStatus": { "type": "string", "enum": ["trial", "pending_approval", "verified", "suspended"] },
+        "hasSampleData": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "fullName", "businessName", "plan", "accessStatus", "hasSampleData", "createdAt", "updatedAt"]
+    },
+    "UserWorkspace": {
+      "title": "UserWorkspace",
+      "description": "Isolated per-user accounting, Moadian invoices, checks, journal, vault, and signature state.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "invoices": { "type": "array" },
+        "checks": { "type": "array" },
+        "journal": { "type": "array" },
+        "partners": { "type": "array" },
+        "items": { "type": "array" },
+        "vaultDocs": { "type": "array" },
+        "bankAccounts": { "type": "array" },
+        "pettyCash": { "type": "array" },
+        "expenses": { "type": "array" },
+        "projects": { "type": "array" },
+        "fixedAssets": { "type": "array" },
+        "signatureDataUrl": { "type": "string", "maxLength": 200000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "invoices", "checks", "journal", "partners", "items", "vaultDocs", "bankAccounts", "pettyCash", "expenses", "projects", "fixedAssets", "updatedAt"]
+    },
+    "PaymentApprovalRequest": {
+      "title": "PaymentApprovalRequest",
+      "description": "Customer subscription payment submission awaiting administrator verification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userEmail": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "userName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "requestedPlan": { "type": "string", "enum": ["monthly", "yearly", "founder"] },
+        "amountRial": { "type": "number" },
+        "trackingCode": { "type": "string", "minLength": 3, "maxLength": 64 },
+        "bankRef": { "type": "string", "maxLength": 120 },
+        "note": { "type": "string", "maxLength": 300 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reviewedBy": { "type": "string", "maxLength": 128 },
+        "reviewNote": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "userEmail", "userName", "businessName", "requestedPlan", "amountRial", "trackingCode", "status", "reviewedBy", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminMember" },
+      "description": "Verified administrator accounts allowed to review payment requests and manage user access."
+    },
+    "/admin_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/AdminRegistrationRequest" },
+      "description": "Pending administrator registration requests awaiting super-admin verification."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private customer profiles and admin-enforced subscription/access status."
+    },
+    "/users/{userId}/workspace/{docId}": {
+      "schema": { "$ref": "#/entities/UserWorkspace" },
+      "description": "Per-user isolated business accounting workspace state."
+    },
+    "/payment_requests/{requestId}": {
+      "schema": { "$ref": "#/entities/PaymentApprovalRequest" },
+      "description": "Subscription payment receipts submitted by customers for admin approval."
+    }
+  }
+}

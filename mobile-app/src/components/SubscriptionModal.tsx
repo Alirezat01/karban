@@ -25,6 +25,15 @@ interface SubscriptionModalProps {
   currentPlan: PlanType;
   onSelectPlan: (plan: PlanType) => void;
   highlightedFeatureTitle?: string;
+  isAuthenticated?: boolean;
+  onOpenAuthModal?: () => void;
+  onSubmitPaymentRequest?: (payload: {
+    requestedPlan: 'monthly' | 'yearly' | 'founder';
+    amountRial: number;
+    trackingCode: string;
+    bankRef: string;
+    note: string;
+  }) => Promise<void>;
 }
 
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
@@ -33,11 +42,19 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   currentPlan,
   onSelectPlan,
   highlightedFeatureTitle,
+  isAuthenticated = false,
+  onOpenAuthModal,
+  onSubmitPaymentRequest,
 }) => {
   const [discountCode, setDiscountCode] = useState('');
   const [discountApplied, setDiscountApplied] = useState(false);
   const [purchaseToast, setPurchaseToast] = useState<string | null>(null);
   const [trial, setTrial] = useState(() => getTrialStatus());
+  const [pendingPlanTarget, setPendingPlanTarget] = useState<'monthly' | 'yearly' | 'founder' | null>(null);
+  const [trackingCode, setTrackingCode] = useState('');
+  const [bankRef, setBankRef] = useState('کارت به کارت / شبا بانکی');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [submittingPayment, setSubmittingPayment] = useState(false);
 
   if (!isOpen) return null;
 
@@ -54,12 +71,49 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   };
 
   const handleActivatePlan = (plan: PlanType, label: string) => {
+    if (plan !== 'free' && onSubmitPaymentRequest) {
+      if (!isAuthenticated) {
+        onClose();
+        onOpenAuthModal?.();
+        return;
+      }
+      setPendingPlanTarget(plan);
+      return;
+    }
     onSelectPlan(plan);
     setPurchaseToast(`اشتراک «${label}» با موفقیت فعال شد و تمام ۲۱ قابلیت پیشرفته باز شدند.`);
     setTimeout(() => {
       setPurchaseToast(null);
       onClose();
     }, 1200);
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingPlanTarget || !onSubmitPaymentRequest || submittingPayment) return;
+    if (trackingCode.trim().length < 3) return;
+    setSubmittingPayment(true);
+    const amount =
+      pendingPlanTarget === 'monthly'
+        ? monthlyPriceRial
+        : pendingPlanTarget === 'yearly'
+        ? yearlyPriceRial
+        : founderPriceRial;
+    try {
+      await onSubmitPaymentRequest({
+        requestedPlan: pendingPlanTarget,
+        amountRial: amount,
+        trackingCode: trackingCode.trim(),
+        bankRef: bankRef.trim(),
+        note: paymentNote.trim(),
+      });
+      setPurchaseToast('درخواست پرداخت شما ثبت شد و پس از تأیید ادمین، اشتراک فوراً فعال می‌شود.');
+      setPendingPlanTarget(null);
+      setTrackingCode('');
+      setPaymentNote('');
+    } finally {
+      setSubmittingPayment(false);
+    }
   };
 
   const handleResetTrial = () => {
@@ -157,6 +211,69 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             <div className="p-3.5 rounded-[20px] bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-300 text-xs font-extrabold text-center">
               {purchaseToast}
             </div>
+          )}
+
+          {pendingPlanTarget && (
+            <form
+              data-testid="payment-request-form"
+              onSubmit={handlePaymentSubmit}
+              className="crisp-card p-4 rounded-[22px] border border-[#1D4DF5]/40 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-black text-[#0F172A] dark:text-white">
+                  ثبت رسید و کد پیگیری جهت تأیید ادمین
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingPlanTarget(null)}
+                  className="text-[11px] font-bold text-slate-400"
+                >
+                  انصراف
+                </button>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                مبلغ قابل واریز:{' '}
+                <strong className="text-[#1D4DF5] dark:text-[#608BFF] tabular-nums">
+                  {formatToman(
+                    pendingPlanTarget === 'monthly'
+                      ? monthlyPriceRial
+                      : pendingPlanTarget === 'yearly'
+                      ? yearlyPriceRial
+                      : founderPriceRial
+                  )}
+                </strong>
+              </div>
+              <input
+                type="text"
+                required
+                minLength={3}
+                value={trackingCode}
+                onChange={(e) => setTrackingCode(e.target.value)}
+                placeholder="شماره پیگیری / ارجاع بانکی (حداقل ۳ کاراکتر) *"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F4F6FD] dark:bg-[#18213D] border border-slate-200/80 dark:border-slate-700/60 text-xs font-bold"
+              />
+              <input
+                type="text"
+                value={bankRef}
+                onChange={(e) => setBankRef(e.target.value)}
+                placeholder="نام بانک یا روش واریز"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F4F6FD] dark:bg-[#18213D] border border-slate-200/80 dark:border-slate-700/60 text-xs font-bold"
+              />
+              <input
+                type="text"
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="توضیحات تکمیلی برای ادمین (اختیاری)"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F4F6FD] dark:bg-[#18213D] border border-slate-200/80 dark:border-slate-700/60 text-xs font-bold"
+              />
+              <button
+                type="submit"
+                disabled={submittingPayment}
+                className="cobalt-pill-btn w-full min-h-[42px] text-xs font-black"
+              >
+                {submittingPayment ? 'در حال ارسال...' : 'ارسال درخواست تأیید پرداخت به ادمین'}
+              </button>
+            </form>
           )}
 
           {/* Mobile Stacked Pricing Cards */}
