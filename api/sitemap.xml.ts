@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import routeMeta from '../src/data/route-meta.json';
-import checklists from '../src/data/checklists.json';
-import lawsData from '../src/data/laws.json';
+import routeMeta from '../src/data/route-meta.json' with { type: 'json' };
+import checklists from '../src/data/checklists.json' with { type: 'json' };
+import lawsData from '../src/data/laws.json' with { type: 'json' };
 
 const BASE = 'https://karbanapp.ir';
 
@@ -86,7 +86,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
         console.error(`[sitemap] contracts select(${select}) failed:`, error.message);
         continue;
       }
-      return ((data || []) as Record<string, unknown>[]) /* اگر ستون باشد: فقط منتشرشده */
+      return ((data || []) as unknown as Record<string, unknown>[]) /* اگر ستون باشد: فقط منتشرشده */
         .filter((r) => r.is_published === undefined ? true : r.is_published !== false)
         .map((r) => ({ path: `/قراردادها/${r.id}`, priority: '0.8', lastmod: day(r.updated_at) || day(r.created_at) }));
     }
@@ -101,7 +101,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
         console.error(`[sitemap] articles select(${select}) failed:`, error.message);
         continue;
       }
-      return ((data || []) as Record<string, unknown>[]).map((r) => ({
+      return ((data || []) as unknown as Record<string, unknown>[]).map((r) => ({
         path: r.title ? articleSlugPath(String(r.title), r.id as string) : `/دانشنامه/مقاله/${r.id}`,
         priority: '0.7',
         lastmod: day(r.updated_at) || day(r.created_at),
@@ -117,7 +117,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
         console.error(`[sitemap] admin_requests select(${select}) failed:`, error.message);
         continue;
       }
-      return ((data || []) as Record<string, unknown>[]).map((r) => ({
+      return ((data || []) as unknown as Record<string, unknown>[]).map((r) => ({
         path: `/درخواست‌های-اداری/${r.id}`,
         priority: '0.6',
         lastmod: day(r.updated_at) || day(r.created_at),
