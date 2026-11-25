@@ -1,6 +1,6 @@
 {
-  "runId": "011463",
-  "at": "2026-11-21T12:25:44.639Z",
+  "runId": "011ad1",
+  "at": "2026-11-25T14:08:03.903Z",
   "results": [
     {
       "id": "SETUP",
@@ -155,7 +155,7 @@
       "id": "MD5",
       "name": "حذف طرف‌حساب دارای گردش → رد با پیام غیرفعال‌سازی",
       "status": "PASS",
-      "detail": "طرف‌حساب «MD-011463-باگردش» گردش حسابداری دارد (1 رکورد وابسته) — حذف ",
+      "detail": "طرف‌حساب «MD-011ad1-باگردش» گردش حسابداری دارد (1 رکورد وابسته) — حذف ",
       "evidence": null
     },
     {
@@ -348,7 +348,7 @@
       "status": "PASS",
       "detail": "سند آینه‌ای: ساخته شد · موجودی: 50 → 48",
       "evidence": {
-        "journalId": "a7c2b1aa-2ef0-453b-9c56-efe42d2dcc1f"
+        "journalId": "b4cbab40-fe04-4b3a-b764-50d6fa2c9ccb"
       }
     },
     {
@@ -439,14 +439,14 @@
       "id": "BRC-2",
       "name": "دو سند خزانهٔ متمایز برای دو خط (بدون دوبل)",
       "status": "PASS",
-      "detail": "fa89b5f6-b4cb-41a9-8886-2e784ce9f5ac / 1621a451-351b-457c-9588-7c1605fe460a",
+      "detail": "2a388d02-ae3e-4a56-854c-7f30b4c3ee3f / d598de79-b9cc-4689-b957-f5ee59cd9e4e",
       "evidence": null
     },
     {
       "id": "BRC-3",
       "name": "هر خط بانکی به سند صحیح خودش متصل است",
       "status": "PASS",
-      "detail": "خط۱→fa89b5f6 / خط۲→1621a451",
+      "detail": "خط۱→2a388d02 / خط۲→d598de79",
       "evidence": null
     },
     {
@@ -509,7 +509,7 @@
       "id": "FIS-1",
       "name": "بستن اتمیک سال (اختتامیه + قفل ۱۲ ماه در یک تراکنش)",
       "status": "PASS",
-      "detail": "سند: 5d0dfd7b-0103-48fc-bf31-cfdd58944bb6",
+      "detail": "سند: 8a731e65-8494-44f1-8117-379c231b7497",
       "evidence": null
     },
     {
@@ -558,7 +558,7 @@
       "id": "FIS-7",
       "name": "افتتاح اتمیک سال بعد (سند + ثبت سال در یک تراکنش)",
       "status": "PASS",
-      "detail": "سند: cb5bfdbc-6b67-4bc1-8e42-1113195e7a41",
+      "detail": "سند: d81944a8-2d4a-41c5-9ae0-f5c3df8abd30",
       "evidence": null
     },
     {
@@ -572,7 +572,7 @@
       "id": "FIS-9",
       "name": "ابطال سند (سند معکوس) از مسیر RPC کار می‌کند",
       "status": "PASS",
-      "detail": "معکوس: 4bdd77c4-e504-452a-b474-20ee9a5beb34",
+      "detail": "معکوس: d1a739a5-7ad0-4cd6-bacd-8f465f490c95",
       "evidence": null
     },
     {
@@ -697,7 +697,7 @@
       "id": "E2E-1",
       "name": "سند دستی ۱۰M/۱۰M ثبت شد",
       "status": "PASS",
-      "detail": "4d275b03-9db7-465f-b6b9-c2ffc405cc89",
+      "detail": "026700ef-9ac0-4511-a354-5b5c6377632f",
       "evidence": null
     },
     {
@@ -781,7 +781,7 @@
       "id": "SAY-1",
       "name": "درج چک با شناسهٔ صیادی ۱۶رقمی + نوع + صادرکننده/گیرنده",
       "status": "PASS",
-      "detail": "چک: ceafa940",
+      "detail": "چک: 1d14f51a",
       "evidence": null
     },
     {
@@ -844,14 +844,14 @@
       "id": "EXE-1",
       "name": "ثبت هزینهٔ پرداخت‌شدهٔ شرکت ← سند خودکار",
       "status": "PASS",
-      "detail": "هزینه: c18ae5e5",
+      "detail": "هزینه: ce8d7e3d",
       "evidence": null
     },
     {
       "id": "EXE-2",
       "name": "سند post فعال دقیقاً یکی است",
       "status": "PASS",
-      "detail": "سند فعال: 1 — cdd64695",
+      "detail": "سند فعال: 1 — 251bd13d",
       "evidence": null
     },
     {
@@ -872,7 +872,7 @@
       "id": "EXE-5",
       "name": "ویرایش مالی ← سند قبلی ابطال و سند جدید صادر شد",
       "status": "PASS",
-      "detail": "سندهای فعال: 1 — سند جدید: b810813d",
+      "detail": "سندهای فعال: 1 — سند جدید: 5807dc90",
       "evidence": null
     },
     {
@@ -935,14 +935,14 @@
       "id": "PAY-1",
       "name": "ساخت تفصیلی شخص پرداخت‌کننده",
       "status": "PASS",
-      "detail": "تفصیلی: 95bcfc1c",
+      "detail": "تفصیلی: 5ac6900a",
       "evidence": null
     },
     {
       "id": "PAY-2",
       "name": "ثبت هزینهٔ شخص ثالث ← بستانکار 2112 (نه 2110، نه 7101)",
       "status": "PASS",
-      "detail": "سند: 3a528904",
+      "detail": "سند: 83d2fe9c",
       "evidence": null
     },
     {
@@ -963,7 +963,7 @@
       "id": "PAY-5",
       "name": "تسویهٔ اتمیک بخشی از بدهی (DR 2112 / CR صندوق)",
       "status": "PASS",
-      "detail": "سند تسویه: 844d1591",
+      "detail": "سند تسویه: 997a7627",
       "evidence": null
     },
     {
@@ -1019,7 +1019,7 @@
       "id": "DEL-6",
       "name": "حذف حساب با تراکنش: تراکنش یتیم نمی‌ماند (FK on-delete رفتار مشخص دارد)",
       "status": "PASS",
-      "detail": "حذف حساب رد شد: حساب «بانک-DEL-011463» گردش مالی دارد (1",
+      "detail": "حذف حساب رد شد: حساب «بانک-DEL-011ad1» گردش مالی دارد (1",
       "evidence": null
     },
     {
